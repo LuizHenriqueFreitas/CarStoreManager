@@ -1,0 +1,41 @@
+# Build
+bin/
+obj/
+Properties/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# .NET cache
+*.cache
+*.pdb
+*.mdb
+
+# Publish
+publish/
+*.publishsettings
+
+# Node (caso use libs JS no futuro)
+node_modules/
+
+# Local configs sensíveis
+appsettings.Development.json
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
