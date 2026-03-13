@@ -1,12 +1,17 @@
+using CarStoreManager.Domain.Entities;
 using SistemaEmpresa.Domain.Entities.Concessionaria;
 
-namespace Domain.Interfaces;
+namespace CarStoreManager.Domain.Repositories;
 
-public interface IPropostaVendaRepository : IRepository<PropostaVenda>
+public interface IPropostaVendaRepository
 {
-    Task<IEnumerable<PropostaVenda>> GetByVeiculoAsync(Guid veiculoId);
+    Task<IEnumerable<PropostaVenda>> ObterTodasAsync();
 
-    Task<IEnumerable<PropostaVenda>> GetByVendedorAsync(Guid vendedorId);
+    Task<PropostaVenda?> ObterPorIdAsync(Guid id);
 
-    Task<IEnumerable<PropostaVenda>> GetPendentesAsync();
+    Task AdicionarAsync(PropostaVenda proposta);
+
+    Task AtualizarAsync(PropostaVenda proposta);
+
+    Task RemoverAsync(Guid id);
 }

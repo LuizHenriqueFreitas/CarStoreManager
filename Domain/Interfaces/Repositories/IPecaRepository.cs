@@ -1,10 +1,17 @@
+using CarStoreManager.Domain.Entities;
 using SistemaEmpresa.Domain.Entities.Oficina;
 
-namespace Domain.Interfaces;
+namespace CarStoreManager.Domain.Repositories;
 
-public interface IPecaRepository : IRepository<Peca>
+public interface IPecaRepository
 {
-    Task<Peca?> GetByModeloAsync(string modelo);
+    Task<Peca?> ObterPorIdAsync(Guid id);
 
-    Task<IEnumerable<Peca>> GetDisponiveisAsync();
+    Task<IEnumerable<Peca>> ObterTodosAsync();
+
+    Task AdicionarAsync(Peca peca);
+
+    Task AtualizarAsync(Peca peca);
+
+    Task RemoverAsync(Guid id);
 }

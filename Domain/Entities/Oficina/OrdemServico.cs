@@ -4,9 +4,15 @@ namespace SistemaEmpresa.Domain.Entities.Oficina
 {
     public class OrdemServico : Entity
     {
+        public Guid ClienteId { get; private set; }
+
         public Guid MecanicoId { get; private set; }
 
+        public Guid VeiculoId { get; private set; }
+
         public string Descricao { get; private set; } = null!;
+
+        public DateTime DataCriacao { get; private set; } = DateTime.Now;
 
         public DateTime PrazoEstimado { get; private set; }
 
@@ -16,7 +22,7 @@ namespace SistemaEmpresa.Domain.Entities.Oficina
 
         public decimal ValorTotal { get; private set; }
 
-        public DateTime DataCriacao { get; private set; } = DateTime.Now;
+        public string Status { get; private set; } = null!;
 
         public OrdemServico() { }
 
@@ -33,5 +39,11 @@ namespace SistemaEmpresa.Domain.Entities.Oficina
             this.CustoPecas = custoPecas;
             this.ValorTotal = CustoServico + CustoPecas;
         }
-    }
+
+        public void AtualizarStatus(string status)
+        {
+            this.Status = status;
+        }
+
+    }   
 }

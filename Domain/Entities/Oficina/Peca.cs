@@ -21,5 +21,13 @@ namespace SistemaEmpresa.Domain.Entities.Oficina
             this.Valor = valor;
             this.QuantidadeEstoque = quantidade;
         }
+
+        public void AtualizarDados(string Nome, string Modelo, decimal Valor, int Quantidade)
+        {
+            this.Nome = Nome;
+            this.Modelo = Modelo;
+            this.Valor = Valor;
+            this.QuantidadeEstoque = Quantidade;
+        }
     }
 }

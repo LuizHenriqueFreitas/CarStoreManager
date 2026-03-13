@@ -1,12 +1,16 @@
 using SistemaEmpresa.Domain.Entities.Oficina;
 
-namespace Domain.Interfaces;
+namespace CarStoreManager.Domain.Repositories;
 
-public interface IOrdemServicoRepository : IRepository<OrdemServico>
+public interface IOrdemServicoRepository
 {
-    Task<IEnumerable<OrdemServico>> GetByMecanicoAsync(Guid mecanicoId);
+    Task<IEnumerable<OrdemServico>> ObterTodasAsync();
 
-    Task<IEnumerable<OrdemServico>> GetEmAbertoAsync();
+    Task<OrdemServico?> ObterPorIdAsync(Guid id);
 
-    Task<IEnumerable<OrdemServico>> GetConcluidasAsync();
+    Task AdicionarAsync(OrdemServico ordemServico);
+
+    Task AtualizarAsync(OrdemServico ordemServico);
+
+    Task RemoverAsync(Guid id);
 }

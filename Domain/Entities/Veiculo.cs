@@ -25,7 +25,21 @@ namespace SistemaEmpresa.Domain.Entities.Concessionaria
 
         public Veiculo() { }
 
-        public Veiculo(string marca, string modelo, int ano, string cor, int km, string estado, PlacaVeiculo placa, decimal valor)
+        public Veiculo(Guid id, string marca, string modelo, int ano, string cor, int km, string estado, PlacaVeiculo placa, decimal valor, bool disponivel)
+        {
+            this.Id = id;
+            this.Marca = marca;
+            this.Modelo = modelo;
+            this.Ano = ano;
+            this.Cor = cor;
+            this.Quilometragem = km;
+            this.Estado = estado;
+            this.Placa = placa;
+            this.Valor = valor;
+            this.Disponivel = disponivel;
+        }
+
+        public void AtualizarDados(string marca, string modelo, int ano, string cor, int km, string estado, PlacaVeiculo placa, decimal valor, bool disponivel)
         {
             this.Marca = marca;
             this.Modelo = modelo;
@@ -35,6 +49,7 @@ namespace SistemaEmpresa.Domain.Entities.Concessionaria
             this.Estado = estado;
             this.Placa = placa;
             this.Valor = valor;
+            this.Disponivel = disponivel;
         }
     }
 }

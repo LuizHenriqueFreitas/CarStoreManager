@@ -6,7 +6,9 @@ namespace SistemaEmpresa.Domain.Entities.Concessionaria
     {
         public Guid VendedorId { get; private set; }
 
-        public Guid CarroId { get; private set; }
+        public Guid VeiculoId { get; private set; }
+
+        public Guid ClienteId { get; private set; }
 
         public decimal ValorBase { get; private set; }
 
@@ -22,19 +24,31 @@ namespace SistemaEmpresa.Domain.Entities.Concessionaria
 
         public DateTime DataCriacao { get; private set; } = DateTime.Now;
 
+        public string Status { get; private set; } = null!;
+
         public PropostaVenda() { }
 
-        public PropostaVenda(Guid vendedorId, Guid carroId, decimal valorBase, decimal desconto, decimal entrada, int parcelas)
+        public PropostaVenda(Guid vendedorId, Guid veiculoId, Guid clienteId, decimal valorBase, decimal desconto, decimal valorFinal, decimal entrada, decimal valorFinanciado, int parcelas, DateTime dataCriacao, string status)
         {
             this.VendedorId = vendedorId;
-            this.CarroId = carroId;
+            this.VeiculoId = veiculoId;
+            this.ClienteId = clienteId;
             this.ValorBase = valorBase;
             this.Desconto = desconto;
+            this.ValorFinal = valorFinal;
             this.Entrada = entrada;
+            this.ValorFinanciado = valorFinanciado;
             this.Parcelas = parcelas;
+            this.DataCriacao = dataCriacao;
+            this.Status = status;
 
             this.ValorFinal = valorBase - desconto;
             this.ValorFinanciado = ValorFinal - entrada;
+        }
+
+        public void AtualizarStatus(string status)
+        {
+            this.Status = status;
         }
     }
 }
