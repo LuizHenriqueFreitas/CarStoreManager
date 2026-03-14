@@ -3,7 +3,7 @@ using CarStoreManager.Application.DTOs;
 using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Domain.Entities;
 using CarStoreManager.Domain.Repositories;
-using Microsoft.AspNetCore.Routing.Constraints;
+using SistemaEmpresa.Domain.Entities;
 using SistemaEmpresa.Domain.Entities.Concessionaria;
 
 namespace CarStoreManager.Application.Services;
@@ -15,6 +15,27 @@ public class VeiculoService : IVeiculoService
     public VeiculoService(IVeiculoRepository repository)
     {
         _repository = repository;
+    }
+
+    public async Task<Result<IEnumerable<VeiculoDTO>>> ObterTodosAsync()
+    {
+        var veiculo = await _repository.ObterTodosAsync();
+
+        var lista = veiculo.Select(v =>
+            new VeiculoDTO(
+                v.Id,
+                v.Marca,
+                v.Modelo,
+                v.Ano,
+                v.Cor,
+                v.Quilometragem,
+                v.Estado,
+                v.Placa,
+                v.Valor,
+                v.Disponivel
+            ));
+        
+        return Result<IEnumerable<VeiculoDTO>>.Ok(lista);
     }
 
     public async Task<Result<VeiculoDTO>> ObterPorIdAsync(Guid id)
@@ -88,7 +109,16 @@ public class VeiculoService : IVeiculoService
         if (veiculo == null)
             return Result.Fail("Veículo não encontrado");
 
-        veiculo.AtualizarDados(dto.Marca, dto.Modelo, dto.Ano, dto.Cor, dto.Quilometragem, dto.Estado, dto.Placa, dto.Valor, dto.Disponivel);
+        veiculo.AtualizarDados(
+            dto.Marca, 
+            dto.Modelo, 
+            dto.Ano, 
+            dto.Cor, 
+            dto.Quilometragem, 
+            dto.Estado, 
+            dto.Placa, 
+            dto.Valor, 
+            dto.Disponivel);
 
         await _repository.AtualizarAsync(veiculo);
 

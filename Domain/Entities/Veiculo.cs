@@ -1,7 +1,7 @@
 using Domain.ValueObjects;
 using SistemaEmpresa.Domain.Base;
 
-namespace SistemaEmpresa.Domain.Entities.Concessionaria
+namespace SistemaEmpresa.Domain.Entities
 {
     public class Veiculo : Entity
     {

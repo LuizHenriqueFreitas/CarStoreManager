@@ -5,6 +5,8 @@ namespace CarStoreManager.Application.Interfaces;
 
 public interface IVeiculoService
 {
+    Task<Result<IEnumerable<VeiculoDTO>>> ObterTodosAsync ();
+
     Task<Result<VeiculoDTO>> ObterPorIdAsync(Guid id);
     Task<Result<IEnumerable<VeiculoDTO>>> ObterPorClienteAsync(Guid clienteId);
 
