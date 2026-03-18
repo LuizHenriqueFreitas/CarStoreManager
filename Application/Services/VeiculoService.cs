@@ -33,7 +33,7 @@ public class VeiculoService : IVeiculoService
                 v.Placa,
                 v.Valor,
                 v.Disponivel
-            ));
+            )).ToList();
         
         return Result<IEnumerable<VeiculoDTO>>.Ok(lista);
     }

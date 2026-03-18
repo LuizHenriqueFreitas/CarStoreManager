@@ -1,36 +1,35 @@
-using CarStoreManager.Web.Middlewares;
-using CarStoreManager.Web.Extensions;
 using CarStoreManager.Infrastructure.DependencyInjection;
+using CarStoreManager.Web.Extensions;
+using CarStoreManager.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ======================
-// Registrar serviços
-// ======================
+// 🔹 Serviços do Blazor
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
-// Controllers
-builder.Services.AddControllers();
-
-// Application Services
+// 🔹 Injeção das camadas
 builder.Services.AddApplicationServices();
-
-// Infrastructure (DbContext + Repositories)
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-// ======================
-// Middlewares
-// ======================
-
-// Middleware global de exceções
-app.UseMiddleware<ExceptionMiddleware>();
+// 🔹 Pipeline HTTP
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error");
+    app.UseHsts();
+}
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 
-app.UseAuthorization();
+app.UseRouting();
 
-// Mapear controllers
-app.MapControllers();
+app.UseAntiforgery();
+
+// 🔹 Mapeamento do Blazor
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
 
 app.Run();

@@ -1,0 +1,111 @@
+﻿@namespace CarStoreManager.Web.Components
+
+@using CarStoreManager.Application.DTOs
+@using CarStoreManager.Domain.ValueObjects
+
+@if (aberto)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+
+            <h2>Novo Veículo</h2>
+
+            <input placeholder="Marca" @bind="marca" />
+            <input placeholder="Modelo" @bind="modelo" />
+            <input placeholder="Cor" @bind="cor" />
+            <input placeholder="Ano" type="number" @bind="ano" />
+            <input placeholder="KM" type="number" @bind="quilometragem" />
+            <input placeholder="Estado" @bind="estado" />
+            <input placeholder="Placa" @bind="placa" />
+            <input placeholder="Valor" type="number" @bind="valor" />
+
+            <div class="acoes">
+                <button @onclick="Salvar">Salvar</button>
+                <button @onclick="Fechar">Cancelar</button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(erro))
+            {
+                <p class="erro">@erro</p>
+            }
+
+        </div>
+    </div>
+}
+
+@code {
+    private bool aberto = false;
+
+    // 🔥 CAMPOS DIRETOS (sem DTO interno gambiarra)
+    private string marca = "";
+    private string modelo = "";
+    private string cor = "";
+    private int ano;
+    private int quilometragem;
+    private string estado = "";
+    private string placa = "";
+    private decimal valor;
+
+    private string? erro;
+
+    [Parameter]
+    public EventCallback<VeiculoDTO> OnSalvar { get; set; }
+
+    public void Abrir()
+    {
+        erro = null;
+        aberto = true;
+    }
+
+    void Fechar()
+    {
+        aberto = false;
+    }
+
+    async Task Salvar()
+    {
+        try
+        {
+            // 🔥 VALUE OBJECT
+            var placaObj = new PlacaVeiculo(placa);
+
+            var novo = new VeiculoDTO(
+                Guid.NewGuid(),
+                marca,
+                modelo,
+                ano,
+                cor,
+                quilometragem,
+                estado,
+                placaObj,
+                valor,
+                true
+            );
+
+            if (OnSalvar.HasDelegate)
+            {
+                await OnSalvar.InvokeAsync(novo);
+            }
+
+            Limpar();
+            aberto = false;
+        }
+        catch (Exception ex)
+        {
+            erro = ex.Message;
+        }
+    }
+
+    void Limpar()
+    {
+        marca = "";
+        modelo = "";
+        cor = "";
+        ano = 0;
+        quilometragem = 0;
+        estado = "";
+        placa = "";
+        valor = 0;
+        erro = null;
+    }
+}

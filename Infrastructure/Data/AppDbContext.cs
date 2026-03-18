@@ -1,4 +1,6 @@
 using CarStoreManager.Domain.Entities;
+using CarStoreManager.Domain.ValueObjects;
+using CarStoreManager.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using SistemaEmpresa.Domain.Entities;
 using SistemaEmpresa.Domain.Entities.Concessionaria;
@@ -30,11 +32,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Cliente>().HasKey(c => c.Id);
 
         modelBuilder.Entity<Veiculo>().HasKey(v => v.Id);
+        
+        modelBuilder.Entity<Veiculo>().OwnsOne(v => v.Placa);
 
         modelBuilder.Entity<Peca>().HasKey(p => p.Id);
 
         modelBuilder.Entity<OrdemServico>().HasKey(o => o.Id);
 
         modelBuilder.Entity<PropostaVenda>().HasKey(p => p.Id);
+
+        modelBuilder.Owned<PlacaVeiculo>();
     }
 }

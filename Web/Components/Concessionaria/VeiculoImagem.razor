@@ -1,0 +1,18 @@
+﻿@using CarStoreManager.Application.DTOs
+
+@if (Veiculo is null)
+{
+    <div class="box">
+        <p>Erro ao carregar Imagem</p>
+    </div>
+}
+else
+{
+    <div class="box">
+        <p>@Veiculo.Estado</p>
+    </div>
+}
+
+@code {
+    [Parameter] public VeiculoDTO? Veiculo { get; set; }
+}

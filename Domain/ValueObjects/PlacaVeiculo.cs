@@ -1,8 +1,10 @@
-namespace Domain.ValueObjects;
+namespace CarStoreManager.Domain.ValueObjects;
 
 public class PlacaVeiculo
 {
-    public string Numero { get; private set; }
+    public string Numero { get; private set; } = null!;
+
+    private PlacaVeiculo() {}
 
     public PlacaVeiculo(string numero)
     {

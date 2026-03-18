@@ -1,4 +1,4 @@
-using Domain.ValueObjects;
+using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Application.DTOs;
 

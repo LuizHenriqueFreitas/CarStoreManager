@@ -1,0 +1,21 @@
+﻿@if (Aberto)
+{
+    <div class="modal">
+
+        <div class="conteudo">
+            <h3>Gerar proposta</h3>
+
+            <input placeholder="Nome do cliente" />
+            <input placeholder="Valor de entrada" />
+
+            <button>Confirmar</button>
+            <button @onclick="OnClose">Fechar</button>
+        </div>
+
+    </div>
+}
+
+@code {
+    [Parameter] public bool Aberto { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+}

@@ -1,0 +1,21 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+}
+
+.bloco-central {
+    display: flex;
+    justify-content: space-between;
+    width: 80%;
+    height: 70%;
+    border: 2px solid black;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.btn-proposta {
+    margin-top: 20px;
+    padding: 12px 20px;
+}

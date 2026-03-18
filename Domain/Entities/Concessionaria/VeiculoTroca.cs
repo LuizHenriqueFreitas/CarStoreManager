@@ -1,4 +1,4 @@
-using Domain.ValueObjects;
+using CarStoreManager.Domain.ValueObjects;
 using SistemaEmpresa.Domain.Base;
 
 namespace SistemaEmpresa.Domain.Entities.Concessionaria

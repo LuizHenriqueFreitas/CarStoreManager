@@ -1,0 +1,73 @@
+﻿@page "/concessionaria"
+
+@using CarStoreManager.Application.DTOs
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Web.Components.Concessionaria
+@inject IVeiculoService VeiculoService
+
+<div class="page">
+
+    <SeletorWorkspace />
+
+    <div class="conteudo-central">
+
+        <VeiculoImagem Veiculo="veiculoSelecionado" />
+
+        <VeiculoDetalhes Veiculo="veiculoSelecionado" />
+
+        <VeiculoFinanceiro Veiculo="veiculoSelecionado" />
+
+    </div>
+
+    <div class="rodape">
+        <button @onclick="AbrirModal">+ Novo Veículo</button>
+        <button>Gerar Proposta</button>
+    </div>
+
+</div>
+
+<ModalNovoVeiculo OnSalvar="SalvarVeiculo" @ref="modal" />
+
+@code {
+    private ModalNovoVeiculo? modal;
+    private VeiculoDTO? veiculoSelecionado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarVeiculos();
+    }
+
+    async Task CarregarVeiculos()
+    {
+        var resultado = await VeiculoService.ObterTodosAsync();
+
+        if (resultado.Success)
+        {
+            var lista = resultado.Data?.ToList() ?? new List<VeiculoDTO>();
+            veiculoSelecionado = lista.FirstOrDefault();
+        }
+        else
+        {
+            Console.WriteLine(resultado.Error);
+        }
+    }
+
+    void AbrirModal()
+    {
+        Console.WriteLine("clicou");
+        modal?.Abrir();
+    }
+
+    async Task SalvarVeiculo(VeiculoDTO novo)
+    {
+        var result = await VeiculoService.CriarAsync(novo);
+
+        if (!result.Success)
+        {
+            Console.WriteLine(result.Error);
+            return;
+        }
+
+        await CarregarVeiculos();
+    }
+}

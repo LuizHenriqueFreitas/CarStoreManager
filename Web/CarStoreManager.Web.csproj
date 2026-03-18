@@ -11,4 +11,10 @@
     <ProjectReference Include="..\Infrastructure\CarStoreManager.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Components\Concessionaria\" />
+    <Folder Include="Components\Oficina\" />
+    <Folder Include="Components\Shared\" />
+  </ItemGroup>
+
 </Project>

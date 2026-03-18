@@ -25,10 +25,12 @@ Thumbs.db
 *.cache
 *.pdb
 *.mdb
+.github
 
 # Publish
 publish/
 *.publishsettings
+
 
 # Node (caso use libs JS no futuro)
 node_modules/
@@ -39,3 +41,7 @@ appsettings.Development.json
 # Rider / JetBrains
 .idea/
 *.sln.iml
+
+/Web/teste.http
+/Infrastructure/Migrations
+*.db*
