@@ -1,0 +1,22 @@
+20261903
+
+Estamos a 2 semanas estudando, prototipando e pensando em como desenvolver esse projeto,
+temos até o momento:
+
+ - BackEnd completo funcionando (aparentemente) - com certo nivel de modularidade ja implementada
+     - Entidades
+     - DTOs
+     - APIs para crud
+     - Interfaces
+     - Mappings
+
+
+- Conexão com sqlite para desenvolvimento rapido - no futuro vamos migrar de banco
+
+- Front End em andamento
+    - pagina principal da concessionaria 80% completa
+    > faltam todas as outras paginas ainda
+
+### Problemas pendentes
+- Refetorar namespaces de todos os arquivos do back-end
+- css esta todo depositado em wwwroot/css/site.css - deve ser modularizado no futuro

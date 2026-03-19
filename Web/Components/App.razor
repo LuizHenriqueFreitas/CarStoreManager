@@ -1,11 +1,24 @@
-﻿@namespace CarStoreManager.Web
-@using CarStoreManager.Web.Components.Layout
+﻿@using CarStoreManager.Web.Imports
+@using Microsoft.AspNetCore.Components.Web
 
-<Router AppAssembly="@typeof(App).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
-    </Found>
-    <NotFound>
-        <h1>Página não encontrada</h1>
-    </NotFound>
-</Router>
+@namespace CarStoreManager.Web
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link href="css/site.css" rel="stylesheet" />
+</head>
+<body>
+
+    <div id="app">
+        <Routes @rendermode="RenderMode.InteractiveServer" />
+    </div>
+    
+    <script src="_framework/blazor.web.js"></script>
+
+</body>
+</html>

@@ -1,20 +1,25 @@
-﻿@if (Aberto)
-{
-    <div class="modal">
+﻿@namespace CarStoreManager.Web.Components
 
-        <div class="conteudo">
+@if (Aberto)
+{
+    <div class="modal-backdrop">
+
+        <div class="modal">
+
             <h3>Gerar proposta</h3>
 
             <input placeholder="Nome do cliente" />
             <input placeholder="Valor de entrada" />
 
-            <button>Confirmar</button>
-            <button @onclick="OnClose">Fechar</button>
+            <div class="acoes">
+                <button>Confirmar</button>
+                <button @onclick="OnClose">Fechar</button>
+            </div>
+
         </div>
 
     </div>
 }
-
 @code {
     [Parameter] public bool Aberto { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
