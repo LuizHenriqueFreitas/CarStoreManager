@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 
-namespace Domain.Interfaces;
+namespace CarStoreManager.Domain.Repositories;
 
 public interface IRepository<T> where T : class
 {

@@ -1,6 +1,6 @@
-using SistemaEmpresa.Domain.Base;
+using CarStoreManager.Domain.Base;
 
-namespace SistemaEmpresa.Domain.Entities.Oficina
+namespace CarStoreManager.Domain.Entities.Oficina
 {
     public class OrdemServico : Entity
     {

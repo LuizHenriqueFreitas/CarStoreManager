@@ -3,7 +3,7 @@ using CarStoreManager.Domain.Entities;
 
 namespace CarStoreManager.Application.Mappings;
 
-public static class ClienteMapping
+public static class ClienteMapping 
 {
     public static ClienteDTO ToDTO(Cliente cliente)
     {

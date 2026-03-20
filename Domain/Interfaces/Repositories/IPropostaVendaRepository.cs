@@ -1,5 +1,4 @@
-using CarStoreManager.Domain.Entities;
-using SistemaEmpresa.Domain.Entities.Concessionaria;
+using CarStoreManager.Domain.Entities.Concessionaria;
 
 namespace CarStoreManager.Domain.Repositories;
 

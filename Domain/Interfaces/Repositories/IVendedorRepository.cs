@@ -1,6 +1,6 @@
-using SistemaEmpresa.Domain.Entities.Concessionaria;
+using CarStoreManager.Domain.Entities.Concessionaria;
 
-namespace Domain.Interfaces;
+namespace CarStoreManager.Domain.Repositories;
 
 public interface IVendedorRepository : IRepository<Vendedor>
 {

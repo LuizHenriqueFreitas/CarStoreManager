@@ -1,4 +1,4 @@
-namespace Domain.Enums;
+namespace CarStoreManager.Domain.Enums;
 
 public enum StatusOrdemServico
 {

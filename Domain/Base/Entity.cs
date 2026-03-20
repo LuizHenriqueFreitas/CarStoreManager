@@ -1,4 +1,4 @@
-namespace SistemaEmpresa.Domain.Base
+namespace CarStoreManager.Domain.Base
 {
     public abstract class Entity
     {

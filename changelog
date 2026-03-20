@@ -1,4 +1,4 @@
-20261903
+2026-03-19
 
 Estamos a 2 semanas estudando, prototipando e pensando em como desenvolver esse projeto,
 temos até o momento:
@@ -20,3 +20,4 @@ temos até o momento:
 ### Problemas pendentes
 - Refetorar namespaces de todos os arquivos do back-end
 - css esta todo depositado em wwwroot/css/site.css - deve ser modularizado no futuro
+

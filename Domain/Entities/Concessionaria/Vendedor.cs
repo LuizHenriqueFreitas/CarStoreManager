@@ -1,8 +1,7 @@
-using System.ComponentModel.DataAnnotations;
+using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.ValueObjects;
-using SistemaEmpresa.Domain.Base;
 
-namespace SistemaEmpresa.Domain.Entities.Concessionaria
+namespace CarStoreManager.Domain.Entities.Concessionaria
 {
     public class Vendedor : Entity
     {

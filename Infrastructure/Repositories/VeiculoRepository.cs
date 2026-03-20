@@ -2,8 +2,6 @@ using CarStoreManager.Domain.Entities;
 using CarStoreManager.Domain.Repositories;
 using CarStoreManager.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using SistemaEmpresa.Domain.Entities;
-using SistemaEmpresa.Domain.Entities.Concessionaria;
 
 namespace CarStoreManager.Infrastructure.Repositories;
 

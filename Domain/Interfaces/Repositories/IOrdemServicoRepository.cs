@@ -1,4 +1,4 @@
-using SistemaEmpresa.Domain.Entities.Oficina;
+using CarStoreManager.Domain.Entities.Oficina;
 
 namespace CarStoreManager.Domain.Repositories;
 

@@ -1,5 +1,3 @@
-using System.Data;
-
 namespace CarStoreManager.Application.DTOs;
 
 public record OrdemServicoDTO

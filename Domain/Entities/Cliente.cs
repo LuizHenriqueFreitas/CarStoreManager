@@ -1,9 +1,9 @@
+using CarStoreManager.Domain.Base;
+
 namespace CarStoreManager.Domain.Entities;
 
-public class Cliente
+public class Cliente : Entity
 {
-    public Guid Id { get; private set; }
-
     public string Nome { get; private set; } = null!;
 
     public string Documento { get; private set; } = null!;
@@ -13,7 +13,6 @@ public class Cliente
 
     public Cliente(string nome, string documento, string telefone, string email)
     {
-        Id = Guid.NewGuid();
         Nome = nome;
         Documento = documento;
         Telefone = telefone;

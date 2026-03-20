@@ -1,10 +1,8 @@
 using CarStoreManager.Domain.Entities;
-using CarStoreManager.Domain.ValueObjects;
+using CarStoreManager.Domain.Entities.Concessionaria;
+using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
-using SistemaEmpresa.Domain.Entities;
-using SistemaEmpresa.Domain.Entities.Concessionaria;
-using SistemaEmpresa.Domain.Entities.Oficina;
 
 namespace CarStoreManager.Infrastructure.Data;
 

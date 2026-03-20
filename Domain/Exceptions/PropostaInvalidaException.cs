@@ -1,4 +1,4 @@
-namespace Domain.Exceptions;
+namespace CarStoreManager.Domain.Exceptions;
 
 public class PropostaInvalidaException : DomainException
 {

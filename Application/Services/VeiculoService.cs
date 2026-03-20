@@ -3,8 +3,6 @@ using CarStoreManager.Application.DTOs;
 using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Domain.Entities;
 using CarStoreManager.Domain.Repositories;
-using SistemaEmpresa.Domain.Entities;
-using SistemaEmpresa.Domain.Entities.Concessionaria;
 
 namespace CarStoreManager.Application.Services;
 

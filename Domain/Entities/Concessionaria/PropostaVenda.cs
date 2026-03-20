@@ -1,6 +1,6 @@
-using SistemaEmpresa.Domain.Base;
+using CarStoreManager.Domain.Base;
 
-namespace SistemaEmpresa.Domain.Entities.Concessionaria
+namespace CarStoreManager.Domain.Entities.Concessionaria
 {
     public class PropostaVenda : Entity
     {

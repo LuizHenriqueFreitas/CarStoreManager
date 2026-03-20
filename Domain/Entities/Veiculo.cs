@@ -1,7 +1,7 @@
 using CarStoreManager.Domain.ValueObjects;
-using SistemaEmpresa.Domain.Base;
+using CarStoreManager.Domain.Base;
 
-namespace SistemaEmpresa.Domain.Entities
+namespace CarStoreManager.Domain.Entities
 {
     public class Veiculo : Entity
     {

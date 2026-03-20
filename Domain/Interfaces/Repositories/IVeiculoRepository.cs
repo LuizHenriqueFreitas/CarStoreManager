@@ -1,5 +1,6 @@
+using CarStoreManager.Domain.Entities;
 
-using SistemaEmpresa.Domain.Entities;
+namespace CarStoreManager.Domain.Repositories;
 
 public interface IVeiculoRepository
 {

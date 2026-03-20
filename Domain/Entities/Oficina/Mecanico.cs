@@ -1,7 +1,9 @@
-using CarStoreManager.Domain.ValueObjects;
-using SistemaEmpresa.Domain.Base;
+//adicionar campo de especialidade do mecanico
 
-namespace SistemaEmpresa.Domain.Entities.Oficina
+using CarStoreManager.Domain.Base;
+using CarStoreManager.Domain.ValueObjects;
+
+namespace CarStoreManager.Domain.Entities.Oficina
 {
     public class Mecanico : Entity
     {

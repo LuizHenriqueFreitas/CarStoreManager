@@ -1,7 +1,6 @@
-using CarStoreManager.Domain.ValueObjects;
-using SistemaEmpresa.Domain.Base;
+//tem que revisar a estrutura desta entidade
 
-namespace SistemaEmpresa.Domain.Entities.Concessionaria
+namespace CarStoreManager.Domain.Entities.Concessionaria
 {
     public class VeiculoTroca : Veiculo
     {

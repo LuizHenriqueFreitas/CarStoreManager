@@ -1,6 +1,8 @@
-using SistemaEmpresa.Domain.Base;
+//a necessidadde e uso desta entidade deve ser reconsiderado
 
-namespace SistemaEmpresa.Domain.Entities.Oficina
+using CarStoreManager.Domain.Base;
+
+namespace CarStoreManager.Domain.Entities.Oficina
 {
     public class OrdemServicoItem : Entity
     {

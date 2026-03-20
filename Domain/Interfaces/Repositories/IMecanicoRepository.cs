@@ -1,6 +1,6 @@
-using SistemaEmpresa.Domain.Entities.Oficina;
+using CarStoreManager.Domain.Entities.Oficina;
 
-namespace Domain.Interfaces;
+namespace CarStoreManager.Domain.Repositories;
 
 public interface IMecanicoRepository : IRepository<Mecanico>
 {
