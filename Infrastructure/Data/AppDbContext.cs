@@ -17,7 +17,7 @@ public class AppDbContext : DbContext
 
     public DbSet<Veiculo> Veiculos { get; set; }
 
-    public DbSet<Peca> Pecas { get; set; }
+    public DbSet<Componente> Pecas { get; set; }
 
     public DbSet<OrdemServico> OrdensServico { get; set; }
 
@@ -33,7 +33,7 @@ public class AppDbContext : DbContext
         
         modelBuilder.Entity<Veiculo>().OwnsOne(v => v.Placa);
 
-        modelBuilder.Entity<Peca>().HasKey(p => p.Id);
+        modelBuilder.Entity<Componente>().HasKey(p => p.Id);
 
         modelBuilder.Entity<OrdemServico>().HasKey(o => o.Id);
 

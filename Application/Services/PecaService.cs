@@ -8,9 +8,9 @@ namespace CarStoreManager.Application.Services;
 
 public class PecaService : IPecaService
 {
-    private readonly IPecaRepository _repository;
+    private readonly IComponenteRepository _repository;
 
-    public PecaService(IPecaRepository repository)
+    public PecaService(IComponenteRepository repository)
     {
         _repository = repository;
     }
@@ -46,7 +46,7 @@ public class PecaService : IPecaService
 
     public async Task<Result> CriarAsync(PecaDTO dto)
     {
-        var peca = new Peca(
+        var peca = new Componente(
             dto.Nome,
             dto.Modelo,
             dto.Valor,

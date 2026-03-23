@@ -5,7 +5,7 @@ namespace CarStoreManager.Application.Mappings;
 
 public static class PecaMapping
 {
-    public static PecaDTO ToDTO(Peca peca)
+    public static PecaDTO ToDTO(Componente peca)
     {
         return new PecaDTO(
             peca.Id,
@@ -16,9 +16,9 @@ public static class PecaMapping
         );
     }
 
-    public static Peca ToEntity(PecaDTO dto)
+    public static Componente ToEntity(PecaDTO dto)
     {
-        return new Peca(
+        return new Componente(
             dto.Nome,
             dto.Modelo,
             dto.Valor,

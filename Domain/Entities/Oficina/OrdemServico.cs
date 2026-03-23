@@ -1,49 +1,120 @@
 using CarStoreManager.Domain.Base;
+using CarStoreManager.Domain.Enums;
+using CarStoreManager.Domain.ValueObjects;
 
-namespace CarStoreManager.Domain.Entities.Oficina
+namespace CarStoreManager.Domain.Entities.Oficina;
+
+public class OrdemServico : Entity
 {
-    public class OrdemServico : Entity
+    public Guid VeiculoId { get; private set; }
+    public Guid MecanicoId { get; private set; }
+    public Guid ClienteId { get; private set; }
+
+    public TipoServico Tipo { get; private set; }
+
+    public string Descricao { get; private set; } = null!;
+
+    public DateTime DataCriacao { get; private set; }
+    public DateTime PrazoEstimado { get; private set; }
+
+    public Dinheiro CustoServico { get; private set; } = null!;
+    public Dinheiro ValorTotal { get; private set; } = null!;
+
+    public StatusOrdemServico Status { get; private set; }
+
+    public List<ItemOrdemServico> Itens { get; private set; } = new();
+
+    protected OrdemServico() { }
+
+    public OrdemServico(
+        Guid veiculoId,
+        Guid mecanicoId,
+        Guid clienteId,
+        TipoServico tipo,
+        string descricao,
+        DateTime prazoEstimado,
+        Dinheiro custoServico)
     {
-        public Guid ClienteId { get; private set; }
+        if (string.IsNullOrWhiteSpace(descricao))
+            throw new ArgumentException("Descrição inválida");
 
-        public Guid MecanicoId { get; private set; }
+        if (prazoEstimado < DateTime.UtcNow)
+            throw new ArgumentException("Prazo inválido");
 
-        public Guid VeiculoId { get; private set; }
+        VeiculoId = veiculoId;
+        MecanicoId = mecanicoId;
+        ClienteId = clienteId;
 
-        public string Descricao { get; private set; } = null!;
+        Tipo = tipo;
+        Descricao = descricao.Trim();
+        PrazoEstimado = prazoEstimado;
 
-        public DateTime DataCriacao { get; private set; } = DateTime.Now;
+        CustoServico = custoServico;
 
-        public DateTime PrazoEstimado { get; private set; }
+        DataCriacao = DateTime.UtcNow;
+        Status = StatusOrdemServico.Pendente;
 
-        public decimal CustoPecas { get; private set; }
+        RecalcularTotal();
+    }
 
-        public decimal CustoServico { get; private set; }
+    // =========================
+    // ITENS
+    // =========================
 
-        public decimal ValorTotal { get; private set; }
+    public void AdicionarItem(ItemOrdemServico item)
+    {
+        Itens.Add(item);
+        RecalcularTotal();
+    }
 
-        public string Status { get; private set; } = null!;
+    public void RemoverItem(Guid itemId)
+    {
+        var item = Itens.FirstOrDefault(i => i.Id == itemId);
 
-        public OrdemServico() { }
+        if (item == null)
+            throw new InvalidOperationException("Item não encontrado");
 
-        public OrdemServico(Guid mecanicoId, string descricao, DateTime prazo, decimal custoServico)
-        {
-            this.MecanicoId = mecanicoId;
-            this.Descricao = descricao;
-            this.PrazoEstimado = prazo;
-            this.CustoServico = custoServico;
-        }
+        Itens.Remove(item);
+        RecalcularTotal();
+    }
 
-        public void CalcularTotal(decimal custoPecas)
-        {
-            this.CustoPecas = custoPecas;
-            this.ValorTotal = CustoServico + CustoPecas;
-        }
+    // =========================
+    // CÁLCULO
+    // =========================
 
-        public void AtualizarStatus(string status)
-        {
-            this.Status = status;
-        }
+    private void RecalcularTotal()
+    {
+        var totalItens = Itens
+            .Select(i => i.ValorTotal)
+            .Aggregate(new Dinheiro(0), (acc, v) => acc.Somar(v));
 
-    }   
+        ValorTotal = totalItens.Somar(CustoServico);
+    }
+
+    // =========================
+    // STATUS (FLUXO CONTROLADO)
+    // =========================
+
+    public void Iniciar()
+    {
+        ValidarStatus(StatusOrdemServico.Pendente);
+        Status = StatusOrdemServico.EmAndamento;
+    }
+
+    public void Finalizar()
+    {
+        ValidarStatus(StatusOrdemServico.EmAndamento);
+        Status = StatusOrdemServico.Finalizada;
+    }
+
+    public void Cancelar()
+    {
+        Status = StatusOrdemServico.Cancelada;
+    }
+
+    private void ValidarStatus(StatusOrdemServico esperado)
+    {
+        if (Status != esperado)
+            throw new InvalidOperationException($"Status inválido: {Status}");
+    }
 }

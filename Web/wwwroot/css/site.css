@@ -273,3 +273,86 @@ tr:hover {
     background: #0078d4;
     border-color: #0078d4;
 }
+
+/* ================= OFICINA ================= */
+
+/* LADO ESQUERDO */
+.header-servico {
+    display: flex;
+    gap: 10px;
+}
+
+.header-servico .foto {
+    width: 80px;
+    height: 80px;
+    background: #444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-servico .dados {
+    flex: 1;
+    background: #3a3a3a;
+    padding: 10px;
+}
+
+.header-servico .status {
+    width: 120px;
+    background: #555;
+    padding: 10px;
+}
+
+/* LISTA DE SERVIÇOS */
+.lista-servicos {
+    flex: 1;
+    background: #2f2f2f;
+    padding: 10px;
+
+    overflow-y: auto; /* 🔥 scroll interno */
+}
+
+/* LADO DIREITO */
+.info-superior {
+    display: flex;
+    gap: 10px;
+}
+
+.foto-mecanico {
+    width: 80px;
+    height: 80px;
+    background: #444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dados-servico {
+    flex: 1;
+    background: #3a3a3a;
+    padding: 10px;
+}
+
+/* PARTE DE BAIXO */
+.info-inferior {
+    display: flex;
+    gap: 10px;
+    flex: 1;
+}
+
+.estoque {
+    flex: 1;
+    background: #2a2a2a;
+    padding: 10px;
+}
+
+.gestao {
+    flex: 1;
+    background: #2a2a2a;
+    padding: 10px;
+}
+
+/* BOTÃO */
+.btn-proposta {
+    padding: 15px 25px;
+}

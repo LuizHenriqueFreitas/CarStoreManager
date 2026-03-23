@@ -1,6 +1,6 @@
 namespace CarStoreManager.Domain.Enums;
 
-public enum EstadoVeiculo
+public enum DisponibilidadeVeiculo
 {
     Disponivel = 1,
     Reservado = 2,

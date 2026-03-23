@@ -1,51 +1,68 @@
 ﻿@page "/oficina"
 
-<h1>Oficina</h1>
+<div class="layout">
 
-<div style="display:flex; gap:20px; margin-bottom:20px;">
+    <!-- TOPO -->
+    <div class="topo">
+        <SeletorWorkspace />
 
-    <div style="border:2px solid black; padding:20px;">
-        Foto do carro
+        <div class="usuario">
+            Usuário logado
+        </div>
     </div>
 
-    <div style="border:2px solid black; padding:20px; width:400px;">
-        Dados do serviço
+    <!-- CONTEÚDO -->
+    <div class="conteudo">
+
+        <!-- 🔴 LADO ESQUERDO -->
+        <div class="painel-esquerdo">
+
+            <!-- CABEÇALHO -->
+            <div class="header-servico">
+                <div class="foto">foto carro</div>
+                <div class="dados">dados do serviço</div>
+                <div class="status">status e prazo</div>
+            </div>
+
+            <!-- LISTA DE SERVIÇOS -->
+            <div class="lista-servicos">
+                serviços de reparo em andamento
+            </div>
+
+        </div>
+
+        <!-- 🔵 LADO DIREITO -->
+        <div class="painel-direito">
+
+            <!-- INFO SUPERIOR -->
+            <div class="info-superior">
+                <div class="foto-mecanico">foto mecânico</div>
+                <div class="dados-servico">
+                    dados relacionados / status de disponibilidade
+                </div>
+            </div>
+
+            <!-- PARTE INFERIOR -->
+            <div class="info-inferior">
+
+                <div class="estoque">
+                    gerenciamento do estoque
+                </div>
+
+                <div class="gestao">
+                    gerenciamento de prazos, serviços e mecânicos
+                </div>
+
+            </div>
+
+        </div>
+
     </div>
 
-    <div style="border:2px solid black; padding:20px;">
-        Status e prazo
+    <!-- RODAPÉ -->
+    <div class="rodape">
+        <div></div>
+        <button class="btn-proposta">Gerar proposta de reparo</button>
     </div>
 
 </div>
-
-<div style="border:2px solid black; padding:20px; margin-bottom:20px;">
-    Serviços de reparo em andamento
-</div>
-
-<div style="display:flex; gap:20px; margin-bottom:20px;">
-
-    <div style="border:2px solid black; padding:20px;">
-        Foto do mecânico
-    </div>
-
-    <div style="border:2px solid black; padding:20px;">
-        Status de disponibilidade
-    </div>
-
-</div>
-
-<div style="display:flex; gap:20px; margin-bottom:20px;">
-
-    <div style="border:2px solid black; padding:20px;">
-        Gerenciamento do estoque
-    </div>
-
-    <div style="border:2px solid black; padding:20px;">
-        Gerenciamento de prazos, serviços e mecânicos
-    </div>
-
-</div>
-
-<button style="padding:10px;">
-    Gerar proposta de reparo
-</button>

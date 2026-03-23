@@ -1,4 +1,20 @@
-2026-03-19
+## 2026-22-03
+
+Refatoração do Domain completo.
+- Extruturação das entidades, ValueObjects(VO), enums e Repositorys;
+- entidades e VOs com regras e verificações basicas aplicadas;
+
+Refatoração e organização dos namespaces do projeto.
+
+### Melhorias para o futuro
+- Adicionar metodos complementares nas entidades - como sistema de parcelamento com juros compostos, entre outros
+- modularizar os VOs adicionando um arquivo generico e aplicando herança nos demais
+
+### Problemas pendentes
+- Necessario trabalhar na refatoração de Aplication e infrastructure;
+- Nenhum avanço no front-end
+
+## 2026-19-03
 
 Estamos a 2 semanas estudando, prototipando e pensando em como desenvolver esse projeto,
 temos até o momento:

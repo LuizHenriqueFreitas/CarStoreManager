@@ -21,7 +21,7 @@ public static class InfrastructureServiceCollection
 
         services.AddScoped<IClienteRepository, ClienteRepository>();
         services.AddScoped<IVeiculoRepository, VeiculoRepository>();
-        services.AddScoped<IPecaRepository, PecaRepository>();
+        services.AddScoped<IComponenteRepository, PecaRepository>();
         services.AddScoped<IOrdemServicoRepository, OrdemServicoRepository>();
         services.AddScoped<IPropostaVendaRepository, PropostaVendaRepository>();
 

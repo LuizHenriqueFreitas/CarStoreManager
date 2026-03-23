@@ -2,15 +2,7 @@ using CarStoreManager.Domain.Entities;
 
 namespace CarStoreManager.Domain.Repositories;
 
-public interface IClienteRepository
+public interface IClienteRepository : IRepository<Cliente>
 {
-    Task<Cliente?> ObterPorIdAsync(Guid id);
-
-    Task<IEnumerable<Cliente>> ObterTodosAsync();
-
-    Task AdicionarAsync(Cliente cliente);
-
-    Task AtualizarAsync(Cliente cliente);
-
-    Task RemoverAsync(Guid id);
+    //busca por atributo especifico
 }

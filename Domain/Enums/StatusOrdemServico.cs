@@ -2,9 +2,10 @@ namespace CarStoreManager.Domain.Enums;
 
 public enum StatusOrdemServico
 {
-    Aberta = 1,
-    EmAndamento = 2,
-    AguardandoPecas = 3,
-    Concluida = 4,
-    Cancelada = 5
+    Pendente = 1,
+    EmAnalise = 2,
+    Aprovada = 3,
+    EmAndamento = 4,
+    Finalizada = 5,
+    Cancelada = 6
 }

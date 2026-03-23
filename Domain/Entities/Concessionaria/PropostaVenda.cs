@@ -1,54 +1,102 @@
 using CarStoreManager.Domain.Base;
+using CarStoreManager.Domain.ValueObjects;
+using CarStoreManager.Domain.Enums;
 
-namespace CarStoreManager.Domain.Entities.Concessionaria
+namespace CarStoreManager.Domain.Entities.Concessionaria;
+
+public class PropostaVenda : Entity
 {
-    public class PropostaVenda : Entity
+    public Guid VendedorId { get; private set; }
+    public Guid VeiculoId { get; private set; }
+    public Guid ClienteId { get; private set; }
+
+    public Dinheiro ValorBase { get; private set; } = null!;
+    public Percentual Desconto { get; private set; } = null!;
+    public Dinheiro ValorFinal { get; private set; } = null!;
+
+    public Dinheiro Entrada { get; private set; } = null!;
+    public Financiamento Financiamento { get; private set; } = null!;
+
+    public DateTime DataCriacao { get; private set; }
+    public StatusPropostaVenda Status { get; private set; }
+
+    protected PropostaVenda() { }
+
+    public PropostaVenda(
+        Guid vendedorId,
+        Guid veiculoId,
+        Guid clienteId,
+        Dinheiro valorBase)
     {
-        public Guid VendedorId { get; private set; }
+        VendedorId = vendedorId;
+        VeiculoId = veiculoId;
+        ClienteId = clienteId;
 
-        public Guid VeiculoId { get; private set; }
+        ValorBase = valorBase;
+        Desconto = Percentual.Zero();
 
-        public Guid ClienteId { get; private set; }
+        CalcularValorFinal();
 
-        public decimal ValorBase { get; private set; }
+        DataCriacao = DateTime.UtcNow;
+        Status = StatusPropostaVenda.Rascunho;
+    }
 
-        public decimal Desconto { get; private set; }
+    // =========================
+    // REGRAS DE NEGÓCIO
+    // =========================
 
-        public decimal ValorFinal { get; private set; }
+    public void AplicarDesconto(Percentual desconto)
+    {
+        Desconto = desconto;
+        CalcularValorFinal();
+    }
 
-        public decimal Entrada { get; private set; }
+    private void CalcularValorFinal()
+    {
+        var valorDesconto = Desconto.CalcularValor(ValorBase);
+        ValorFinal = ValorBase.Subtrair(valorDesconto);
+    }
 
-        public decimal ValorFinanciado { get; private set; }
+    public void DefinirEntrada(Dinheiro entrada)
+    {
+        if (entrada.Valor > ValorFinal.Valor)
+            throw new ArgumentException("Entrada não pode ser maior que o valor final");
 
-        public int Parcelas { get; private set; }
+        Entrada = entrada;
+    }
 
-        public DateTime DataCriacao { get; private set; } = DateTime.Now;
+    public void GerarFinanciamento(Parcelas parcelas)
+    {
+        if (Entrada is null)
+            throw new InvalidOperationException("Defina a entrada antes do financiamento");
 
-        public string Status { get; private set; } = null!;
+        Financiamento = new Financiamento(
+            ValorFinal,
+            parcelas,
+            Entrada
+        );
+    }
 
-        public PropostaVenda() { }
+    public void Aprovar()
+    {
+        ValidarEstado(StatusPropostaVenda.Rascunho);
+        Status = StatusPropostaVenda.Aprovada;
+    }
 
-        public PropostaVenda(Guid vendedorId, Guid veiculoId, Guid clienteId, decimal valorBase, decimal desconto, decimal valorFinal, decimal entrada, decimal valorFinanciado, int parcelas, DateTime dataCriacao, string status)
-        {
-            this.VendedorId = vendedorId;
-            this.VeiculoId = veiculoId;
-            this.ClienteId = clienteId;
-            this.ValorBase = valorBase;
-            this.Desconto = desconto;
-            this.ValorFinal = valorFinal;
-            this.Entrada = entrada;
-            this.ValorFinanciado = valorFinanciado;
-            this.Parcelas = parcelas;
-            this.DataCriacao = dataCriacao;
-            this.Status = status;
+    public void Rejeitar()
+    {
+        ValidarEstado(StatusPropostaVenda.Rascunho);
+        Status = StatusPropostaVenda.Rejeitada;
+    }
 
-            this.ValorFinal = valorBase - desconto;
-            this.ValorFinanciado = ValorFinal - entrada;
-        }
+    public void Cancelar()
+    {
+        Status = StatusPropostaVenda.Cancelada;
+    }
 
-        public void AtualizarStatus(string status)
-        {
-            this.Status = status;
-        }
+    private void ValidarEstado(StatusPropostaVenda esperado)
+    {
+        if (Status != esperado)
+            throw new InvalidOperationException($"Estado inválido: {Status}");
     }
 }
