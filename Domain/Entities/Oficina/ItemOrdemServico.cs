@@ -33,6 +33,20 @@ public class ItemOrdemServico : Entity
     }
 
     // =========================
+    // GETERS
+    // =========================
+
+        public decimal GetValorUnitario()
+    {
+        return ValorUnitario.Valor;
+    }
+
+    public decimal GetValorTotal()
+    {
+        return ValorTotal.Valor;
+    }
+
+    // =========================
     // REGRAS DE NEGÓCIO
     // =========================
 

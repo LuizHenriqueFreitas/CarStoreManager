@@ -42,6 +42,45 @@ public class PropostaVenda : Entity
     }
 
     // =========================
+    // GETERS
+    // =========================
+
+    public decimal GetValorBase()
+    {
+        return ValorBase.Valor;
+    }
+
+    public decimal GetDesconto()
+    {
+        return Desconto.Valor;
+    }
+
+    public decimal GetValorFinal()
+    {
+        return ValorFinal.Valor;
+    }
+
+    public decimal GetEntrada()
+    {
+        return Entrada.Valor;
+    }
+
+    public decimal GetValorFinanciado()
+    {
+        return Financiamento.ValorFinanciado.Valor;
+    }
+
+    public int GetParcelas()
+    {
+        return Financiamento.Parcelas.Quantidade;
+    }
+
+    public string GetStatus()
+    {
+        return Status.ToString();
+    }
+
+    // =========================
     // REGRAS DE NEGÓCIO
     // =========================
 

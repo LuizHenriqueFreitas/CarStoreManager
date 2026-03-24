@@ -1,5 +1,8 @@
+using System.ComponentModel;
+using System.Linq.Expressions;
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.Enums;
+using CarStoreManager.Domain.Exceptions;
 using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Domain.Entities.Oficina;
@@ -57,12 +60,54 @@ public class OrdemServico : Entity
         RecalcularTotal();
     }
 
+    // ============================
+    // GETERS
+    // ============================
+
+    public decimal GetCustoServico()
+    {
+        return CustoServico.Valor;
+    }
+
+    public decimal GetValorTotal()
+    {
+        return ValorTotal.Valor;
+    }
+
+    // =========================
+    // SETERS
+    // =========================
+
+        public void DefinirCliente(Guid clienteId)
+    {
+        if (clienteId == Guid.Empty)
+            throw new ArgumentException("Cliente inválido");
+
+        ClienteId = clienteId;
+    }
+
+    public void DefinirVeiculo(Guid veiculoId)
+    {
+        if (veiculoId == Guid.Empty)
+            throw new ArgumentException("Veículo inválido");
+
+        VeiculoId = veiculoId;
+    }
+
+    public void SetTipo(TipoServico tipo)
+    {
+        Tipo = tipo;
+    }
+
     // =========================
     // ITENS
     // =========================
 
     public void AdicionarItem(ItemOrdemServico item)
     {
+        if (Status == StatusOrdemServico.Finalizada)
+            throw new InvalidOperationException("Não é possível alterar itens");
+
         Itens.Add(item);
         RecalcularTotal();
     }
@@ -78,11 +123,23 @@ public class OrdemServico : Entity
         RecalcularTotal();
     }
 
+            public void AtualizarItem(Guid itemId, int novaQuantidade)
+        {
+            var item = Itens.FirstOrDefault(i => i.Id == itemId);
+
+            if (item is null)
+                throw new InvalidOperationException("Item não encontrado");
+
+            item.AlterarQuantidade(novaQuantidade);
+
+            RecalcularTotal();
+        }
+
     // =========================
     // CÁLCULO
     // =========================
 
-    private void RecalcularTotal()
+    public void RecalcularTotal()
     {
         var totalItens = Itens
             .Select(i => i.ValorTotal)
@@ -110,6 +167,17 @@ public class OrdemServico : Entity
     public void Cancelar()
     {
         Status = StatusOrdemServico.Cancelada;
+    }
+
+    public void AtualizarStatus(StatusOrdemServico novoStatus)
+    {
+        if (Status == StatusOrdemServico.Finalizada)
+            throw new InvalidOperationException("OS já finalizada");
+
+        if (Status == StatusOrdemServico.Cancelada)
+            throw new InvalidOperationException("OS cancelada não pode ser alterada");
+
+        Status = novoStatus;
     }
 
     private void ValidarStatus(StatusOrdemServico esperado)

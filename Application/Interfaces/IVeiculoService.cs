@@ -1,16 +1,19 @@
 using CarStoreManager.Application.Common;
-using CarStoreManager.Application.DTOs;
+using CarStoreManager.Application.DTOs.Shared.Veiculo;
 
 namespace CarStoreManager.Application.Interfaces;
 
 public interface IVeiculoService
 {
-    Task<Result<IEnumerable<VeiculoDTO>>> ObterTodosAsync ();
+    Task<Result<IEnumerable<VeiculoListaDTO>>> ObterTodosAsync ();
 
     Task<Result<VeiculoDTO>> ObterPorIdAsync(Guid id);
-    Task<Result<IEnumerable<VeiculoDTO>>> ObterPorClienteAsync(Guid clienteId);
-
-    Task<Result> CriarAsync(VeiculoDTO veiculo);
-    Task<Result> AtualizarAsync(VeiculoDTO veiculo);
+    
+    Task<Result> CriarAsync(CriarVeiculoDTO veiculo);
+    Task<Result> AtualizarAsync(AtualizarVeiculoDTO veiculo);
     Task<Result> RemoverAsync(Guid id);
+
+    Task<Result> MarcarComoVendidoAsync(Guid id);
+    Task<Result> MarcarComoDisponivelAsync(Guid id);
+    Task<Result> AtualizarQuilometragemAsync(Guid id, int km);
 }

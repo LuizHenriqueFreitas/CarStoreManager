@@ -10,4 +10,11 @@
     <ProjectReference Include="..\Domain\CarStoreManager.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="DTOs\Concessionaria\Vendedor\" />
+    <Folder Include="DTOs\Oficina\Componente\" />
+    <Folder Include="DTOs\Oficina\Mecanico\" />
+    <Folder Include="Mappings\Concessionaria\" />
+  </ItemGroup>
+
 </Project>

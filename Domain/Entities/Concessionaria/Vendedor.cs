@@ -24,6 +24,19 @@ public class Vendedor : Entity
     }
 
     // =========================
+    // GETERS
+    // =========================
+    public string GetEmail()
+    {
+        return Email.ToString();
+    }
+
+    public string GetTelefone()
+    {
+        return Telefone.ToString();
+    }
+
+    // =========================
     // MÉTODOS DE NEGÓCIO
     // =========================
 

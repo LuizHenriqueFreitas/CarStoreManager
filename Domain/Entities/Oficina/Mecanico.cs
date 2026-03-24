@@ -42,12 +42,58 @@ public class Mecanico : Entity
     }
 
     // =========================
+    // GETERS
+    // =========================
+
+    public string GetEmail()
+    {
+        return Email.ToString();
+    }
+
+    public string GetTelefone()
+    {
+        return Telefone.ToString();
+    }
+
+    public string GetEspecialidade()
+    {
+        return Especialidade.ToString();
+    }
+
+    public decimal GetValorHora()
+    {
+        return ValorHora.Valor;
+    }
+
+    public string GetNivelOcupacao()
+    {
+        return NivelOcupacao.ToString();
+    }
+
+
+    // =========================
     // REGRAS DE NEGÓCIO
     // =========================
 
-    public void AtualizarDados(string nome, Email email, Telefone telefone)
+    public void AtualizarDados(
+        string nome, 
+        Email email, 
+        Telefone telefone,
+        EspecialidadeMecanico especialidade,
+        Dinheiro valorHora)
     {
         Nome = nome;
+        Email = email;
+        Telefone = telefone;
+        Especialidade = especialidade;
+        ValorHora = valorHora;
+    }
+
+    public void DefinirContato(
+        Email email,
+        Telefone telefone
+    )
+    {
         Email = email;
         Telefone = telefone;
     }

@@ -41,6 +41,15 @@ public class Componente : Entity
         EstoqueMinimo = estoqueMinimo;
     }
 
+    // ========================
+    // GETERS
+    // ========================
+
+    public decimal GetValor()
+    {
+        return Valor.Valor;
+    }
+
     // =========================
     // MÉTODOS DE NEGÓCIO
     // =========================
@@ -72,6 +81,18 @@ public class Componente : Entity
             throw new ArgumentException("Estoque mínimo inválido");
 
         EstoqueMinimo = minimo;
+    }
+
+    public void AtualizarDados
+    (
+        Dinheiro valor,
+        int quantidadeEstoque,
+        int quantidadeMinima
+    )
+    {
+        AtualizarValor(valor);
+        QuantidadeEstoque = quantidadeEstoque;
+        EstoqueMinimo = quantidadeMinima;
     }
 
     // =========================

@@ -1,0 +1,14 @@
+namespace CarStoreManager.Application.DTOs.Oficina.Mecanico;
+
+public class CriarMecanicoDTO
+{
+    public string Nome { get; set; } = string.Empty;
+
+    public string Email { get; set; } = string.Empty;
+
+    public string Telefone { get; set; } = string.Empty;
+
+    public string Especialidade { get; set; } = string.Empty;
+
+    public decimal ValorHora { get; set; }
+}

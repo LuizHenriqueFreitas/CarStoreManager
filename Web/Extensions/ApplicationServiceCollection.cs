@@ -9,7 +9,7 @@ public static class ApplicationServiceCollection
     {
         services.AddScoped<IClienteService, ClienteService>();
         services.AddScoped<IVeiculoService, VeiculoService>();
-        services.AddScoped<IPecaService, PecaService>();
+        services.AddScoped<ICompnenteService, ComponenteService>();
         services.AddScoped<IOrdemServicoService, OrdemServicoService>();
         services.AddScoped<IPropostaVendaService, PropostaVendaService>();
 

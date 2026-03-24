@@ -1,5 +1,3 @@
-using System;
-
 namespace CarStoreManager.Domain.ValueObjects;
 
 public class Dinheiro : IEquatable<Dinheiro>

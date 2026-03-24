@@ -4,7 +4,7 @@ public class Percentual : IEquatable<Percentual>
 {
     public decimal Valor { get; }
 
-    private Percentual(decimal valor)
+    public Percentual(decimal valor)
     {
         Valor = valor;
     }

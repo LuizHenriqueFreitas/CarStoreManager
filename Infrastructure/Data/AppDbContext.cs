@@ -17,7 +17,7 @@ public class AppDbContext : DbContext
 
     public DbSet<Veiculo> Veiculos { get; set; }
 
-    public DbSet<Componente> Pecas { get; set; }
+    public DbSet<Componente> Componentes { get; set; }
 
     public DbSet<OrdemServico> OrdensServico { get; set; }
 
