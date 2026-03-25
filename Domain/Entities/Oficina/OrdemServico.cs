@@ -1,8 +1,6 @@
-using System.ComponentModel;
-using System.Linq.Expressions;
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.Enums;
-using CarStoreManager.Domain.Exceptions;
+using CarStoreManager.Domain.Services.Oficina;
 using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Domain.Entities.Oficina;
@@ -16,6 +14,7 @@ public class OrdemServico : Entity
     public TipoServico Tipo { get; private set; }
 
     public string Descricao { get; private set; } = null!;
+    public string NumeroPublico { get; private set; } = null!;
 
     public DateTime DataCriacao { get; private set; }
     public DateTime PrazoEstimado { get; private set; }
@@ -26,6 +25,7 @@ public class OrdemServico : Entity
     public StatusOrdemServico Status { get; private set; }
 
     public List<ItemOrdemServico> Itens { get; private set; } = new();
+    public List<ChecklistItem> Checklist { get; private set; } = new();
 
     protected OrdemServico() { }
 
@@ -56,6 +56,7 @@ public class OrdemServico : Entity
 
         DataCriacao = DateTime.UtcNow;
         Status = StatusOrdemServico.Pendente;
+        NumeroPublico = GerarNumeroPublico();
 
         RecalcularTotal();
     }
@@ -97,6 +98,35 @@ public class OrdemServico : Entity
     public void SetTipo(TipoServico tipo)
     {
         Tipo = tipo;
+    }
+
+    private static string GerarNumeroPublico()
+    {
+        var bytes = Guid.NewGuid().ToByteArray();
+        return Convert.ToHexString(bytes)[..8].ToUpper(); // ex: "A3F2BC91"
+    }
+
+    public void GerarChecklistAutomatico()
+    {
+        if (Checklist.Any(c => c.Origem == OrigemChecklistItem.Automatico))
+            return; // já gerado, não duplica
+
+        var itens = ChecklistTemplates.ObterPorTipo(Tipo);
+        for (int i = 0; i < itens.Count; i++)
+        {
+            var item = new ChecklistItem(Id, itens[i], OrigemChecklistItem.Automatico, i + 1);
+            Checklist.Add(item);
+        }
+    }
+
+    public void AdicionarItemChecklist(string descricao)
+    {
+        if (Status == StatusOrdemServico.Finalizada || Status == StatusOrdemServico.Cancelada)
+            throw new InvalidOperationException("Não é possível alterar o checklist desta OS");
+
+        var ordem = Checklist.Count + 1;
+        var item = new ChecklistItem(Id, descricao, OrigemChecklistItem.Manual, ordem);
+        Checklist.Add(item);
     }
 
     // =========================

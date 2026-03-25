@@ -2,25 +2,25 @@ namespace CarStoreManager.Application.Common;
 
 public record Result
 {
-    public bool Success { get; init; }
+    public bool IsSuccess { get; init; }
     public string? Error { get; init; }
 
     public static Result Ok()
-        => new Result { Success = true };
+        => new() { IsSuccess = true };
 
     public static Result Fail(string error)
-        => new Result { Success = false, Error = error };
+        => new() { IsSuccess = false, Error = error };
 }
 
 public record Result<T>
 {
-    public bool Success { get; init; }
-    public T? Data { get; init; }
+    public bool IsSuccess { get; init; }
+    public T? Value { get; init; }
     public string? Error { get; init; }
 
-    public static Result<T> Ok(T data)
-        => new Result<T> { Success = true, Data = data };
+    public static Result<T> Ok(T value)
+        => new() { IsSuccess = true, Value = value };
 
     public static Result<T> Fail(string error)
-        => new Result<T> { Success = false, Error = error };
+        => new() { IsSuccess = false, Error = error };
 }

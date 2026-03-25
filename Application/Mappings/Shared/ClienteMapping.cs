@@ -11,13 +11,14 @@ public static class ClienteMapping
     // =========================
     public static ClienteDTO ToDto(Cliente entity)
     {
-        return new ClienteDTO(
-            entity.Id,
-            entity.Nome,
-            entity.CPF.Numero,
-            entity.Telefone.Numero,
-            entity.Email
-        );
+        return new ClienteDTO
+        {
+            Id = entity.Id,
+            Nome = entity.Nome,
+            Cpf = entity.GetCpf(),
+            Telefone = entity.GetTelefone(),
+            Email = entity.GetEmail()
+        };
     }
 
     // =========================
@@ -29,7 +30,8 @@ public static class ClienteMapping
         {
             Id = entity.Id,
             Nome = entity.Nome,
-             = entity.CPF.Numero
+            Telefone = entity.GetTelefone(),
+            Email = entity.GetEmail()
         };
     }
 

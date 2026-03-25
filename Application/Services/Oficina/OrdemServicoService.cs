@@ -33,19 +33,28 @@ public class OrdemServicoService : IOrdemServicoService
         if (ordem is null)
             return Result<OrdemServicoDTO>.Fail("Ordem de serviço não encontrada");
 
-        return Result<OrdemServicoDTO>.Ok(
-            OrdemServicoMapping.ToDto(ordem)
-        );
+        return Result<OrdemServicoDTO>.Ok(OrdemServicoMapping.ToDto(ordem));
     }
 
     public async Task<Result<IEnumerable<OrdemServicoListaDTO>>> ObterTodasAsync()
     {
         var ordens = await _repository.GetAllAsync();
+        return Result<IEnumerable<OrdemServicoListaDTO>>.Ok(
+            ordens.Select(OrdemServicoMapping.ToListaDto)
+        );
+    }
 
-        var lista = ordens
-            .Select(OrdemServicoMapping.ToListaDto);
+    public async Task<Result<OrdemServicoPublicaDTO>> ObterPorNumeroPublicoAsync(string numeroPublico)
+    {
+        if (string.IsNullOrWhiteSpace(numeroPublico))
+            return Result<OrdemServicoPublicaDTO>.Fail("Número da OS inválido");
 
-        return Result<IEnumerable<OrdemServicoListaDTO>>.Ok(lista);
+        var ordem = await _repository.ObterPorNumeroPublicoAsync(numeroPublico.ToUpper());
+
+        if (ordem is null)
+            return Result<OrdemServicoPublicaDTO>.Fail("Ordem de serviço não encontrada");
+
+        return Result<OrdemServicoPublicaDTO>.Ok(OrdemServicoMapping.ToPublicaDto(ordem));
     }
 
     // =========================
@@ -69,9 +78,8 @@ public class OrdemServicoService : IOrdemServicoService
                 new Dinheiro(dto.CustoServico)
             );
 
-            ordem.DefinirCliente(dto.ClienteId);
-            ordem.DefinirVeiculo(dto.VeiculoId);
-            ordem.SetTipo(tipo);
+            // gera checklist automático baseado no tipo
+            ordem.GerarChecklistAutomatico();
 
             await _repository.AddAsync(ordem);
             await _repository.SaveChangesAsync();
@@ -91,18 +99,13 @@ public class OrdemServicoService : IOrdemServicoService
     public async Task<Result> AdicionarItemAsync(AdicionarItemOrdemServicoDTO dto)
     {
         var ordem = await _repository.GetByIdAsync(dto.OrdemServicoId);
-
-        if (ordem is null)
-            return Result.Fail("Ordem não encontrada");
+        if (ordem is null) return Result.Fail("Ordem não encontrada");
 
         var componente = await _componenteRepository.GetByIdAsync(dto.ComponenteId);
-
-        if (componente is null)
-            return Result.Fail("Componente não encontrado");
+        if (componente is null) return Result.Fail("Componente não encontrado");
 
         try
         {
-            // valida estoque
             if (componente.QuantidadeEstoque < dto.Quantidade)
                 return Result.Fail("Estoque insuficiente");
 
@@ -114,13 +117,10 @@ public class OrdemServicoService : IOrdemServicoService
             );
 
             ordem.AdicionarItem(item);
-
-            // baixa estoque
             componente.RemoverEstoque(dto.Quantidade);
 
             _repository.Update(ordem);
             _componenteRepository.Update(componente);
-
             await _repository.SaveChangesAsync();
 
             return Result.Ok();
@@ -134,17 +134,13 @@ public class OrdemServicoService : IOrdemServicoService
     public async Task<Result> RemoverItemAsync(Guid ordemId, Guid itemId)
     {
         var ordem = await _repository.GetByIdAsync(ordemId);
-
-        if (ordem is null)
-            return Result.Fail("Ordem não encontrada");
+        if (ordem is null) return Result.Fail("Ordem não encontrada");
 
         try
         {
             ordem.RemoverItem(itemId);
-
             _repository.Update(ordem);
             await _repository.SaveChangesAsync();
-
             return Result.Ok();
         }
         catch (Exception ex)
@@ -156,17 +152,13 @@ public class OrdemServicoService : IOrdemServicoService
     public async Task<Result> AtualizarItemAsync(AtualizarItemOrdemServicoDTO dto)
     {
         var ordem = await _repository.GetByIdAsync(dto.OrdemServicoId);
-
-        if (ordem is null)
-            return Result.Fail("Ordem não encontrada");
+        if (ordem is null) return Result.Fail("Ordem não encontrada");
 
         try
         {
             ordem.AtualizarItem(dto.ItemId, dto.NovaQuantidade);
-
             _repository.Update(ordem);
             await _repository.SaveChangesAsync();
-
             return Result.Ok();
         }
         catch (Exception ex)
@@ -182,9 +174,7 @@ public class OrdemServicoService : IOrdemServicoService
     public async Task<Result> AtualizarStatusAsync(AtualizarOrdemServicoDTO dto)
     {
         var ordem = await _repository.GetByIdAsync(dto.Id);
-
-        if (ordem is null)
-            return Result.Fail("Ordem não encontrada");
+        if (ordem is null) return Result.Fail("Ordem não encontrada");
 
         if (!Enum.TryParse<StatusOrdemServico>(dto.Status, true, out var status))
             return Result.Fail("Status inválido");
@@ -192,10 +182,54 @@ public class OrdemServicoService : IOrdemServicoService
         try
         {
             ordem.AtualizarStatus(status);
+            _repository.Update(ordem);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex.Message);
+        }
+    }
+
+    // =========================
+    // CHECKLIST
+    // =========================
+
+    public async Task<Result> AdicionarItemChecklistAsync(AdicionarChecklistItemDTO dto)
+    {
+        var ordem = await _repository.GetByIdAsync(dto.OrdemServicoId);
+        if (ordem is null) return Result.Fail("Ordem não encontrada");
+
+        try
+        {
+            ordem.AdicionarItemChecklist(dto.Descricao);
+            _repository.Update(ordem);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex.Message);
+        }
+    }
+
+    public async Task<Result> AtualizarStatusChecklistAsync(AtualizarStatusChecklistDTO dto)
+    {
+        var ordem = await _repository.GetByIdAsync(dto.OrdemServicoId);
+        if (ordem is null) return Result.Fail("Ordem não encontrada");
+
+        var item = ordem.Checklist.FirstOrDefault(c => c.Id == dto.ItemId);
+        if (item is null) return Result.Fail("Item do checklist não encontrado");
+
+        try
+        {
+            if (dto.NovoStatus == "EmAndamento") item.IniciarItem();
+            else if (dto.NovoStatus == "Concluido") item.ConcluirItem();
+            else return Result.Fail("Status inválido. Use 'EmAndamento' ou 'Concluido'");
 
             _repository.Update(ordem);
             await _repository.SaveChangesAsync();
-
             return Result.Ok();
         }
         catch (Exception ex)
@@ -211,17 +245,13 @@ public class OrdemServicoService : IOrdemServicoService
     public async Task<Result> RecalcularValoresAsync(Guid ordemId)
     {
         var ordem = await _repository.GetByIdAsync(ordemId);
-
-        if (ordem is null)
-            return Result.Fail("Ordem não encontrada");
+        if (ordem is null) return Result.Fail("Ordem não encontrada");
 
         try
         {
             ordem.RecalcularTotal();
-
             _repository.Update(ordem);
             await _repository.SaveChangesAsync();
-
             return Result.Ok();
         }
         catch (Exception ex)

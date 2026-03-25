@@ -2,7 +2,7 @@
 
 namespace CarStoreManager.Domain.Entities.Concessionaria
 {
-    public class VeiculoTroca : Veiculo
+    public class VeiculoTroca : VeiculoVenda
     {
         public Guid PropostaVendaId { get; private set; }
 

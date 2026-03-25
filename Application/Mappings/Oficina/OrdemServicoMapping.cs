@@ -53,6 +53,27 @@ public static class OrdemServicoMapping
         };
     }
 
+    public static OrdemServicoPublicaDTO ToPublicaDto(OrdemServico entity)
+    {
+        return new OrdemServicoPublicaDTO
+        {
+            NumeroPublico = entity.NumeroPublico,
+            Tipo = entity.Tipo.ToString(),
+            Descricao = entity.Descricao,
+            Status = entity.Status.ToString(),
+            DataCriacao = entity.DataCriacao,
+            PrazoEstimado = entity.PrazoEstimado,
+            Checklist = entity.Checklist
+                .OrderBy(c => c.OrdemExibicao)
+                .Select(c => new ChecklistItemPublicoDTO
+                {
+                    Descricao = c.Descricao,
+                    Status = c.Status.ToString()
+                })
+                .ToList()
+        };
+    }
+
 
     // =========================
     // DTO → ENTITY (CRIAÇÃO)

@@ -64,7 +64,7 @@ public class VeiculoService : IVeiculoService
             return Result.Fail("estado inválido");
         try
         {
-            var veiculo = new Veiculo(
+            var veiculo = new VeiculoVenda(
                 Guid.NewGuid(),
                 dto.Marca,
                 dto.Modelo,

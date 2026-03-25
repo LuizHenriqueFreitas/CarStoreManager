@@ -14,28 +14,28 @@ public class VeiculoRepository : IVeiculoRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<Veiculo>> ObterTodosAsync()
+    public async Task<IEnumerable<VeiculoVenda>> ObterTodosAsync()
     {
         return await _context.Veiculos.ToListAsync();
     }
 
-    public async Task<Veiculo?> ObterPorIdAsync(Guid id)
+    public async Task<VeiculoVenda?> ObterPorIdAsync(Guid id)
     {
         return await _context.Veiculos.FindAsync(id);
     }
 
-    public async Task<IEnumerable<Veiculo>> ObterPorClienteAsync(Guid clienteId)
+    public async Task<IEnumerable<VeiculoVenda>> ObterPorClienteAsync(Guid clienteId)
     {
         return await _context.Veiculos.ToListAsync();
     }
 
-    public async Task AdicionarAsync(Veiculo v)
+    public async Task AdicionarAsync(VeiculoVenda v)
     {
         await _context.Veiculos.AddAsync(v);
         await _context.SaveChangesAsync();
     }
 
-    public async Task AtualizarAsync(Veiculo v)
+    public async Task AtualizarAsync(VeiculoVenda v)
     {
         _context.Veiculos.Update(v);
         await _context.SaveChangesAsync();

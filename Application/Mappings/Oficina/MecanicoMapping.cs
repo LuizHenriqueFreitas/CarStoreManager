@@ -39,6 +39,15 @@ public static class MecanicoMapping
         };
     }
 
+        public static MecanicoLookupDTO ToLookupDto(Mecanico mecanico)
+    {
+        return new MecanicoLookupDTO
+        {
+            Id = mecanico.Id,
+            Nome = mecanico.Nome
+        };
+    }
+
     // =========================
     // DTO → ENTITY (CREATE)
     // =========================

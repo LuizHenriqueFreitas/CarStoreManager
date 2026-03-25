@@ -10,7 +10,7 @@ public static class VeiculoMapping
     // =========================
     // ENTITY → DTO (DETALHE)
     // =========================
-    public static VeiculoDTO ToDto(Veiculo entity)
+    public static VeiculoDTO ToDto(VeiculoVenda entity)
     {
         return new VeiculoDTO
         {
@@ -30,7 +30,7 @@ public static class VeiculoMapping
     // =========================
     // ENTITY → DTO (LISTA)
     // =========================
-    public static VeiculoListaDTO ToListaDto(Veiculo entity)
+    public static VeiculoListaDTO ToListaDto(VeiculoVenda entity)
     {
         return new VeiculoListaDTO
         {
@@ -46,9 +46,9 @@ public static class VeiculoMapping
     // =========================
     // DTO → ENTITY (CREATE)
     // =========================
-    public static Veiculo ToEntity(CriarVeiculoDTO dto)
+    public static VeiculoVenda ToEntity(CriarVeiculoDTO dto)
     {
-        return new Veiculo(
+        return new VeiculoVenda(
             Guid.NewGuid(),
             dto.Marca,
             dto.Modelo,
@@ -65,7 +65,7 @@ public static class VeiculoMapping
     // =========================
     // UPDATE
     // =========================
-    public static void UpdateEntity(Veiculo entity, AtualizarVeiculoDTO dto)
+    public static void UpdateEntity(VeiculoVenda entity, AtualizarVeiculoDTO dto)
     {
         entity.AtualizarDados(
             dto.Marca,

@@ -4,5 +4,5 @@ namespace CarStoreManager.Domain.Repositories;
 
 public interface IOrdemServicoRepository : IRepository<OrdemServico>
 {
-    //busca por atributo especifico
+    Task<OrdemServico?> ObterPorNumeroPublicoAsync(string numeroPublico);
 }

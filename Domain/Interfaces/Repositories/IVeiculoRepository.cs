@@ -2,7 +2,7 @@ using CarStoreManager.Domain.Entities;
 
 namespace CarStoreManager.Domain.Repositories;
 
-public interface IVeiculoRepository : IRepository<Veiculo>
+public interface IVeiculoRepository : IRepository<VeiculoVenda>
 {
-    Task<IEnumerable<Veiculo>> ObterPorClienteAsync(Guid clienteId);
+    Task<IEnumerable<VeiculoVenda>> ObterPorClienteAsync(Guid clienteId);
 }

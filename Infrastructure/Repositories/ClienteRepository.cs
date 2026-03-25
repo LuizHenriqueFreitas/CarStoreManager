@@ -14,12 +14,12 @@ public class ClienteRepository : IClienteRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<Cliente>> ObterTodosAsync()
+    public async Task<IEnumerable<Cliente>> GetAllAsync()
     {
         return await _context.Clientes.ToListAsync();
     }
 
-    public async Task<Cliente?> ObterPorIdAsync(Guid id)
+    public async Task<Cliente?> GetByIdAsync(Guid id)
     {
         return await _context.Clientes.FindAsync(id);
     }

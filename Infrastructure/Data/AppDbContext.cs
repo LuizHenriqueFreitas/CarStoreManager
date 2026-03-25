@@ -15,7 +15,7 @@ public class AppDbContext : DbContext
 
     public DbSet<Cliente> Clientes { get; set; }
 
-    public DbSet<Veiculo> Veiculos { get; set; }
+    public DbSet<VeiculoVenda> Veiculos { get; set; }
 
     public DbSet<Componente> Componentes { get; set; }
 
@@ -29,9 +29,9 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Cliente>().HasKey(c => c.Id);
 
-        modelBuilder.Entity<Veiculo>().HasKey(v => v.Id);
+        modelBuilder.Entity<VeiculoVenda>().HasKey(v => v.Id);
         
-        modelBuilder.Entity<Veiculo>().OwnsOne(v => v.Placa);
+        modelBuilder.Entity<VeiculoVenda>().OwnsOne(v => v.Placa);
 
         modelBuilder.Entity<Componente>().HasKey(p => p.Id);
 

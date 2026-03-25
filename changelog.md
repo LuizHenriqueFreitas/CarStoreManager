@@ -7,6 +7,8 @@ Refatoração de Application
 - Mappings, interfaces e Services revisados e atualizados - devem ser refinados
 
 ### Problemas pendentes
+- refatorar infrastructure
+- aprimorar frontEnd
 - especializar uma entidade para VeiculoCliente e uma para VeiculoEstoque apartir de Veiculo
 - revisar relações entre entidades, por exemplo, um cliente por der 1 ou mais carros na oficina, enquanto cada carro da oficina pertence a apenas 1 cliente
 - Implementar Testes Unitarios e integradosde integração
