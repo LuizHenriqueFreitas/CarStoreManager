@@ -22,63 +22,42 @@ public class OrdemServicoService : IOrdemServicoService
         _componenteRepository = componenteRepository;
     }
 
-    // =========================
-    // CONSULTAS
-    // =========================
-
     public async Task<Result<OrdemServicoDTO>> ObterPorIdAsync(Guid id)
     {
         var ordem = await _repository.GetByIdAsync(id);
 
         if (ordem is null)
-            return Result<OrdemServicoDTO>.Fail("Ordem de serviço não encontrada");
+            return Result<OrdemServicoDTO>.Fail("OS não encontrada");
 
         return Result<OrdemServicoDTO>.Ok(OrdemServicoMapping.ToDto(ordem));
     }
 
     public async Task<Result<IEnumerable<OrdemServicoListaDTO>>> ObterTodasAsync()
     {
-        var ordens = await _repository.GetAllAsync();
-        return Result<IEnumerable<OrdemServicoListaDTO>>.Ok(
-            ordens.Select(OrdemServicoMapping.ToListaDto)
+        var lista = (await _repository.GetAllAsync())
+            .Select(OrdemServicoMapping.ToListaDto);
+
+        return Result<IEnumerable<OrdemServicoListaDTO>>.Ok(lista);
+    }
+
+    public async Task<Result<OrdemServicoPublicaDTO>> ObterPorNumeroPublicoAsync(string numero)
+    {
+        var ordem = await _repository.ObterPorNumeroPublicoAsync(numero);
+
+        if (ordem is null)
+            return Result<OrdemServicoPublicaDTO>.Fail("OS não encontrada");
+
+        return Result<OrdemServicoPublicaDTO>.Ok(
+            OrdemServicoMapping.ToPublicaDto(ordem)
         );
     }
 
-    public async Task<Result<OrdemServicoPublicaDTO>> ObterPorNumeroPublicoAsync(string numeroPublico)
-    {
-        if (string.IsNullOrWhiteSpace(numeroPublico))
-            return Result<OrdemServicoPublicaDTO>.Fail("Número da OS inválido");
-
-        var ordem = await _repository.ObterPorNumeroPublicoAsync(numeroPublico.ToUpper());
-
-        if (ordem is null)
-            return Result<OrdemServicoPublicaDTO>.Fail("Ordem de serviço não encontrada");
-
-        return Result<OrdemServicoPublicaDTO>.Ok(OrdemServicoMapping.ToPublicaDto(ordem));
-    }
-
-    // =========================
-    // CRIAÇÃO
-    // =========================
-
     public async Task<Result<Guid>> CriarAsync(CriarOrdemServicoDTO dto)
     {
-        if (!Enum.TryParse<TipoServico>(dto.Tipo, true, out var tipo))
-            return Result<Guid>.Fail("Tipo de serviço inválido");
-
         try
         {
-            var ordem = new OrdemServico(
-                dto.VeiculoId,
-                dto.MecanicoId,
-                dto.ClienteId,
-                tipo,
-                dto.Descricao,
-                dto.PrazoEstimado,
-                new Dinheiro(dto.CustoServico)
-            );
+            var ordem = OrdemServicoMapping.ToEntity(dto);
 
-            // gera checklist automático baseado no tipo
             ordem.GerarChecklistAutomatico();
 
             await _repository.AddAsync(ordem);
@@ -88,27 +67,23 @@ public class OrdemServicoService : IOrdemServicoService
         }
         catch (Exception ex)
         {
-            return Result<Guid>.Fail($"Erro ao criar OS: {ex.Message}");
+            return Result<Guid>.Fail(ex.Message);
         }
     }
-
-    // =========================
-    // ITENS
-    // =========================
 
     public async Task<Result> AdicionarItemAsync(AdicionarItemOrdemServicoDTO dto)
     {
         var ordem = await _repository.GetByIdAsync(dto.OrdemServicoId);
-        if (ordem is null) return Result.Fail("Ordem não encontrada");
-
         var componente = await _componenteRepository.GetByIdAsync(dto.ComponenteId);
-        if (componente is null) return Result.Fail("Componente não encontrado");
+
+        if (ordem is null || componente is null)
+            return Result.Fail("Dados inválidos");
+
+        if (componente.QuantidadeEstoque < dto.Quantidade)
+            return Result.Fail("Estoque insuficiente");
 
         try
         {
-            if (componente.QuantidadeEstoque < dto.Quantidade)
-                return Result.Fail("Estoque insuficiente");
-
             var item = new ItemOrdemServico(
                 dto.ComponenteId,
                 dto.OrdemServicoId,
@@ -134,129 +109,97 @@ public class OrdemServicoService : IOrdemServicoService
     public async Task<Result> RemoverItemAsync(Guid ordemId, Guid itemId)
     {
         var ordem = await _repository.GetByIdAsync(ordemId);
-        if (ordem is null) return Result.Fail("Ordem não encontrada");
 
-        try
-        {
-            ordem.RemoverItem(itemId);
-            _repository.Update(ordem);
-            await _repository.SaveChangesAsync();
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail(ex.Message);
-        }
+        if (ordem is null)
+            return Result.Fail("OS não encontrada");
+
+        ordem.RemoverItem(itemId);
+
+        _repository.Update(ordem);
+        await _repository.SaveChangesAsync();
+
+        return Result.Ok();
     }
 
     public async Task<Result> AtualizarItemAsync(AtualizarItemOrdemServicoDTO dto)
     {
         var ordem = await _repository.GetByIdAsync(dto.OrdemServicoId);
-        if (ordem is null) return Result.Fail("Ordem não encontrada");
 
-        try
-        {
-            ordem.AtualizarItem(dto.ItemId, dto.NovaQuantidade);
-            _repository.Update(ordem);
-            await _repository.SaveChangesAsync();
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail(ex.Message);
-        }
+        if (ordem is null)
+            return Result.Fail("OS não encontrada");
+
+        ordem.AtualizarItem(dto.ItemId, dto.NovaQuantidade);
+
+        _repository.Update(ordem);
+        await _repository.SaveChangesAsync();
+
+        return Result.Ok();
     }
-
-    // =========================
-    // STATUS
-    // =========================
 
     public async Task<Result> AtualizarStatusAsync(AtualizarOrdemServicoDTO dto)
     {
         var ordem = await _repository.GetByIdAsync(dto.Id);
-        if (ordem is null) return Result.Fail("Ordem não encontrada");
+
+        if (ordem is null)
+            return Result.Fail("OS não encontrada");
 
         if (!Enum.TryParse<StatusOrdemServico>(dto.Status, true, out var status))
             return Result.Fail("Status inválido");
 
-        try
-        {
-            ordem.AtualizarStatus(status);
-            _repository.Update(ordem);
-            await _repository.SaveChangesAsync();
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail(ex.Message);
-        }
-    }
+        ordem.AtualizarStatus(status);
 
-    // =========================
-    // CHECKLIST
-    // =========================
+        _repository.Update(ordem);
+        await _repository.SaveChangesAsync();
+
+        return Result.Ok();
+    }
 
     public async Task<Result> AdicionarItemChecklistAsync(AdicionarChecklistItemDTO dto)
     {
         var ordem = await _repository.GetByIdAsync(dto.OrdemServicoId);
-        if (ordem is null) return Result.Fail("Ordem não encontrada");
 
-        try
-        {
-            ordem.AdicionarItemChecklist(dto.Descricao);
-            _repository.Update(ordem);
-            await _repository.SaveChangesAsync();
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail(ex.Message);
-        }
+        if (ordem is null)
+            return Result.Fail("OS não encontrada");
+
+        ordem.AdicionarItemChecklist(dto.Descricao);
+
+        _repository.Update(ordem);
+        await _repository.SaveChangesAsync();
+
+        return Result.Ok();
     }
 
     public async Task<Result> AtualizarStatusChecklistAsync(AtualizarStatusChecklistDTO dto)
     {
         var ordem = await _repository.GetByIdAsync(dto.OrdemServicoId);
-        if (ordem is null) return Result.Fail("Ordem não encontrada");
 
-        var item = ordem.Checklist.FirstOrDefault(c => c.Id == dto.ItemId);
-        if (item is null) return Result.Fail("Item do checklist não encontrado");
+        var item = ordem?.Checklist.FirstOrDefault(c => c.Id == dto.ItemId);
 
-        try
-        {
-            if (dto.NovoStatus == "EmAndamento") item.IniciarItem();
-            else if (dto.NovoStatus == "Concluido") item.ConcluirItem();
-            else return Result.Fail("Status inválido. Use 'EmAndamento' ou 'Concluido'");
+        if (item is null)
+            return Result.Fail("Item não encontrado");
 
-            _repository.Update(ordem);
-            await _repository.SaveChangesAsync();
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail(ex.Message);
-        }
+        if (dto.NovoStatus == "EmAndamento") item.IniciarItem();
+        else if (dto.NovoStatus == "Concluido") item.ConcluirItem();
+        else return Result.Fail("Status inválido");
+
+        _repository.Update(ordem!);
+        await _repository.SaveChangesAsync();
+
+        return Result.Ok();
     }
-
-    // =========================
-    // CÁLCULOS
-    // =========================
 
     public async Task<Result> RecalcularValoresAsync(Guid ordemId)
     {
         var ordem = await _repository.GetByIdAsync(ordemId);
-        if (ordem is null) return Result.Fail("Ordem não encontrada");
 
-        try
-        {
-            ordem.RecalcularTotal();
-            _repository.Update(ordem);
-            await _repository.SaveChangesAsync();
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail(ex.Message);
-        }
+        if (ordem is null)
+            return Result.Fail("OS não encontrada");
+
+        ordem.RecalcularTotal();
+
+        _repository.Update(ordem);
+        await _repository.SaveChangesAsync();
+
+        return Result.Ok();
     }
 }

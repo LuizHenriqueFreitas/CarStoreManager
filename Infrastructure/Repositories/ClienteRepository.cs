@@ -14,36 +14,29 @@ public class ClienteRepository : IClienteRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<Cliente>> GetAllAsync()
-    {
-        return await _context.Clientes.ToListAsync();
-    }
-
     public async Task<Cliente?> GetByIdAsync(Guid id)
-    {
-        return await _context.Clientes.FindAsync(id);
-    }
+        => await _context.Clientes.FindAsync(id);
 
-    public async Task AdicionarAsync(Cliente cliente)
-    {
-        await _context.Clientes.AddAsync(cliente);
-        await _context.SaveChangesAsync();
-    }
+    public async Task<IEnumerable<Cliente>> GetAllAsync()
+        => await _context.Clientes.ToListAsync();
 
-    public async Task AtualizarAsync(Cliente cliente)
-    {
-        _context.Clientes.Update(cliente);
-        await _context.SaveChangesAsync();
-    }
+    public async Task<Cliente?> ObterPorCpfAsync(string cpf)
+        => await _context.Clientes
+            .FirstOrDefaultAsync(c => c.CPF.Numero == cpf);
 
-    public async Task RemoverAsync(Guid id)
-    {
-        var cliente = await _context.Clientes.FindAsync(id);
+    public async Task<bool> CpfExisteAsync(string cpf)
+        => await _context.Clientes
+            .AnyAsync(c => c.CPF.Numero == cpf);
 
-        if (cliente != null)
-        {
-            _context.Clientes.Remove(cliente);
-            await _context.SaveChangesAsync();
-        }
-    }
+    public async Task AddAsync(Cliente cliente)
+        => await _context.Clientes.AddAsync(cliente);
+
+    public void Update(Cliente cliente)
+        => _context.Clientes.Update(cliente);
+
+    public void Remove(Cliente cliente)
+        => _context.Clientes.Remove(cliente);
+
+    public async Task SaveChangesAsync()
+        => await _context.SaveChangesAsync();
 }

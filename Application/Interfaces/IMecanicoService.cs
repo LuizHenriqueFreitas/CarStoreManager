@@ -13,6 +13,8 @@ public interface IMecanicoService
 
     Task<Result<IEnumerable<MecanicoListaDTO>>> ObterTodosAsync();
 
+    Task<Result<IEnumerable<MecanicoLookupDTO>>> ObterDisponiveisAsync();
+
 
     // =========================
     // CRUD
@@ -30,6 +32,4 @@ public interface IMecanicoService
     // =========================
 
     Task<Result> AtualizarOcupacaoAsync(Guid mecanicoId);
-
-    Task<Result<IEnumerable<MecanicoLookupDTO>>> ObterDisponiveisAsync();
 }

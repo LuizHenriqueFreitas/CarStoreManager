@@ -1,4 +1,5 @@
 using CarStoreManager.Domain.Entities.Concessionaria;
+using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Repositories;
 using CarStoreManager.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -14,42 +15,38 @@ public class PropostaVendaRepository : IPropostaVendaRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<PropostaVenda>> ObterTodasAsync()
-    {
-        return await _context.PropostasVenda
-            .Include(p => p.ClienteId)
-            .Include(p => p.VeiculoId)
-            .ToListAsync();
-    }
-
-    public async Task<PropostaVenda?> ObterPorIdAsync(Guid id)
-    {
-        return await _context.PropostasVenda
-            .Include(p => p.ClienteId)
-            .Include(p => p.VeiculoId)
+    public async Task<PropostaVenda?> GetByIdAsync(Guid id)
+        => await _context.PropostasVenda
             .FirstOrDefaultAsync(p => p.Id == id);
-    }
 
-    public async Task AdicionarAsync(PropostaVenda proposta)
-    {
-        await _context.PropostasVenda.AddAsync(proposta);
-        await _context.SaveChangesAsync();
-    }
+    public async Task<IEnumerable<PropostaVenda>> GetAllAsync()
+        => await _context.PropostasVenda
+            .ToListAsync();
 
-    public async Task AtualizarAsync(PropostaVenda proposta)
-    {
-        _context.PropostasVenda.Update(proposta);
-        await _context.SaveChangesAsync();
-    }
+    public async Task<IEnumerable<PropostaVenda>> ObterPorVendedorAsync(Guid vendedorId)
+        => await _context.PropostasVenda
+            .Where(p => p.VendedorId == vendedorId)
+            .ToListAsync();
 
-    public async Task RemoverAsync(Guid id)
-    {
-        var proposta = await _context.PropostasVenda.FindAsync(id);
+    public async Task<IEnumerable<PropostaVenda>> ObterPorClienteAsync(Guid clienteId)
+        => await _context.PropostasVenda
+            .Where(p => p.ClienteId == clienteId)
+            .ToListAsync();
 
-        if (proposta != null)
-        {
-            _context.PropostasVenda.Remove(proposta);
-            await _context.SaveChangesAsync();
-        }
-    }
+    public async Task<IEnumerable<PropostaVenda>> ObterPorStatusAsync(StatusPropostaVenda status)
+        => await _context.PropostasVenda
+            .Where(p => p.Status == status)
+            .ToListAsync();
+
+    public async Task AddAsync(PropostaVenda proposta)
+        => await _context.PropostasVenda.AddAsync(proposta);
+
+    public void Update(PropostaVenda proposta)
+        => _context.PropostasVenda.Update(proposta);
+
+    public void Remove(PropostaVenda proposta)
+        => _context.PropostasVenda.Remove(proposta);
+
+    public async Task SaveChangesAsync()
+        => await _context.SaveChangesAsync();
 }

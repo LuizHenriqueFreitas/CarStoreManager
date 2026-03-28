@@ -6,71 +6,45 @@ namespace CarStoreManager.Application.Mappings.Concessionaria;
 
 public static class PropostaVendaMapping
 {
-    // =========================
-    // ENTITY → DETALHE
-    // =========================
-
     public static PropostaVendaDTO ToDto(PropostaVenda entity)
     {
         return new PropostaVendaDTO
         {
             Id = entity.Id,
             VendedorId = entity.VendedorId,
-            VeiculoId = entity.VeiculoId,
+            VeiculoVendaId = entity.VeiculoVendaId,
             ClienteId = entity.ClienteId,
-
             ValorBase = entity.GetValorBase(),
             DescontoPercentual = entity.GetDesconto(),
             ValorFinal = entity.GetValorFinal(),
-
             Entrada = entity.GetEntrada(),
             ValorFinanciado = entity.GetValorFinanciado(),
             Parcelas = entity.GetParcelas(),
-
             DataCriacao = entity.DataCriacao,
             Status = entity.Status.ToString()
         };
     }
-
-
-    // =========================
-    // ENTITY → LISTA (TABELA)
-    // =========================
 
     public static PropostaVendaListaDTO ToListaDto(PropostaVenda entity)
     {
         return new PropostaVendaListaDTO
         {
             Id = entity.Id,
-            //nome do cliente
-            //modelo do carro
-            ValorFinal = entity.ValorFinal.Valor,
+            ClienteId = entity.ClienteId,
+            VeiculoVendaId = entity.VeiculoVendaId,
+            ValorFinal = entity.GetValorFinal(),
             Status = entity.Status.ToString(),
+            DataCriacao = entity.DataCriacao
         };
     }
-
-
-    // =========================
-    // DTO → ENTITY (CRIAÇÃO)
-    // =========================
 
     public static PropostaVenda ToEntity(CriarPropostaVendaDTO dto)
     {
         return new PropostaVenda(
             dto.VendedorId,
-            dto.VeiculoId,
+            dto.VeiculoVendaId,
             dto.ClienteId,
             new Dinheiro(dto.ValorBase)
         );
-    }
-
-
-    // =========================
-    // MÉTODOS AUXILIARES (OPCIONAL)
-    // =========================
-
-    public static IEnumerable<PropostaVendaListaDTO> ToListaDtoList(IEnumerable<PropostaVenda> entities)
-    {
-        return entities.Select(ToListaDto);
     }
 }

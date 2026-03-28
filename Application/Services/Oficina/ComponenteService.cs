@@ -44,6 +44,31 @@ public class ComponenteService : IComponenteService
         return Result<IEnumerable<ComponenteListaDTO>>.Ok(lista);
     }
 
+    public async Task<Result<IEnumerable<ComponenteListaDTO>>> ObterComEstoqueBaixoAsync()
+    {
+        var componentes = await _repository.GetAllAsync();
+
+        var lista = componentes
+            .Where(c => c.EstoqueBaixo())
+            .Select(ComponenteMapping.ToListaDto);
+
+        return Result<IEnumerable<ComponenteListaDTO>>.Ok(lista);
+    }
+
+    public async Task<Result<IEnumerable<ComponenteListaDTO>>> ObterPorSistemaAsync(string sistema)
+    {
+        if (!Enum.TryParse<SistemaComponente>(sistema, true, out var sistemaEnum))
+            return Result<IEnumerable<ComponenteListaDTO>>.Fail("Sistema inválido");
+
+        var componentes = await _repository.GetAllAsync();
+
+        var lista = componentes
+            .Where(c => c.Sistema == sistemaEnum)
+            .Select(ComponenteMapping.ToListaDto);
+
+        return Result<IEnumerable<ComponenteListaDTO>>.Ok(lista);
+    }
+
     // =========================
     // CRIAÇÃO
     // =========================

@@ -7,7 +7,7 @@ namespace CarStoreManager.Domain.Entities.Oficina;
 
 public class OrdemServico : Entity
 {
-    public Guid VeiculoId { get; private set; }
+    public Guid VeiculoClienteId { get; private set; }
     public Guid MecanicoId { get; private set; }
     public Guid ClienteId { get; private set; }
 
@@ -30,7 +30,7 @@ public class OrdemServico : Entity
     protected OrdemServico() { }
 
     public OrdemServico(
-        Guid veiculoId,
+        Guid veiculoClienteId,
         Guid mecanicoId,
         Guid clienteId,
         TipoServico tipo,
@@ -44,7 +44,7 @@ public class OrdemServico : Entity
         if (prazoEstimado < DateTime.UtcNow)
             throw new ArgumentException("Prazo inválido");
 
-        VeiculoId = veiculoId;
+        VeiculoClienteId = veiculoClienteId;
         MecanicoId = mecanicoId;
         ClienteId = clienteId;
 
@@ -87,12 +87,12 @@ public class OrdemServico : Entity
         ClienteId = clienteId;
     }
 
-    public void DefinirVeiculo(Guid veiculoId)
+    public void DefinirVeiculo(Guid veiculoClienteId)
     {
-        if (veiculoId == Guid.Empty)
+        if (veiculoClienteId == Guid.Empty)
             throw new ArgumentException("Veículo inválido");
 
-        VeiculoId = veiculoId;
+        VeiculoClienteId = veiculoClienteId;
     }
 
     public void SetTipo(TipoServico tipo)

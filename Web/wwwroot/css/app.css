@@ -1,0 +1,57 @@
+:root {
+    --vermelho: #e02020;
+    --preto: #1a1a1a;
+    --cinza-bg: #f4f4f4;
+    --cinza-card: #fff;
+    --cinza-borda: #e0e0e0;
+    --cinza-texto: #888;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--cinza-bg);
+    color: var(--preto);
+}
+
+a { text-decoration: none; color: inherit; }
+
+.btn-primary {
+    background: var(--vermelho);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    width: 100%;
+}
+
+.btn-primary:hover { background: #c01818; }
+
+.btn-secondary {
+    background: #fff;
+    color: var(--preto);
+    border: 0.5px solid #ccc;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 8px;
+}
+
+.btn-secondary:hover { background: #f9f9f9; }
+
+.badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.badge-disponivel { background: #dcfce7; color: #166534; }
+.badge-vendido { background: #f1f1f1; color: #666; }
+.badge-reservado { background: #fef9c3; color: #854d0e; }

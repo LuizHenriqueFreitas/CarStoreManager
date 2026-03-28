@@ -4,5 +4,6 @@ namespace CarStoreManager.Domain.Repositories;
 
 public interface IClienteRepository : IRepository<Cliente>
 {
-    //busca por atributo especifico
+    Task<Cliente?> ObterPorCpfAsync(string cpf);
+    Task<bool> CpfExisteAsync(string cpf);
 }

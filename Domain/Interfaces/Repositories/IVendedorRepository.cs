@@ -1,8 +1,9 @@
 using CarStoreManager.Domain.Entities.Concessionaria;
+using CarStoreManager.Domain.Enums;
 
 namespace CarStoreManager.Domain.Repositories;
 
 public interface IVendedorRepository : IRepository<Vendedor>
 {
-    //busca por atributo especifico
+    Task<IEnumerable<Vendedor>> ObterPorNivelAsync(NivelFuncionario nivel);
 }

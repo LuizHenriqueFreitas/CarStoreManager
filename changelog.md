@@ -1,3 +1,16 @@
+## 2026-03-28
+
+### Atualizações
+- Entidades separadas para VeiculoVenda e veiculoCliente
+- Implementação de sistema de usuarios com Admin, Vendedor e Mecanico
+- Implementação de Autenticação Jwt
+- Revisao em OrdemServico e VeiculoVenda -> ambos com novos campos
+- Começo da implementação de API publica para cliente verificar ordem de servico em andamento
+
+### Problemas pendentes
+- Estudar e entender o funcionamento de todas as partes do sistema
+- Desenvolver Front End
+
 ## 2026-24-03
 
 ### Atualizações

@@ -7,6 +7,7 @@ using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Repositories;
 using CarStoreManager.Domain.ValueObjects;
+using Microsoft.Extensions.Options;
 
 namespace CarStoreManager.Application.Services;
 
@@ -83,6 +84,17 @@ public class AuthService : IAuthService
         {
             return Result<Guid>.Fail($"Erro ao criar usuário: {ex.Message}");
         }
+    }
+
+    public async Task<Result> VerificarSenhaAsync(Guid usuarioId, string senha)
+    {
+        var usuario = await _repository.GetByIdAsync(usuarioId);
+        if (usuario is null)
+            return Result.Fail("Usuário não encontrado");
+
+        return BCrypt.Net.BCrypt.Verify(senha, usuario.SenhaHash)
+            ? Result.Ok()
+            : Result.Fail("Senha incorreta");
     }
 
     // =========================

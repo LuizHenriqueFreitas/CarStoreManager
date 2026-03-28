@@ -7,4 +7,5 @@ public interface IAuthService
 {
     Task<Result<LoginResultDTO>> LoginAsync(LoginDTO dto);
     Task<Result<Guid>> CriarUsuarioAsync(CriarUsuarioDTO dto);
+    Task<Result> VerificarSenhaAsync(Guid usuarioId, string senha);
 }

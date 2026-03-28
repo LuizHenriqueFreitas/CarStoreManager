@@ -1,0 +1,725 @@
+@page "/concessionaria/veiculo/{Id:guid}"
+@inject IVeiculoVendaService VeiculoService
+@inject IAuthService AuthService
+@inject AuthenticationStateProvider AuthStateProvider
+@using CarStoreManager.Application.Interfaces
+@inject NavigationManager Nav
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
+@using CarStoreManager.Web.Componentes.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+@if (carregando)
+{
+    <div class="loading">Carregando...</div>
+}
+else if (veiculo is null)
+{
+    <div class="loading">Veículo não encontrado.</div>
+}
+else
+{
+    <div class="detalhe-carousel">
+        @if (veiculo.Fotos.Any())
+        {
+            <img src="@veiculo.Fotos[fotoAtiva]" class="carousel-img" alt="Foto do veículo" />
+        }
+        else
+        {
+            <div class="carousel-vazio">Sem fotos cadastradas</div>
+        }
+
+        @if (veiculo.Fotos.Count > 1)
+        {
+            <button class="carousel-arr left" @onclick="FotoAnterior">‹</button>
+            <button class="carousel-arr right" @onclick="ProximaFoto">›</button>
+            <div class="carousel-dots">
+                @for (int i = 0; i < veiculo.Fotos.Count; i++)
+                {
+                    var idx = i;
+                    <span class="@(i == fotoAtiva ? "dot ativo" : "dot")"
+                          @onclick="() => fotoAtiva = idx"></span>
+                }
+            </div>
+        }
+    </div>
+
+    @if (veiculo.Fotos.Count > 1)
+    {
+        <div class="thumbs-bar">
+            @for (int i = 0; i < veiculo.Fotos.Count; i++)
+            {
+                var idx = i;
+                <div class="@(i == fotoAtiva ? "thumb ativo" : "thumb")"
+                     @onclick="() => fotoAtiva = idx">
+                    <img src="@veiculo.Fotos[i]" alt="Miniatura @(i+1)" />
+                </div>
+            }
+        </div>
+    }
+
+    <div class="detalhe-content">
+        <div class="detalhe-main">
+            <div class="detalhe-header">
+                <div>
+                    <h1 class="detalhe-titulo">@veiculo.Marca @veiculo.Modelo</h1>
+                    <p class="detalhe-sub">@veiculo.Ano · @veiculo.Combustivel · @veiculo.Cambio · @veiculo.Motorizacao</p>
+                </div>
+                <span class="badge @BadgeClass">@veiculo.Disponibilidade</span>
+            </div>
+
+            <div class="detalhe-section">
+                <h2 class="section-titulo">Especificações</h2>
+                <div class="specs-grid">
+                    <div class="spec"><span class="spec-label">Ano</span><span class="spec-val">@veiculo.Ano</span></div>
+                    <div class="spec"><span class="spec-label">Quilometragem</span><span class="spec-val">@veiculo.Quilometragem.ToString("N0") km</span></div>
+                    <div class="spec"><span class="spec-label">Cor</span><span class="spec-val">@veiculo.Cor</span></div>
+                    <div class="spec"><span class="spec-label">Combustível</span><span class="spec-val">@veiculo.Combustivel</span></div>
+                    <div class="spec"><span class="spec-label">Câmbio</span><span class="spec-val">@veiculo.Cambio</span></div>
+                    <div class="spec"><span class="spec-label">Motorização</span><span class="spec-val">@veiculo.Motorizacao</span></div>
+                    <div class="spec"><span class="spec-label">Placa</span><span class="spec-val">@veiculo.Placa</span></div>
+                    <div class="spec"><span class="spec-label">Estado</span><span class="spec-val">@veiculo.Estado</span></div>
+                </div>
+            </div>
+
+            @if (veiculo.Acessorios.Any())
+            {
+                <div class="detalhe-section">
+                    <h2 class="section-titulo">Acessórios</h2>
+                    <div class="acc-lista">
+                        @foreach (var acc in veiculo.Acessorios)
+                        {
+                            <span class="acc-tag">
+                                <span class="acc-dot"></span>
+                                @acc
+                            </span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="detalhe-sidebar">
+            <div class="preco-card">
+                <span class="preco-label">Valor</span>
+                <span class="preco-val">
+                    @veiculo.Valor.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
+                </span>
+
+                @if (veiculo.Disponibilidade == "Disponivel")
+                {
+                    <button class="btn-primary" @onclick="GerarProposta">
+                        Gerar proposta de venda
+                    </button>
+                }
+
+                <button class="btn-secondary" @onclick="AbrirModalEdicao">
+                    Editar veículo
+                </button>
+
+                <button class="btn-excluir" @onclick="AbrirModalExclusao">
+                    Excluir veículo
+                </button>
+
+                <button class="btn-voltar" @onclick='() => Nav.NavigateTo("/concessionaria")'>
+                    ← Voltar ao estoque
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <ConfirmacaoSenhaModal
+        Visivel="modalEdicaoVisivel"
+        Titulo="Editar veículo"
+        Descricao="Confirme sua senha para editar os dados deste veículo."
+        TextoBotao="Continuar para edição"
+        OnConfirmar="ConfirmarEdicao"
+        OnCancelar="() => modalEdicaoVisivel = false"
+        @ref="modalEdicaoRef" />
+
+    <ConfirmacaoSenhaModal
+        Visivel="modalExclusaoVisivel"
+        Titulo="Excluir veículo"
+        Descricao="@($"Tem certeza que deseja excluir {veiculo.Marca} {veiculo.Modelo}? Esta ação não pode ser desfeita.")"
+        TextoBotao="Excluir permanentemente"
+        Destrutivo="true"
+        ApenasAdmin="true"
+        OnConfirmar="ConfirmarExclusao"
+        OnCancelar="() => modalExclusaoVisivel = false"
+        @ref="modalExclusaoRef" />
+
+    @if (modalFormEdicaoVisivel)
+    {
+        <div class="modal-overlay" @onclick="() => modalFormEdicaoVisivel = false">
+            <div class="modal-form" @onclick:stopPropagation>
+                <div class="modal-header">
+                    <span class="modal-titulo">Editar veículo</span>
+                    <button class="modal-fechar" @onclick="() => modalFormEdicaoVisivel = false">×</button>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-campo">
+                        <label class="campo-label">Marca</label>
+                        <input class="campo-input" @bind="formEdicao.Marca" />
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Modelo</label>
+                        <input class="campo-input" @bind="formEdicao.Modelo" />
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Cor</label>
+                        <input class="campo-input" @bind="formEdicao.Cor" />
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Motorização</label>
+                        <input class="campo-input" @bind="formEdicao.Motorizacao" />
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Quilometragem</label>
+                        <input type="number" class="campo-input" @bind="formEdicao.Quilometragem" />
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Valor (R$)</label>
+                        <input type="number" class="campo-input" @bind="formEdicao.Valor" />
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Câmbio</label>
+                        <select class="campo-input" @bind="formEdicao.Cambio">
+                            <option value="Manual">Manual</option>
+                            <option value="Automatico">Automático</option>
+                        </select>
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Combustível</label>
+                        <select class="campo-input" @bind="formEdicao.Combustivel">
+                            <option value="Flex">Flex</option>
+                            <option value="Gasolina">Gasolina</option>
+                            <option value="Alcool">Álcool</option>
+                            <option value="Diesel">Diesel</option>
+                            <option value="Eletrico">Elétrico</option>
+                            <option value="Hibrido">Híbrido</option>
+                        </select>
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Estado de conservação</label>
+                        <select class="campo-input" @bind="formEdicao.Estado">
+                            <option value="Otimo">Ótimo</option>
+                            <option value="Bom">Bom</option>
+                            <option value="Regular">Regular</option>
+                            <option value="Ruim">Ruim</option>
+                        </select>
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Disponibilidade</label>
+                        <select class="campo-input" @bind="formEdicao.Disponibilidade">
+                            <option value="Disponivel">Disponível</option>
+                            <option value="Reservado">Reservado</option>
+                            <option value="Vendido">Vendido</option>
+                        </select>
+                    </div>
+                </div>
+
+                @if (erroEdicao is not null)
+                {
+                    <div class="erro-banner">@erroEdicao</div>
+                }
+
+                <div class="modal-acoes">
+                    <button class="btn-cancelar"
+                            @onclick="() => modalFormEdicaoVisivel = false">
+                        Cancelar
+                    </button>
+                    <button class="btn-confirmar"
+                            @onclick="SalvarEdicao"
+                            disabled="@salvando">
+                        @(salvando ? "Salvando..." : "Salvar alterações")
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private VeiculoVendaDTO? veiculo;
+    private bool carregando = true;
+    private int fotoAtiva = 0;
+
+    private bool modalEdicaoVisivel = false;
+    private bool modalExclusaoVisivel = false;
+    private bool modalFormEdicaoVisivel = false;
+    private bool salvando = false;
+    private string? erroEdicao;
+
+    private ConfirmacaoSenhaModal? modalEdicaoRef;
+    private ConfirmacaoSenhaModal? modalExclusaoRef;
+
+    private AtualizarVeiculoVendaDTO formEdicao = new();
+
+    private Guid UsuarioAtualId;
+
+protected override async Task OnInitializedAsync()
+{
+    var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+    var claim = authState.User.FindFirst(
+        System.Security.Claims.ClaimTypes.NameIdentifier);
+
+    if (claim is not null)
+        UsuarioAtualId = Guid.Parse(claim.Value);
+        try
+        {
+            var resultado = await VeiculoService.ObterPorIdAsync(Id);
+            veiculo = resultado.IsSuccess ? resultado.Value : null;
+        }
+        catch { veiculo = null; }
+        finally { carregando = false; }
+    }
+
+    private void ProximaFoto()
+    {
+        if (veiculo?.Fotos.Count > 0)
+            fotoAtiva = (fotoAtiva + 1) % veiculo.Fotos.Count;
+    }
+
+    private void FotoAnterior()
+    {
+        if (veiculo?.Fotos.Count > 0)
+            fotoAtiva = (fotoAtiva - 1 + veiculo.Fotos.Count) % veiculo.Fotos.Count;
+    }
+
+    private void AbrirModalEdicao() => modalEdicaoVisivel = true;
+    private void AbrirModalExclusao() => modalExclusaoVisivel = true;
+
+    private async Task ConfirmarEdicao(string senha)
+    {
+        var ok = await VerificarSenha(senha);
+        if (!ok) { modalEdicaoRef?.MostrarErro(); return; }
+
+        formEdicao = new AtualizarVeiculoVendaDTO
+        {
+            Id = veiculo!.Id,
+            Marca = veiculo.Marca,
+            Modelo = veiculo.Modelo,
+            Cor = veiculo.Cor,
+            Motorizacao = veiculo.Motorizacao,
+            Quilometragem = veiculo.Quilometragem,
+            Valor = veiculo.Valor,
+            Cambio = veiculo.Cambio,
+            Combustivel = veiculo.Combustivel,
+            Estado = veiculo.Estado,
+            Disponibilidade = veiculo.Disponibilidade,
+            Acessorios = new List<string>(veiculo.Acessorios)
+        };
+
+        modalEdicaoVisivel = false;
+        modalFormEdicaoVisivel = true;
+    }
+
+    private async Task SalvarEdicao()
+{
+    salvando = true;
+    erroEdicao = null;
+
+    try
+    {
+        var resultado = await VeiculoService.AtualizarAsync(formEdicao);
+        if (resultado.IsSuccess)
+        {
+            modalFormEdicaoVisivel = false;
+            var atualizado = await VeiculoService.ObterPorIdAsync(Id);
+            veiculo = atualizado.IsSuccess ? atualizado.Value : veiculo;
+        }
+        else
+        {
+            erroEdicao = resultado.Error ?? "Erro ao salvar.";
+        }
+    }
+    catch
+    {
+        erroEdicao = "Erro de conexão.";
+    }
+    finally { salvando = false; }
+}
+
+    private async Task ConfirmarExclusao(string senha)
+{
+    var ok = await VerificarSenha(senha);
+    if (!ok) { modalExclusaoRef?.MostrarErro(); return; }
+
+    var resultado = await VeiculoService.RemoverAsync(veiculo!.Id);
+    if (resultado.IsSuccess)
+    {
+        modalExclusaoVisivel = false;
+        Nav.NavigateTo("/concessionaria");
+    }
+    else
+    {
+        modalExclusaoRef?.MostrarErro();
+    }
+}
+
+    private async Task<bool> VerificarSenha(string senha)
+{
+    var resultado = await AuthService.VerificarSenhaAsync(UsuarioAtualId, senha);
+    return resultado.IsSuccess;
+}
+
+    private void GerarProposta() =>
+        Nav.NavigateTo($"/concessionaria/proposta/nova?veiculoId={Id}");
+
+    private string BadgeClass => veiculo?.Disponibilidade switch
+    {
+        "Disponivel" => "badge badge-disponivel",
+        "Vendido"    => "badge badge-vendido",
+        _            => "badge badge-reservado"
+    };
+}
+
+<style>
+    .detalhe-carousel {
+        background: #1a1a1a;
+        height: 320px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .carousel-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .carousel-vazio { color: #555; font-size: 14px; }
+
+    .carousel-arr {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.15);
+        border: none;
+        color: #fff;
+        font-size: 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .carousel-arr.left { left: 16px; }
+    .carousel-arr.right { right: 16px; }
+
+    .carousel-dots {
+        position: absolute;
+        bottom: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 6px;
+    }
+
+    .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #555;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .dot.ativo { background: #e02020; }
+
+    .thumbs-bar {
+        background: #111;
+        padding: 10px 24px;
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+    }
+
+    .thumb {
+        width: 64px;
+        height: 44px;
+        border-radius: 4px;
+        overflow: hidden;
+        border: 2px solid transparent;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .thumb.ativo { border-color: #e02020; }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+    .detalhe-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 20px;
+    }
+
+    .detalhe-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+    }
+
+    .detalhe-titulo { font-size: 24px; font-weight: 500; margin-bottom: 4px; }
+    .detalhe-sub { font-size: 14px; color: #888; }
+
+    .detalhe-section {
+        background: #fff;
+        border-radius: 10px;
+        border: 0.5px solid #e0e0e0;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .section-titulo {
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 0.5px solid #eee;
+    }
+
+    .specs-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .spec { display: flex; flex-direction: column; gap: 2px; }
+    .spec-label { font-size: 11px; color: #888; }
+    .spec-val { font-size: 14px; font-weight: 500; }
+
+    .acc-lista { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .acc-tag {
+        background: #f4f4f4;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #444;
+        padding: 5px 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .acc-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #16a34a;
+    }
+
+    .preco-card {
+        background: #fff;
+        border-radius: 10px;
+        border: 0.5px solid #e0e0e0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        position: sticky;
+        top: 72px;
+    }
+
+    .preco-label { font-size: 12px; color: #888; }
+
+    .preco-val {
+        font-size: 28px;
+        font-weight: 600;
+        color: #e02020;
+        margin-bottom: 8px;
+    }
+
+    .btn-primary {
+        background: #e02020;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        width: 100%;
+    }
+
+    .btn-primary:hover { background: #c01818; }
+
+    .btn-secondary {
+        background: #fff;
+        color: #1a1a1a;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 14px;
+        cursor: pointer;
+        width: 100%;
+    }
+
+    .btn-secondary:hover { background: #f9f9f9; }
+
+    .btn-excluir {
+        background: #fff;
+        color: #e02020;
+        border: 0.5px solid #e02020;
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 14px;
+        cursor: pointer;
+        width: 100%;
+    }
+
+    .btn-excluir:hover { background: #fff5f5; }
+
+    .btn-voltar {
+        background: none;
+        border: none;
+        color: #888;
+        font-size: 13px;
+        cursor: pointer;
+        text-align: left;
+        padding: 4px 0;
+        margin-top: 4px;
+    }
+
+    .btn-voltar:hover { color: #1a1a1a; }
+
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-form {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        width: 100%;
+        max-width: 640px;
+        max-height: 90vh;
+        overflow-y: auto;
+        border: 0.5px solid #e0e0e0;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .modal-titulo { font-size: 16px; font-weight: 500; color: #1a1a1a; }
+
+    .modal-fechar {
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: #888;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0 4px;
+    }
+
+    .modal-fechar:hover { color: #1a1a1a; }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .form-campo { display: flex; flex-direction: column; gap: 6px; }
+
+    .campo-label { font-size: 12px; color: #555; font-weight: 500; }
+
+    .campo-input {
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 14px;
+        outline: none;
+        width: 100%;
+        transition: border-color 0.2s;
+    }
+
+    .campo-input:focus { border-color: #e02020; }
+
+    .erro-banner {
+        background: #fff5f5;
+        border: 0.5px solid #fca5a5;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        color: #e02020;
+        margin-bottom: 12px;
+    }
+
+    .modal-acoes {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 16px;
+    }
+
+    .btn-cancelar {
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        cursor: pointer;
+        color: #444;
+    }
+
+    .btn-cancelar:hover { background: #f5f5f5; }
+
+    .btn-confirmar {
+        background: #1a1a1a;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #fff;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .btn-confirmar:hover:not(:disabled) { background: #333; }
+    .btn-confirmar:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .badge {
+        font-size: 11px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .badge-disponivel { background: #dcfce7; color: #166534; }
+    .badge-vendido { background: #f1f1f1; color: #666; }
+    .badge-reservado { background: #fef9c3; color: #854d0e; }
+
+    .loading {
+        text-align: center;
+        padding: 80px;
+        color: #888;
+        font-size: 14px;
+    }
+</style>

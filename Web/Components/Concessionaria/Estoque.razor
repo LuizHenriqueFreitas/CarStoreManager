@@ -1,0 +1,229 @@
+@page "/concessionaria"
+@inject IVeiculoVendaService VeiculoService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+@using CarStoreManager.Application.Services
+@using CarStoreManager.Web.Imports
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="estoque-hero">
+    <div class="estoque-hero-inner">
+        <h1 class="estoque-titulo">Estoque de veículos</h1>
+        <p class="estoque-sub">@veiculosFiltrados.Count veículos encontrados</p>
+
+        <div class="filtros">
+            <button class="@FiltroClass("Todos")" @onclick='() => FiltrarPor("Todos")'>Todos</button>
+            <button class="@FiltroClass("Disponivel")" @onclick='() => FiltrarPor("Disponivel")'>Disponíveis</button>
+            <button class="@FiltroClass("Vendido")" @onclick='() => FiltrarPor("Vendido")'>Vendidos</button>
+            <button class="@FiltroClass("Flex")" @onclick='() => FiltrarPor("Flex")'>Flex</button>
+            <button class="@FiltroClass("Eletrico")" @onclick='() => FiltrarPor("Eletrico")'>Elétrico</button>
+            <button class="@FiltroClass("Automatico")" @onclick='() => FiltrarPor("Automatico")'>Automático</button>
+        </div>
+    </div>
+</div>
+
+<div class="estoque-content">
+    <div class="estoque-bar">
+        <span class="estoque-count">Mostrando @veiculosFiltrados.Count veículos</span>
+        <button class="btn-novo" @onclick="AbrirModalCadastro">+ Cadastrar veículo</button>
+    </div>
+
+    @if (carregando)
+    {
+        <div class="loading">Carregando veículos...</div>
+    }
+    else if (!veiculosFiltrados.Any())
+    {
+        <div class="vazio">Nenhum veículo encontrado.</div>
+    }
+    else
+    {
+        <div class="estoque-grid">
+            @foreach (var v in veiculosFiltrados)
+            {
+                <VeiculoCard Veiculo="v" OnClick="() => AbrirDetalhe(v.Id)" />
+            }
+        </div>
+    }
+</div>
+
+<ConfirmacaoSenhaModal
+    Visivel="modalCadastroVisivel"
+    Titulo="Cadastrar novo veículo"
+    Descricao="Confirme sua senha para prosseguir com o cadastro."
+    TextoBotao="Continuar"
+    OnConfirmar="ConfirmarCadastro"
+    OnCancelar="() => modalCadastroVisivel = false"
+    @ref="modalCadastroRef" />
+
+@code {
+    private List<VeiculoVendaListaDTO> veiculos = new();
+    private List<VeiculoVendaListaDTO> veiculosFiltrados = new();
+    private string filtroAtivo = "Todos";
+    private bool carregando = true;
+    private bool modalCadastroVisivel = false;
+    private ConfirmacaoSenhaModal? modalCadastroRef;
+
+    private Guid UsuarioAtualId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var claim = authState.User.FindFirst(
+            System.Security.Claims.ClaimTypes.NameIdentifier);
+
+    if (claim is not null)
+        UsuarioAtualId = Guid.Parse(claim.Value);
+    try
+    {
+        var resultado = await VeiculoService.ObterTodosAsync();
+        veiculos = resultado.IsSuccess
+            ? resultado.Value?.ToList() ?? new()
+            : new();
+        AplicarFiltro();
+    }
+    catch
+    {
+        veiculos = new();
+    }
+    finally
+    {
+        carregando = false;
+    }
+}
+
+    private void FiltrarPor(string filtro)
+    {
+        filtroAtivo = filtro;
+        AplicarFiltro();
+    }
+
+    private void AplicarFiltro()
+    {
+        veiculosFiltrados = filtroAtivo switch
+        {
+            "Disponivel" => veiculos.Where(v => v.Disponibilidade == "Disponivel").ToList(),
+            "Vendido"    => veiculos.Where(v => v.Disponibilidade == "Vendido").ToList(),
+            "Flex"       => veiculos.Where(v => v.Combustivel == "Flex").ToList(),
+            "Eletrico"   => veiculos.Where(v => v.Combustivel == "Eletrico").ToList(),
+            "Automatico" => veiculos.Where(v => v.Combustivel == "Automatico").ToList(),
+            _            => veiculos.ToList()
+        };
+    }
+
+    private string FiltroClass(string filtro) =>
+        filtro == filtroAtivo ? "filtro-pill filtro-ativo" : "filtro-pill";
+
+    private void AbrirDetalhe(Guid id) =>
+        Nav.NavigateTo($"/concessionaria/veiculo/{id}");
+
+    private void AbrirModalCadastro() => modalCadastroVisivel = true;
+
+    private async Task ConfirmarCadastro(string senha)
+    {
+        var ok = await VerificarSenha(senha);
+        if (!ok) { modalCadastroRef?.MostrarErro(); return; }
+        modalCadastroVisivel = false;
+        Nav.NavigateTo("/concessionaria/veiculo/novo");
+    }
+
+    private async Task<bool> VerificarSenha(string senha)
+    {
+        var resultado = await AuthService.VerificarSenhaAsync(UsuarioAtualId, senha);
+        return resultado.IsSuccess;
+    }
+}
+
+<style>
+    .estoque-hero {
+        background: #1a1a1a;
+        padding: 24px 0 0;
+    }
+
+    .estoque-hero-inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px;
+    }
+
+    .estoque-titulo {
+        color: #fff;
+        font-size: 22px;
+        font-weight: 500;
+        margin-bottom: 4px;
+    }
+
+    .estoque-sub {
+        color: #888;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+
+    .filtros {
+        display: flex;
+        gap: 8px;
+        padding-bottom: 16px;
+        flex-wrap: wrap;
+    }
+
+    .filtro-pill {
+        background: #2a2a2a;
+        border: 0.5px solid #444;
+        border-radius: 20px;
+        color: #ccc;
+        font-size: 12px;
+        padding: 5px 14px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .filtro-pill:hover { background: #333; color: #fff; }
+
+    .filtro-ativo {
+        background: #e02020 !important;
+        border-color: #e02020 !important;
+        color: #fff !important;
+    }
+
+    .estoque-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px 24px;
+    }
+
+    .estoque-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .estoque-count { font-size: 13px; color: #666; }
+
+    .btn-novo {
+        background: #e02020;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-size: 13px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    .btn-novo:hover { background: #c01818; }
+
+    .estoque-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 16px;
+    }
+
+    .loading, .vazio {
+        text-align: center;
+        padding: 60px;
+        color: #888;
+        font-size: 14px;
+    }
+</style>

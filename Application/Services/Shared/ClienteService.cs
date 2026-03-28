@@ -43,19 +43,31 @@ public class ClienteService : IClienteService
         return Result<IEnumerable<ClienteListaDTO>>.Ok(lista);
     }
 
+    public async Task<Result<ClienteDTO>> ObterPorCpfAsync(string cpf)
+    {
+        var cliente = await _repository.ObterPorCpfAsync(cpf);
+
+        if (cliente is null)
+            return Result<ClienteDTO>.Fail("Cliente não encontrado");
+
+        return Result<ClienteDTO>.Ok(ClienteMapping.ToDto(cliente));
+    }
     // =========================
     // CRIAÇÃO
     // =========================
 
     public async Task<Result<Guid>> CriarAsync(CriarClienteDTO dto)
     {
+        if (await _repository.CpfExisteAsync(dto.Cpf))
+            return Result<Guid>.Fail("CPF já cadastrado");
+
         try
         {
             var cliente = new Cliente(
                 dto.Nome,
                 new Cpf(dto.Cpf),
                 new Telefone(dto.Telefone),
-                new Email (dto.Email)
+                new Email(dto.Email)
             );
 
             await _repository.AddAsync(cliente);

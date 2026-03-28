@@ -7,7 +7,7 @@ namespace CarStoreManager.Domain.Entities.Concessionaria;
 public class PropostaVenda : Entity
 {
     public Guid VendedorId { get; private set; }
-    public Guid VeiculoId { get; private set; }
+    public Guid VeiculoVendaId { get; private set; }
     public Guid ClienteId { get; private set; }
 
     public Dinheiro ValorBase { get; private set; } = null!;
@@ -29,7 +29,7 @@ public class PropostaVenda : Entity
         Dinheiro valorBase)
     {
         VendedorId = vendedorId;
-        VeiculoId = veiculoId;
+        VeiculoVendaId = veiculoId;
         ClienteId = clienteId;
 
         ValorBase = valorBase;

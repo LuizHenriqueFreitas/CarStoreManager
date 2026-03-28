@@ -1,0 +1,88 @@
+<nav class="navbar">
+    <a href="/" class="navbar-logo">AUTOSTORE</a>
+
+    <div class="navbar-links">
+        <NavLink href="/concessionaria" class="nav-link" ActiveClass="nav-link-active">
+            Concessionária
+        </NavLink>
+        <NavLink href="/oficina" class="nav-link" ActiveClass="nav-link-active">
+            Oficina
+        </NavLink>
+        <NavLink href="/relatorios" class="nav-link" ActiveClass="nav-link-active">
+            Relatórios
+        </NavLink>
+    </div>
+
+    <div class="navbar-user">
+        <div class="navbar-avatar">
+            @(NomeUsuario.Length > 0 ? NomeUsuario[0].ToString().ToUpper() : "?")
+        </div>
+        <span>@NomeUsuario</span>
+    </div>
+</nav>
+
+@code {
+    [Parameter] public string NomeUsuario { get; set; } = "Usuário";
+}
+
+<style>
+    .navbar {
+        background: #1a1a1a;
+        padding: 0 24px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .navbar-logo {
+        color: #e02020;
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 1px;
+    }
+
+    .navbar-links {
+        display: flex;
+        gap: 24px;
+    }
+
+    .nav-link {
+        color: #aaa;
+        font-size: 13px;
+        padding: 4px 0;
+        border-bottom: 2px solid transparent;
+        transition: color 0.2s;
+    }
+
+    .nav-link:hover { color: #fff; }
+
+    .nav-link-active {
+        color: #fff !important;
+        border-bottom: 2px solid #e02020;
+    }
+
+    .navbar-user {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #ccc;
+        font-size: 13px;
+    }
+
+    .navbar-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #e02020;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 600;
+    }
+</style>

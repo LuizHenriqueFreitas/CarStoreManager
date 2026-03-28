@@ -1,8 +1,7 @@
 namespace CarStoreManager.Application.DTOs.Oficina.OrdemServico;
 
-public class AtualizarStatusChecklistDTO
+public class AtualizarOrdemServicoDTO
 {
-    public Guid OrdemServicoId { get; set; }
-    public Guid ItemId { get; set; }
-    public string NovoStatus { get; set; } = null!;
+    public Guid Id { get; set; }
+    public string Status { get; set; } = null!;
 }

@@ -13,6 +13,9 @@ public interface IComponenteService
 
     Task<Result<IEnumerable<ComponenteListaDTO>>> ObterTodosAsync();
 
+    Task<Result<IEnumerable<ComponenteListaDTO>>> ObterComEstoqueBaixoAsync();
+    Task<Result<IEnumerable<ComponenteListaDTO>>> ObterPorSistemaAsync(string sistema);
+
 
     // =========================
     // CRUD

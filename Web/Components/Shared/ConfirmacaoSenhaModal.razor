@@ -1,0 +1,219 @@
+@namespace CarStoreManager.Web.Componentes.Shared
+
+@if (Visivel)
+{
+    <div class="modal-overlay" @onclick="Fechar">
+        <div class="modal-box" @onclick:stopPropagation>
+            <div class="modal-header">
+                <span class="modal-titulo">@Titulo</span>
+                <button class="modal-fechar" @onclick="Fechar">×</button>
+            </div>
+
+            <p class="modal-desc">@Descricao</p>
+
+            <div class="modal-campo">
+                <label class="campo-label">Confirme sua senha</label>
+                <input type="password"
+                       class="campo-input @(erroSenha ? "campo-erro" : "")"
+                       placeholder="Digite sua senha"
+                       @bind="senha"
+                       @onkeydown="TeclaPressionada" />
+                @if (erroSenha)
+                {
+                    <span class="erro-msg">Senha incorreta</span>
+                }
+            </div>
+
+            @if (ApenasAdmin)
+            {
+                <div class="aviso-admin">
+                    <span class="aviso-icon">⚠</span>
+                    Esta ação é restrita ao administrador
+                </div>
+            }
+
+            <div class="modal-acoes">
+                <button class="btn-cancelar" @onclick="Fechar">Cancelar</button>
+                <button class="@($"btn-confirmar {(Destrutivo ? "destrutivo" : "")}")"
+                        @onclick="Confirmar"
+                        disabled="@(string.IsNullOrWhiteSpace(senha) || carregando)">
+                    @if (carregando)
+                    {
+                        <span>Verificando...</span>
+                    }
+                    else
+                    {
+                        <span>@TextoBotao</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visivel { get; set; }
+    [Parameter] public string Titulo { get; set; } = "Confirmar ação";
+    [Parameter] public string Descricao { get; set; } = "Digite sua senha para continuar.";
+    [Parameter] public string TextoBotao { get; set; } = "Confirmar";
+    [Parameter] public bool Destrutivo { get; set; } = false;
+    [Parameter] public bool ApenasAdmin { get; set; } = false;
+    [Parameter] public EventCallback<string> OnConfirmar { get; set; }
+    [Parameter] public EventCallback OnCancelar { get; set; }
+
+    private string senha = string.Empty;
+    private bool erroSenha = false;
+    private bool carregando = false;
+
+    public void MostrarErro()
+    {
+        erroSenha = true;
+        carregando = false;
+        StateHasChanged();
+    }
+
+    private async Task Confirmar()
+    {
+        if (string.IsNullOrWhiteSpace(senha)) return;
+        erroSenha = false;
+        carregando = true;
+        await OnConfirmar.InvokeAsync(senha);
+    }
+
+    private async Task Fechar()
+    {
+        senha = string.Empty;
+        erroSenha = false;
+        carregando = false;
+        await OnCancelar.InvokeAsync();
+    }
+
+    private async Task TeclaPressionada(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Confirmar();
+        if (e.Key == "Escape") await Fechar();
+    }
+}
+
+<style>
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-box {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        width: 100%;
+        max-width: 400px;
+        border: 0.5px solid #e0e0e0;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .modal-titulo {
+        font-size: 16px;
+        font-weight: 500;
+        color: #1a1a1a;
+    }
+
+    .modal-fechar {
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: #888;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0 4px;
+    }
+
+    .modal-fechar:hover { color: #1a1a1a; }
+
+    .modal-desc {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 16px;
+        line-height: 1.5;
+    }
+
+    .modal-campo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+
+    .campo-label { font-size: 12px; color: #555; font-weight: 500; }
+
+    .campo-input {
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s;
+        width: 100%;
+    }
+
+    .campo-input:focus { border-color: #e02020; }
+    .campo-erro { border-color: #e02020 !important; }
+
+    .erro-msg { font-size: 12px; color: #e02020; }
+
+    .aviso-admin {
+        background: #fef9c3;
+        border: 0.5px solid #fde047;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 12px;
+        color: #854d0e;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+
+    .aviso-icon { font-size: 14px; }
+
+    .modal-acoes {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 16px;
+    }
+
+    .btn-cancelar {
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        cursor: pointer;
+        color: #444;
+    }
+
+    .btn-cancelar:hover { background: #f5f5f5; }
+
+    .btn-confirmar {
+        background: #1a1a1a;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #fff;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .btn-confirmar:hover:not(:disabled) { background: #333; }
+    .btn-confirmar:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-confirmar.destrutivo { background: #e02020; }
+    .btn-confirmar.destrutivo:hover:not(:disabled) { background: #c01818; }
+</style>

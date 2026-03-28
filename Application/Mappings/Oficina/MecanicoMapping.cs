@@ -1,4 +1,3 @@
-using System.Data;
 using CarStoreManager.Application.DTOs.Oficina.Mecanico;
 using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Enums;
@@ -8,26 +7,20 @@ namespace CarStoreManager.Application.Mappings.Oficina;
 
 public static class MecanicoMapping
 {
-    // =========================
-    // ENTITY → DTO (DETALHE)
-    // =========================
     public static MecanicoDTO ToDto(Mecanico entity)
     {
         return new MecanicoDTO
         {
-            Id= entity.Id,
+            Id = entity.Id,
             Nome = entity.Nome,
             Email = entity.GetEmail(),
             Telefone = entity.GetTelefone(),
-            Especialidade = entity.GetEspecialidade(),
-            ValorHora = entity.GetValorHora(),
-            NivelOcupacao = entity.GetNivelOcupacao()
+            Especialidade = entity.Especialidade.ToString(),
+            Nivel = entity.DadosFuncionario.Nivel.ToString(),
+            DataContratacao = entity.DadosFuncionario.DataContratacao
         };
     }
 
-    // =========================
-    // ENTITY → DTO (LISTA)
-    // =========================
     public static MecanicoListaDTO ToListaDto(Mecanico entity)
     {
         return new MecanicoListaDTO
@@ -35,55 +28,57 @@ public static class MecanicoMapping
             Id = entity.Id,
             Nome = entity.Nome,
             Especialidade = entity.Especialidade.ToString(),
-            NivelOcupacao = entity.NivelOcupacao.ToString()
+            Nivel = entity.DadosFuncionario.Nivel.ToString()
         };
     }
 
-        public static MecanicoLookupDTO ToLookupDto(Mecanico mecanico)
+    public static MecanicoLookupDTO ToLookupDto(Mecanico entity)
     {
         return new MecanicoLookupDTO
         {
-            Id = mecanico.Id,
-            Nome = mecanico.Nome
+            Id = entity.Id,
+            Nome = entity.Nome
         };
     }
 
-    // =========================
-    // DTO → ENTITY (CREATE)
-    // =========================
     public static Mecanico ToEntity(CriarMecanicoDTO dto)
     {
         return new Mecanico(
             dto.Nome,
             new Email(dto.Email),
             new Telefone(dto.Telefone),
+            BCrypt.Net.BCrypt.HashPassword(dto.Senha),
             ConverterEspecialidade(dto.Especialidade),
-            new Dinheiro(dto.ValorHora)
+            ConverterNivel(dto.Nivel),
+            DateTime.UtcNow
         );
     }
 
-    // =========================
-    // UPDATE
-    // =========================
     public static void UpdateEntity(Mecanico entity, AtualizarMecanicoDTO dto)
     {
-        entity.AtualizarDados(
-            dto.Nome,
-            new Email(dto.Email),
-            new Telefone(dto.Telefone),
-            ConverterEspecialidade(dto.Especialidade),
-            new Dinheiro(dto.ValorHora)
+        entity.AlterarEspecialidade(
+            ConverterEspecialidade(dto.Especialidade)
+        );
+
+        entity.AtualizarDadosFuncionario(
+            ConverterNivel(dto.Nivel),
+            entity.DadosFuncionario.DataContratacao
         );
     }
 
-    // =========================
-    // HELPERS
-    // =========================
     private static EspecialidadeMecanico ConverterEspecialidade(string valor)
     {
-        if (!Enum.TryParse<EspecialidadeMecanico>(valor, true, out var resultado))
-            throw new ArgumentException($"Especialidade inválida: {valor}");
+        if (!Enum.TryParse(valor, true, out EspecialidadeMecanico result))
+            throw new ArgumentException("Especialidade inválida");
 
-        return resultado;
+        return result;
+    }
+
+    private static NivelFuncionario ConverterNivel(string valor)
+    {
+        if (!Enum.TryParse(valor, true, out NivelFuncionario result))
+            throw new ArgumentException("Nível inválido");
+
+        return result;
     }
 }

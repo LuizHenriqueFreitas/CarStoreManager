@@ -7,45 +7,48 @@ namespace CarStoreManager.Application.Mappings.Oficina;
 
 public static class OrdemServicoMapping
 {
-    // =========================
-    // ENTITY → DETALHE
-    // =========================
-
     public static OrdemServicoDTO ToDto(OrdemServico entity)
     {
         return new OrdemServicoDTO
         {
             Id = entity.Id,
+            NumeroPublico = entity.NumeroPublico,
             ClienteId = entity.ClienteId,
-            VeiculoId = entity.VeiculoId,
+            VeiculoClienteId = entity.VeiculoClienteId,
             MecanicoId = entity.MecanicoId,
-
+            Tipo = entity.Tipo.ToString(),
             Descricao = entity.Descricao,
             DataCriacao = entity.DataCriacao,
             PrazoEstimado = entity.PrazoEstimado,
-
             CustoServico = entity.GetCustoServico(),
             ValorTotal = entity.GetValorTotal(),
-
             Status = entity.Status.ToString(),
-
             Itens = entity.Itens
                 .Select(ItemOrdemServicoMapping.ToDto)
-                .ToList() ?? new List<ItemOrdemServicoDTO>()
+                .ToList(),
+            Checklist = entity.Checklist
+                .OrderBy(c => c.OrdemExibicao)
+                .Select(c => new ChecklistItemDTO
+                {
+                    Id = c.Id,
+                    Descricao = c.Descricao,
+                    Status = c.Status.ToString(),
+                    Origem = c.Origem.ToString(),
+                    OrdemExibicao = c.OrdemExibicao
+                })
+                .ToList()
         };
     }
-
-
-    // =========================
-    // ENTITY → LISTA (TABELA)
-    // =========================
 
     public static OrdemServicoListaDTO ToListaDto(OrdemServico entity)
     {
         return new OrdemServicoListaDTO
         {
             Id = entity.Id,
-            NomeCliente = entity.Status.ToString(),
+            NumeroPublico = entity.NumeroPublico,
+            ClienteId = entity.ClienteId,
+            VeiculoClienteId = entity.VeiculoClienteId,
+            Tipo = entity.Tipo.ToString(),
             Descricao = entity.Descricao,
             Status = entity.Status.ToString(),
             PrazoEstimado = entity.PrazoEstimado,
@@ -74,15 +77,10 @@ public static class OrdemServicoMapping
         };
     }
 
-
-    // =========================
-    // DTO → ENTITY (CRIAÇÃO)
-    // =========================
-
     public static OrdemServico ToEntity(CriarOrdemServicoDTO dto)
     {
         return new OrdemServico(
-            dto.VeiculoId,
+            dto.VeiculoClienteId,
             dto.MecanicoId,
             dto.ClienteId,
             ConverterTipo(dto.Tipo),
@@ -96,16 +94,6 @@ public static class OrdemServicoMapping
     {
         if (!Enum.TryParse<TipoServico>(tipo, true, out var resultado))
             throw new ArgumentException($"Tipo inválido: {tipo}");
-
         return resultado;
-    }
-
-    // =========================
-    // LISTA
-    // =========================
-
-    public static IEnumerable<OrdemServicoListaDTO> ToListaDtoList(IEnumerable<OrdemServico> entities)
-    {
-        return entities.Select(ToListaDto);
     }
 }

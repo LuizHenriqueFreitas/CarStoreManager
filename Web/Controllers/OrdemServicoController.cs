@@ -1,11 +1,13 @@
 using CarStoreManager.Application.DTOs.Oficina.OrdemServico;
 using CarStoreManager.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CarStoreManager.Web.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class OrdemServicoController : ControllerBase
 {
     private readonly IOrdemServicoService _service;
@@ -20,6 +22,7 @@ public class OrdemServicoController : ControllerBase
     // =========================
 
     [HttpGet]
+    [Authorize(Roles = "Admin,Mecanico")]
     public async Task<IActionResult> GetTodas()
     {
         var resultado = await _service.ObterTodasAsync();
@@ -27,15 +30,16 @@ public class OrdemServicoController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = "Admin,Mecanico")]
     public async Task<IActionResult> GetPorId(Guid id)
     {
         var resultado = await _service.ObterPorIdAsync(id);
         return resultado.IsSuccess ? Ok(resultado.Value) : NotFound(resultado.Error);
     }
 
-    // Endpoint público — sem autenticação (AllowAnonymous será útil quando auth estiver pronto)
     [HttpGet("publica/{numeroPublico}")]
-    public async Task<IActionResult> ConsultarPublica(string numeroPublico)
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPublica(string numeroPublico)
     {
         var resultado = await _service.ObterPorNumeroPublicoAsync(numeroPublico);
         return resultado.IsSuccess ? Ok(resultado.Value) : NotFound(resultado.Error);
@@ -46,6 +50,7 @@ public class OrdemServicoController : ControllerBase
     // =========================
 
     [HttpPost]
+    [Authorize(Roles = "Admin,Mecanico")]
     public async Task<IActionResult> Criar([FromBody] CriarOrdemServicoDTO dto)
     {
         var resultado = await _service.CriarAsync(dto);
@@ -59,6 +64,7 @@ public class OrdemServicoController : ControllerBase
     // =========================
 
     [HttpPost("{id:guid}/itens")]
+    [Authorize(Roles = "Admin,Mecanico")]
     public async Task<IActionResult> AdicionarItem(Guid id, [FromBody] AdicionarItemOrdemServicoDTO dto)
     {
         dto.OrdemServicoId = id;
@@ -67,6 +73,7 @@ public class OrdemServicoController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/itens/{itemId:guid}")]
+    [Authorize(Roles = "Admin,Mecanico")]
     public async Task<IActionResult> RemoverItem(Guid id, Guid itemId)
     {
         var resultado = await _service.RemoverItemAsync(id, itemId);
@@ -74,6 +81,7 @@ public class OrdemServicoController : ControllerBase
     }
 
     [HttpPut("{id:guid}/itens")]
+    [Authorize(Roles = "Admin,Mecanico")]
     public async Task<IActionResult> AtualizarItem(Guid id, [FromBody] AtualizarItemOrdemServicoDTO dto)
     {
         dto.OrdemServicoId = id;
@@ -85,10 +93,29 @@ public class OrdemServicoController : ControllerBase
     // STATUS
     // =========================
 
-    [HttpPatch("{id:guid}/status")]
-    public async Task<IActionResult> AtualizarStatus(Guid id, [FromBody] AtualizarOrdemServicoDTO dto)
+    [HttpPatch("{id:guid}/iniciar")]
+    [Authorize(Roles = "Admin,Mecanico")]
+    public async Task<IActionResult> Iniciar(Guid id)
     {
-        dto.Id = id;
+        var dto = new AtualizarOrdemServicoDTO { Id = id, Status = "EmAndamento" };
+        var resultado = await _service.AtualizarStatusAsync(dto);
+        return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
+    }
+
+    [HttpPatch("{id:guid}/finalizar")]
+    [Authorize(Roles = "Admin,Mecanico")]
+    public async Task<IActionResult> Finalizar(Guid id)
+    {
+        var dto = new AtualizarOrdemServicoDTO { Id = id, Status = "Finalizada" };
+        var resultado = await _service.AtualizarStatusAsync(dto);
+        return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
+    }
+
+    [HttpPatch("{id:guid}/cancelar")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Cancelar(Guid id)
+    {
+        var dto = new AtualizarOrdemServicoDTO { Id = id, Status = "Cancelada" };
         var resultado = await _service.AtualizarStatusAsync(dto);
         return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
     }
@@ -98,6 +125,7 @@ public class OrdemServicoController : ControllerBase
     // =========================
 
     [HttpPost("{id:guid}/checklist")]
+    [Authorize(Roles = "Admin,Mecanico")]
     public async Task<IActionResult> AdicionarItemChecklist(Guid id, [FromBody] AdicionarChecklistItemDTO dto)
     {
         dto.OrdemServicoId = id;
@@ -106,11 +134,25 @@ public class OrdemServicoController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/checklist/{itemId:guid}/status")]
-    public async Task<IActionResult> AtualizarStatusChecklist(Guid id, Guid itemId, [FromBody] AtualizarStatusChecklistDTO dto)
+    [Authorize(Roles = "Admin,Mecanico")]
+    public async Task<IActionResult> AtualizarStatusChecklist(
+        Guid id, Guid itemId, [FromBody] AtualizarStatusChecklistDTO dto)
     {
         dto.OrdemServicoId = id;
         dto.ItemId = itemId;
         var resultado = await _service.AtualizarStatusChecklistAsync(dto);
+        return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
+    }
+
+    // =========================
+    // CÁLCULO
+    // =========================
+
+    [HttpPatch("{id:guid}/recalcular")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Recalcular(Guid id)
+    {
+        var resultado = await _service.RecalcularValoresAsync(id);
         return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
     }
 }

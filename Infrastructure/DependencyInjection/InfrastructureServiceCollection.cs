@@ -15,15 +15,41 @@ public static class InfrastructureServiceCollection
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
+        // =========================
+        // BANCO DE DADOS
+        // =========================
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlite(connectionString)
-        );
+        {
+            options.UseSqlite(connectionString);
 
-        services.AddScoped<IClienteRepository, ClienteRepository>();
-        services.AddScoped<IVeiculoRepository, VeiculoRepository>();
-        services.AddScoped<IComponenteRepository, PecaRepository>();
+            // opcional (debug)
+            options.EnableSensitiveDataLogging();
+        });
+
+        // =========================
+        // OFICINA
+        // =========================
         services.AddScoped<IOrdemServicoRepository, OrdemServicoRepository>();
+        services.AddScoped<IComponenteRepository, ComponenteRepository>();
+        services.AddScoped<IMecanicoRepository, MecanicoRepository>();
+        services.AddScoped<IVeiculoClienteRepository, VeiculoClienteRepository>();
+
+        // =========================
+        // CONCESSIONÁRIA
+        // =========================
+        services.AddScoped<IVeiculoVendaRepository, VeiculoVendaRepository>();
         services.AddScoped<IPropostaVendaRepository, PropostaVendaRepository>();
+        services.AddScoped<IVendedorRepository, VendedorRepository>();
+
+        // =========================
+        // CLIENTES
+        // =========================
+        services.AddScoped<IClienteRepository, ClienteRepository>();
+
+        // =========================
+        // USUÁRIOS (GENÉRICO SE NECESSÁRIO)
+        // =========================
+        services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 
         return services;
     }
