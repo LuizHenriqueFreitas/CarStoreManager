@@ -1,3 +1,5 @@
+// Classe base para propostas de venda
+
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.ValueObjects;
 using CarStoreManager.Domain.Enums;
@@ -24,12 +26,12 @@ public class PropostaVenda : Entity
 
     public PropostaVenda(
         Guid vendedorId,
-        Guid veiculoId,
+        Guid veiculoVendaId,
         Guid clienteId,
         Dinheiro valorBase)
     {
         VendedorId = vendedorId;
-        VeiculoVendaId = veiculoId;
+        VeiculoVendaId = veiculoVendaId;
         ClienteId = clienteId;
 
         ValorBase = valorBase;
@@ -45,43 +47,20 @@ public class PropostaVenda : Entity
     // GETERS
     // =========================
 
-    public decimal GetValorBase()
-    {
-        return ValorBase.Valor;
-    }
-
-    public decimal GetDesconto()
-    {
-        return Desconto.Valor;
-    }
-
-    public decimal GetValorFinal()
-    {
-        return ValorFinal.Valor;
-    }
-
-    public decimal GetEntrada()
-    {
-        return Entrada.Valor;
-    }
-
-    public decimal GetValorFinanciado()
-    {
-        return Financiamento.ValorFinanciado.Valor;
-    }
-
-    public int GetParcelas()
-    {
-        return Financiamento.Parcelas.Quantidade;
-    }
-
-    public string GetStatus()
-    {
-        return Status.ToString();
-    }
+    public Guid GetVendedorId() => VendedorId;
+    public Guid GetVeiculoId() => VeiculoVendaId;
+    public Guid GetClienteId() => ClienteId;
+    public decimal GetValorBase() => ValorBase.Valor;
+    public decimal GetDesconto() => Desconto.Valor;
+    public decimal GetValorFinal() => ValorFinal.Valor;
+    public decimal GetEntrada() => Entrada.Valor;
+    public decimal GetValorFinanciado() => Financiamento.ValorFinanciado.Valor;
+    public int GetParcelas() => Financiamento.Parcelas.Quantidade;
+    public DateTime GetDataCriacao() => DataCriacao;
+    public string GetStatus() => Status.ToString();
 
     // =========================
-    // REGRAS DE NEGÓCIO
+    // REGRAS DE NEGÓCIO - SETERS
     // =========================
 
     public void AplicarDesconto(Percentual desconto)
@@ -115,6 +94,10 @@ public class PropostaVenda : Entity
             Entrada
         );
     }
+
+    // =======================
+    // STATUS
+    // =======================
 
     public void Aprovar()
     {

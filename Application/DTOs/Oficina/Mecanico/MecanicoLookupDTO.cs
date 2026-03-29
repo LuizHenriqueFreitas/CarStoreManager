@@ -6,4 +6,5 @@ public class MecanicoLookupDTO
 {
     public Guid Id { get; set; }
     public string Nome { get; set; } = null!;
+    public string Ocupado { get; set; } = null!;
 }

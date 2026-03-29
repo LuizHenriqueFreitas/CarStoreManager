@@ -4,6 +4,6 @@ public class VeiculoClienteListaDTO
 {
     public Guid Id { get; set; }
     public Guid ClienteId { get; set; }
-    public string Descricao { get; set; } = null!;
-    public string Cor { get; set; } = null!;
+    public string Marca { get; set; } = null!;
+    public string Modelo { get; set; } = null!;
 }

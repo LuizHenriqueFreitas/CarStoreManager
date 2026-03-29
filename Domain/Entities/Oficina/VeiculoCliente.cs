@@ -1,3 +1,5 @@
+// classe base para carros de clientes da oficina
+
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.ValueObjects;
 
@@ -39,13 +41,30 @@ public class VeiculoCliente : Entity
     // GETTERS
     // =========================
 
+    public Guid GetClienteId() => ClienteId;
+    public string GetMarca() => Marca;
+    public string GetModelo() => Modelo;
+    public string GetCor() => Cor;
     public int GetAno() => Ano.Valor;
-
-    public string GetDescricao() => $"{Marca} {Modelo} {Ano.Valor}";
-
+    public string GetHistorico()
+    {
+        
+        if (HistoricoServicos == null)
+        {
+            return $"Veiculo não possui histórico.";
+        }
+        string temp = "Relatorio: ";
+        for(int i =0; i< HistoricoServicos.Count; i++)
+        {
+            temp += HistoricoServicos[i] + "\n";
+        }
+        return $"{temp}.";
+    }
+    
     // =========================
-    // MÉTODOS DE NEGÓCIO
+    // REGRAS DE NEGOCIOS - SETERS
     // =========================
+    public string GetDescricao() => $"{Marca} {Modelo} {Cor} {Ano.Valor}";
 
     public void AlterarMarca(string marca)
     {

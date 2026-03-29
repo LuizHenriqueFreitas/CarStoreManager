@@ -20,7 +20,7 @@ public class VeiculoClienteService : IVeiculoClienteService
         _clienteRepository = clienteRepository;
     }
 
-    public async Task<Result<VeiculoClienteDTO>> ObterPorIdAsync(Guid id)
+    public async Task<Result<VeiculoClienteDTO>> GetByIdAsync(Guid id)
     {
         var veiculo = await _repository.GetByIdAsync(id);
 
@@ -30,7 +30,7 @@ public class VeiculoClienteService : IVeiculoClienteService
         return Result<VeiculoClienteDTO>.Ok(VeiculoClienteMapping.ToDto(veiculo));
     }
 
-    public async Task<Result<IEnumerable<VeiculoClienteListaDTO>>> ObterTodosAsync()
+    public async Task<Result<IEnumerable<VeiculoClienteListaDTO>>> GetAllAsync()
     {
         var veiculos = await _repository.GetAllAsync();
         return Result<IEnumerable<VeiculoClienteListaDTO>>.Ok(
@@ -51,7 +51,7 @@ public class VeiculoClienteService : IVeiculoClienteService
         );
     }
 
-    public async Task<Result<Guid>> CriarAsync(CriarVeiculoClienteDTO dto)
+    public async Task<Result<Guid>> AddAsync(CriarVeiculoClienteDTO dto)
     {
         var cliente = await _clienteRepository.GetByIdAsync(dto.ClienteId);
 
@@ -73,7 +73,7 @@ public class VeiculoClienteService : IVeiculoClienteService
         }
     }
 
-    public async Task<Result> AtualizarAsync(AtualizarVeiculoClienteDTO dto)
+    public async Task<Result> UpdateAsync(AtualizarVeiculoClienteDTO dto)
     {
         var veiculo = await _repository.GetByIdAsync(dto.Id);
 
@@ -100,7 +100,7 @@ public class VeiculoClienteService : IVeiculoClienteService
         }
     }
 
-    public async Task<Result> RemoverAsync(Guid id)
+    public async Task<Result> RemoveAsync(Guid id)
     {
         var veiculo = await _repository.GetByIdAsync(id);
 

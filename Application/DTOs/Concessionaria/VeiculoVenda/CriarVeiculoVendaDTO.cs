@@ -11,7 +11,6 @@ public class CriarVeiculoVendaDTO
     public string Placa { get; set; } = null!;
     public string Cambio { get; set; } = null!;
     public string Combustivel { get; set; } = null!;
-    public string Estado { get; set; } = null!;
     public decimal Valor { get; set; }
     public List<string> Acessorios { get; set; } = new();
 }

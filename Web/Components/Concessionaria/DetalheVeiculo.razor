@@ -259,11 +259,11 @@ else
 
     private Guid UsuarioAtualId;
 
-protected override async Task OnInitializedAsync()
-{
-    var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-    var claim = authState.User.FindFirst(
-        System.Security.Claims.ClaimTypes.NameIdentifier);
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var claim = authState.User.FindFirst(
+            System.Security.Claims.ClaimTypes.NameIdentifier);
 
     if (claim is not null)
         UsuarioAtualId = Guid.Parse(claim.Value);
@@ -360,10 +360,10 @@ protected override async Task OnInitializedAsync()
 }
 
     private async Task<bool> VerificarSenha(string senha)
-{
-    var resultado = await AuthService.VerificarSenhaAsync(UsuarioAtualId, senha);
-    return resultado.IsSuccess;
-}
+    {
+        var resultado = await AuthService.VerificarSenhaAsync(UsuarioAtualId, senha);
+        return resultado.IsSuccess;
+    }
 
     private void GerarProposta() =>
         Nav.NavigateTo($"/concessionaria/proposta/nova?veiculoId={Id}");

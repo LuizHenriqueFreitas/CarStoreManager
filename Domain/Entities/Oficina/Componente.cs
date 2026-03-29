@@ -1,3 +1,5 @@
+//classe base para todos os componentes armazenados no estoque da loja, ou que ja passaram pela loja
+
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.ValueObjects;
 using CarStoreManager.Domain.Enums;
@@ -45,13 +47,15 @@ public class Componente : Entity
     // GETERS
     // ========================
 
-    public decimal GetValor()
-    {
-        return Valor.Valor;
-    }
+    public string GetNome() => Nome;
+    public string GetModelo() => Modelo;
+    public string GetSistema() => Sistema.ToString();
+    public decimal GetValor() => Valor.Valor;
+    public int GetQuantidade() => QuantidadeEstoque;
+    public int GetEstoqueMinimo() => EstoqueMinimo;
 
     // =========================
-    // MÉTODOS DE NEGÓCIO
+    // SETERS
     // =========================
 
     public void DefinirNome(string nome)

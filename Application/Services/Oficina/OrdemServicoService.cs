@@ -22,7 +22,7 @@ public class OrdemServicoService : IOrdemServicoService
         _componenteRepository = componenteRepository;
     }
 
-    public async Task<Result<OrdemServicoDTO>> ObterPorIdAsync(Guid id)
+    public async Task<Result<OrdemServicoDTO>> GetByIdAsync(Guid id)
     {
         var ordem = await _repository.GetByIdAsync(id);
 
@@ -32,7 +32,7 @@ public class OrdemServicoService : IOrdemServicoService
         return Result<OrdemServicoDTO>.Ok(OrdemServicoMapping.ToDto(ordem));
     }
 
-    public async Task<Result<IEnumerable<OrdemServicoListaDTO>>> ObterTodasAsync()
+    public async Task<Result<IEnumerable<OrdemServicoListaDTO>>> GetAllAsync()
     {
         var lista = (await _repository.GetAllAsync())
             .Select(OrdemServicoMapping.ToListaDto);
@@ -52,7 +52,7 @@ public class OrdemServicoService : IOrdemServicoService
         );
     }
 
-    public async Task<Result<Guid>> CriarAsync(CriarOrdemServicoDTO dto)
+    public async Task<Result<Guid>> AddAsync(CriarOrdemServicoDTO dto)
     {
         try
         {
@@ -201,5 +201,15 @@ public class OrdemServicoService : IOrdemServicoService
         await _repository.SaveChangesAsync();
 
         return Result.Ok();
+    }
+
+    public async Task<Result> UpdateAsync (AtualizarOrdemServicoDTO entity)
+    {
+        return Result.Fail("Funcao nao implementada");
+    }
+
+    public async Task<Result> RemoveAsync (Guid id)
+    {
+        return Result.Fail("Funcao nao implementada");
     }
 }

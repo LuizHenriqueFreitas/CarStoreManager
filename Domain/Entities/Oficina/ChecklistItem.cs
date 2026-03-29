@@ -1,3 +1,5 @@
+//classe que armaazena os recursos da checklist de itens que vai ser usada
+
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.Enums;
 
@@ -6,6 +8,7 @@ namespace CarStoreManager.Domain.Entities.Oficina;
 public class ChecklistItem : Entity
 {
     public Guid OrdemServicoId { get; private set; }
+    public string Titulo { get; private set; } = null!;
     public string Descricao { get; private set; } = null!;
     public StatusChecklistItem Status { get; private set; }
     public OrigemChecklistItem Origem { get; private set; }

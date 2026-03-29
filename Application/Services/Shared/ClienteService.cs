@@ -21,7 +21,7 @@ public class ClienteService : IClienteService
     // CONSULTAS
     // =========================
 
-    public async Task<Result<ClienteDTO>> ObterPorIdAsync(Guid id)
+    public async Task<Result<ClienteDTO>> GetByIdAsync(Guid id)
     {
         var cliente = await _repository.GetByIdAsync(id);
 
@@ -33,7 +33,7 @@ public class ClienteService : IClienteService
         );
     }
 
-    public async Task<Result<IEnumerable<ClienteListaDTO>>> ObterTodosAsync()
+    public async Task<Result<IEnumerable<ClienteListaDTO>>> GetAllAsync()
     {
         var clientes = await _repository.GetAllAsync();
 
@@ -56,7 +56,7 @@ public class ClienteService : IClienteService
     // CRIAÇÃO
     // =========================
 
-    public async Task<Result<Guid>> CriarAsync(CriarClienteDTO dto)
+    public async Task<Result<Guid>> AddAsync(CriarClienteDTO dto)
     {
         if (await _repository.CpfExisteAsync(dto.Cpf))
             return Result<Guid>.Fail("CPF já cadastrado");
@@ -85,7 +85,7 @@ public class ClienteService : IClienteService
     // ATUALIZAÇÃO
     // =========================
 
-    public async Task<Result> AtualizarAsync(AtualizarClienteDTO dto)
+    public async Task<Result> UpdateAsync(AtualizarClienteDTO dto)
     {
         var cliente = await _repository.GetByIdAsync(dto.Id);
 
@@ -95,7 +95,6 @@ public class ClienteService : IClienteService
         try
         {
             cliente.AtualizarDados(
-                dto.Nome,
                 new Telefone(dto.Telefone),
                 new Email (dto.Email)
             );
@@ -115,7 +114,7 @@ public class ClienteService : IClienteService
     // REMOÇÃO
     // =========================
 
-    public async Task<Result> RemoverAsync(Guid id)
+    public async Task<Result> RemoveAsync(Guid id)
     {
         var cliente = await _repository.GetByIdAsync(id);
 

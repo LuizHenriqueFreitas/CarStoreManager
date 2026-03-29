@@ -22,7 +22,7 @@ public class ComponenteService : IComponenteService
     // CONSULTAS
     // =========================
 
-    public async Task<Result<ComponenteDTO>> ObterPorIdAsync(Guid id)
+    public async Task<Result<ComponenteDTO>> GetByIdAsync(Guid id)
     {
         var componente = await _repository.GetByIdAsync(id);
 
@@ -34,7 +34,7 @@ public class ComponenteService : IComponenteService
         );
     }
 
-    public async Task<Result<IEnumerable<ComponenteListaDTO>>> ObterTodosAsync()
+    public async Task<Result<IEnumerable<ComponenteListaDTO>>> GetAllAsync()
     {
         var componentes = await _repository.GetAllAsync();
 
@@ -55,25 +55,25 @@ public class ComponenteService : IComponenteService
         return Result<IEnumerable<ComponenteListaDTO>>.Ok(lista);
     }
 
-    public async Task<Result<IEnumerable<ComponenteListaDTO>>> ObterPorSistemaAsync(string sistema)
+    public async Task<Result<IEnumerable<ComponenteLookupDTO>>> ObterPorSistemaAsync(string sistema)
     {
         if (!Enum.TryParse<SistemaComponente>(sistema, true, out var sistemaEnum))
-            return Result<IEnumerable<ComponenteListaDTO>>.Fail("Sistema inválido");
+            return Result<IEnumerable<ComponenteLookupDTO>>.Fail("Sistema inválido");
 
         var componentes = await _repository.GetAllAsync();
 
         var lista = componentes
             .Where(c => c.Sistema == sistemaEnum)
-            .Select(ComponenteMapping.ToListaDto);
+            .Select(ComponenteMapping.ToLookupDto);
 
-        return Result<IEnumerable<ComponenteListaDTO>>.Ok(lista);
+        return Result<IEnumerable<ComponenteLookupDTO>>.Ok(lista);
     }
 
     // =========================
     // CRIAÇÃO
     // =========================
 
-    public async Task<Result<Guid>> CriarAsync(CriarComponenteDTO dto)
+    public async Task<Result<Guid>> AddAsync(CriarComponenteDTO dto)
     {
         if(!Enum.TryParse<SistemaComponente>(dto.Sistema, true, out var sistema))
             return Result<Guid>.Fail("Sistema inválido");
@@ -103,7 +103,7 @@ public class ComponenteService : IComponenteService
     // ATUALIZAÇÃO
     // =========================
 
-    public async Task<Result> AtualizarAsync(AtualizarComponenteDTO dto)
+    public async Task<Result> UpdateAsync(AtualizarComponenteDTO dto)
     {
         var componente = await _repository.GetByIdAsync(dto.Id);
 
@@ -181,7 +181,7 @@ public class ComponenteService : IComponenteService
     // REMOÇÃO
     // =========================
 
-    public async Task<Result> RemoverAsync(Guid id)
+    public async Task<Result> RemoveAsync(Guid id)
     {
         var componente = await _repository.GetByIdAsync(id);
 

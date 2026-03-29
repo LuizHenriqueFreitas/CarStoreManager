@@ -20,14 +20,14 @@ public class PropostaVendaController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetTodas()
     {
-        var resultado = await _service.ObterTodasAsync();
+        var resultado = await _service.GetAllAsync();
         return resultado.IsSuccess ? Ok(resultado.Value) : BadRequest(resultado.Error);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetPorId(Guid id)
     {
-        var resultado = await _service.ObterPorIdAsync(id);
+        var resultado = await _service.GetByIdAsync(id);
         return resultado.IsSuccess ? Ok(resultado.Value) : NotFound(resultado.Error);
     }
 
@@ -48,7 +48,7 @@ public class PropostaVendaController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Criar([FromBody] CriarPropostaVendaDTO dto)
     {
-        var resultado = await _service.CriarAsync(dto);
+        var resultado = await _service.AddAsync(dto);
         return resultado.IsSuccess
             ? CreatedAtAction(nameof(GetPorId), new { id = resultado.Value }, null)
             : BadRequest(resultado.Error);

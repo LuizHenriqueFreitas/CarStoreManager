@@ -2,7 +2,7 @@ namespace CarStoreManager.Domain.Enums;
 
 public enum NivelOcupacaoMecanico
 {
-    Livre = 0,       
-    Disponivel = 1,  
-    Ocupado = 2       
+    Disponivel = 0,       
+    Ocupado = 1,  
+    Indisponivel = 2       
 }

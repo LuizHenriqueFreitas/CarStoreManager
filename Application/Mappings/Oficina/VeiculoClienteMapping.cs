@@ -10,13 +10,13 @@ public static class VeiculoClienteMapping
     {
         return new VeiculoClienteDTO
         {
-            Id = entity.Id,
-            ClienteId = entity.ClienteId,
-            Marca = entity.Marca,
-            Modelo = entity.Modelo,
-            Cor = entity.Cor,
+            Id = entity.GetId(),
+            ClienteId = entity.GetClienteId(),
+            Marca = entity.GetMarca(),
+            Modelo = entity.GetModelo(),
+            Cor = entity.GetCor(),
             Ano = entity.GetAno(),
-            Descricao = entity.GetDescricao()
+            HistoricoServicos = entity.GetHistorico()
         };
     }
 
@@ -24,10 +24,10 @@ public static class VeiculoClienteMapping
     {
         return new VeiculoClienteListaDTO
         {
-            Id = entity.Id,
-            ClienteId = entity.ClienteId,
-            Descricao = entity.GetDescricao(),
-            Cor = entity.Cor
+            Id = entity.GetId(),
+            ClienteId = entity.GetClienteId(),
+            Marca = entity.GetMarca(),
+            Modelo = entity.GetModelo()
         };
     }
 

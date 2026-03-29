@@ -8,4 +8,5 @@ public class CriarMecanicoDTO
     public string Senha { get; set; } = null!;
     public string Especialidade { get; set; } = null!;
     public string Nivel { get; set; } = null!;
+    public DateTime DataCriacao { get; set;}
 }

@@ -11,4 +11,7 @@ public class ComponenteLookupDTO
     public string Modelo { get; set; } = string.Empty;
     
     public decimal Valor { get; set; }
+
+    public string Sistema { get; set; } = string.Empty;
+
 }

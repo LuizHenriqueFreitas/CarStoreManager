@@ -14,13 +14,13 @@ public static class ComponenteMapping
     {
         return new ComponenteDTO
         {
-            Id = entity.Id,
-            Nome = entity.Nome,
-            Modelo = entity.Modelo,
+            Id = entity.GetId(),
+            Nome = entity.GetNome(),
+            Modelo = entity.GetModelo(),
             Valor = entity.GetValor(),
-            QuantidadeEstoque = entity.QuantidadeEstoque,
-            EstoqueMinimo = entity.EstoqueMinimo,
-            Sistema = entity.Sistema.ToString()
+            QuantidadeEstoque = entity.GetQuantidade(),
+            EstoqueMinimo = entity.GetEstoqueMinimo(),
+            Sistema = entity.GetSistema()
         };
     }
 
@@ -31,10 +31,25 @@ public static class ComponenteMapping
     {
         return new ComponenteListaDTO
         {
-            Id = entity.Id,
-            Nome = entity.Nome,
-            QuantidadeEstoque = entity.QuantidadeEstoque,
-            Sistema = entity.Sistema.ToString()
+            Id = entity.GetId(),
+            Nome = entity.GetNome(),
+            QuantidadeEstoque = entity.GetQuantidade(),
+            Sistema = entity.GetSistema()
+        };
+    }
+
+    // =========================
+    // ENTITY → DTO (LOOKUP)
+    // =========================
+    public static ComponenteLookupDTO ToLookupDto(Componente entity)
+    {
+        return new ComponenteLookupDTO
+        {
+            Id = entity.GetId(),
+            Nome = entity.GetNome(),
+            Modelo = entity.GetModelo(),
+            Valor = entity.GetValor(),
+            Sistema = entity.GetSistema()
         };
     }
 

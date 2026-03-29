@@ -1,3 +1,5 @@
+//classe base do vendedor = herda de Unuario.cs
+
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.ValueObjects;
 
@@ -20,6 +22,18 @@ public class Vendedor : Usuario
     {
         DadosFuncionario = new DadosFuncionario(nivel, dataContratacao);
     }
+
+    // =====================
+    // GETTERS
+    // =====================
+
+    public string GetNivel() => DadosFuncionario.Nivel.ToString();
+
+    public DateTime GetDataContratacao() => DadosFuncionario.DataContratacao;
+
+    // =============================
+    // REGRAS DE NEGOCIOS - SETERS
+    // =============================
 
     public void AtualizarDadosFuncionario(NivelFuncionario nivel, DateTime dataContratacao)
         => DadosFuncionario = new DadosFuncionario(nivel, dataContratacao);

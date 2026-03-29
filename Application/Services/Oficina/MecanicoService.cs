@@ -15,7 +15,7 @@ public class MecanicoService : IMecanicoService
         _repository = repository;
     }
 
-    public async Task<Result<MecanicoDTO>> ObterPorIdAsync(Guid id)
+    public async Task<Result<MecanicoDTO>> GetByIdAsync(Guid id)
     {
         var mecanico = await _repository.GetByIdAsync(id);
 
@@ -25,7 +25,7 @@ public class MecanicoService : IMecanicoService
         return Result<MecanicoDTO>.Ok(MecanicoMapping.ToDto(mecanico));
     }
 
-    public async Task<Result<IEnumerable<MecanicoListaDTO>>> ObterTodosAsync()
+    public async Task<Result<IEnumerable<MecanicoListaDTO>>> GetAllAsync()
     {
         var lista = (await _repository.GetAllAsync())
             .Select(MecanicoMapping.ToListaDto);
@@ -33,7 +33,7 @@ public class MecanicoService : IMecanicoService
         return Result<IEnumerable<MecanicoListaDTO>>.Ok(lista);
     }
 
-    public async Task<Result<Guid>> CriarAsync(CriarMecanicoDTO dto)
+    public async Task<Result<Guid>> AddAsync(CriarMecanicoDTO dto)
     {
         try
         {
@@ -50,7 +50,7 @@ public class MecanicoService : IMecanicoService
         }
     }
 
-    public async Task<Result> AtualizarAsync(AtualizarMecanicoDTO dto)
+    public async Task<Result> UpdateAsync(AtualizarMecanicoDTO dto)
     {
         var mecanico = await _repository.GetByIdAsync(dto.Id);
 
@@ -88,7 +88,7 @@ public class MecanicoService : IMecanicoService
         return Result.Ok();
     }
 
-    public async Task<Result> RemoverAsync(Guid id)
+    public async Task<Result> RemoveAsync(Guid id)
     {
         var mecanico = await _repository.GetByIdAsync(id);
 

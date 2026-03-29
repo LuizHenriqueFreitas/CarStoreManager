@@ -8,5 +8,5 @@ public class VeiculoClienteDTO
     public string Modelo { get; set; } = null!;
     public string Cor { get; set; } = null!;
     public int Ano { get; set; }
-    public string Descricao { get; set; } = null!;
+    public string HistoricoServicos { get; set; } = null!;
 }

@@ -7,6 +7,7 @@ public class MecanicoDTO
     public string Email { get; set; } = null!;
     public string Telefone { get; set; } = null!;
     public string Especialidade { get; set; } = null!;
+    public string Ocupado { get; set; } = null!;
     public string Nivel { get; set; } = null!;
     public DateTime DataContratacao { get; set; }
 }

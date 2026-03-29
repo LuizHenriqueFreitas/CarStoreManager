@@ -1,3 +1,5 @@
+//Arquivo que faz as converções entre DTOS e Entidades de Veiculos de Venda
+
 using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda;
 using CarStoreManager.Domain.Entities.Concessionaria;
 using CarStoreManager.Domain.Enums;
@@ -11,17 +13,16 @@ public static class VeiculoVendaMapping
     {
         return new VeiculoVendaDTO
         {
-            Id = entity.Id,
-            Marca = entity.Marca,
-            Modelo = entity.Modelo,
-            Cor = entity.Cor,
-            Motorizacao = entity.Motorizacao,
+            Id = entity.GetId(),
+            Marca = entity.GetMarca(),
+            Modelo = entity.GetModelo(),
+            Cor = entity.GetCor(),
+            Motorizacao = entity.GetMotorizacao(),
             Ano = entity.GetAno(),
             Quilometragem = entity.GetQuilometragem(),
             Placa = entity.GetPlaca(),
             Cambio = entity.Cambio.ToString(),
             Combustivel = entity.Combustivel.ToString(),
-            Estado = entity.Estado.ToString(),
             Disponibilidade = entity.Disponibilidade.ToString(),
             Valor = entity.GetValor(),
             Acessorios = entity.GetAcessoriosLista(),
@@ -36,9 +37,9 @@ public static class VeiculoVendaMapping
     {
         return new VeiculoVendaListaDTO
         {
-            Id = entity.Id,
-            Marca = entity.Marca,
-            Modelo = entity.Modelo,
+            Id = entity.GetId(),
+            Marca = entity.GetMarca(),
+            Modelo = entity.GetModelo(),
             Ano = entity.GetAno(),
             Combustivel = entity.Combustivel.ToString(),
             Disponibilidade = entity.Disponibilidade.ToString(),
@@ -61,7 +62,6 @@ public static class VeiculoVendaMapping
             new PlacaVeiculo(dto.Placa),
             ConverterEnum<TipoCambio>(dto.Cambio, "Câmbio"),
             ConverterEnum<TipoCombustivel>(dto.Combustivel, "Combustível"),
-            ConverterEnum<EstadoConservacao>(dto.Estado, "Estado"),
             new Dinheiro(dto.Valor),
             ConverterAcessorios(dto.Acessorios)
         );
@@ -70,17 +70,8 @@ public static class VeiculoVendaMapping
     public static void UpdateEntity(VeiculoVenda entity, AtualizarVeiculoVendaDTO dto)
     {
         entity.AtualizarDados(
-            dto.Marca,
-            dto.Modelo,
-            dto.Cor,
-            dto.Motorizacao,
             new Dinheiro(dto.Valor),
-            ConverterEnum<DisponibilidadeVeiculo>(dto.Disponibilidade, "Disponibilidade"),
-            dto.Quilometragem,
-            ConverterEnum<EstadoConservacao>(dto.Estado, "Estado"),
-            ConverterEnum<TipoCambio>(dto.Cambio, "Câmbio"),
-            ConverterEnum<TipoCombustivel>(dto.Combustivel, "Combustível"),
-            ConverterAcessorios(dto.Acessorios)
+            ConverterEnum<DisponibilidadeVeiculo>(dto.Disponibilidade, "Disponibilidade")
         );
     }
 

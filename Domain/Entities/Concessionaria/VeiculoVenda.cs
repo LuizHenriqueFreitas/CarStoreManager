@@ -1,3 +1,5 @@
+//classe base dos veiculos da concessionaria
+
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.ValueObjects;
@@ -17,7 +19,6 @@ public class VeiculoVenda : Entity
 
     public TipoCambio Cambio { get; private set; }
     public TipoCombustivel Combustivel { get; private set; }
-    public EstadoConservacao Estado { get; private set; }
     public DisponibilidadeVeiculo Disponibilidade { get; private set; }
     public AcessoriosVeiculo Acessorios { get; private set; }
 
@@ -37,7 +38,6 @@ public class VeiculoVenda : Entity
         PlacaVeiculo placa,
         TipoCambio cambio,
         TipoCombustivel combustivel,
-        EstadoConservacao estado,
         Dinheiro valor,
         AcessoriosVeiculo acessorios = AcessoriosVeiculo.Nenhum)
     {
@@ -52,7 +52,6 @@ public class VeiculoVenda : Entity
 
         Cambio = cambio;
         Combustivel = combustivel;
-        Estado = estado;
         Disponibilidade = DisponibilidadeVeiculo.Disponivel;
         Valor = valor ?? throw new ArgumentNullException(nameof(valor));
         Acessorios = acessorios;
@@ -61,11 +60,18 @@ public class VeiculoVenda : Entity
     // =========================
     // GETTERS
     // =========================
-
+    public string GetMarca() => Marca;
+    public string GetModelo() => Modelo;
+    public string GetCor() => Cor;
+    public string GetMotorizacao() => Motorizacao; 
     public int GetAno() => Ano.Valor;
     public int GetQuilometragem() => Quilometragem.Valor;
     public string GetPlaca() => Placa.ToString();
+    public string GetCambio() => Cambio.ToString();
+    public string getCombustivel() => Combustivel.ToString();
     public decimal GetValor() => Valor.Valor;
+
+    public AcessoriosVeiculo GetAcessoriosVeiculo() => Acessorios;
 
     public List<string> GetAcessoriosLista()
     {
@@ -76,7 +82,7 @@ public class VeiculoVenda : Entity
     }
 
     // =========================
-    // MÉTODOS DE NEGÓCIO
+    // REGRAS DE NEGOCIOS - SETERS
     // =========================
 
     public void AlterarMarca(string marca)
@@ -107,6 +113,10 @@ public class VeiculoVenda : Entity
         Motorizacao = motorizacao.Trim();
     }
 
+    public void AlterarQuilometragem(int novaKm)
+        => Quilometragem.Atualizar(novaKm);
+
+
     public void AtualizarValor(Dinheiro novoValor)
     {
         if (novoValor.Valor <= 0)
@@ -114,14 +124,7 @@ public class VeiculoVenda : Entity
         Valor = novoValor;
     }
 
-    public void AtualizarQuilometragem(int novaKm)
-        => Quilometragem.Atualizar(novaKm);
-
-    public void AlterarEstado(EstadoConservacao estado)
-        => Estado = estado;
-
-    public void AlterarDisponibilidade(DisponibilidadeVeiculo disponibilidade)
-        => Disponibilidade = disponibilidade;
+    // acessorios
 
     public void AdicionarAcessorio(AcessoriosVeiculo acessorio)
         => Acessorios |= acessorio;
@@ -131,6 +134,10 @@ public class VeiculoVenda : Entity
 
     public void DefinirAcessorios(AcessoriosVeiculo acessorios)
         => Acessorios = acessorios;
+
+    // status
+    public void AlterarDisponibilidade(DisponibilidadeVeiculo disponibilidade)
+        => Disponibilidade = disponibilidade;
 
     public void MarcarComoVendido()
         => Disponibilidade = DisponibilidadeVeiculo.Vendido;
@@ -158,29 +165,11 @@ public class VeiculoVenda : Entity
     }
 
     public void AtualizarDados(
-        string marca,
-        string modelo,
-        string cor,
-        string motorizacao,
         Dinheiro novoValor,
-        DisponibilidadeVeiculo disponibilidade,
-        int novaKm,
-        EstadoConservacao estado,
-        TipoCambio cambio,
-        TipoCombustivel combustivel,
-        AcessoriosVeiculo acessorios)
+        DisponibilidadeVeiculo disponibilidade)
     {
-        AlterarMarca(marca);
-        AlterarModelo(modelo);
-        AlterarCor(cor);
-        AlterarMotorizacao(motorizacao);
         AtualizarValor(novoValor);
         AlterarDisponibilidade(disponibilidade);
-        AtualizarQuilometragem(novaKm);
-        AlterarEstado(estado);
-        Cambio = cambio;
-        Combustivel = combustivel;
-        DefinirAcessorios(acessorios);
     }
 
     private void ReordenarFotos()

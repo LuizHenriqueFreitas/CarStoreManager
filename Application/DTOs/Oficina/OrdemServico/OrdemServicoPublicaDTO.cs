@@ -9,4 +9,5 @@ public class OrdemServicoPublicaDTO
     public DateTime DataCriacao { get; set; }
     public DateTime PrazoEstimado { get; set; }
     public List<ChecklistItemPublicoDTO> Checklist { get; set; } = new();
+    public decimal ValorTotal { get; set; }
 }

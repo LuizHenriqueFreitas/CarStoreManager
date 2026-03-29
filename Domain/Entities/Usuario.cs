@@ -1,3 +1,5 @@
+// classe base de usuarios, usada por vendedor, mecanico e admin
+
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.ValueObjects;
@@ -40,11 +42,13 @@ public class Usuario : Entity
     // GETTERS
     // =========================
 
-    public string GetEmail() => Email.Endereco;
-    public string GetTelefone() => Telefone.Numero;
+    public string GetNome() => Nome;
+    public string GetEmail() => Email.Endereco.ToString();
+    public string GetTelefone() => Telefone.Numero.ToString();
+    public string GetRole() => Role.ToString();
 
     // =========================
-    // MÉTODOS DE NEGÓCIO
+    // REGRAS DE NEGOCIOS - SETERS
     // =========================
 
     public void AlterarNome(string nome)

@@ -1,3 +1,5 @@
+//classe base das ordens de servico
+
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Services.Oficina;
@@ -65,14 +67,44 @@ public class OrdemServico : Entity
     // GETERS
     // ============================
 
-    public decimal GetCustoServico()
+    public Guid GetVeiculoClienteId() => VeiculoClienteId;
+    public Guid GetMecacnicoId() => MecanicoId;
+    public Guid GetClienteId() => ClienteId;
+    public string GetTipoServico() => Tipo.ToString();
+    public string GetDescricao() => Descricao;
+    public string GetNumeroPublico() => NumeroPublico;
+    public DateTime GetDataCriacao() => DataCriacao;
+    public DateTime GetPrazoEstimado() => PrazoEstimado;
+    public decimal GetCustoServico() => CustoServico.Valor;
+    public decimal GetValorTotal() => ValorTotal.Valor;
+    public string GetStatus() => Status.ToString();
+    public string GetItens()
     {
-        return CustoServico.Valor;
+        
+        if (Itens == null)
+        {
+            return $"Ordem não possui Itens listados.";
+        }
+        string temp = "Itens: ";
+        for(int i =0; i< Itens.Count; i++)
+        {
+            temp += Itens[i] + "\n";
+        }
+        return $"{temp}.";
     }
-
-    public decimal GetValorTotal()
+    public string GetChecklist()
     {
-        return ValorTotal.Valor;
+        
+        if (Checklist == null)
+        {
+            return $"Ordem não possui checklist.";
+        }
+        string temp = "Checklist: ";
+        for(int i =0; i< Checklist.Count; i++)
+        {
+            temp += Checklist[i] + "\n";
+        }
+        return $"{temp}.";
     }
 
     // =========================
@@ -105,6 +137,10 @@ public class OrdemServico : Entity
         var bytes = Guid.NewGuid().ToByteArray();
         return Convert.ToHexString(bytes)[..8].ToUpper(); // ex: "A3F2BC91"
     }
+
+    // ==================================
+    // CHECKLIST
+    // ==================================
 
     public void GerarChecklistAutomatico()
     {

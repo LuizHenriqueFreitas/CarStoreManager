@@ -11,18 +11,18 @@ public static class OrdemServicoMapping
     {
         return new OrdemServicoDTO
         {
-            Id = entity.Id,
-            NumeroPublico = entity.NumeroPublico,
-            ClienteId = entity.ClienteId,
-            VeiculoClienteId = entity.VeiculoClienteId,
-            MecanicoId = entity.MecanicoId,
-            Tipo = entity.Tipo.ToString(),
-            Descricao = entity.Descricao,
-            DataCriacao = entity.DataCriacao,
-            PrazoEstimado = entity.PrazoEstimado,
+            Id = entity.GetId(),
+            ClienteId = entity.GetClienteId(),
+            VeiculoClienteId = entity.GetVeiculoClienteId(),
+            MecanicoId = entity.GetMecacnicoId(),
+            Tipo = entity.GetTipoServico(),
+            Descricao = entity.GetDescricao(),
+            NumeroPublico = entity.GetNumeroPublico(),
+            DataCriacao = entity.GetDataCriacao(),
+            PrazoEstimado = entity.GetPrazoEstimado(),
             CustoServico = entity.GetCustoServico(),
             ValorTotal = entity.GetValorTotal(),
-            Status = entity.Status.ToString(),
+            Status = entity.GetStatus(),
             Itens = entity.Itens
                 .Select(ItemOrdemServicoMapping.ToDto)
                 .ToList(),
@@ -44,14 +44,13 @@ public static class OrdemServicoMapping
     {
         return new OrdemServicoListaDTO
         {
-            Id = entity.Id,
-            NumeroPublico = entity.NumeroPublico,
-            ClienteId = entity.ClienteId,
-            VeiculoClienteId = entity.VeiculoClienteId,
-            Tipo = entity.Tipo.ToString(),
-            Descricao = entity.Descricao,
-            Status = entity.Status.ToString(),
-            PrazoEstimado = entity.PrazoEstimado,
+            Id = entity.GetId(),
+            ClienteId = entity.GetClienteId(),
+            VeiculoClienteId = entity.GetVeiculoClienteId(),
+            Tipo = entity.GetTipoServico(),
+            NumeroPublico = entity.GetNumeroPublico(),
+            Status = entity.GetStatus(),
+            PrazoEstimado = entity.GetPrazoEstimado(),
             ValorTotal = entity.GetValorTotal()
         };
     }

@@ -1,3 +1,5 @@
+// classe de administrador
+
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.ValueObjects;
 

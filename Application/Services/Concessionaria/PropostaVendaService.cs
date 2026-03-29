@@ -20,7 +20,7 @@ public class PropostaVendaService : IPropostaVendaService
         _veiculoRepository = veiculoRepository;
     }
 
-    public async Task<Result<PropostaVendaDTO>> ObterPorIdAsync(Guid id)
+    public async Task<Result<PropostaVendaDTO>> GetByIdAsync(Guid id)
     {
         var proposta = await _repository.GetByIdAsync(id);
         if (proposta is null)
@@ -29,7 +29,7 @@ public class PropostaVendaService : IPropostaVendaService
         return Result<PropostaVendaDTO>.Ok(PropostaVendaMapping.ToDto(proposta));
     }
 
-    public async Task<Result<IEnumerable<PropostaVendaListaDTO>>> ObterTodasAsync()
+    public async Task<Result<IEnumerable<PropostaVendaListaDTO>>> GetAllAsync()
     {
         var propostas = await _repository.GetAllAsync();
         return Result<IEnumerable<PropostaVendaListaDTO>>.Ok(
@@ -50,7 +50,7 @@ public class PropostaVendaService : IPropostaVendaService
             propostas.Select(PropostaVendaMapping.ToListaDto));
     }
 
-    public async Task<Result<Guid>> CriarAsync(CriarPropostaVendaDTO dto)
+    public async Task<Result<Guid>> AddAsync(CriarPropostaVendaDTO dto)
     {
         var veiculo = await _veiculoRepository.GetByIdAsync(dto.VeiculoVendaId);
         if (veiculo is null)
@@ -79,7 +79,7 @@ public class PropostaVendaService : IPropostaVendaService
 
         try
         {
-            proposta.AplicarDesconto(new Percentual(dto.Percentual));
+            proposta.AplicarDesconto(PropostaVendaMapping.ToDesconto(dto));
             _repository.Update(proposta);
             await _repository.SaveChangesAsync();
             return Result.Ok();
@@ -109,7 +109,7 @@ public class PropostaVendaService : IPropostaVendaService
 
         try
         {
-            proposta.GerarFinanciamento(new Parcelas(dto.Parcelas));
+            proposta.GerarFinanciamento(PropostaVendaMapping.ToParcelas(dto));
             _repository.Update(proposta);
             await _repository.SaveChangesAsync();
             return Result.Ok();
@@ -162,5 +162,14 @@ public class PropostaVendaService : IPropostaVendaService
         _repository.Update(proposta);
         await _repository.SaveChangesAsync();
         return Result.Ok();
+    }
+
+    public async Task<Result> UpdateAsync(PropostaVendaDTO dto)
+    {
+        return Result.Fail("Metodo vazio");   
+    }
+    public async Task<Result> RemoveAsync(Guid propostaVendaId)
+    {
+        return Result.Fail("Metodo vazio");   
     }
 }

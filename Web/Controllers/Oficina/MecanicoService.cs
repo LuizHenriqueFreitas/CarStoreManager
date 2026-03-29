@@ -20,14 +20,14 @@ public class MecanicoController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetTodos()
     {
-        var result = await _service.ObterTodosAsync();
+        var result = await _service.GetAllAsync();
         return Ok(result.Value);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetPorId(Guid id)
     {
-        var result = await _service.ObterPorIdAsync(id);
+        var result = await _service.GetByIdAsync(id);
         return result.IsSuccess ? Ok(result.Value) : NotFound(result.Error);
     }
 
@@ -41,7 +41,7 @@ public class MecanicoController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Criar(CriarMecanicoDTO dto)
     {
-        var result = await _service.CriarAsync(dto);
+        var result = await _service.AddAsync(dto);
 
         return result.IsSuccess
             ? CreatedAtAction(nameof(GetPorId), new { id = result.Value }, null)
@@ -51,14 +51,14 @@ public class MecanicoController : ControllerBase
     [HttpPut]
     public async Task<IActionResult> Atualizar(AtualizarMecanicoDTO dto)
     {
-        var result = await _service.AtualizarAsync(dto);
+        var result = await _service.UpdateAsync(dto);
         return result.IsSuccess ? NoContent() : BadRequest(result.Error);
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Remover(Guid id)
     {
-        var result = await _service.RemoverAsync(id);
+        var result = await _service.RemoveAsync(id);
         return result.IsSuccess ? NoContent() : NotFound(result.Error);
     }
 }

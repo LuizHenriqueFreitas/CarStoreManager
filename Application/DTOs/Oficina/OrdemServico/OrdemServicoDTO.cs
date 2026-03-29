@@ -1,5 +1,3 @@
-using CarStoreManager.Application.DTOs.Oficina.OrdemServico;
-
 namespace CarStoreManager.Application.DTOs.Oficina.OrdemServico;
 
 public class OrdemServicoDTO

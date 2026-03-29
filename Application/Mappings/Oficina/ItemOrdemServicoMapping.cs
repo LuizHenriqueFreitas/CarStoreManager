@@ -13,9 +13,9 @@ public static class ItemOrdemServicoMapping
     {
         return new ItemOrdemServicoDTO
         {
-            Id = entity.Id,
-            ComponenteId = entity.ComponenteId,
-            Quantidade = entity.Quantidade,
+            Id = entity.GetId(),
+            ComponenteId = entity.GetComponentId(),
+            Quantidade = entity.GetQuantidade(),
             ValorUnitario = entity.GetValorUnitario(),
             ValorTotal = entity.GetValorTotal()
         };

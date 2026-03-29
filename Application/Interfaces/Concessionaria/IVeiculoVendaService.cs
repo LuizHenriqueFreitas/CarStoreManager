@@ -3,14 +3,13 @@ using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda;
 
 namespace CarStoreManager.Application.Interfaces;
 
-public interface IVeiculoVendaService
+public interface IVeiculoVendaService : IService<
+    VeiculoVendaDTO, 
+    VeiculoVendaListaDTO,
+    CriarVeiculoVendaDTO,
+    AtualizarVeiculoVendaDTO>
 {
-    Task<Result<VeiculoVendaDTO>> ObterPorIdAsync(Guid id);
-    Task<Result<IEnumerable<VeiculoVendaListaDTO>>> ObterTodosAsync();
     Task<Result<IEnumerable<VeiculoVendaListaDTO>>> ObterDisponiveisAsync();
-    Task<Result<Guid>> CriarAsync(CriarVeiculoVendaDTO dto);
-    Task<Result> AtualizarAsync(AtualizarVeiculoVendaDTO dto);
-    Task<Result> RemoverAsync(Guid id);
     Task<Result> MarcarComoVendidoAsync(Guid id);
     Task<Result> MarcarComoDisponivelAsync(Guid id);
     Task<Result> AtualizarQuilometragemAsync(Guid id, int km);

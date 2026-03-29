@@ -15,7 +15,7 @@ public class VendedorService : IVendedorService
         _repository = repository;
     }
 
-    public async Task<Result<VendedorDTO>> ObterPorIdAsync(Guid id)
+    public async Task<Result<VendedorDTO>> GetByIdAsync(Guid id)
     {
         var vendedor = await _repository.GetByIdAsync(id);
         if (vendedor is null)
@@ -24,14 +24,14 @@ public class VendedorService : IVendedorService
         return Result<VendedorDTO>.Ok(VendedorMapping.ToDto(vendedor));
     }
 
-    public async Task<Result<IEnumerable<VendedorListaDTO>>> ObterTodosAsync()
+    public async Task<Result<IEnumerable<VendedorListaDTO>>> GetAllAsync()
     {
         var vendedores = await _repository.GetAllAsync();
         return Result<IEnumerable<VendedorListaDTO>>.Ok(
             vendedores.Select(VendedorMapping.ToListaDto));
     }
 
-    public async Task<Result<Guid>> CriarAsync(CriarVendedorDTO dto)
+    public async Task<Result<Guid>> AddAsync(CriarVendedorDTO dto)
     {
         try
         {
@@ -48,7 +48,7 @@ public class VendedorService : IVendedorService
         }
     }
 
-    public async Task<Result> AtualizarAsync(AtualizarVendedorDTO dto)
+    public async Task<Result> UpdateAsync(AtualizarVendedorDTO dto)
     {
         var vendedor = await _repository.GetByIdAsync(dto.Id);
         if (vendedor is null)
@@ -67,7 +67,7 @@ public class VendedorService : IVendedorService
         }
     }
 
-    public async Task<Result> RemoverAsync(Guid id)
+    public async Task<Result> RemoveAsync(Guid id)
     {
         var vendedor = await _repository.GetByIdAsync(id);
         if (vendedor is null)

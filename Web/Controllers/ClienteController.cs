@@ -24,14 +24,14 @@ public class ClienteController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetTodos()
     {
-        var resultado = await _service.ObterTodosAsync();
+        var resultado = await _service.GetAllAsync();
         return resultado.IsSuccess ? Ok(resultado.Value) : BadRequest(resultado.Error);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetPorId(Guid id)
     {
-        var resultado = await _service.ObterPorIdAsync(id);
+        var resultado = await _service.GetByIdAsync(id);
         return resultado.IsSuccess ? Ok(resultado.Value) : NotFound(resultado.Error);
     }
 
@@ -49,7 +49,7 @@ public class ClienteController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Criar([FromBody] CriarClienteDTO dto)
     {
-        var resultado = await _service.CriarAsync(dto);
+        var resultado = await _service.AddAsync(dto);
         return resultado.IsSuccess
             ? CreatedAtAction(nameof(GetPorId), new { id = resultado.Value }, null)
             : BadRequest(resultado.Error);
@@ -63,7 +63,7 @@ public class ClienteController : ControllerBase
     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarClienteDTO dto)
     {
         dto.Id = id;
-        var resultado = await _service.AtualizarAsync(dto);
+        var resultado = await _service.UpdateAsync(dto);
         return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
     }
 
@@ -75,7 +75,7 @@ public class ClienteController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Remover(Guid id)
     {
-        var resultado = await _service.RemoverAsync(id);
+        var resultado = await _service.RemoveAsync(id);
         return resultado.IsSuccess ? NoContent() : NotFound(resultado.Error);
     }
 }

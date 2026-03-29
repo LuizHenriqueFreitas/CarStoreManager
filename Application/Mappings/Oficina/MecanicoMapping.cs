@@ -11,13 +11,14 @@ public static class MecanicoMapping
     {
         return new MecanicoDTO
         {
-            Id = entity.Id,
-            Nome = entity.Nome,
+            Id = entity.GetId(),
+            Nome = entity.GetNome(),
             Email = entity.GetEmail(),
             Telefone = entity.GetTelefone(),
-            Especialidade = entity.Especialidade.ToString(),
-            Nivel = entity.DadosFuncionario.Nivel.ToString(),
-            DataContratacao = entity.DadosFuncionario.DataContratacao
+            Especialidade = entity.GetEspecialidade(),
+            Ocupado = entity.GetOcupado(),
+            Nivel = entity.GetNivel(),
+            DataContratacao = entity.GetDataContratacao()
         };
     }
 
@@ -25,10 +26,10 @@ public static class MecanicoMapping
     {
         return new MecanicoListaDTO
         {
-            Id = entity.Id,
-            Nome = entity.Nome,
-            Especialidade = entity.Especialidade.ToString(),
-            Nivel = entity.DadosFuncionario.Nivel.ToString()
+            Id = entity.GetId(),
+            Nome = entity.GetNome(),
+            Especialidade = entity.GetEspecialidade(),
+            Nivel = entity.GetNivel()
         };
     }
 
@@ -48,8 +49,8 @@ public static class MecanicoMapping
             new Email(dto.Email),
             new Telefone(dto.Telefone),
             BCrypt.Net.BCrypt.HashPassword(dto.Senha),
-            ConverterEspecialidade(dto.Especialidade),
-            ConverterNivel(dto.Nivel),
+            ConverterEnum<EspecialidadeMecanico>(dto.Especialidade, "Especialidade"),
+            ConverterEnum<NivelFuncionario>(dto.Nivel, "Nivel"),
             DateTime.UtcNow
         );
     }
@@ -57,28 +58,19 @@ public static class MecanicoMapping
     public static void UpdateEntity(Mecanico entity, AtualizarMecanicoDTO dto)
     {
         entity.AlterarEspecialidade(
-            ConverterEspecialidade(dto.Especialidade)
+            ConverterEnum<EspecialidadeMecanico>(dto.Especialidade, "Especialidade")
         );
 
         entity.AtualizarDadosFuncionario(
-            ConverterNivel(dto.Nivel),
+            ConverterEnum<NivelFuncionario>(dto.Nivel, "Nivel"),
             entity.DadosFuncionario.DataContratacao
         );
     }
 
-    private static EspecialidadeMecanico ConverterEspecialidade(string valor)
+    private static T ConverterEnum<T>(string valor, string campo) where T : struct, Enum
     {
-        if (!Enum.TryParse(valor, true, out EspecialidadeMecanico result))
-            throw new ArgumentException("Especialidade inválida");
-
-        return result;
-    }
-
-    private static NivelFuncionario ConverterNivel(string valor)
-    {
-        if (!Enum.TryParse(valor, true, out NivelFuncionario result))
-            throw new ArgumentException("Nível inválido");
-
-        return result;
+        if (!Enum.TryParse<T>(valor, true, out var resultado))
+            throw new ArgumentException($"{campo} inválido: {valor}");
+        return resultado;
     }
 }

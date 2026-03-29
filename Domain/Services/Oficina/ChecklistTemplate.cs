@@ -1,3 +1,5 @@
+//Template de Checklist Generico
+
 using CarStoreManager.Domain.Enums;
 
 namespace CarStoreManager.Domain.Services.Oficina;

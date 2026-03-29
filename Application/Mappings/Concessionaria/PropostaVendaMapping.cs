@@ -10,17 +10,17 @@ public static class PropostaVendaMapping
     {
         return new PropostaVendaDTO
         {
-            Id = entity.Id,
-            VendedorId = entity.VendedorId,
-            VeiculoVendaId = entity.VeiculoVendaId,
-            ClienteId = entity.ClienteId,
+            Id = entity.GetId(),
+            VendedorId = entity.GetVendedorId(),
+            VeiculoVendaId = entity.GetVeiculoId(),
+            ClienteId = entity.GetClienteId(),
             ValorBase = entity.GetValorBase(),
             DescontoPercentual = entity.GetDesconto(),
             ValorFinal = entity.GetValorFinal(),
             Entrada = entity.GetEntrada(),
             ValorFinanciado = entity.GetValorFinanciado(),
             Parcelas = entity.GetParcelas(),
-            DataCriacao = entity.DataCriacao,
+            DataCriacao = entity.GetDataCriacao(),
             Status = entity.Status.ToString()
         };
     }
@@ -29,12 +29,12 @@ public static class PropostaVendaMapping
     {
         return new PropostaVendaListaDTO
         {
-            Id = entity.Id,
-            ClienteId = entity.ClienteId,
-            VeiculoVendaId = entity.VeiculoVendaId,
+            Id = entity.GetId(),
+            ClienteId = entity.GetClienteId(),
+            VeiculoVendaId = entity.GetVeiculoId(),
             ValorFinal = entity.GetValorFinal(),
             Status = entity.Status.ToString(),
-            DataCriacao = entity.DataCriacao
+            DataCriacao = entity.GetDataCriacao()
         };
     }
 
@@ -47,4 +47,13 @@ public static class PropostaVendaMapping
             new Dinheiro(dto.ValorBase)
         );
     }
+
+    public static Percentual ToDesconto(AplicarDescontoDTO dto)
+        => new Percentual(dto.Percentual);
+
+    public static Dinheiro ToEntrada(DefinirEntradaDTO dto)
+        => new Dinheiro(dto.ValorEntrada);
+
+    public static Parcelas ToParcelas(GerarFinanciamentoDTO dto)
+        => new Parcelas(dto.Parcelas);
 }

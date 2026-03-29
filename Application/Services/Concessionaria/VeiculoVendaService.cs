@@ -1,3 +1,5 @@
+// Service da entidade VeiculoVenda : Herda da interface IVeiculoVenda.cs
+
 using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda;
 using CarStoreManager.Application.Interfaces;
@@ -15,7 +17,7 @@ public class VeiculoVendaService : IVeiculoVendaService
         _repository = repository;
     }
 
-    public async Task<Result<VeiculoVendaDTO>> ObterPorIdAsync(Guid id)
+    public async Task<Result<VeiculoVendaDTO>> GetByIdAsync(Guid id)
     {
         var veiculo = await _repository.GetByIdAsync(id);
         if (veiculo is null)
@@ -24,7 +26,7 @@ public class VeiculoVendaService : IVeiculoVendaService
         return Result<VeiculoVendaDTO>.Ok(VeiculoVendaMapping.ToDto(veiculo));
     }
 
-    public async Task<Result<IEnumerable<VeiculoVendaListaDTO>>> ObterTodosAsync()
+    public async Task<Result<IEnumerable<VeiculoVendaListaDTO>>> GetAllAsync()
     {
         var veiculos = await _repository.GetAllAsync();
         return Result<IEnumerable<VeiculoVendaListaDTO>>.Ok(
@@ -38,7 +40,7 @@ public class VeiculoVendaService : IVeiculoVendaService
             veiculos.Select(VeiculoVendaMapping.ToListaDto));
     }
 
-    public async Task<Result<Guid>> CriarAsync(CriarVeiculoVendaDTO dto)
+    public async Task<Result<Guid>> AddAsync(CriarVeiculoVendaDTO dto)
     {
         try
         {
@@ -53,7 +55,7 @@ public class VeiculoVendaService : IVeiculoVendaService
         }
     }
 
-    public async Task<Result> AtualizarAsync(AtualizarVeiculoVendaDTO dto)
+    public async Task<Result> UpdateAsync(AtualizarVeiculoVendaDTO dto)
     {
         var veiculo = await _repository.GetByIdAsync(dto.Id);
         if (veiculo is null)
@@ -118,7 +120,7 @@ public class VeiculoVendaService : IVeiculoVendaService
 
         try
         {
-            veiculo.AtualizarQuilometragem(km);
+            veiculo.AlterarQuilometragem(km);
             _repository.Update(veiculo);
             await _repository.SaveChangesAsync();
             return Result.Ok();
@@ -167,7 +169,7 @@ public class VeiculoVendaService : IVeiculoVendaService
         }
     }
 
-    public async Task<Result> RemoverAsync(Guid id)
+    public async Task<Result> RemoveAsync(Guid id)
     {
         var veiculo = await _repository.GetByIdAsync(id);
         if (veiculo is null)

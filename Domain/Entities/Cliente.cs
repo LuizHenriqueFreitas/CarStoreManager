@@ -61,9 +61,8 @@ public class Cliente : Entity
         Telefone = telefone;
     }
 
-    public void AtualizarDados(string nome, Telefone telefone, Email email)
+    public void AtualizarDados(Telefone telefone, Email email)
     {
-        DefinirNome(nome);
         AtualizarTelefone(telefone);
         AtualizarEmail(email);
     }

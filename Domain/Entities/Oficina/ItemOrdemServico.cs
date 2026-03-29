@@ -1,3 +1,5 @@
+//classe de base para os itens da ordem de servico, usado na ordem de servico
+
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.ValueObjects;
 
@@ -36,18 +38,14 @@ public class ItemOrdemServico : Entity
     // GETERS
     // =========================
 
-        public decimal GetValorUnitario()
-    {
-        return ValorUnitario.Valor;
-    }
-
-    public decimal GetValorTotal()
-    {
-        return ValorTotal.Valor;
-    }
+    public Guid GetComponentId() => ComponenteId;
+    public Guid GetOrdemServicoId() => OrdemServicoId;
+    public int GetQuantidade() => Quantidade;
+    public decimal GetValorUnitario() => ValorUnitario.Valor;
+    public decimal GetValorTotal() => ValorTotal.Valor;
 
     // =========================
-    // REGRAS DE NEGÓCIO
+    // REGRAS DE NEGÓCIO - SETERS
     // =========================
 
     public void AlterarQuantidade(int novaQuantidade)

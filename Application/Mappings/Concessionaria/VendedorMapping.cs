@@ -11,12 +11,12 @@ public static class VendedorMapping
     {
         return new VendedorDTO
         {
-            Id = entity.Id,
-            Nome = entity.Nome,
+            Id = entity.GetId(),
+            Nome = entity.GetNome(),
             Email = entity.GetEmail(),
             Telefone = entity.GetTelefone(),
-            Nivel = entity.DadosFuncionario.Nivel.ToString(),
-            DataContratacao = entity.DadosFuncionario.DataContratacao,
+            Nivel = entity.GetNivel(),
+            DataContratacao = entity.GetDataContratacao(),
             AnosEmpresa = entity.DadosFuncionario.GetAnosEmpresa()
         };
     }
@@ -25,10 +25,10 @@ public static class VendedorMapping
     {
         return new VendedorListaDTO
         {
-            Id = entity.Id,
-            Nome = entity.Nome,
+            Id = entity.GetId(),
+            Nome = entity.GetNome(),
             Telefone = entity.GetTelefone(),
-            Nivel = entity.DadosFuncionario.Nivel.ToString()
+            Nivel = entity.GetNivel()
         };
     }
 
@@ -52,9 +52,7 @@ public static class VendedorMapping
         if (!Enum.TryParse<NivelFuncionario>(dto.Nivel, true, out var nivel))
             throw new ArgumentException($"Nível inválido: {dto.Nivel}");
 
-        entity.AlterarNome(dto.Nome);
         entity.AlterarEmail(new Email(dto.Email));
         entity.AlterarTelefone(new Telefone(dto.Telefone));
-        entity.AtualizarDadosFuncionario(nivel, dto.DataContratacao);
     }
 }
