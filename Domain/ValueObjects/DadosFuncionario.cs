@@ -19,5 +19,13 @@ public class DadosFuncionario
     }
 
     public int GetAnosEmpresa()
-        => (int)((DateTime.UtcNow - DataContratacao).TotalDays / 365);
+{
+    var hoje = DateTime.UtcNow;
+    var anos = hoje.Year - DataContratacao.Year;
+
+    if (hoje < DataContratacao.AddYears(anos))
+        anos--;
+
+    return anos;
+}
 }

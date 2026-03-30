@@ -9,7 +9,7 @@ public class Dinheiro : IEquatable<Dinheiro>
         if (valor < 0)
             throw new ArgumentException("Valor não pode ser negativo");
 
-        Valor = decimal.Round(valor, 2);
+        Valor = decimal.Round(valor, 2, MidpointRounding.AwayFromZero);
     }
 
     // =========================

@@ -41,7 +41,11 @@ public class Email : IEquatable<Email>
         => Endereco.GetHashCode();
 
     public static bool operator ==(Email a, Email b)
-        => Equals(a, b);
+    {
+        if (ReferenceEquals(a, b)) return true;
+        if (a is null || b is null) return false;
+        return a.Equals(b);
+    }
 
     public static bool operator !=(Email a, Email b)
         => !Equals(a, b);
