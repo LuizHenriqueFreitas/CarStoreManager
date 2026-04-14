@@ -54,7 +54,6 @@ public static class ClienteMapping
     public static void UpdateEntity(Cliente entity, AtualizarClienteDTO dto)
     {
         entity.AtualizarDados(
-            dto.Nome,
             new Telefone(dto.Telefone),
             new Email (dto.Email)
         );

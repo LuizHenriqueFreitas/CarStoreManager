@@ -6,6 +6,8 @@ public class PlacaVeiculo
 {
     public string Valor { get; }
 
+    protected PlacaVeiculo () {}
+
     public PlacaVeiculo(string placa)
     {
         if (!Validar(placa))

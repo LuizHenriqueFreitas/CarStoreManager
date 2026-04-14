@@ -98,39 +98,47 @@ FNH:5
 end_of_record
 SF:D:\Softwares\ProjetoIntegrador\CarStoreManager\Domain\ValueObjects\DadosFuncionario.cs
 FN:6,CarStoreManager.Domain.Enums.NivelFuncionario CarStoreManager.Domain.ValueObjects.DadosFuncionario::get_Nivel()
-FNDA:0,CarStoreManager.Domain.Enums.NivelFuncionario CarStoreManager.Domain.ValueObjects.DadosFuncionario::get_Nivel()
-DA:7,0
+FNDA:5,CarStoreManager.Domain.Enums.NivelFuncionario CarStoreManager.Domain.ValueObjects.DadosFuncionario::get_Nivel()
+DA:7,5
 FN:7,System.DateTime CarStoreManager.Domain.ValueObjects.DadosFuncionario::get_DataContratacao()
-FNDA:0,System.DateTime CarStoreManager.Domain.ValueObjects.DadosFuncionario::get_DataContratacao()
-DA:8,0
+FNDA:11,System.DateTime CarStoreManager.Domain.ValueObjects.DadosFuncionario::get_DataContratacao()
+DA:8,11
 FN:21,System.Int32 CarStoreManager.Domain.ValueObjects.DadosFuncionario::GetAnosEmpresa()
-FNDA:0,System.Int32 CarStoreManager.Domain.ValueObjects.DadosFuncionario::GetAnosEmpresa()
-DA:22,0
+FNDA:3,System.Int32 CarStoreManager.Domain.ValueObjects.DadosFuncionario::GetAnosEmpresa()
+DA:22,3
+DA:23,3
+DA:24,3
+DA:26,3
+DA:27,0
+DA:29,3
+DA:30,3
+BRDA:26,53,0,0
+BRDA:26,53,1,3
 FN:9,System.Void CarStoreManager.Domain.ValueObjects.DadosFuncionario::.ctor()
 FNDA:0,System.Void CarStoreManager.Domain.ValueObjects.DadosFuncionario::.ctor()
 DA:10,0
 FN:11,System.Void CarStoreManager.Domain.ValueObjects.DadosFuncionario::.ctor(CarStoreManager.Domain.Enums.NivelFuncionario,System.DateTime)
-FNDA:0,System.Void CarStoreManager.Domain.ValueObjects.DadosFuncionario::.ctor(CarStoreManager.Domain.Enums.NivelFuncionario,System.DateTime)
-DA:12,0
-DA:13,0
-DA:14,0
-DA:15,0
-DA:17,0
-DA:18,0
-DA:19,0
-BRDA:14,21,0,0
-BRDA:14,21,1,0
-LF:11
-LH:0
-BRF:2
-BRH:0
+FNDA:5,System.Void CarStoreManager.Domain.ValueObjects.DadosFuncionario::.ctor(CarStoreManager.Domain.Enums.NivelFuncionario,System.DateTime)
+DA:12,5
+DA:13,5
+DA:14,5
+DA:15,1
+DA:17,4
+DA:18,4
+DA:19,4
+BRDA:14,21,0,1
+BRDA:14,21,1,4
+LF:17
+LH:15
+BRF:4
+BRH:3
 FNF:5
-FNH:0
+FNH:4
 end_of_record
 SF:D:\Softwares\ProjetoIntegrador\CarStoreManager\Domain\ValueObjects\Dinheiro.cs
 FN:4,System.Decimal CarStoreManager.Domain.ValueObjects.Dinheiro::get_Valor()
-FNDA:26,System.Decimal CarStoreManager.Domain.ValueObjects.Dinheiro::get_Valor()
-DA:5,26
+FNDA:65,System.Decimal CarStoreManager.Domain.ValueObjects.Dinheiro::get_Valor()
+DA:5,65
 FN:19,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Dinheiro::Somar(CarStoreManager.Domain.ValueObjects.Dinheiro)
 FNDA:2,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Dinheiro::Somar(CarStoreManager.Domain.ValueObjects.Dinheiro)
 DA:20,2
@@ -138,16 +146,16 @@ DA:21,2
 DA:22,2
 DA:23,2
 FN:25,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Dinheiro::Subtrair(CarStoreManager.Domain.ValueObjects.Dinheiro)
-FNDA:2,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Dinheiro::Subtrair(CarStoreManager.Domain.ValueObjects.Dinheiro)
-DA:26,2
-DA:27,2
-DA:29,2
-DA:31,2
+FNDA:8,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Dinheiro::Subtrair(CarStoreManager.Domain.ValueObjects.Dinheiro)
+DA:26,8
+DA:27,8
+DA:29,8
+DA:31,8
 DA:32,1
-DA:34,1
-DA:35,1
+DA:34,7
+DA:35,7
 BRDA:31,39,0,1
-BRDA:31,39,1,1
+BRDA:31,39,1,7
 FN:37,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Dinheiro::Multiplicar(System.Int32)
 FNDA:2,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Dinheiro::Multiplicar(System.Int32)
 DA:38,2
@@ -209,17 +217,17 @@ FN:100,System.Boolean CarStoreManager.Domain.ValueObjects.Dinheiro::op_Inequalit
 FNDA:0,System.Boolean CarStoreManager.Domain.ValueObjects.Dinheiro::op_Inequality(CarStoreManager.Domain.ValueObjects.Dinheiro,CarStoreManager.Domain.ValueObjects.Dinheiro)
 DA:101,0
 FN:107,System.Boolean CarStoreManager.Domain.ValueObjects.Dinheiro::Equals(CarStoreManager.Domain.ValueObjects.Dinheiro)
-FNDA:2,System.Boolean CarStoreManager.Domain.ValueObjects.Dinheiro::Equals(CarStoreManager.Domain.ValueObjects.Dinheiro)
-DA:108,2
-DA:109,2
-DA:110,2
-DA:111,2
+FNDA:4,System.Boolean CarStoreManager.Domain.ValueObjects.Dinheiro::Equals(CarStoreManager.Domain.ValueObjects.Dinheiro)
+DA:108,4
+DA:109,4
+DA:110,4
+DA:111,4
 BRDA:109,7,0,0
-BRDA:109,7,1,2
+BRDA:109,7,1,4
 FN:113,System.Boolean CarStoreManager.Domain.ValueObjects.Dinheiro::Equals(System.Object)
-FNDA:2,System.Boolean CarStoreManager.Domain.ValueObjects.Dinheiro::Equals(System.Object)
-DA:114,2
-BRDA:114,8,0,2
+FNDA:4,System.Boolean CarStoreManager.Domain.ValueObjects.Dinheiro::Equals(System.Object)
+DA:114,4
+BRDA:114,8,0,4
 BRDA:114,8,1,0
 FN:116,System.Int32 CarStoreManager.Domain.ValueObjects.Dinheiro::GetHashCode()
 FNDA:0,System.Int32 CarStoreManager.Domain.ValueObjects.Dinheiro::GetHashCode()
@@ -228,23 +236,23 @@ FN:123,System.String CarStoreManager.Domain.ValueObjects.Dinheiro::ToString()
 FNDA:1,System.String CarStoreManager.Domain.ValueObjects.Dinheiro::ToString()
 DA:124,1
 FN:126,System.Void CarStoreManager.Domain.ValueObjects.Dinheiro::ValidarOutro(CarStoreManager.Domain.ValueObjects.Dinheiro)
-FNDA:6,System.Void CarStoreManager.Domain.ValueObjects.Dinheiro::ValidarOutro(CarStoreManager.Domain.ValueObjects.Dinheiro)
-DA:127,6
-DA:128,6
+FNDA:12,System.Void CarStoreManager.Domain.ValueObjects.Dinheiro::ValidarOutro(CarStoreManager.Domain.ValueObjects.Dinheiro)
+DA:127,12
+DA:128,12
 DA:129,0
-DA:130,6
+DA:130,12
 BRDA:128,7,0,0
-BRDA:128,7,1,6
+BRDA:128,7,1,12
 FN:6,System.Void CarStoreManager.Domain.ValueObjects.Dinheiro::.ctor(System.Decimal)
-FNDA:29,System.Void CarStoreManager.Domain.ValueObjects.Dinheiro::.ctor(System.Decimal)
-DA:7,29
-DA:8,29
-DA:9,29
+FNDA:52,System.Void CarStoreManager.Domain.ValueObjects.Dinheiro::.ctor(System.Decimal)
+DA:7,52
+DA:8,52
+DA:9,52
 DA:10,1
-DA:12,28
-DA:13,28
+DA:12,51
+DA:13,51
 BRDA:9,21,0,1
-BRDA:9,21,1,28
+BRDA:9,21,1,51
 LF:59
 LH:44
 BRF:14
@@ -254,124 +262,142 @@ FNH:14
 end_of_record
 SF:D:\Softwares\ProjetoIntegrador\CarStoreManager\Domain\ValueObjects\Email.cs
 FN:6,System.String CarStoreManager.Domain.ValueObjects.Email::get_Endereco()
-FNDA:0,System.String CarStoreManager.Domain.ValueObjects.Email::get_Endereco()
-DA:7,0
+FNDA:11,System.String CarStoreManager.Domain.ValueObjects.Email::get_Endereco()
+DA:7,11
 FN:31,System.Boolean CarStoreManager.Domain.ValueObjects.Email::Equals(CarStoreManager.Domain.ValueObjects.Email)
-FNDA:0,System.Boolean CarStoreManager.Domain.ValueObjects.Email::Equals(CarStoreManager.Domain.ValueObjects.Email)
-DA:32,0
-DA:33,0
-DA:34,0
-DA:35,0
+FNDA:3,System.Boolean CarStoreManager.Domain.ValueObjects.Email::Equals(CarStoreManager.Domain.ValueObjects.Email)
+DA:32,3
+DA:33,3
+DA:34,3
+DA:35,3
 BRDA:33,7,0,0
-BRDA:33,7,1,0
+BRDA:33,7,1,3
 FN:37,System.Boolean CarStoreManager.Domain.ValueObjects.Email::Equals(System.Object)
-FNDA:0,System.Boolean CarStoreManager.Domain.ValueObjects.Email::Equals(System.Object)
-DA:38,0
-BRDA:38,8,0,0
+FNDA:2,System.Boolean CarStoreManager.Domain.ValueObjects.Email::Equals(System.Object)
+DA:38,2
+BRDA:38,8,0,2
 BRDA:38,8,1,0
 FN:40,System.Int32 CarStoreManager.Domain.ValueObjects.Email::GetHashCode()
-FNDA:0,System.Int32 CarStoreManager.Domain.ValueObjects.Email::GetHashCode()
-DA:41,0
+FNDA:2,System.Int32 CarStoreManager.Domain.ValueObjects.Email::GetHashCode()
+DA:41,2
 FN:43,System.Boolean CarStoreManager.Domain.ValueObjects.Email::op_Equality(CarStoreManager.Domain.ValueObjects.Email,CarStoreManager.Domain.ValueObjects.Email)
-FNDA:0,System.Boolean CarStoreManager.Domain.ValueObjects.Email::op_Equality(CarStoreManager.Domain.ValueObjects.Email,CarStoreManager.Domain.ValueObjects.Email)
-DA:44,0
-FN:46,System.Boolean CarStoreManager.Domain.ValueObjects.Email::op_Inequality(CarStoreManager.Domain.ValueObjects.Email,CarStoreManager.Domain.ValueObjects.Email)
-FNDA:0,System.Boolean CarStoreManager.Domain.ValueObjects.Email::op_Inequality(CarStoreManager.Domain.ValueObjects.Email,CarStoreManager.Domain.ValueObjects.Email)
-DA:47,0
-FN:53,System.String CarStoreManager.Domain.ValueObjects.Email::ToString()
-FNDA:0,System.String CarStoreManager.Domain.ValueObjects.Email::ToString()
-DA:54,0
+FNDA:1,System.Boolean CarStoreManager.Domain.ValueObjects.Email::op_Equality(CarStoreManager.Domain.ValueObjects.Email,CarStoreManager.Domain.ValueObjects.Email)
+DA:44,1
+DA:45,1
+DA:46,1
+DA:47,1
+DA:48,1
+BRDA:45,7,0,0
+BRDA:45,7,1,1
+BRDA:46,14,0,1
+BRDA:46,14,1,0
+BRDA:46,25,0,0
+BRDA:46,25,1,1
+FN:50,System.Boolean CarStoreManager.Domain.ValueObjects.Email::op_Inequality(CarStoreManager.Domain.ValueObjects.Email,CarStoreManager.Domain.ValueObjects.Email)
+FNDA:1,System.Boolean CarStoreManager.Domain.ValueObjects.Email::op_Inequality(CarStoreManager.Domain.ValueObjects.Email,CarStoreManager.Domain.ValueObjects.Email)
+DA:51,1
+FN:57,System.String CarStoreManager.Domain.ValueObjects.Email::ToString()
+FNDA:1,System.String CarStoreManager.Domain.ValueObjects.Email::ToString()
+DA:58,1
 FN:13,System.Void CarStoreManager.Domain.ValueObjects.Email::.ctor(System.String)
-FNDA:0,System.Void CarStoreManager.Domain.ValueObjects.Email::.ctor(System.String)
-DA:14,0
-DA:15,0
-DA:16,0
-DA:17,0
-DA:19,0
-DA:21,0
-DA:22,0
-DA:24,0
-DA:25,0
-BRDA:16,16,0,0
-BRDA:16,16,1,0
-BRDA:21,58,0,0
-BRDA:21,58,1,0
+FNDA:16,System.Void CarStoreManager.Domain.ValueObjects.Email::.ctor(System.String)
+DA:14,16
+DA:15,16
+DA:16,16
+DA:17,2
+DA:19,14
+DA:21,14
+DA:22,5
+DA:24,9
+DA:25,9
+BRDA:16,16,0,2
+BRDA:16,16,1,14
+BRDA:21,58,0,5
+BRDA:21,58,1,9
 FN:8,System.Void CarStoreManager.Domain.ValueObjects.Email::.cctor()
-FNDA:0,System.Void CarStoreManager.Domain.ValueObjects.Email::.cctor()
-DA:9,0
-DA:10,0
-DA:11,0
-DA:12,0
-LF:23
-LH:0
-BRF:8
-BRH:0
+FNDA:1,System.Void CarStoreManager.Domain.ValueObjects.Email::.cctor()
+DA:9,1
+DA:10,1
+DA:11,1
+DA:12,1
+LF:27
+LH:27
+BRF:14
+BRH:9
 FNF:9
-FNH:0
+FNH:9
 end_of_record
 SF:D:\Softwares\ProjetoIntegrador\CarStoreManager\Domain\ValueObjects\Financiamento.cs
 FN:6,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::get_ValorTotal()
-FNDA:0,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::get_ValorTotal()
-DA:7,0
+FNDA:7,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::get_ValorTotal()
+DA:7,7
 FN:7,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::get_Entrada()
-FNDA:0,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::get_Entrada()
-DA:8,0
+FNDA:7,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::get_Entrada()
+DA:8,7
 FN:8,CarStoreManager.Domain.ValueObjects.Parcelas CarStoreManager.Domain.ValueObjects.Financiamento::get_Parcelas()
-FNDA:0,CarStoreManager.Domain.ValueObjects.Parcelas CarStoreManager.Domain.ValueObjects.Financiamento::get_Parcelas()
-DA:9,0
+FNDA:4,CarStoreManager.Domain.ValueObjects.Parcelas CarStoreManager.Domain.ValueObjects.Financiamento::get_Parcelas()
+DA:9,4
 FN:10,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::get_ValorFinanciado()
-FNDA:0,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::get_ValorFinanciado()
-DA:11,0
+FNDA:6,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::get_ValorFinanciado()
+DA:11,6
 FN:12,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::get_ValorParcela()
-FNDA:0,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::get_ValorParcela()
-DA:13,0
-FN:25,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::CalcularValorParcela()
-FNDA:0,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::CalcularValorParcela()
-DA:26,0
-DA:27,0
-DA:28,0
-DA:29,0
+FNDA:3,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::get_ValorParcela()
+DA:13,3
+FN:28,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::CalcularValorParcela()
+FNDA:3,CarStoreManager.Domain.ValueObjects.Dinheiro CarStoreManager.Domain.ValueObjects.Financiamento::CalcularValorParcela()
+DA:29,3
+DA:30,3
+DA:31,3
+DA:32,3
 FN:14,System.Void CarStoreManager.Domain.ValueObjects.Financiamento::.ctor(CarStoreManager.Domain.ValueObjects.Dinheiro,CarStoreManager.Domain.ValueObjects.Parcelas,CarStoreManager.Domain.ValueObjects.Dinheiro)
-FNDA:0,System.Void CarStoreManager.Domain.ValueObjects.Financiamento::.ctor(CarStoreManager.Domain.ValueObjects.Dinheiro,CarStoreManager.Domain.ValueObjects.Parcelas,CarStoreManager.Domain.ValueObjects.Dinheiro)
-DA:15,0
-DA:16,0
-DA:17,0
+FNDA:7,System.Void CarStoreManager.Domain.ValueObjects.Financiamento::.ctor(CarStoreManager.Domain.ValueObjects.Dinheiro,CarStoreManager.Domain.ValueObjects.Parcelas,CarStoreManager.Domain.ValueObjects.Dinheiro)
+DA:15,7
+DA:16,7
+DA:17,7
 DA:18,0
-DA:20,0
-DA:21,0
-DA:22,0
-DA:23,0
-BRDA:17,27,0,0
-BRDA:17,27,1,0
-LF:17
-LH:0
-BRF:2
-BRH:0
+DA:20,7
+DA:21,1
+DA:23,6
+DA:24,6
+DA:25,6
+DA:26,6
+BRDA:17,9,0,7
+BRDA:17,12,0,7
+BRDA:17,9,1,0
+BRDA:17,12,1,0
+BRDA:17,23,0,0
+BRDA:17,23,1,7
+BRDA:20,55,0,1
+BRDA:20,55,1,6
+LF:19
+LH:18
+BRF:8
+BRH:5
 FNF:7
-FNH:0
+FNH:7
 end_of_record
 SF:D:\Softwares\ProjetoIntegrador\CarStoreManager\Domain\ValueObjects\Parcelas.cs
 FN:4,System.Int32 CarStoreManager.Domain.ValueObjects.Parcelas::get_Quantidade()
-FNDA:0,System.Int32 CarStoreManager.Domain.ValueObjects.Parcelas::get_Quantidade()
-DA:5,0
+FNDA:3,System.Int32 CarStoreManager.Domain.ValueObjects.Parcelas::get_Quantidade()
+DA:5,3
 FN:6,System.Void CarStoreManager.Domain.ValueObjects.Parcelas::.ctor(System.Int32)
-FNDA:0,System.Void CarStoreManager.Domain.ValueObjects.Parcelas::.ctor(System.Int32)
-DA:7,0
-DA:8,0
-DA:9,0
+FNDA:7,System.Void CarStoreManager.Domain.ValueObjects.Parcelas::.ctor(System.Int32)
+DA:7,7
+DA:8,7
+DA:9,7
 DA:10,0
-DA:12,0
-DA:13,0
-BRDA:9,10,0,0
+DA:12,7
+DA:13,7
+BRDA:9,10,0,7
 BRDA:9,10,1,0
 BRDA:9,22,0,0
-BRDA:9,22,1,0
+BRDA:9,22,1,7
 LF:7
-LH:0
+LH:6
 BRF:4
-BRH:0
+BRH:2
 FNF:2
-FNH:0
+FNH:2
 end_of_record
 SF:D:\Softwares\ProjetoIntegrador\CarStoreManager\Domain\ValueObjects\Percentual.cs
 FN:4,System.Decimal CarStoreManager.Domain.ValueObjects.Percentual::get_Valor()

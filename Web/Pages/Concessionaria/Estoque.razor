@@ -3,9 +3,15 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IAuthService AuthService
 @inject NavigationManager Nav
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
+@using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.Services
+@using CarStoreManager.Web.Componentes.Shared
 @using CarStoreManager.Web.Imports
+@using CarStoreManager.Web.Imports.Concessionaria
 @using Microsoft.AspNetCore.Components.Authorization
+
+@using Microsoft.AspNetCore.Components.Web
 
 <div class="estoque-hero">
     <div class="estoque-hero-inner">
@@ -77,7 +83,7 @@
         UsuarioAtualId = Guid.Parse(claim.Value);
     try
     {
-        var resultado = await VeiculoService.ObterTodosAsync();
+        var resultado = await VeiculoService.GetAllAsync();
         veiculos = resultado.IsSuccess
             ? resultado.Value?.ToList() ?? new()
             : new();

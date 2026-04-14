@@ -12,8 +12,13 @@ public class Financiamento
 
     public Dinheiro ValorParcela => CalcularValorParcela();
 
+    protected Financiamento () {}
+
     public Financiamento(Dinheiro valorTotal, Parcelas parcelas, Dinheiro entrada)
     {
+        if (valorTotal is null || parcelas is null || entrada is null)
+            throw new ArgumentNullException("Erro nas informações do financiamento.");
+
         if (entrada.Valor > valorTotal.Valor)
             throw new ArgumentException("Entrada não pode ser maior que o valor total");
 

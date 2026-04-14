@@ -1,0 +1,45 @@
+﻿@inherits LayoutComponentBase
+@using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+
+<NavBar NomeUsuario="@nomeUsuario" />
+
+<main class="main-content">
+    @Body
+</main>
+
+@code {
+    private string nomeUsuario = "Usuário";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                // Tenta obter o nome das claims comuns
+                nomeUsuario = user.FindFirst("name")?.Value
+                           ?? user.FindFirst("given_name")?.Value
+                           ?? user.FindFirst("unique_name")?.Value
+                           ?? user.Identity.Name
+                           ?? "Usuário";
+            }
+        }
+        catch
+        {
+            // Em caso de falha, mantém o valor padrão
+            nomeUsuario = "Usuário";
+        }
+    }
+}
+
+<style>
+    .main-content {
+        min-height: calc(100vh - 56px);
+        background-color: #fafafa;
+    }
+</style>

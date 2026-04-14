@@ -1,24 +1,14 @@
-﻿@using CarStoreManager.Web.Imports
-@using Microsoft.AspNetCore.Components.Web
-
-@namespace CarStoreManager.Web
-
-<!DOCTYPE html>
-<html lang="pt-br">
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
     <meta charset="utf-8" />
-    <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <link href="css/site.css" rel="stylesheet" />
+    <base href="/" />
+    <link rel="stylesheet" href="css/app.css" />
+    <HeadOutlet />
 </head>
 <body>
-
-    <div id="app">
-        <Routes @rendermode="RenderMode.InteractiveServer" />
-    </div>
-    
+    <Routes />
     <script src="_framework/blazor.web.js"></script>
-
 </body>
 </html>

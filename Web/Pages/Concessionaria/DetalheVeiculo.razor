@@ -8,6 +8,8 @@
 @using CarStoreManager.Web.Componentes.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 
+@using Microsoft.AspNetCore.Components.Web
+
 @if (carregando)
 {
     <div class="loading">Carregando...</div>
@@ -77,7 +79,6 @@ else
                     <div class="spec"><span class="spec-label">Câmbio</span><span class="spec-val">@veiculo.Cambio</span></div>
                     <div class="spec"><span class="spec-label">Motorização</span><span class="spec-val">@veiculo.Motorizacao</span></div>
                     <div class="spec"><span class="spec-label">Placa</span><span class="spec-val">@veiculo.Placa</span></div>
-                    <div class="spec"><span class="spec-label">Estado</span><span class="spec-val">@veiculo.Estado</span></div>
                 </div>
             </div>
 
@@ -156,7 +157,7 @@ else
                     <button class="modal-fechar" @onclick="() => modalFormEdicaoVisivel = false">×</button>
                 </div>
 
-                <div class="form-grid">
+                <div class="form-grid"><!--
                     <div class="form-campo">
                         <label class="campo-label">Marca</label>
                         <input class="campo-input" @bind="formEdicao.Marca" />
@@ -198,16 +199,6 @@ else
                             <option value="Eletrico">Elétrico</option>
                             <option value="Hibrido">Híbrido</option>
                         </select>
-                    </div>
-                    <div class="form-campo">
-                        <label class="campo-label">Estado de conservação</label>
-                        <select class="campo-input" @bind="formEdicao.Estado">
-                            <option value="Otimo">Ótimo</option>
-                            <option value="Bom">Bom</option>
-                            <option value="Regular">Regular</option>
-                            <option value="Ruim">Ruim</option>
-                        </select>
-                    </div>
                     <div class="form-campo">
                         <label class="campo-label">Disponibilidade</label>
                         <select class="campo-input" @bind="formEdicao.Disponibilidade">
@@ -215,7 +206,7 @@ else
                             <option value="Reservado">Reservado</option>
                             <option value="Vendido">Vendido</option>
                         </select>
-                    </div>
+                    </div>-->
                 </div>
 
                 @if (erroEdicao is not null)
@@ -269,7 +260,7 @@ else
         UsuarioAtualId = Guid.Parse(claim.Value);
         try
         {
-            var resultado = await VeiculoService.ObterPorIdAsync(Id);
+            var resultado = await VeiculoService.GetByIdAsync(Id);
             veiculo = resultado.IsSuccess ? resultado.Value : null;
         }
         catch { veiculo = null; }
@@ -299,17 +290,8 @@ else
         formEdicao = new AtualizarVeiculoVendaDTO
         {
             Id = veiculo!.Id,
-            Marca = veiculo.Marca,
-            Modelo = veiculo.Modelo,
-            Cor = veiculo.Cor,
-            Motorizacao = veiculo.Motorizacao,
-            Quilometragem = veiculo.Quilometragem,
             Valor = veiculo.Valor,
-            Cambio = veiculo.Cambio,
-            Combustivel = veiculo.Combustivel,
-            Estado = veiculo.Estado,
-            Disponibilidade = veiculo.Disponibilidade,
-            Acessorios = new List<string>(veiculo.Acessorios)
+            Disponibilidade = veiculo.Disponibilidade
         };
 
         modalEdicaoVisivel = false;
@@ -323,11 +305,11 @@ else
 
     try
     {
-        var resultado = await VeiculoService.AtualizarAsync(formEdicao);
+        var resultado = await VeiculoService.UpdateAsync(formEdicao);
         if (resultado.IsSuccess)
         {
             modalFormEdicaoVisivel = false;
-            var atualizado = await VeiculoService.ObterPorIdAsync(Id);
+            var atualizado = await VeiculoService.GetByIdAsync(Id);
             veiculo = atualizado.IsSuccess ? atualizado.Value : veiculo;
         }
         else
@@ -347,7 +329,7 @@ else
     var ok = await VerificarSenha(senha);
     if (!ok) { modalExclusaoRef?.MostrarErro(); return; }
 
-    var resultado = await VeiculoService.RemoverAsync(veiculo!.Id);
+    var resultado = await VeiculoService.RemoveAsync(veiculo!.Id);
     if (resultado.IsSuccess)
     {
         modalExclusaoVisivel = false;

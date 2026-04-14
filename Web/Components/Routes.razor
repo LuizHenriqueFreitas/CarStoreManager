@@ -1,12 +1,78 @@
-@using CarStoreManager.Web.Imports.Layout
+@rendermode InteractiveServer
+@using CarStoreManager.Web.Imports.Shared
+@using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Routing
 
-<Router AppAssembly="@typeof(App).Assembly">
+<Router AppAssembly="typeof(App).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                @if (context.User.Identity?.IsAuthenticated ?? false)
+                {
+                    <div class="acesso-negado">
+                        <h2>Acesso negado</h2>
+                        <p>Você não tem permissão para acessar esta página.</p>
+                        <a href="/">Voltar ao início</a>
+                    </div>
+                }
+                else
+                {
+                    <RedirectToLogin />
+                }
+            </NotAuthorized>
+            <Authorizing>
+                <div class="autorizando">Verificando acesso...</div>
+            </Authorizing>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
-
     <NotFound>
-        <h1>Página não encontrada</h1>
+        <PageTitle>Página não encontrada</PageTitle>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <div class="nao-encontrado">
+                <h2>404 — Página não encontrada</h2>
+                <p>A página que você procura não existe.</p>
+                <a href="/">Voltar ao início</a>
+            </div>
+        </LayoutView>
     </NotFound>
 </Router>
+
+<style>
+    .acesso-negado, .nao-encontrado {
+        max-width: 500px;
+        margin: 80px auto;
+        text-align: center;
+        padding: 24px;
+    }
+
+    .acesso-negado h2, .nao-encontrado h2 {
+        font-size: 22px;
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: #1a1a1a;
+    }
+
+    .acesso-negado p, .nao-encontrado p {
+        font-size: 14px;
+        color: #888;
+        margin-bottom: 20px;
+    }
+
+    .acesso-negado a, .nao-encontrado a {
+        background: #e02020;
+        color: #fff;
+        border-radius: 8px;
+        padding: 9px 20px;
+        font-size: 14px;
+        text-decoration: none;
+    }
+
+    .autorizando {
+        text-align: center;
+        padding: 80px;
+        color: #888;
+        font-size: 14px;
+    }
+</style>

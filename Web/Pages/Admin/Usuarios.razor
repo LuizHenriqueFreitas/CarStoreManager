@@ -1,0 +1,505 @@
+@page "/admin/usuarios"
+
+@rendermode Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer
+@inject IVendedorService VendedorService
+@inject IMecanicoService MecanicoService
+@inject IAuthService AuthService
+@inject AuthenticationStateProvider AuthState
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Auth
+@using CarStoreManager.Application.DTOs.Concessionaria.Vendedor
+@using CarStoreManager.Application.DTOs.Oficina.Mecanico
+@using CarStoreManager.Web.Componentes.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+@using Microsoft.AspNetCore.Components.Web
+
+<div class="usuarios-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-titulo">Usuários</h1>
+            <p class="page-sub">Gerenciamento de vendedores e mecânicos</p>
+        </div>
+        <button class="btn-novo" @onclick="AbrirModalNovoUsuario">+ Novo usuário</button>
+    </div>
+
+    <div class="abas">
+        <button class="@AbaClass("Vendedor")" @onclick='() => abaAtiva = "Vendedor"'>
+            Vendedores (@vendedores.Count)
+        </button>
+        <button class="@AbaClass("Mecanico")" @onclick='() => abaAtiva = "Mecanico"'>
+            Mecânicos (@mecanicos.Count)
+        </button>
+    </div>
+
+    @if (carregando)
+    {
+        <div class="loading">Carregando...</div>
+    }
+    else if (abaAtiva == "Vendedor")
+    {
+        <div class="usuarios-lista">
+            @foreach (var v in vendedores)
+            {
+                <div class="usuario-card">
+                    <div class="usuario-avatar vendedor">
+                        @v.Nome[0].ToString().ToUpper()
+                    </div>
+                    <div class="usuario-info">
+                        <span class="usuario-nome">@v.Nome</span>
+                        <span class="usuario-detalhe">@v.Telefone · @v.Nivel</span>
+                    </div>
+                    <span class="usuario-role vendedor-badge">Vendedor</span>
+                    <button class="btn-desativar"
+                            @onclick="() => ConfirmarDesativar(v.Id, v.Nome)">
+                        Desativar
+                    </button>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="usuarios-lista">
+            @foreach (var m in mecanicos)
+            {
+                <div class="usuario-card">
+                    <div class="usuario-avatar mecanico">
+                        @m.Nome[0].ToString().ToUpper()
+                    </div>
+                    <div class="usuario-info">
+                        <span class="usuario-nome">@m.Nome</span>
+                        <span class="usuario-detalhe">@m.Especialidade · @m.Nivel</span>
+                    </div>
+                    <span class="usuario-role mecanico-badge">Mecânico</span>
+                    <button class="btn-desativar"
+                            @onclick="() => ConfirmarDesativar(m.Id, m.Nome)">
+                        Desativar
+                    </button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (modalNovoUsuarioVisivel)
+{
+    <div class="modal-overlay" @onclick="() => modalNovoUsuarioVisivel = false">
+        <div class="modal-form" @onclick:stopPropagation>
+            <div class="modal-header">
+                <span class="modal-titulo">Novo usuário</span>
+                <button class="modal-fechar"
+                        @onclick="() => modalNovoUsuarioVisivel = false">×</button>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-campo span-2">
+                    <label class="campo-label">Tipo</label>
+                    <select class="campo-input" @bind="novoUsuario.Role">
+                        <option value="Vendedor">Vendedor</option>
+                        <option value="Mecanico">Mecânico</option>
+                    </select>
+                </div>
+                <div class="form-campo span-2">
+                    <label class="campo-label">Nome</label>
+                    <input class="campo-input" @bind="novoUsuario.Nome" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">E-mail</label>
+                    <input type="email" class="campo-input" @bind="novoUsuario.Email" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Telefone</label>
+                    <input class="campo-input" @bind="novoUsuario.Telefone" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Senha inicial</label>
+                    <input type="password" class="campo-input" @bind="novoUsuario.Senha" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Nível</label>
+                    <select class="campo-input" @bind="novoUsuario.Nivel">
+                        <option value="Junior">Junior</option>
+                        <option value="Pleno">Pleno</option>
+                        <option value="Senior">Sênior</option>
+                    </select>
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Data de contratação</label>
+                    <input type="date" class="campo-input" @bind="novoUsuario.DataContratacao" />
+                </div>
+
+                @if (novoUsuario.Role == "Mecanico")
+                {
+                    <div class="form-campo">
+                        <label class="campo-label">Especialidade</label>
+                        <select class="campo-input" @bind="novoUsuario.Especialidade">
+                            <option value="Motor">Motor</option>
+                            <option value="Eletrica">Elétrica</option>
+                            <option value="Funilaria">Funilaria</option>
+                            <option value="Suspensao">Suspensão</option>
+                            <option value="Freios">Freios</option>
+                        </select>
+                    </div>
+                }
+            </div>
+
+            @if (erroNovo is not null)
+            {
+                <div class="erro-banner">@erroNovo</div>
+            }
+
+            <div class="modal-acoes">
+                <button class="btn-cancelar"
+                        @onclick="() => modalNovoUsuarioVisivel = false">
+                    Cancelar
+                </button>
+                <button class="btn-confirmar"
+                        @onclick="CriarUsuario"
+                        disabled="@salvando">
+                    @(salvando ? "Criando..." : "Criar usuário")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<ConfirmacaoSenhaModal
+    Visivel="modalDesativarVisivel"
+    Titulo="Desativar usuário"
+    Descricao="@($"Desativar {nomeParaDesativar}? O usuário perderá acesso ao sistema.")"
+    TextoBotao="Desativar"
+    Destrutivo="true"
+    ApenasAdmin="true"
+    OnConfirmar="ConfirmarDesativacao"
+    OnCancelar="() => modalDesativarVisivel = false"
+    @ref="modalDesativarRef" />
+
+@code {
+    private List<VendedorListaDTO> vendedores = new();
+    private List<MecanicoListaDTO> mecanicos = new();
+    private string abaAtiva = "Vendedor";
+    private bool carregando = true;
+    private bool modalNovoUsuarioVisivel = false;
+    private bool modalDesativarVisivel = false;
+    private bool salvando = false;
+    private string? erroNovo;
+    private string nomeParaDesativar = string.Empty;
+    private Guid idParaDesativar;
+    private Guid usuarioAtualId;
+    private ConfirmacaoSenhaModal? modalDesativarRef;
+
+    private CriarUsuarioDTO novoUsuario = new()
+    {
+        Role = "Vendedor",
+        DataContratacao = DateTime.Today
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var claim = state.User.FindFirst(
+            System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (claim is not null)
+            usuarioAtualId = Guid.Parse(claim.Value);
+
+        await CarregarUsuarios();
+    }
+
+    private async Task CarregarUsuarios()
+    {
+        carregando = true;
+
+        var rv = await VendedorService.GetAllAsync();
+        vendedores = rv.IsSuccess ? rv.Value?.ToList() ?? new() : new();
+
+        var rm = await MecanicoService.GetAllAsync();
+        mecanicos = rm.IsSuccess ? rm.Value?.ToList() ?? new() : new();
+
+        carregando = false;
+    }
+
+    private void AbrirModalNovoUsuario()
+    {
+        Console.WriteLine("AbrirModalNovoUsuario chamado!");
+        novoUsuario = new CriarUsuarioDTO
+        {
+            Role = "Vendedor",
+            DataContratacao = DateTime.Today
+        };
+        erroNovo = null;
+        modalNovoUsuarioVisivel = true;
+    }
+
+    private async Task CriarUsuario()
+    {
+        salvando = true;
+        erroNovo = null;
+
+        try
+        {
+            var resultado = await AuthService.CriarUsuarioAsync(novoUsuario);
+            if (resultado.IsSuccess)
+            {
+                modalNovoUsuarioVisivel = false;
+                await CarregarUsuarios();
+            }
+            else
+            {
+                erroNovo = resultado.Error;
+            }
+        }
+        catch
+        {
+            erroNovo = "Erro ao criar usuário.";
+        }
+        finally { salvando = false; }
+    }
+
+    private void ConfirmarDesativar(Guid id, string nome)
+    {
+        idParaDesativar = id;
+        nomeParaDesativar = nome;
+        modalDesativarVisivel = true;
+    }
+
+    private async Task ConfirmarDesativacao(string senha)
+    {
+        var resultado = await AuthService.VerificarSenhaAsync(usuarioAtualId, senha);
+        if (!resultado.IsSuccess) { modalDesativarRef?.MostrarErro(); return; }
+
+        var desativar = await AuthService.DesativarUsuarioAsync(idParaDesativar);
+        if (desativar.IsSuccess)
+        {
+            modalDesativarVisivel = false;
+            await CarregarUsuarios();
+        }
+        else
+        {
+            modalDesativarRef?.MostrarErro();
+        }
+    }
+
+    private string AbaClass(string aba) =>
+        aba == abaAtiva ? "aba aba-ativa" : "aba";
+}
+
+<style>
+    .usuarios-page {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 32px 24px;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 24px;
+    }
+
+    .page-titulo { font-size: 24px; font-weight: 500; margin-bottom: 4px; }
+    .page-sub { font-size: 14px; color: #888; }
+
+    .btn-novo {
+        background: #e02020;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .btn-novo:hover { background: #c01818; }
+
+    .abas {
+        display: flex;
+        gap: 4px;
+        border-bottom: 0.5px solid #e0e0e0;
+        margin-bottom: 20px;
+    }
+
+    .aba {
+        background: none;
+        border: none;
+        padding: 10px 16px;
+        font-size: 14px;
+        color: #888;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+    }
+
+    .aba:hover { color: #1a1a1a; }
+
+    .aba-ativa {
+        color: #e02020 !important;
+        border-bottom-color: #e02020 !important;
+        font-weight: 500;
+    }
+
+    .usuarios-lista {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .usuario-card {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .usuario-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        font-weight: 500;
+        flex-shrink: 0;
+    }
+
+    .usuario-avatar.vendedor { background: #fff0f0; color: #e02020; }
+    .usuario-avatar.mecanico { background: #f0f4ff; color: #3b5bdb; }
+
+    .usuario-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+    }
+
+    .usuario-nome { font-size: 14px; font-weight: 500; }
+    .usuario-detalhe { font-size: 12px; color: #888; }
+
+    .usuario-role {
+        font-size: 11px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .vendedor-badge { background: #fff0f0; color: #c01818; }
+    .mecanico-badge { background: #f0f4ff; color: #3b5bdb; }
+
+    .btn-desativar {
+        background: none;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 5px 12px;
+        font-size: 12px;
+        color: #888;
+        cursor: pointer;
+    }
+
+    .btn-desativar:hover { border-color: #e02020; color: #e02020; }
+
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-form {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        width: 100%;
+        max-width: 520px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .modal-titulo { font-size: 16px; font-weight: 500; }
+
+    .modal-fechar {
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: #888;
+        cursor: pointer;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .form-campo { display: flex; flex-direction: column; gap: 6px; }
+    .span-2 { grid-column: span 2; }
+
+    .campo-label { font-size: 12px; color: #555; font-weight: 500; }
+
+    .campo-input {
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 14px;
+        outline: none;
+        width: 100%;
+    }
+
+    .campo-input:focus { border-color: #e02020; }
+
+    .erro-banner {
+        background: #fff5f5;
+        border: 0.5px solid #fca5a5;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        color: #e02020;
+        margin-bottom: 12px;
+    }
+
+    .modal-acoes {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 16px;
+    }
+
+    .btn-cancelar {
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        cursor: pointer;
+    }
+
+    .btn-confirmar {
+        background: #1a1a1a;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #fff;
+        cursor: pointer;
+    }
+
+    .btn-confirmar:disabled { opacity: 0.5; cursor: not-allowed; }
+    .loading { text-align: center; padding: 60px; color: #888; font-size: 14px; }
+</style>

@@ -1,0 +1,29 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthState
+
+@using Microsoft.AspNetCore.Components.Web
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var user = state.User;
+
+        if (!(user.Identity?.IsAuthenticated ?? false))
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        if (user.IsInRole("Admin"))
+            Nav.NavigateTo("/admin");
+        else if (user.IsInRole("Vendedor"))
+            Nav.NavigateTo("/concessionaria");
+        else if (user.IsInRole("Mecanico"))
+            Nav.NavigateTo("/oficina");
+        else
+            Nav.NavigateTo("/login");
+    }
+}

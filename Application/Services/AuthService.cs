@@ -129,4 +129,14 @@ public class AuthService : IAuthService
         return new Mecanico(dto.Nome, email, telefone, senhaHash,
             especialidade, nivel, dto.DataContratacao.Value);
     }
+
+    public async Task<Result> DesativarUsuarioAsync(Guid usuarioId)
+    {
+        var usuario = await _repository.GetByIdAsync(usuarioId);
+        if (usuario is null) return Result.Fail("Usuário não encontrado");
+        usuario.Desativar();
+        _repository.Update(usuario);
+        await _repository.SaveChangesAsync();
+        return Result.Ok();
+    }
 }

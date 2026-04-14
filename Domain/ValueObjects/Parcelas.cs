@@ -4,6 +4,8 @@ public class Parcelas
 {
     public int Quantidade { get; }
 
+    protected Parcelas () {}
+
     public Parcelas(int quantidade)
     {
         if (quantidade <= 0 || quantidade > 72)

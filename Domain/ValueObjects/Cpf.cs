@@ -4,6 +4,8 @@ public class Cpf
 {
     public string Numero { get; }
 
+    protected Cpf () {}
+
     public Cpf(string numero)
     {
         if (!Validar(numero))

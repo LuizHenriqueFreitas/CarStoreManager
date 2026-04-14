@@ -1,0 +1,322 @@
+@page "/concessionaria/veiculo/novo"
+@inject IVeiculoVendaService VeiculoService
+@inject NavigationManager Nav
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
+
+@using Microsoft.AspNetCore.Components.Web
+
+<div class="form-page">
+    <div class="page-header">
+        <button class="btn-voltar" @onclick='() => Nav.NavigateTo("/concessionaria")'>
+            ← Voltar
+        </button>
+        <h1 class="page-titulo">Cadastrar veículo</h1>
+    </div>
+
+    <div class="form-card">
+        <h2 class="secao-titulo">Informações básicas</h2>
+        <div class="form-grid">
+            <div class="form-campo">
+                <label class="campo-label">Marca *</label>
+                <input class="campo-input" @bind="form.Marca" placeholder="Ex: Honda" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Modelo *</label>
+                <input class="campo-input" @bind="form.Modelo" placeholder="Ex: Civic" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Ano *</label>
+                <input type="number" class="campo-input" @bind="form.Ano" placeholder="2024" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Cor *</label>
+                <input class="campo-input" @bind="form.Cor" placeholder="Ex: Prata" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Placa *</label>
+                <input class="campo-input" @bind="form.Placa" placeholder="ABC-1D23" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Motorização *</label>
+                <input class="campo-input" @bind="form.Motorizacao" placeholder="Ex: 1.5 Turbo" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Quilometragem *</label>
+                <input type="number" class="campo-input" @bind="form.Quilometragem" placeholder="0" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Valor (R$) *</label>
+                <input type="number" class="campo-input" @bind="form.Valor" placeholder="0,00" />
+            </div>
+        </div>
+    </div>
+
+    <div class="form-card">
+        <h2 class="secao-titulo">Características</h2>
+        <div class="form-grid">
+            <div class="form-campo">
+                <label class="campo-label">Câmbio</label>
+                <select class="campo-input" @bind="form.Cambio">
+                    <option value="Manual">Manual</option>
+                    <option value="Automatico">Automático</option>
+                </select>
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Combustível</label>
+                <select class="campo-input" @bind="form.Combustivel">
+                    <option value="Flex">Flex</option>
+                    <option value="Gasolina">Gasolina</option>
+                    <option value="Alcool">Álcool</option>
+                    <option value="Diesel">Diesel</option>
+                    <option value="Eletrico">Elétrico</option>
+                    <option value="Hibrido">Híbrido</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-card">
+        <h2 class="secao-titulo">Acessórios</h2>
+        <div class="acessorios-grid">
+            @foreach (var acc in todosAcessorios)
+            {
+                <label class="acc-check">
+                    <input type="checkbox"
+                           checked="@acessoriosSelecionados.Contains(acc.valor)"
+                           @onchange="() => ToggleAcessorio(acc.valor)" />
+                    <span>@acc.label</span>
+                </label>
+            }
+        </div>
+    </div>
+
+    @if (erro is not null)
+    {
+        <div class="erro-banner">@erro</div>
+    }
+
+    @if (sucesso)
+    {
+        <div class="sucesso-banner">Veículo cadastrado com sucesso!</div>
+    }
+
+    <div class="form-acoes">
+        <button class="btn-cancelar"
+                @onclick='() => Nav.NavigateTo("/concessionaria")'>
+            Cancelar
+        </button>
+        <button class="btn-salvar" @onclick="Salvar" disabled="@salvando">
+            @(salvando ? "Salvando..." : "Cadastrar veículo")
+        </button>
+    </div>
+</div>
+
+@code {
+    private CriarVeiculoVendaDTO form = new()
+    {
+        Cambio = "Manual",
+        Combustivel = "Flex",
+        Acessorios = new List<string>()
+    };
+
+    private List<string> acessoriosSelecionados = new();
+    private bool salvando = false;
+    private bool sucesso = false;
+    private string? erro;
+
+    private readonly List<(string valor, string label)> todosAcessorios = new()
+    {
+        ("ArCondicionado", "Ar-condicionado"),
+        ("VidrosEletricos", "Vidros elétricos"),
+        ("DirecaoHidraulica", "Direção hidráulica"),
+        ("TetoSolar", "Teto solar"),
+        ("BancoCouro", "Banco em couro"),
+        ("CameraRe", "Câmera de ré"),
+        ("SensorEstacionamento", "Sensor de estacionamento"),
+        ("CentralMultimidia", "Central multimídia"),
+        ("Alarme", "Alarme"),
+        ("TravasEletrica", "Travas elétricas"),
+        ("RodaLiga", "Rodas de liga"),
+        ("Bluetooth", "Bluetooth")
+    };
+
+    private void ToggleAcessorio(string valor)
+    {
+        if (acessoriosSelecionados.Contains(valor))
+            acessoriosSelecionados.Remove(valor);
+        else
+            acessoriosSelecionados.Add(valor);
+    }
+
+    private async Task Salvar()
+    {
+        if (string.IsNullOrWhiteSpace(form.Marca) ||
+            string.IsNullOrWhiteSpace(form.Modelo) ||
+            string.IsNullOrWhiteSpace(form.Placa))
+        {
+            erro = "Preencha todos os campos obrigatórios.";
+            return;
+        }
+
+        salvando = true;
+        erro = null;
+        sucesso = false;
+        form.Acessorios = new List<string>(acessoriosSelecionados);
+
+        try
+        {
+            var resultado = await VeiculoService.AddAsync(form);
+            if (resultado.IsSuccess)
+            {
+                sucesso = true;
+                await Task.Delay(1200);
+                Nav.NavigateTo($"/concessionaria/veiculo/{resultado.Value}");
+            }
+            else
+            {
+                erro = resultado.Error;
+            }
+        }
+        catch
+        {
+            erro = "Erro ao cadastrar veículo.";
+        }
+        finally { salvando = false; }
+    }
+}
+
+<style>
+    .form-page {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+
+    .page-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .btn-voltar {
+        background: none;
+        border: none;
+        color: #888;
+        font-size: 14px;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .btn-voltar:hover { color: #1a1a1a; }
+
+    .page-titulo { font-size: 22px; font-weight: 500; }
+
+    .form-card {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+    }
+
+    .secao-titulo {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1a1a1a;
+        margin-bottom: 16px;
+        padding-bottom: 10px;
+        border-bottom: 0.5px solid #eee;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .form-campo { display: flex; flex-direction: column; gap: 6px; }
+
+    .campo-label { font-size: 12px; color: #555; font-weight: 500; }
+
+    .campo-input {
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 14px;
+        outline: none;
+        width: 100%;
+        transition: border-color 0.2s;
+    }
+
+    .campo-input:focus { border-color: #e02020; }
+
+    .acessorios-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+
+    .acc-check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #444;
+        cursor: pointer;
+    }
+
+    .acc-check input { cursor: pointer; accent-color: #e02020; }
+
+    .erro-banner {
+        background: #fff5f5;
+        border: 0.5px solid #fca5a5;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: #e02020;
+        margin-bottom: 16px;
+    }
+
+    .sucesso-banner {
+        background: #f0fdf4;
+        border: 0.5px solid #86efac;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: #166534;
+        margin-bottom: 16px;
+    }
+
+    .form-acoes {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 8px;
+    }
+
+    .btn-cancelar {
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-size: 14px;
+        cursor: pointer;
+        color: #444;
+    }
+
+    .btn-salvar {
+        background: #e02020;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 24px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .btn-salvar:hover:not(:disabled) { background: #c01818; }
+    .btn-salvar:disabled { opacity: 0.6; cursor: not-allowed; }
+</style>

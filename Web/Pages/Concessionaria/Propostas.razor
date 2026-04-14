@@ -1,0 +1,214 @@
+@page "/concessionaria/propostas"
+@inject IPropostaVendaService PropostaService
+@inject NavigationManager Nav
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda
+
+@using Microsoft.AspNetCore.Components.Web
+
+<div class="propostas-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-titulo">Propostas de venda</h1>
+            <p class="page-sub">@propostas.Count propostas no total</p>
+        </div>
+    </div>
+
+    <div class="filtros-status">
+        @foreach (var status in todoStatus)
+        {
+            <button class="@FiltroClass(status.valor)"
+                    @onclick="() => FiltrarPor(status.valor)">
+                @status.label
+                <span class="filtro-count">
+                    @propostas.Count(p => status.valor == "Todos" || p.Status == status.valor)
+                </span>
+            </button>
+        }
+    </div>
+
+    @if (carregando)
+    {
+        <div class="loading">Carregando propostas...</div>
+    }
+    else if (!propostasFiltradas.Any())
+    {
+        <div class="vazio">Nenhuma proposta encontrada.</div>
+    }
+    else
+    {
+        <div class="propostas-lista">
+            @foreach (var p in propostasFiltradas)
+            {
+                <div class="proposta-card" @onclick="() => AbrirDetalhe(p.Id)">
+                    <div class="proposta-info">
+                        <span class="proposta-id">#@p.Id.ToString()[..8].ToUpper()</span>
+                        <span class="proposta-data">
+                            @p.DataCriacao.ToString("dd/MM/yyyy")
+                        </span>
+                    </div>
+                    <div class="proposta-valor">
+                        @p.ValorFinal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
+                    </div>
+                    <span class="status-badge @StatusClass(p.Status)">@p.Status</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<PropostaVendaListaDTO> propostas = new();
+    private List<PropostaVendaListaDTO> propostasFiltradas = new();
+    private string filtroAtivo = "Todos";
+    private bool carregando = true;
+
+    private readonly List<(string valor, string label)> todoStatus = new()
+    {
+        ("Todos", "Todas"),
+        ("Rascunho", "Rascunho"),
+        ("Aprovada", "Aprovadas"),
+        ("Rejeitada", "Rejeitadas"),
+        ("Cancelada", "Canceladas")
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var resultado = await PropostaService.GetAllAsync();
+        propostas = resultado.IsSuccess ? resultado.Value?.ToList() ?? new() : new();
+        AplicarFiltro();
+        carregando = false;
+    }
+
+    private void FiltrarPor(string status)
+    {
+        filtroAtivo = status;
+        AplicarFiltro();
+    }
+
+    private void AplicarFiltro()
+    {
+        propostasFiltradas = filtroAtivo == "Todos"
+            ? propostas.ToList()
+            : propostas.Where(p => p.Status == filtroAtivo).ToList();
+    }
+
+    private void AbrirDetalhe(Guid id) =>
+        Nav.NavigateTo($"/concessionaria/proposta/{id}");
+
+    private string FiltroClass(string status) =>
+        status == filtroAtivo ? "filtro-status ativo" : "filtro-status";
+
+    private string StatusClass(string status) => status switch
+    {
+        "Aprovada"  => "status-aprovada",
+        "Rejeitada" => "status-rejeitada",
+        "Cancelada" => "status-cancelada",
+        _           => "status-rascunho"
+    };
+}
+
+<style>
+    .propostas-page {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 32px 24px;
+    }
+
+    .page-header { margin-bottom: 20px; }
+    .page-titulo { font-size: 24px; font-weight: 500; margin-bottom: 4px; }
+    .page-sub { font-size: 14px; color: #888; }
+
+    .filtros-status {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .filtro-status {
+        background: #f4f4f4;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 6px 14px;
+        font-size: 13px;
+        color: #555;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .filtro-status.ativo {
+        background: #1a1a1a;
+        border-color: #1a1a1a;
+        color: #fff;
+    }
+
+    .filtro-count {
+        background: rgba(255,255,255,0.2);
+        border-radius: 10px;
+        padding: 1px 6px;
+        font-size: 11px;
+    }
+
+    .filtro-status:not(.ativo) .filtro-count {
+        background: #e0e0e0;
+        color: #666;
+    }
+
+    .propostas-lista {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .proposta-card {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 14px 18px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        cursor: pointer;
+        transition: border-color 0.2s;
+    }
+
+    .proposta-card:hover { border-color: #e02020; }
+
+    .proposta-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+    }
+
+    .proposta-id { font-size: 14px; font-weight: 500; font-family: monospace; }
+    .proposta-data { font-size: 12px; color: #888; }
+
+    .proposta-valor {
+        font-size: 16px;
+        font-weight: 500;
+        color: #e02020;
+    }
+
+    .status-badge {
+        font-size: 11px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+
+    .status-rascunho  { background: #f4f4f4; color: #666; }
+    .status-aprovada  { background: #dcfce7; color: #166534; }
+    .status-rejeitada { background: #fff5f5; color: #e02020; }
+    .status-cancelada { background: #fef9c3; color: #854d0e; }
+
+    .loading, .vazio {
+        text-align: center;
+        padding: 60px;
+        color: #888;
+        font-size: 14px;
+    }
+</style>

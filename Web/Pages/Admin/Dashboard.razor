@@ -1,0 +1,207 @@
+@page "/dashboard"
+@rendermode Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer
+@inject IVeiculoVendaService VeiculoService
+@inject IOrdemServicoService OrdemService
+@inject IClienteService ClienteService
+@inject IComponenteService ComponenteService
+@inject NavigationManager Nav
+@using CarStoreManager.Application.Interfaces
+
+@using Microsoft.AspNetCore.Components.Web
+
+<div class="dash-page">
+    <div class="dash-header">
+        <h1 class="dash-titulo">Dashboard</h1>
+        <p class="dash-sub">Visão geral do sistema</p>
+    </div>
+
+    <div class="metricas-grid">
+        <div class="metrica-card">
+            <span class="metrica-label">Veículos disponíveis</span>
+            <span class="metrica-valor">@veiculosDisponiveis</span>
+        </div>
+        <div class="metrica-card">
+            <span class="metrica-label">Ordens em andamento</span>
+            <span class="metrica-valor">@ordensEmAndamento</span>
+        </div>
+        <div class="metrica-card">
+            <span class="metrica-label">Clientes cadastrados</span>
+            <span class="metrica-valor">@totalClientes</span>
+        </div>
+        <div class="metrica-card destaque">
+            <span class="metrica-label">Peças com estoque baixo</span>
+            <span class="metrica-valor alerta">@pecasEstoqueBaixo</span>
+        </div>
+    </div>
+
+    <div class="dash-modulos">
+        <div class="modulo-card" @onclick='() => Nav.NavigateTo("/concessionaria")'>
+            <div class="modulo-icone concessionaria">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v5"/>
+                    <circle cx="15.5" cy="17.5" r="2.5"/>
+                    <circle cx="4.5" cy="17.5" r="2.5"/>
+                </svg>
+            </div>
+            <div>
+                <div class="modulo-titulo">Concessionária</div>
+                <div class="modulo-sub">Veículos, propostas e vendas</div>
+            </div>
+            <span class="modulo-seta">→</span>
+        </div>
+
+        <div class="modulo-card" @onclick='() => Nav.NavigateTo("/oficina")'>
+            <div class="modulo-icone oficina">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="modulo-titulo">Oficina</div>
+                <div class="modulo-sub">Ordens de serviço e mecânicos</div>
+            </div>
+            <span class="modulo-seta">→</span>
+        </div>
+
+        <div class="modulo-card" @onclick='() => Nav.NavigateTo("/admin/usuarios")'>
+            <div class="modulo-icone usuarios">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+            </div>
+            <div>
+                <div class="modulo-titulo">Usuários</div>
+                <div class="modulo-sub">Vendedores e mecânicos</div>
+            </div>
+            <span class="modulo-seta">→</span>
+        </div>
+    </div>
+</div>
+
+@code {
+    private int veiculosDisponiveis = 0;
+    private int ordensEmAndamento = 0;
+    private int totalClientes = 0;
+    private int pecasEstoqueBaixo = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var veiculos = await VeiculoService.ObterDisponiveisAsync();
+        if (veiculos.IsSuccess)
+            veiculosDisponiveis = veiculos.Value?.Count() ?? 0;
+
+        var ordens = await OrdemService.GetAllAsync();
+        if (ordens.IsSuccess)
+            ordensEmAndamento = ordens.Value?
+                .Count(o => o.Status == "EmAndamento") ?? 0;
+
+        var clientes = await ClienteService.GetAllAsync();
+        if (clientes.IsSuccess)
+            totalClientes = clientes.Value?.Count() ?? 0;
+
+        var pecas = await ComponenteService.ObterComEstoqueBaixoAsync();
+        if (pecas.IsSuccess)
+            pecasEstoqueBaixo = pecas.Value?.Count() ?? 0;
+    }
+}
+
+<style>
+    .dash-page {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 32px 24px;
+    }
+
+    .dash-header { margin-bottom: 28px; }
+
+    .dash-titulo {
+        font-size: 24px;
+        font-weight: 500;
+        color: #1a1a1a;
+        margin-bottom: 4px;
+    }
+
+    .dash-sub { font-size: 14px; color: #888; }
+
+    .metricas-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 28px;
+    }
+
+    .metrica-card {
+        background: #f4f4f4;
+        border-radius: 10px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .metrica-card.destaque { background: #fff5f5; }
+
+    .metrica-label { font-size: 12px; color: #888; }
+
+    .metrica-valor {
+        font-size: 32px;
+        font-weight: 500;
+        color: #1a1a1a;
+    }
+
+    .metrica-valor.alerta { color: #e02020; }
+
+    .dash-modulos {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .modulo-card {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        cursor: pointer;
+        transition: border-color 0.2s, transform 0.15s;
+    }
+
+    .modulo-card:hover {
+        border-color: #e02020;
+        transform: translateX(4px);
+    }
+
+    .modulo-icone {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .modulo-icone.concessionaria { background: #fff0f0; color: #e02020; }
+    .modulo-icone.oficina { background: #f0f4ff; color: #3b5bdb; }
+    .modulo-icone.usuarios { background: #f0fff4; color: #2f9e44; }
+
+    .modulo-titulo {
+        font-size: 15px;
+        font-weight: 500;
+        color: #1a1a1a;
+        margin-bottom: 2px;
+    }
+
+    .modulo-sub { font-size: 12px; color: #888; }
+
+    .modulo-seta {
+        margin-left: auto;
+        color: #ccc;
+        font-size: 18px;
+    }
+</style>

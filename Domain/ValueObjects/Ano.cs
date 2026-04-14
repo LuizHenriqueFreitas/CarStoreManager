@@ -4,6 +4,8 @@ public class Ano
 {
     public int Valor { get; }
 
+    protected Ano () {}
+
     public Ano(int valor)
     {
         var anoAtual = DateTime.Now.Year;

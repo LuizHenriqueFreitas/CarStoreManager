@@ -1,0 +1,663 @@
+@page "/oficina/componentes"
+@inject IComponenteService ComponenteService
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Oficina.Componente
+@using Microsoft.AspNetCore.Components.Authorization
+
+@using Microsoft.AspNetCore.Components.Web
+
+<div class="comp-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-titulo">Componentes</h1>
+            <p class="page-sub">Estoque de peças da oficina</p>
+        </div>
+        @if (ehAdmin)
+        {
+            <button class="btn-novo" @onclick="AbrirModalNovo">+ Novo componente</button>
+        }
+    </div>
+
+    @if (pecasEstoqueBaixo.Any())
+    {
+        <div class="alerta-estoque">
+            <span class="alerta-icone">⚠</span>
+            <span>@pecasEstoqueBaixo.Count peça(s) com estoque abaixo do mínimo</span>
+            <button class="alerta-btn" @onclick='() => filtroAtivo = "EstoqueBaixo"'>
+                Ver peças
+            </button>
+        </div>
+    }
+
+    <div class="filtros-row">
+        <div class="filtros-status">
+            <button class="@FiltroClass("Todos")"
+                    @onclick='() => FiltrarPor("Todos")'>Todos</button>
+            <button class="@FiltroClass("EstoqueBaixo")"
+                    @onclick='() => FiltrarPor("EstoqueBaixo")'>Estoque baixo</button>
+            @foreach (var s in todosSistemas)
+            {
+                <button class="@FiltroClass(s)"
+                        @onclick="() => FiltrarPor(s)">@s</button>
+            }
+        </div>
+        <input class="busca-input"
+               placeholder="Buscar componente..."
+               @bind="termoBusca"
+               @bind:event="oninput" />
+    </div>
+
+    @if (carregando)
+    {
+        <div class="loading">Carregando componentes...</div>
+    }
+    else if (!componentesFiltrados.Any())
+    {
+        <div class="vazio">Nenhum componente encontrado.</div>
+    }
+    else
+    {
+        <div class="comp-tabela">
+            <div class="tabela-header">
+                <span>Nome</span>
+                <span>Sistema</span>
+                <span>Estoque</span>
+                <span>Mínimo</span>
+                <span>Valor unit.</span>
+                @if (ehAdmin)
+                {
+                    <span>Ações</span>
+                }
+            </div>
+
+            @foreach (var c in componentesFiltrados)
+            {
+                <div class="tabela-row @(c.QuantidadeEstoque <= 0 ? "sem-estoque" : "")">
+                    <span class="comp-nome">@c.Nome</span>
+                    <span class="comp-sistema">@c.Sistema</span>
+                    <span class="comp-qtd @EstoqueClass(c)">
+                        @c.QuantidadeEstoque
+                    </span>
+                    <span class="comp-min">@c.EstoqueMinimo</span>
+                    <span class="comp-valor">
+                        @c.Valor.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
+                    </span>
+                    @if (ehAdmin)
+                    {
+                        <div class="comp-acoes">
+                            <button class="btn-mini verde"
+                                    @onclick="() => AbrirModalEntrada(c)">
+                                + Entrada
+                            </button>
+                            <button class="btn-mini"
+                                    @onclick="() => AbrirModalEditar(c)">
+                                Editar
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (modalNovoVisivel)
+{
+    <div class="modal-overlay" @onclick="() => modalNovoVisivel = false">
+        <div class="modal-form" @onclick:stopPropagation>
+            <div class="modal-header">
+                <span class="modal-titulo">
+                    @(modoEditar ? "Editar componente" : "Novo componente")
+                </span>
+                <button class="modal-fechar"
+                        @onclick="() => modalNovoVisivel = false">×</button>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-campo span-2">
+                    <label class="campo-label">Nome *</label>
+                    <input class="campo-input" @bind="formComp.Nome" />
+                </div>
+                <div class="form-campo span-2">
+                    <label class="campo-label">Modelo</label>
+                    <input class="campo-input" @bind="formComp.Modelo" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Sistema</label>
+                    <select class="campo-input" @bind="formComp.Sistema">
+                        @foreach (var s in todosSistemas)
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Valor (R$)</label>
+                    <input type="number" class="campo-input" @bind="formComp.Valor" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Quantidade inicial</label>
+                    <input type="number" class="campo-input"
+                           @bind="formComp.QuantidadeEstoque"
+                           disabled="@modoEditar" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Estoque mínimo</label>
+                    <input type="number" class="campo-input"
+                           @bind="formComp.EstoqueMinimo" />
+                </div>
+            </div>
+
+            @if (erroForm is not null)
+            {
+                <div class="erro-banner">@erroForm</div>
+            }
+
+            <div class="modal-acoes">
+                <button class="btn-cancelar"
+                        @onclick="() => modalNovoVisivel = false">Cancelar</button>
+                <button class="btn-confirmar"
+                        @onclick="SalvarComponente"
+                        disabled="@salvando">
+                    @(salvando ? "Salvando..." : (modoEditar ? "Salvar" : "Cadastrar"))
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (modalEntradaVisivel)
+{
+    <div class="modal-overlay" @onclick="() => modalEntradaVisivel = false">
+        <div class="modal-form pequeno" @onclick:stopPropagation>
+            <div class="modal-header">
+                <span class="modal-titulo">Entrada de estoque</span>
+                <button class="modal-fechar"
+                        @onclick="() => modalEntradaVisivel = false">×</button>
+            </div>
+            <p class="modal-sub">@componenteSelecionado?.Nome</p>
+            <p class="modal-sub">
+                Estoque atual: @componenteSelecionado?.QuantidadeEstoque unidades
+            </p>
+
+            <div class="form-campo" style="margin-top: 16px;">
+                <label class="campo-label">Quantidade a adicionar</label>
+                <input type="number" class="campo-input"
+                       @bind="quantidadeEntrada"
+                       min="1" />
+            </div>
+
+            @if (erroForm is not null)
+            {
+                <div class="erro-banner">@erroForm</div>
+            }
+
+            <div class="modal-acoes">
+                <button class="btn-cancelar"
+                        @onclick="() => modalEntradaVisivel = false">Cancelar</button>
+                <button class="btn-confirmar verde"
+                        @onclick="ConfirmarEntrada"
+                        disabled="@salvando">
+                    @(salvando ? "Salvando..." : "Confirmar entrada")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<ComponenteDTO> componentes = new();
+    private List<ComponenteDTO> componentesFiltrados = new();
+    private List<ComponenteListaDTO> pecasEstoqueBaixo = new();
+    private string filtroAtivo = "Todos";
+    private string termoBusca = string.Empty;
+    private bool carregando = true;
+    private bool ehAdmin = false;
+    private bool modalNovoVisivel = false;
+    private bool modalEntradaVisivel = false;
+    private bool modoEditar = false;
+    private bool salvando = false;
+    private string? erroForm;
+    private ComponenteDTO? componenteSelecionado;
+    private int quantidadeEntrada = 1;
+
+    private CriarComponenteDTO formComp = new();
+    private AtualizarComponenteDTO formEditar = new();
+
+    private readonly List<string> todosSistemas = new()
+    {
+        "Motor", "Freios", "Suspensao", "Eletrica",
+        "Transmissao", "Arrefecimento", "Escapamento", "Outro"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        ehAdmin = state.User.IsInRole("Admin");
+
+        await CarregarDados();
+    }
+
+    private async Task CarregarDados()
+    {
+        carregando = true;
+
+        var resultado = await ComponenteService.GetAllAsync();
+        if (resultado.IsSuccess)
+        {
+            componentes = resultado.Value?
+                .Select(c => new ComponenteDTO
+                {
+                    Id = c.Id,
+                    Nome = c.Nome,
+                    Sistema = c.Sistema,
+                    QuantidadeEstoque = c.QuantidadeEstoque,
+                    Valor = c.Valor,
+                    Modelo = c.Modelo
+                }).ToList() ?? new();
+        }
+
+        var baixo = await ComponenteService.ObterComEstoqueBaixoAsync();
+        pecasEstoqueBaixo = baixo.IsSuccess
+            ? baixo.Value?.ToList() ?? new()
+            : new();
+
+        AplicarFiltro();
+        carregando = false;
+    }
+
+    private void FiltrarPor(string filtro)
+    {
+        filtroAtivo = filtro;
+        AplicarFiltro();
+    }
+
+    private void AplicarFiltro()
+    {
+        var base_ = filtroAtivo switch
+        {
+            "EstoqueBaixo" => componentes
+                .Where(c => c.QuantidadeEstoque <= c.EstoqueMinimo).ToList(),
+            "Todos" => componentes.ToList(),
+            _ => componentes.Where(c => c.Sistema == filtroAtivo).ToList()
+        };
+
+        componentesFiltrados = string.IsNullOrWhiteSpace(termoBusca)
+            ? base_
+            : base_.Where(c => c.Nome.Contains(
+                termoBusca, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    private void AbrirModalNovo()
+    {
+        modoEditar = false;
+        formComp = new CriarComponenteDTO { Sistema = "Motor" };
+        erroForm = null;
+        modalNovoVisivel = true;
+    }
+
+    private void AbrirModalEditar(ComponenteDTO c)
+    {
+        modoEditar = true;
+        formEditar = new AtualizarComponenteDTO
+        {
+            Id = c.Id,
+            Valor = c.Valor,
+            QuantidadeEstoque = c.QuantidadeEstoque,
+            EstoqueMinimo = c.EstoqueMinimo
+        };
+        formComp = new CriarComponenteDTO
+        {
+            Nome = c.Nome,
+            Modelo = c.Modelo,
+            Sistema = c.Sistema,
+            Valor = c.Valor,
+            QuantidadeEstoque = c.QuantidadeEstoque,
+            EstoqueMinimo = c.EstoqueMinimo
+        };
+        erroForm = null;
+        modalNovoVisivel = true;
+    }
+
+    private void AbrirModalEntrada(ComponenteDTO c)
+    {
+        componenteSelecionado = c;
+        quantidadeEntrada = 1;
+        erroForm = null;
+        modalEntradaVisivel = true;
+    }
+
+    private async Task SalvarComponente()
+    {
+        salvando = true;
+        erroForm = null;
+
+        try
+        {
+            if (modoEditar)
+            {
+                formEditar.Valor = formComp.Valor;
+                formEditar.EstoqueMinimo = formComp.EstoqueMinimo;
+                var r = await ComponenteService.UpdateAsync(formEditar);
+                if (r.IsSuccess) { modalNovoVisivel = false; await CarregarDados(); }
+                else erroForm = r.Error;
+            }
+            else
+            {
+                var r = await ComponenteService.AddAsync(formComp);
+                if (r.IsSuccess) { modalNovoVisivel = false; await CarregarDados(); }
+                else erroForm = r.Error;
+            }
+        }
+        catch { erroForm = "Erro ao salvar."; }
+        finally { salvando = false; }
+    }
+
+    private async Task ConfirmarEntrada()
+    {
+        if (quantidadeEntrada <= 0 || componenteSelecionado is null) return;
+
+        salvando = true;
+        erroForm = null;
+
+        var resultado = await ComponenteService.EntradaEstoqueAsync(
+            componenteSelecionado.Id, quantidadeEntrada);
+
+        if (resultado.IsSuccess)
+        {
+            modalEntradaVisivel = false;
+            await CarregarDados();
+        }
+        else
+        {
+            erroForm = resultado.Error;
+        }
+
+        salvando = false;
+    }
+
+    private string FiltroClass(string f) =>
+        f == filtroAtivo ? "filtro-os ativo" : "filtro-os";
+
+    private string EstoqueClass(ComponenteDTO c)
+    {
+        if (c.QuantidadeEstoque <= 0) return "qtd-zero";
+        if (c.QuantidadeEstoque <= c.EstoqueMinimo) return "qtd-baixo";
+        return "qtd-ok";
+    }
+}
+
+<style>
+    .comp-page {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 32px 24px;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+    }
+
+    .page-titulo { font-size: 24px; font-weight: 500; margin-bottom: 4px; }
+    .page-sub { font-size: 14px; color: #888; }
+
+    .btn-novo {
+        background: #2563eb;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .btn-novo:hover { background: #1d4ed8; }
+
+    .alerta-estoque {
+        background: #fff7ed;
+        border: 0.5px solid #fed7aa;
+        border-radius: 10px;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        font-size: 13px;
+        color: #9a3412;
+    }
+
+    .alerta-icone { font-size: 16px; }
+
+    .alerta-btn {
+        margin-left: auto;
+        background: #ea580c;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 4px 12px;
+        font-size: 12px;
+        cursor: pointer;
+    }
+
+    .filtros-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+
+    .filtros-status {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .filtro-os {
+        background: #f4f4f4;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 5px 12px;
+        font-size: 12px;
+        color: #555;
+        cursor: pointer;
+    }
+
+    .filtro-os.ativo {
+        background: #1a1a1a;
+        border-color: #1a1a1a;
+        color: #fff;
+    }
+
+    .busca-input {
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 7px 12px;
+        font-size: 13px;
+        outline: none;
+        min-width: 200px;
+    }
+
+    .busca-input:focus { border-color: #3b82f6; }
+
+    .comp-tabela {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .tabela-header {
+        display: grid;
+        grid-template-columns: 2fr 1fr 80px 80px 100px 120px;
+        padding: 10px 16px;
+        background: #f4f4f4;
+        font-size: 11px;
+        color: #888;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .tabela-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 80px 80px 100px 120px;
+        padding: 12px 16px;
+        border-top: 0.5px solid #f0f0f0;
+        align-items: center;
+        font-size: 13px;
+        transition: background 0.15s;
+    }
+
+    .tabela-row:hover { background: #fafafa; }
+    .sem-estoque { opacity: 0.6; }
+
+    .comp-nome { font-weight: 500; }
+    .comp-sistema { color: #888; font-size: 12px; }
+
+    .comp-qtd { font-weight: 600; }
+    .qtd-ok   { color: #16a34a; }
+    .qtd-baixo { color: #ea580c; }
+    .qtd-zero  { color: #e02020; }
+
+    .comp-min { color: #aaa; font-size: 12px; }
+    .comp-valor { font-weight: 500; }
+
+    .comp-acoes { display: flex; gap: 6px; }
+
+    .btn-mini {
+        background: #f4f4f4;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 11px;
+        cursor: pointer;
+    }
+
+    .btn-mini.verde {
+        background: #dcfce7;
+        border-color: #86efac;
+        color: #166534;
+    }
+
+    .btn-mini.verde:hover { background: #bbf7d0; }
+
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-form {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        width: 100%;
+        max-width: 520px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-form.pequeno { max-width: 360px; }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .modal-titulo { font-size: 16px; font-weight: 500; }
+    .modal-sub { font-size: 13px; color: #888; margin-bottom: 4px; }
+
+    .modal-fechar {
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: #888;
+        cursor: pointer;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .form-campo { display: flex; flex-direction: column; gap: 6px; }
+    .span-2 { grid-column: span 2; }
+
+    .campo-label { font-size: 12px; color: #555; font-weight: 500; }
+
+    .campo-input {
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 14px;
+        outline: none;
+        width: 100%;
+    }
+
+    .campo-input:focus { border-color: #3b82f6; }
+    .campo-input:disabled { background: #f4f4f4; color: #888; }
+
+    .erro-banner {
+        background: #fff5f5;
+        border: 0.5px solid #fca5a5;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        color: #e02020;
+        margin-bottom: 12px;
+    }
+
+    .modal-acoes {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 16px;
+    }
+
+    .btn-cancelar {
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        cursor: pointer;
+    }
+
+    .btn-confirmar {
+        background: #1a1a1a;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #fff;
+        cursor: pointer;
+    }
+
+    .btn-confirmar.verde { background: #16a34a; }
+    .btn-confirmar.verde:hover { background: #15803d; }
+    .btn-confirmar:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .loading, .vazio {
+        text-align: center;
+        padding: 60px;
+        color: #888;
+        font-size: 14px;
+    }
+</style>

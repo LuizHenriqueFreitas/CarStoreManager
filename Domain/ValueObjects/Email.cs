@@ -11,6 +11,8 @@ public class Email : IEquatable<Email>
         RegexOptions.Compiled | RegexOptions.IgnoreCase
     );
 
+    protected Email () {}
+
     public Email(string endereco)
     {
         if (string.IsNullOrWhiteSpace(endereco))

@@ -4,6 +4,8 @@ public class Dinheiro : IEquatable<Dinheiro>
 {
     public decimal Valor { get; }
 
+    protected Dinheiro () {}
+
     public Dinheiro(decimal valor)
     {
         if (valor < 0)

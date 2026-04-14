@@ -47,7 +47,7 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         // =========================
-        // HERANÇA (TPH - Table per Hierarchy)
+        // HERANÇA (TPH - Table per Hierarchy) para Usuario
         // =========================
         modelBuilder.Entity<Usuario>()
             .HasDiscriminator<string>("TipoUsuario")
@@ -57,154 +57,176 @@ public class AppDbContext : DbContext
             .HasValue<Mecanico>("Mecanico");
 
         // =========================
-        // CLIENTE
+        // CONFIGURAÇÕES DA CLASSE BASE USUARIO
+        // (Garante que Email, Telefone etc. sejam owned types para todas as subclasses)
         // =========================
-        modelBuilder.Entity<Cliente>()
-            .HasKey(c => c.Id);
+        modelBuilder.Entity<Usuario>(entity =>
+        {
+            // Email (ValueObject)
+            entity.OwnsOne(u => u.Email, email =>
+            {
+                email.Property(e => e.Endereco)        // Ajuste o nome da propriedade conforme sua classe Email
+                      .HasColumnName("Email")
+                      .HasMaxLength(150)
+                      .IsRequired();
+            });
 
-        modelBuilder.Entity<Cliente>()
-            .OwnsOne(c => c.Email);
+            // Telefone (ValueObject)
+            entity.OwnsOne(u => u.Telefone, telefone =>
+            {
+                telefone.Property(t => t.Numero)     // Ajuste conforme sua classe Telefone
+                        .HasColumnName("Telefone")
+                        .HasMaxLength(20);
+            });
 
-        modelBuilder.Entity<Cliente>()
-            .OwnsOne(c => c.Telefone);
+            // Outros owned types comuns a todos os usuários, se houver (ex: Endereco)
+        });
 
-        modelBuilder.Entity<Cliente>()
-            .OwnsOne(c => c.CPF);
+        // =========================
+        // CLIENTE (especificidades)
+        // =========================
+        modelBuilder.Entity<Cliente>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+
+            entity.OwnsOne(c => c.Email);      // Email já configurado em Usuario? Se Cliente herdar de Usuario, remova
+            entity.OwnsOne(c => c.Telefone);
+            entity.OwnsOne(c => c.CPF, cpf =>
+            {
+                cpf.Property(p => p.Numero)
+                    .HasColumnName("Cpf")
+                    .HasMaxLength(14);
+            });
+        });
 
         // =========================
         // VEICULO CLIENTE
         // =========================
-        modelBuilder.Entity<VeiculoCliente>()
-            .HasKey(v => v.Id);
-
-        modelBuilder.Entity<VeiculoCliente>()
-            .OwnsOne(v => v.Ano);
-
-        modelBuilder.Entity<VeiculoCliente>()
-            .HasMany(v => v.HistoricoServicos)
-            .WithOne()
-            .HasForeignKey("VeiculoId");
-
-        // =========================
-        // MECÂNICO
-        // =========================
-        modelBuilder.Entity<Mecanico>()
-            .OwnsOne(m => m.Email);
-
-        modelBuilder.Entity<Mecanico>()
-            .OwnsOne(m => m.Telefone);
-
-        modelBuilder.Entity<Mecanico>()
-            .OwnsOne(m => m.DadosFuncionario);
+        modelBuilder.Entity<VeiculoCliente>(entity =>
+        {
+            entity.HasKey(v => v.Id);
+            entity.OwnsOne(v => v.Ano, ano =>
+            {
+                ano.Property(a => a.Valor).HasColumnName("Ano");
+            });
+            entity.HasMany(v => v.HistoricoServicos)
+                  .WithOne()
+                  .HasForeignKey("VeiculoId");
+        });
 
         // =========================
-        // VENDEDOR
+        // MECANICO (especificidades)
         // =========================
-        modelBuilder.Entity<Vendedor>()
-            .OwnsOne(v => v.Email);
-
-        modelBuilder.Entity<Vendedor>()
-            .OwnsOne(v => v.Telefone);
-
-        modelBuilder.Entity<Vendedor>()
-            .OwnsOne(v => v.DadosFuncionario);
-
-        // =========================
-        // ORDEM SERVIÇO
-        // =========================
-        modelBuilder.Entity<OrdemServico>()
-            .HasKey(o => o.Id);
-
-        modelBuilder.Entity<OrdemServico>()
-            .OwnsOne(o => o.CustoServico);
-
-        modelBuilder.Entity<OrdemServico>()
-            .OwnsOne(o => o.ValorTotal);
-
-        modelBuilder.Entity<OrdemServico>()
-            .HasMany(o => o.Itens)
-            .WithOne()
-            .HasForeignKey(i => i.OrdemServicoId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<OrdemServico>()
-            .HasMany(o => o.Checklist)
-            .WithOne()
-            .HasForeignKey(c => c.OrdemServicoId)
-            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Mecanico>(entity =>
+        {
+            entity.OwnsOne(m => m.Email);      // Se herdar de Usuario, pode ser redundante, mas não quebra
+            entity.OwnsOne(m => m.Telefone);
+            entity.OwnsOne(m => m.DadosFuncionario, dados =>
+            {
+                dados.Property(d => d.DataContratacao).HasColumnName("DataContratacao");
+                dados.Property(d => d.Nivel).HasColumnName("Nivel");
+                // ... outros campos
+            });
+        });
 
         // =========================
-        // ITEM ORDEM SERVIÇO
+        // VENDEDOR (especificidades)
         // =========================
-        modelBuilder.Entity<ItemOrdemServico>()
-            .OwnsOne(i => i.ValorUnitario);
+        modelBuilder.Entity<Vendedor>(entity =>
+        {
+            entity.OwnsOne(v => v.Email);
+            entity.OwnsOne(v => v.Telefone);
+            entity.OwnsOne(v => v.DadosFuncionario);
+        });
 
-        modelBuilder.Entity<ItemOrdemServico>()
-            .OwnsOne(i => i.ValorTotal);
+        // =========================
+        // ORDEM SERVICO
+        // =========================
+        modelBuilder.Entity<OrdemServico>(entity =>
+        {
+            entity.HasKey(o => o.Id);
+            entity.OwnsOne(o => o.CustoServico, custo => { custo.Property(c => c.Valor).HasColumnName("CustoServico"); });
+            entity.OwnsOne(o => o.ValorTotal, total => { total.Property(t => t.Valor).HasColumnName("ValorTotal"); });
+            entity.HasMany(o => o.Itens)
+                  .WithOne()
+                  .HasForeignKey(i => i.OrdemServicoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasMany(o => o.Checklist)
+                  .WithOne()
+                  .HasForeignKey(c => c.OrdemServicoId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // =========================
+        // ITEM ORDEM SERVICO
+        // =========================
+        modelBuilder.Entity<ItemOrdemServico>(entity =>
+        {
+            entity.OwnsOne(i => i.ValorUnitario, vu => { vu.Property(v => v.Valor).HasColumnName("ValorUnitario"); });
+            entity.OwnsOne(i => i.ValorTotal, vt => { vt.Property(v => v.Valor).HasColumnName("ValorTotalItem"); });
+        });
 
         // =========================
         // COMPONENTE
         // =========================
-        modelBuilder.Entity<Componente>()
-            .HasKey(c => c.Id);
-
-        modelBuilder.Entity<Componente>()
-            .OwnsOne(c => c.Valor);
+        modelBuilder.Entity<Componente>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.OwnsOne(c => c.Valor, valor => { valor.Property(v => v.Valor).HasColumnName("ValorComponente"); });
+        });
 
         // =========================
         // VEICULO VENDA
         // =========================
-        modelBuilder.Entity<VeiculoVenda>()
-            .HasKey(v => v.Id);
-
-        modelBuilder.Entity<VeiculoVenda>()
-            .OwnsOne(v => v.Ano);
-
-        modelBuilder.Entity<VeiculoVenda>()
-            .OwnsOne(v => v.Quilometragem);
-
-        modelBuilder.Entity<VeiculoVenda>()
-            .OwnsOne(v => v.Placa);
-
-        modelBuilder.Entity<VeiculoVenda>()
-            .OwnsOne(v => v.Valor);
-
-        modelBuilder.Entity<VeiculoVenda>()
-            .HasMany(v => v.Fotos)
-            .WithOne()
-            .HasForeignKey(f => f.VeiculoVendaId)
-            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<VeiculoVenda>(entity =>
+        {
+            entity.HasKey(v => v.Id);
+            entity.OwnsOne(v => v.Ano, ano => { ano.Property(a => a.Valor).HasColumnName("Ano"); });
+            entity.OwnsOne(v => v.Quilometragem, km => { km.Property(k => k.Valor).HasColumnName("Quilometragem"); });
+            entity.OwnsOne(v => v.Placa, placa => { placa.Property(p => p.Valor).HasColumnName("Placa"); });
+            entity.OwnsOne(v => v.Valor, valor => { valor.Property(v => v.Valor).HasColumnName("ValorVeiculo"); });
+            entity.HasMany(v => v.Fotos)
+                  .WithOne()
+                  .HasForeignKey(f => f.VeiculoVendaId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
 
         // =========================
         // PROPOSTA VENDA
         // =========================
-        modelBuilder.Entity<PropostaVenda>()
-            .HasKey(p => p.Id);
+        modelBuilder.Entity<PropostaVenda>(entity =>
+        {
+            entity.HasKey(p => p.Id);
 
-        modelBuilder.Entity<PropostaVenda>()
-            .OwnsOne(p => p.ValorBase);
+            entity.OwnsOne(p => p.ValorBase, vb => vb.Property(v => v.Valor).HasColumnName("ValorBase"));
+            entity.OwnsOne(p => p.ValorFinal, vf => vf.Property(v => v.Valor).HasColumnName("ValorFinal"));
+            entity.OwnsOne(p => p.Desconto, desc => desc.Property(d => d.Valor).HasColumnName("Desconto"));
 
-        modelBuilder.Entity<PropostaVenda>()
-            .OwnsOne(p => p.ValorFinal);
+            // Configuração de Financiamento (Value Object)
+            entity.OwnsOne(p => p.Financiamento, financiamento =>
+            {
+                // Se Financiamento possuir outras propriedades, mapeie aqui
+                // financiamento.Property(f => f.NumeroParcelas).HasColumnName("Financiamento_Parcelas");
 
-        modelBuilder.Entity<PropostaVenda>()
-            .OwnsOne(p => p.Entrada);
+                // Dentro de Financiamento, Entrada é do tipo Dinheiro (outro Value Object)
+                financiamento.OwnsOne(f => f.Entrada, entrada =>
+                {
+                    entrada.Property(d => d.Valor)
+                        .HasColumnName("Financiamento_Entrada")
+                        .HasColumnType("decimal(18,2)");
 
-        modelBuilder.Entity<PropostaVenda>()
-            .OwnsOne(p => p.Desconto);
+                    // Se Dinheiro tiver TrocoPara, mapeie também
+                    // entrada.Property(d => d.TrocoPara).HasColumnName("Financiamento_Troco");
+                });
+            });
 
-        modelBuilder.Entity<PropostaVenda>()
-            .OwnsOne(p => p.Financiamento);
-
-        // =========================
-        // VALUE OBJECTS GLOBAIS
-        // =========================
-        modelBuilder.Owned<Email>();
-        modelBuilder.Owned<Telefone>();
-        modelBuilder.Owned<Dinheiro>();
-        modelBuilder.Owned<Ano>();
-        modelBuilder.Owned<Quilometragem>();
-        modelBuilder.Owned<PlacaVeiculo>();
-        modelBuilder.Owned<Cpf>();
+            // Entrada da Proposta (caso PropostaVenda tenha uma propriedade Entrada separada do Financiamento)
+            entity.OwnsOne(p => p.Entrada, entrada =>
+            {
+                entrada.Property(d => d.Valor)
+                    .HasColumnName("ValorEntrada")
+                    .HasColumnType("decimal(18,2)");
+            });
+        });
     }
 }

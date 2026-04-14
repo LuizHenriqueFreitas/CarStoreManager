@@ -5,6 +5,7 @@ public class OrdemServicoListaDTO
     public Guid Id { get; set; }
     public string NumeroPublico { get; set; } = null!;
     public Guid ClienteId { get; set; }
+    public Guid MecanicoId { get; set; }
     public Guid VeiculoClienteId { get; set; }
     public string Tipo { get; set; } = null!;
     public string Status { get; set; } = null!;
