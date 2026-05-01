@@ -2,6 +2,8 @@ using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.ValueObjects;
 using FluentAssertions;
 
+namespace CarStoreManager.Tests.Domain.ValueObjects;
+
 public class DadosFuncionarioTest
 {
     [Fact]

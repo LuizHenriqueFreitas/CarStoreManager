@@ -1,4 +1,7 @@
 @page "/concessionaria"
+
+@namespace CarStoreManager.Web.Components.Pages
+
 @inject IVeiculoVendaService VeiculoService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IAuthService AuthService
@@ -6,9 +9,9 @@
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.Services
-@using CarStoreManager.Web.Componentes.Shared
+@using CarStoreManager.Web.Components.Shared
+@using CarStoreManager.Web.Components.Concessionaria
 @using CarStoreManager.Web.Imports
-@using CarStoreManager.Web.Imports.Concessionaria
 @using Microsoft.AspNetCore.Components.Authorization
 
 @using Microsoft.AspNetCore.Components.Web

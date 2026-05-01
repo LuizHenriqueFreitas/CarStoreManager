@@ -1,0 +1,191 @@
+@namespace CarStoreManager.Web.Components.Shared
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Oficina.VeiculoCliente
+@inject IVeiculoClienteService VeiculoClienteService
+
+<div class="form-card">
+    <h2 class="secao-titulo">Veículo do Cliente</h2>
+    @if (veiculoSelecionado is not null)
+    {
+        <div class="cliente-selecionado">
+            <span>@veiculoSelecionado.Marca @veiculoSelecionado.Modelo (@veiculoSelecionado.Cor) - @veiculoSelecionado.Ano</span>
+            <button type="button" class="btn-remover" @onclick="RemoverSelecao">×</button>
+        </div>
+    }
+    else
+    {
+        <div class="form-grid">
+            <div class="form-campo">
+                <label class="campo-label">Marca *</label>
+                <input class="campo-input" @bind="form.Marca" placeholder="Ex: Fiat" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Modelo *</label>
+                <input class="campo-input" @bind="form.Modelo" placeholder="Ex: Palio" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Cor *</label>
+                <input class="campo-input" @bind="form.Cor" placeholder="Ex: Branco" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Ano *</label>
+                <input type="number" class="campo-input" @bind="form.Ano" placeholder="2020" />
+            </div>
+        </div>
+        <div class="cliente-acoes">
+            <button type="button" class="btn-buscar" @onclick="AbrirBusca">Buscar veículo existente</button>
+            <button type="button" class="btn-cadastrar" @onclick="CadastrarVeiculo" disabled="@salvando">
+                @(salvando ? "Salvando..." : "Cadastrar veículo")
+            </button>
+        </div>
+        @if (!string.IsNullOrEmpty(mensagemErro))
+        {
+            <div class="erro-banner">@mensagemErro</div>
+        }
+    }
+</div>
+
+@if (mostrarModalBusca)
+{
+    <div class="modal-overlay" @onclick="FecharBusca">
+        <div class="modal-busca" @onclick:stopPropagation>
+            <h3>Buscar veículo do cliente</h3>
+            <input class="campo-input" type="text" @bind="termoBusca" @bind:event="oninput" placeholder="Marca, modelo ou cor..." />
+            @if (resultadosBusca.Any())
+            {
+                <ul class="resultados-lista">
+                    @foreach (var v in resultadosBusca)
+                    {
+                        <li @onclick="() => SelecionarVeiculo(v.Id)">
+                            @v.Marca @v.Modelo (@v.Ano) - @v.Cor
+                        </li>
+                    }
+                </ul>
+            }
+            else if (!string.IsNullOrWhiteSpace(termoBusca))
+            {
+                <p class="sem-resultados">Nenhum veículo encontrado.</p>
+            }
+            <button class="btn-cancelar" @onclick="FecharBusca">Fechar</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Value { get; set; }
+    [Parameter] public EventCallback<Guid> ValueChanged { get; set; }
+    [Parameter] public Guid ClienteId { get; set; }
+
+    private CriarVeiculoClienteDTO form = new();
+    private bool salvando = false;
+    private string? mensagemErro;
+    private VeiculoClienteDTO? veiculoSelecionado; // Usar DTO completo para detalhes
+    private bool mostrarModalBusca = false;
+    private string termoBusca = "";
+    private List<VeiculoClienteListaDTO> resultadosBusca = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Value != Guid.Empty && (veiculoSelecionado is null || veiculoSelecionado.Id != Value))
+        {
+            try
+            {
+                var result = await VeiculoClienteService.GetByIdAsync(Value);
+                if (result.IsSuccess && result.Value is not null)
+                    veiculoSelecionado = result.Value; // Retorna VeiculoClienteDTO
+            }
+            catch { /* mantém vazio */ }
+        }
+        else if (Value == Guid.Empty && veiculoSelecionado is not null)
+        {
+            veiculoSelecionado = null;
+        }
+    }
+
+    private async Task CadastrarVeiculo()
+    {
+        mensagemErro = null;
+        if (string.IsNullOrWhiteSpace(form.Marca) || string.IsNullOrWhiteSpace(form.Modelo) || string.IsNullOrWhiteSpace(form.Cor))
+        {
+            mensagemErro = "Preencha marca, modelo e cor.";
+            return;
+        }
+        if (ClienteId == Guid.Empty)
+        {
+            mensagemErro = "Selecione um cliente primeiro.";
+            return;
+        }
+
+        form.ClienteId = ClienteId;
+        salvando = true;
+        try
+        {
+            var result = await VeiculoClienteService.AddAsync(form);
+            if (result.IsSuccess)
+            {
+                var novoId = result.Value;
+                Value = novoId;
+                await ValueChanged.InvokeAsync(novoId);
+                // Após criar, recarregar detalhes via ObterPorIdAsync
+                var detalhes = await VeiculoClienteService.GetByIdAsync(novoId);
+                if (detalhes.IsSuccess && detalhes.Value is not null)
+                    veiculoSelecionado = detalhes.Value;
+                else
+                    veiculoSelecionado = new VeiculoClienteDTO { Id = novoId, Marca = form.Marca, Modelo = form.Modelo, Cor = form.Cor, Ano = form.Ano, ClienteId = ClienteId };
+                form = new();
+            }
+            else
+            {
+                mensagemErro = result.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagemErro = $"Erro ao cadastrar: {ex.Message}";
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+
+    private void AbrirBusca() => mostrarModalBusca = true;
+    private void FecharBusca() => mostrarModalBusca = false;
+
+    private async Task BuscarAsync(string termo)
+    {
+        resultadosBusca = new();
+        if (string.IsNullOrWhiteSpace(termo))
+            return;
+        try
+        {
+            // Supõe que o serviço tenha PesquisarAsync(string) que retorna Lista
+            // Se não existir, adapte para o método que você usa.
+            // Exemplo: var result = await VeiculoClienteService.PesquisarAsync(termo);
+            // Para agora, vamos deixar um placeholder.
+            // Como você ainda não tem esse método, manteremos resultadosBusca vazio.
+        }
+        catch { }
+    }
+
+    private async Task SelecionarVeiculo(Guid id)
+    {
+        Value = id;
+        await ValueChanged.InvokeAsync(id);
+        try
+        {
+            var result = await VeiculoClienteService.GetByIdAsync(id);
+            if (result.IsSuccess && result.Value is not null)
+                veiculoSelecionado = result.Value;
+        }
+        catch { }
+        mostrarModalBusca = false;
+    }
+
+    private async Task RemoverSelecao()
+    {
+        Value = Guid.Empty;
+        await ValueChanged.InvokeAsync(Guid.Empty);
+        veiculoSelecionado = null;
+    }
+}

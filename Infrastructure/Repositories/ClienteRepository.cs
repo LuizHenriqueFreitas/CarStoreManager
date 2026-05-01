@@ -28,6 +28,20 @@ public class ClienteRepository : IClienteRepository
         => await _context.Clientes
             .AnyAsync(c => c.CPF.Numero == cpf);
 
+    public async Task<List<Cliente>> PesquisarAsync(string termo)  // Nome igual ao da interface
+    {
+        if (string.IsNullOrWhiteSpace(termo))
+            return new List<Cliente>();
+
+        termo = termo.Trim().ToLower();
+
+        return await _context.Clientes
+            .Where(c => c.Nome.ToLower().Contains(termo) ||
+                        c.GetCpf().Contains(termo))  // Ajuste se Cpf for string simples
+            .Take(20)
+            .ToListAsync();
+    }
+
     public async Task AddAsync(Cliente cliente)
         => await _context.Clientes.AddAsync(cliente);
 

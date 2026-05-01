@@ -1,3 +1,5 @@
+using CarStoreManager.Application.Interfaces;
+using CarStoreManager.Application.Services;
 using CarStoreManager.Domain.Repositories;
 using CarStoreManager.Infrastructure.Data;
 using CarStoreManager.Infrastructure.Repositories;
@@ -45,6 +47,7 @@ public static class InfrastructureServiceCollection
         // CLIENTES
         // =========================
         services.AddScoped<IClienteRepository, ClienteRepository>();
+        services.AddScoped<IClienteService, ClienteService>();
 
         // =========================
         // USUÁRIOS (GENÉRICO SE NECESSÁRIO)

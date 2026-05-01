@@ -1,3 +1,5 @@
+using CarStoreManager.Domain.Exceptions;
+
 namespace CarStoreManager.Domain.ValueObjects;
 
 public class Ano
@@ -8,11 +10,18 @@ public class Ano
 
     public Ano(int valor)
     {
+        if (ValidaAno(valor))
+            Valor = valor;
+    }
+
+    public bool ValidaAno(int ano)
+    {
         var anoAtual = DateTime.Now.Year;
 
-        if (valor < 1900 || valor > anoAtual)
-            throw new ArgumentException("Ano inválido");
-
-        Valor = valor;
+        if (ano < 1900 || ano > anoAtual)
+        {
+            throw new AnoInvalidoException(ano);
+        }
+        return true;
     }
 }

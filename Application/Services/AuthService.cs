@@ -139,4 +139,69 @@ public class AuthService : IAuthService
         await _repository.SaveChangesAsync();
         return Result.Ok();
     }
+
+        public async Task<Result<UsuarioDTO>> ObterUsuarioAsync(Guid id)
+    {
+        var usuario = await _repository.GetByIdAsync(id);
+        if (usuario is null)
+            return Result<UsuarioDTO>.Fail("Usuário não encontrado");
+
+        return Result<UsuarioDTO>.Ok(new UsuarioDTO
+        {
+            Id = usuario.Id,
+            Nome = usuario.Nome,
+            Email = usuario.Email.ToString(),
+            Telefone = usuario.Telefone.ToString(),
+            Role = usuario.Role.ToString()
+        });
+    }
+
+    public async Task<Result> AtualizarUsuarioAsync(Guid id, AtualizarUsuarioDTO dto)
+    {
+        var usuario = await _repository.GetByIdAsync(id);
+        if (usuario is null)
+            return Result.Fail("Usuário não encontrado");
+
+        try
+        {
+            var email = new Email(dto.Email);
+            var telefone = new Telefone(dto.Telefone);
+
+            usuario.AtualizarDadosPessoais(dto.Nome, email, telefone);
+            _repository.Update(usuario);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Erro ao atualizar: {ex.Message}");
+        }
+    }
+
+    public async Task<Result> AlterarSenhaAsync(Guid id, string senhaAtual, string novaSenha)
+    {
+        var usuario = await _repository.GetByIdAsync(id);
+        if (usuario is null)
+            return Result.Fail("Usuário não encontrado");
+
+        if (!BCrypt.Net.BCrypt.Verify(senhaAtual, usuario.SenhaHash))
+            return Result.Fail("Senha atual incorreta");
+
+        usuario.AlterarSenha(BCrypt.Net.BCrypt.HashPassword(novaSenha));
+        _repository.Update(usuario);
+        await _repository.SaveChangesAsync();
+        return Result.Ok();
+    }
+
+    public async Task<Result> LogoutAsync(Guid usuarioId)
+    {
+        var usuario = await _repository.GetByIdAsync(usuarioId);
+        if (usuario is null) 
+            return Result.Fail("Usuário não encontrado");
+
+        // Em JWT puro, o logout é client-side (remover token).
+        // Se você usar refresh token ou blacklist, implemente aqui.
+        // Por enquanto, apenas retorna sucesso.
+        return Result.Ok();
+    }
 }

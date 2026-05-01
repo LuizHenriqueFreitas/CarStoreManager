@@ -3,7 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
-namespace CarStoreManager.Web.Components.Shared;
+namespace CarStoreManager.Web.Components.Shared.Auth;
 
 public class JwtAuthStateProvider : AuthenticationStateProvider
 {

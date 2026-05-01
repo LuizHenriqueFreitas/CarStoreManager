@@ -1,6 +1,8 @@
 using CarStoreManager.Domain.ValueObjects;
 using FluentAssertions;
 
+namespace CarStoreManager.Tests.Domain.ValueObjects;
+
 public class DinheiroTest
 {
     [Fact]

@@ -17,6 +17,7 @@ using CarStoreManager.Domain.ValueObjects;
 using Microsoft.AspNetCore.Components.Authorization;
 using CarStoreManager.Web.Components.Shared;
 using CarStoreManager.Web.Imports;
+using CarStoreManager.Web.Components.Shared.Auth;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -94,9 +95,9 @@ async Task SeedAdminAsync(AppDbContext context)
 
     var admin = new Admin(
         "Administrador",
-        new Email("admin@carstoremanager.com"),
+        new Email("admin@teste.com"),
         new Telefone("00000000000"),
-        BCrypt.Net.BCrypt.HashPassword("Admin@123")
+        BCrypt.Net.BCrypt.HashPassword("123456")
     );
 
     context.Usuarios.Add(admin);

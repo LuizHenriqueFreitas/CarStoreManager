@@ -1,0 +1,198 @@
+@page "/configuracoes"
+@rendermode InteractiveServer
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Auth
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IAuthService AuthService
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Navigation
+
+<PageTitle>Configurações</PageTitle>
+
+<div class="form-page">
+    <div class="page-header">
+        <button class="btn-voltar" @onclick='() => Navigation.NavigateTo("/")'>
+            ← Voltar
+        </button>
+        <h1 class="page-titulo">Configurações da Conta</h1>
+    </div>
+
+    <div class="form-card">
+        <h2 class="secao-titulo">Dados pessoais</h2>
+        <div class="form-grid">
+            <div class="form-campo span-2">
+                <label class="campo-label">Nome</label>
+                <input class="campo-input" @bind="form.Nome" readonly />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">E-mail</label>
+                <input class="campo-input" @bind="form.Email" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Telefone</label>
+                <input class="campo-input" @bind="form.Telefone" />
+            </div>
+        </div>
+        <button class="btn-salvar" @onclick="AtualizarDados" disabled="@salvandoDados">
+            @(salvandoDados ? "Salvando..." : "Salvar alterações")
+        </button>
+        @if (!string.IsNullOrEmpty(mensagemDados))
+        {
+            <div class="@(sucessoDados ? "sucesso-banner" : "erro-banner")">@mensagemDados</div>
+        }
+    </div>
+
+    <div class="form-card">
+        <h2 class="secao-titulo">Alterar senha</h2>
+        <div class="form-grid">
+            <div class="form-campo span-2">
+                <label class="campo-label">Senha atual</label>
+                <input type="password" class="campo-input" @bind="senhaAtual" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Nova senha</label>
+                <input type="password" class="campo-input" @bind="novaSenha" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Confirmar nova senha</label>
+                <input type="password" class="campo-input" @bind="confirmacaoSenha" />
+            </div>
+        </div>
+        <button class="btn-salvar" @onclick="AlterarSenha" disabled="@salvandoSenha">
+            @(salvandoSenha ? "Salvando..." : "Alterar senha")
+        </button>
+        @if (!string.IsNullOrEmpty(mensagemSenha))
+        {
+            <div class="@(sucessoSenha ? "sucesso-banner" : "erro-banner")">@mensagemSenha</div>
+        }
+    </div>
+</div>
+
+@code {
+    private AtualizarUsuarioDTO form = new();
+    private Guid usuarioId;
+    private bool salvandoDados = false;
+    private string? mensagemDados;
+    private bool sucessoDados;
+
+    private string senhaAtual = "";
+    private string novaSenha = "";
+    private string confirmacaoSenha = "";
+    private bool salvandoSenha = false;
+    private string? mensagemSenha;
+    private bool sucessoSenha;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await AuthState.GetAuthenticationStateAsync();
+            var claim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (claim is not null)
+                usuarioId = Guid.Parse(claim.Value);
+
+            // Carregar dados atuais (presumindo que exista um método ObterUsuarioAsync)
+            var result = await AuthService.ObterUsuarioAsync(usuarioId);
+            if (result.IsSuccess && result.Value is not null)
+            {
+                form.Nome = result.Value.Nome;
+                form.Email = result.Value.Email;
+                form.Telefone = result.Value.Telefone;
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagemDados = $"Erro ao carregar dados: {ex.Message}";
+        }
+    }
+
+    private async Task AtualizarDados()
+    {
+        salvandoDados = true;
+        sucessoDados = false;
+        mensagemDados = null;
+
+        try
+        {
+            var result = await AuthService.AtualizarUsuarioAsync(usuarioId, form);
+            if (result.IsSuccess)
+            {
+                sucessoDados = true;
+                mensagemDados = "Dados atualizados com sucesso!";
+            }
+            else
+            {
+                mensagemDados = result.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagemDados = $"Erro ao atualizar dados: {ex.Message}";
+        }
+        finally
+        {
+            salvandoDados = false;
+        }
+    }
+
+    private async Task AlterarSenha()
+    {
+        mensagemSenha = null;
+        sucessoSenha = false;
+
+        if (string.IsNullOrWhiteSpace(senhaAtual) || string.IsNullOrWhiteSpace(novaSenha))
+        {
+            mensagemSenha = "Preencha todos os campos.";
+            return;
+        }
+        if (novaSenha != confirmacaoSenha)
+        {
+            mensagemSenha = "As senhas não coincidem.";
+            return;
+        }
+
+        salvandoSenha = true;
+        try
+        {
+            var result = await AuthService.AlterarSenhaAsync(usuarioId, senhaAtual, novaSenha);
+            if (result.IsSuccess)
+            {
+                sucessoSenha = true;
+                mensagemSenha = "Senha alterada com sucesso!";
+                senhaAtual = "";
+                novaSenha = "";
+                confirmacaoSenha = "";
+            }
+            else
+            {
+                mensagemSenha = result.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagemSenha = $"Erro ao alterar senha: {ex.Message}";
+        }
+        finally
+        {
+            salvandoSenha = false;
+        }
+    }
+}
+
+<style>
+    .form-page { max-width: 600px; margin: 0 auto; padding: 32px 24px; }
+    .page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+    .btn-voltar { background: none; border: none; color: #888; font-size: 14px; cursor: pointer; }
+    .page-titulo { font-size: 22px; font-weight: 500; }
+    .form-card { background: #fff; border: 0.5px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .secao-titulo { font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 16px; border-bottom: 0.5px solid #eee; padding-bottom: 10px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .form-campo { display: flex; flex-direction: column; gap: 6px; }
+    .span-2 { grid-column: span 2; }
+    .campo-label { font-size: 12px; color: #555; font-weight: 500; }
+    .campo-input { border: 0.5px solid #ccc; border-radius: 8px; padding: 9px 12px; font-size: 14px; outline: none; width: 100%; }
+    .btn-salvar { background: #e02020; color: #fff; border: none; border-radius: 8px; padding: 10px 24px; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .btn-salvar:disabled { opacity: 0.6; cursor: not-allowed; }
+    .erro-banner { background: #fff5f5; border: 0.5px solid #fca5a5; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #e02020; margin-top: 12px; }
+    .sucesso-banner { background: #f0fdf4; border: 0.5px solid #86efac; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #166534; margin-top: 12px; }
+</style>

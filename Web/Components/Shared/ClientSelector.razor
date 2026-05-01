@@ -1,0 +1,264 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Shared.Cliente
+@using CarStoreManager.Domain.ValueObjects
+
+@inject IClienteService ClienteService
+
+<div class="form-card">
+    <h2 class="secao-titulo">Dados do Cliente</h2>
+
+    @if (clienteSelecionado is not null)
+    {
+        <!-- Exibe cliente já selecionado -->
+        <div class="cliente-selecionado">
+            <div>
+                <span class="cliente-nome">@clienteSelecionado.Nome</span>
+                <span class="cliente-cpf">@clienteSelecionado.Cpf</span>
+            </div>
+            <button type="button" class="btn-remover" @onclick="RemoverSelecao">×</button>
+        </div>
+    }
+    else
+    {
+        <!-- Modo de cadastro -->
+        <div class="form-grid">
+            <div class="form-campo span-2">
+                <label class="campo-label">Nome *</label>
+                <input class="campo-input" @bind="novoCliente.Nome" placeholder="Nome completo" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">CPF *</label>
+                <input class="campo-input" @bind="novoCliente.Cpf" placeholder="000.000.000-00" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Telefone</label>
+                <input class="campo-input" @bind="novoCliente.Telefone" placeholder="(11) 99999-9999" />
+            </div>
+            <div class="form-campo span-2">
+                <label class="campo-label">E-mail</label>
+                <input class="campo-input" @bind="novoCliente.Email" placeholder="cliente@email.com" />
+            </div>
+        </div>
+        <div class="cliente-acoes">
+            <button type="button" class="btn-buscar" @onclick="AbrirBusca">
+                Buscar Cliente
+            </button>
+            <button type="button" class="btn-cadastrar" @onclick="CadastrarCliente" disabled="@cadastrando">
+                @(cadastrando ? "Cadastrando..." : "Cadastrar Cliente")
+            </button>
+        </div>
+        @if (!string.IsNullOrEmpty(mensagemErro))
+        {
+            <div class="erro-banner">@mensagemErro</div>
+        }
+        @if (mensagemSucesso is not null)
+        {
+            <div class="sucesso-banner">@mensagemSucesso</div>
+        }
+    }
+</div>
+
+@if (mostrarModalBusca)
+{
+    <div class="modal-overlay" @onclick="FecharBusca">
+        <div class="modal-busca" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h3>Buscar Cliente</h3>
+                <button class="modal-fechar" @onclick="FecharBusca">×</button>
+            </div>
+            <input class="campo-input busca-input" type="text" @bind="termoBusca" @bind:event="oninput" placeholder="Nome ou CPF..." />
+            @if (resultadosBusca is not null && resultadosBusca.Any())
+            {
+                <ul class="resultados-lista">
+                    @foreach (var c in resultadosBusca)
+                    {
+                        <li class="resultado-item" @onclick="() => SelecionarCliente(c.Id, c.Nome, c.Cpf)">
+                            <span>@c.Nome</span>
+                            <span class="cpf">@c.Cpf</span>
+                        </li>
+                    }
+                </ul>
+            }
+            else if (termoBusca.Length >= 2)
+            {
+                <p class="sem-resultados">Nenhum cliente encontrado.</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Value { get; set; }
+    [Parameter] public EventCallback<Guid> ValueChanged { get; set; }
+
+    private CriarClienteDTO novoCliente = new();
+    private bool cadastrando = false;
+    private string? mensagemErro;
+    private string? mensagemSucesso;
+
+    private class ClienteSimples { public Guid Id { get; set; } public string Nome { get; set; } = ""; public string Cpf { get; set; } = ""; }
+    private ClienteSimples? clienteSelecionado;
+
+    private bool mostrarModalBusca = false;
+    private string termoBusca = "";
+    private List<ClienteListaDTO>? resultadosBusca;
+
+    protected override void OnInitialized()
+    {
+        // Se já houver um valor inicial, tenta carregar os dados simples (opcional)
+        if (Value != Guid.Empty)
+        {
+            _ = CarregarClienteAtual(Value);
+        }
+    }
+
+    private async Task CarregarClienteAtual(Guid id)
+    {
+        try
+        {
+            var result = await ClienteService.GetByIdAsync(id);
+            if (result.IsSuccess && result.Value is not null)
+            {
+                clienteSelecionado = new ClienteSimples
+                {
+                    Id = id,
+                    Nome = result.Value.Nome,
+                    Cpf = result.Value.Cpf
+                };
+                novoCliente = new(); // reseta formulário
+            }
+        }
+        catch { /* Mantém o estado padrão */ }
+    }
+
+    private async Task CadastrarCliente()
+    {
+        mensagemErro = null;
+        mensagemSucesso = null;
+
+        if (string.IsNullOrWhiteSpace(novoCliente.Nome) || string.IsNullOrWhiteSpace(novoCliente.Cpf))
+        {
+            mensagemErro = "Nome e CPF são obrigatórios.";
+            return;
+        }
+
+        cadastrando = true;
+        try
+        {
+            var resultado = await ClienteService.AddAsync(novoCliente);
+            if (resultado.IsSuccess)
+            {
+                var novoId = resultado.Value;
+                mensagemSucesso = "Cliente cadastrado com sucesso!";
+                // Emite o novo ID para o formulário pai
+                Value = novoId;
+                await ValueChanged.InvokeAsync(novoId);
+                // Exibe como selecionado
+                clienteSelecionado = new ClienteSimples { Id = novoId, Nome = novoCliente.Nome, Cpf = novoCliente.Cpf };
+                novoCliente = new();
+            }
+            else
+            {
+                mensagemErro = resultado.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            mensagemErro = $"Erro ao cadastrar cliente: {ex.Message}";
+        }
+        finally
+        {
+            cadastrando = false;
+        }
+    }
+
+    private void AbrirBusca()
+    {
+        termoBusca = "";
+        resultadosBusca = null;
+        mostrarModalBusca = true;
+    }
+
+    private void FecharBusca() => mostrarModalBusca = false;
+
+    private async Task SelecionarCliente(Guid id, string nome, string cpf)
+    {
+        Value = id;
+        await ValueChanged.InvokeAsync(id);
+        clienteSelecionado = new ClienteSimples { Id = id, Nome = nome, Cpf = cpf };
+        mostrarModalBusca = false;
+    }
+
+    private void RemoverSelecao()
+    {
+        Value = Guid.Empty;
+        ValueChanged.InvokeAsync(Guid.Empty);
+        clienteSelecionado = null;
+        novoCliente = new();
+    }
+
+    private async Task BuscarClientes(string termo)
+    {
+        if (string.IsNullOrWhiteSpace(termo) || termo.Length < 2)
+        {
+            resultadosBusca = null;
+            return;
+        }
+        try
+        {
+            var result = await ClienteService.PesquisarAsync(termo);
+            if (result.IsSuccess)
+                resultadosBusca = result.Value?.ToList();
+            else
+                resultadosBusca = new();
+        }
+        catch
+        {
+            resultadosBusca = new();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Sincroniza se Value mudou externamente
+        if (Value != Guid.Empty && (clienteSelecionado is null || clienteSelecionado.Id != Value))
+        {
+            _ = CarregarClienteAtual(Value);
+        }
+        else if (Value == Guid.Empty && clienteSelecionado is not null)
+        {
+            clienteSelecionado = null;
+        }
+    }
+}
+
+<style>
+    .form-card { background: #fff; border: 0.5px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .secao-titulo { font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 16px; border-bottom: 0.5px solid #eee; padding-bottom: 10px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .span-2 { grid-column: span 2; }
+    .campo-label { font-size: 12px; color: #555; font-weight: 500; }
+    .campo-input { border: 0.5px solid #ccc; border-radius: 8px; padding: 9px 12px; font-size: 14px; outline: none; width: 100%; }
+    .cliente-acoes { display: flex; gap: 10px; margin-top: 12px; }
+    .btn-cadastrar { background: #e02020; color: #fff; border: none; border-radius: 8px; padding: 10px 24px; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .btn-cadastrar:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-buscar { background: #fff; border: 0.5px solid #ccc; border-radius: 8px; padding: 10px 20px; font-size: 14px; cursor: pointer; color: #444; }
+    .btn-remover { background: none; border: none; font-size: 20px; color: #888; cursor: pointer; margin-left: auto; }
+    .cliente-selecionado { display: flex; align-items: center; gap: 8px; background: #f8f8f8; padding: 12px; border-radius: 8px; }
+    .cliente-nome { font-weight: 500; }
+    .cliente-cpf { color: #888; margin-left: 8px; }
+    .erro-banner { background: #fff5f5; border: 0.5px solid #fca5a5; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #e02020; margin-top: 12px; }
+    .sucesso-banner { background: #f0fdf4; border: 0.5px solid #86efac; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #166534; margin-top: 12px; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-busca { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 480px; max-height: 70vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-fechar { background: none; border: none; font-size: 20px; color: #888; cursor: pointer; }
+    .busca-input { margin-bottom: 12px; }
+    .resultados-lista { list-style: none; margin: 0; padding: 0; }
+    .resultado-item { display: flex; justify-content: space-between; padding: 10px 12px; border-bottom: 0.5px solid #eee; cursor: pointer; }
+    .resultado-item:hover { background: #f4f4f4; }
+    .cpf { color: #888; }
+    .sem-resultados { text-align: center; color: #888; margin-top: 12px; }
+</style>

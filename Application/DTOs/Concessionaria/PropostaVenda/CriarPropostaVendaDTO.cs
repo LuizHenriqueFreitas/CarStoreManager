@@ -6,4 +6,5 @@ public class CriarPropostaVendaDTO
     public Guid VeiculoVendaId { get; set; }
     public Guid ClienteId { get; set; }
     public decimal ValorBase { get; set; }
+    public decimal DescontoPercentual { get; set; }
 }

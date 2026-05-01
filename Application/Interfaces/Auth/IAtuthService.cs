@@ -9,4 +9,9 @@ public interface IAuthService
     Task<Result<Guid>> CriarUsuarioAsync(CriarUsuarioDTO dto);
     Task<Result> VerificarSenhaAsync(Guid usuarioId, string senha);
     Task<Result> DesativarUsuarioAsync(Guid usuarioId);
+
+    Task<Result<UsuarioDTO>> ObterUsuarioAsync(Guid id);
+    Task<Result> AtualizarUsuarioAsync(Guid id, AtualizarUsuarioDTO dto);
+    Task<Result> AlterarSenhaAsync(Guid id, string senhaAtual, string novaSenha);
+    Task<Result> LogoutAsync(Guid usuarioId);
 }

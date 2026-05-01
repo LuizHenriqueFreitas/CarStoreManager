@@ -27,7 +27,9 @@ public static class VeiculoClienteMapping
             Id = entity.GetId(),
             ClienteId = entity.GetClienteId(),
             Marca = entity.GetMarca(),
-            Modelo = entity.GetModelo()
+            Modelo = entity.GetModelo(),
+            Cor = entity.GetCor(),
+            Ano = entity.GetAno()
         };
     }
 

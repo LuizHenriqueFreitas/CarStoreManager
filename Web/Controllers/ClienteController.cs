@@ -42,6 +42,13 @@ public class ClienteController : ControllerBase
         return resultado.IsSuccess ? Ok(resultado.Value) : NotFound(resultado.Error);
     }
 
+    [HttpGet("termo")]
+    public async Task<IActionResult> PesquisarAsync(string termo)
+    {
+        var resultado = await _service.PesquisarAsync(termo);
+        return resultado.IsSuccess ? Ok(resultado.Value) : NotFound(resultado.Error);
+    }
+
     // =========================
     // CRIAÇÃO
     // =========================

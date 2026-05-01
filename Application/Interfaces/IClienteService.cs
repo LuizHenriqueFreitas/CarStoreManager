@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs.Shared.Cliente;
 
@@ -10,4 +11,6 @@ public interface IClienteService : IService<
     AtualizarClienteDTO>
 {
     Task<Result<ClienteDTO>> ObterPorCpfAsync(string cpf);
+
+    Task<Result<List<ClienteListaDTO>>> PesquisarAsync(string termo);
 }

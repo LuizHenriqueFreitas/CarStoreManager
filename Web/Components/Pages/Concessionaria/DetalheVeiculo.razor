@@ -1,11 +1,14 @@
 @page "/concessionaria/veiculo/{Id:guid}"
+
+@namespace CarStoreManager.Web.Components.Pages
+
 @inject IVeiculoVendaService VeiculoService
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
 @using CarStoreManager.Application.Interfaces
 @inject NavigationManager Nav
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
-@using CarStoreManager.Web.Componentes.Shared
+@using CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 
 @using Microsoft.AspNetCore.Components.Web

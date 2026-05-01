@@ -25,7 +25,7 @@ public class Usuario : Entity
         string senhaHash,
         RoleUsuario role)
     {
-        AlterarNome(nome);
+        Nome = nome;
         Email = email ?? throw new ArgumentNullException(nameof(email));
         Telefone = telefone ?? throw new ArgumentNullException(nameof(telefone));
 
@@ -69,6 +69,15 @@ public class Usuario : Entity
         if (string.IsNullOrWhiteSpace(novaSenhaHash))
             throw new ArgumentException("Senha inválida");
         SenhaHash = novaSenhaHash;
+    }
+
+    public void AtualizarDadosPessoais(string nome, Email email, Telefone telefone)
+    {
+        if (string.IsNullOrWhiteSpace(nome))
+            throw new ArgumentException("Nome inválido");
+        Nome = nome.Trim();
+        Email = email;
+        Telefone = telefone;
     }
 
     public void Desativar()

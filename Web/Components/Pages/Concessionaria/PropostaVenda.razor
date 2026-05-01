@@ -1,0 +1,141 @@
+@page "/concessionaria/proposta/nova/{VeiculoId:guid}"
+@rendermode InteractiveServer
+@inject IPropostaVendaService PropostaVendaService
+@inject IVeiculoVendaService VeiculoVendaService
+@inject NavigationManager Navigation
+
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
+@using CarStoreManager.Web.Components.Shared
+
+<PageTitle>Nova Proposta</PageTitle>
+
+<div class="form-page">
+    <div class="page-header">
+        <button class="btn-voltar" @onclick='() => Navigation.NavigateTo($"/concessionaria/veiculo/{VeiculoId}")'>
+            ← Voltar
+        </button>
+        <h1 class="page-titulo">Nova Proposta de Venda</h1>
+    </div>
+
+    <EditForm Model="@form" OnValidSubmit="Salvar">
+        <DataAnnotationsValidator />
+        <ClientSelector @bind-Value="form.ClienteId" />
+
+        @if (veiculoSelecionado is not null)
+        {
+            <VeiculoVendaInfoProposta Veiculo="veiculoSelecionado" />
+        }
+        else
+        {
+            <div class="erro-banner">Veículo não encontrado.</div>
+        }
+
+        <div class="form-card">
+            <h2 class="secao-titulo">Valores e Condições</h2>
+            <div class="form-grid">
+                <div class="form-campo">
+                    <label class="campo-label">Valor Base (R$) *</label>
+                    <input type="number" step="0.01" class="campo-input" @bind="form.ValorBase" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Desconto (R$)</label>
+                    <input type="number" step="0.01" class="campo-input" @bind="form.DescontoPercentual" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Valor Final (R$)</label>
+                    <input type="text" class="campo-input" readonly
+                           value="@((form.ValorBase - form.DescontoPercentual).ToString("F2"))" />
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(erro))
+        {
+            <div class="erro-banner">@erro</div>
+        }
+        @if (sucesso)
+        {
+            <div class="sucesso-banner">Proposta registrada com sucesso!</div>
+        }
+
+        <div class="form-acoes">
+            <button type="button" class="btn-cancelar"
+                    @onclick='() => Navigation.NavigateTo($"/concessionaria/veiculo/{VeiculoId}")'>
+                Cancelar
+            </button>
+            <button type="submit" class="btn-salvar" disabled="@salvando">
+                @(salvando ? "Salvando..." : "Registrar Proposta")
+            </button>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter] public Guid VeiculoId { get; set; }
+
+    private CriarPropostaVendaDTO form = new();
+    private VeiculoVendaDTO? veiculoSelecionado;  // use o mesmo tipo que o serviço retorna
+    private bool salvando = false;
+    private bool sucesso = false;
+    private string? erro;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var veiculoResult = await VeiculoVendaService.GetByIdAsync(VeiculoId);
+            if (veiculoResult.IsSuccess && veiculoResult.Value is not null)
+            {
+                veiculoSelecionado = veiculoResult.Value;
+                form.VeiculoVendaId = VeiculoId;          // ajuste se o DTO usar VeiculoId
+                form.ValorBase = veiculoSelecionado.Valor;
+            }
+            else
+            {
+                erro = "Veículo não encontrado.";
+            }
+        }
+        catch (Exception ex)
+        {
+            erro = $"Erro ao carregar veículo: {ex.Message}";
+        }
+    }
+
+    private async Task Salvar()
+    {
+        if (form.ClienteId == Guid.Empty || form.VeiculoVendaId == Guid.Empty || form.ValorBase <= 0)
+        {
+            erro = "Preencha todos os campos obrigatórios.";
+            return;
+        }
+
+        salvando = true;
+        erro = null;
+        sucesso = false;
+
+        try
+        {
+            var resultado = await PropostaVendaService.AddAsync(form);
+            if (resultado.IsSuccess)
+            {
+                sucesso = true;
+                await Task.Delay(1200);
+                Navigation.NavigateTo($"/concessionaria/proposta/{resultado.Value}");
+            }
+            else
+            {
+                erro = resultado.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            erro = $"Erro ao criar proposta: {ex.Message}";
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+}

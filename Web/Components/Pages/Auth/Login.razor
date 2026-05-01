@@ -1,10 +1,14 @@
 @page "/login"
+
+@namespace CarStoreManager.Web.Components.Pages
+
 @inject IAuthService AuthService
 @inject NavigationManager Nav
 @inject JwtAuthStateProvider AuthProvider
 @using CarStoreManager.Application.DTOs.Auth
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Web.Components.Shared
+@using CarStoreManager.Web.Components.Shared.Auth
 @using Microsoft.AspNetCore.Components.Web
 
 <div class="login-page">
@@ -52,12 +56,17 @@
     private bool carregando = false;
 
     protected override async Task OnInitializedAsync()
-    {
-        // se já está logado, redireciona direto
-        var state = await AuthProvider.GetAuthenticationStateAsync();
-        if (state.User.Identity?.IsAuthenticated ?? false)
-            Nav.NavigateTo("/");
-    }
+{
+    // Se a URL contiver logout=true, não redireciona automaticamente
+    var uri = new Uri(Nav.Uri);
+    var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+    if (query["logout"] == "true")
+        return; // Não faz nada, permite a tela de login
+
+    var state = await AuthProvider.GetAuthenticationStateAsync();
+    if (state.User.Identity?.IsAuthenticated ?? false)
+        Nav.NavigateTo("/");
+}
 
     private async Task Entrar()
     {

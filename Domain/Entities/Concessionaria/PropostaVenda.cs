@@ -28,14 +28,14 @@ public class PropostaVenda : Entity
         Guid vendedorId,
         Guid veiculoVendaId,
         Guid clienteId,
-        Dinheiro valorBase)
+        Dinheiro valorBase,
+        decimal Desconto)
     {
         VendedorId = vendedorId;
         VeiculoVendaId = veiculoVendaId;
         ClienteId = clienteId;
 
         ValorBase = valorBase;
-        Desconto = Percentual.Zero();
 
         CalcularValorFinal();
 

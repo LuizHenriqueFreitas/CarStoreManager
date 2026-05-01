@@ -44,7 +44,8 @@ public static class PropostaVendaMapping
             dto.VendedorId,
             dto.VeiculoVendaId,
             dto.ClienteId,
-            new Dinheiro(dto.ValorBase)
+            new Dinheiro(dto.ValorBase),
+            dto.DescontoPercentual
         );
     }
 

@@ -1,0 +1,67 @@
+@namespace CarStoreManager.Web.Components.Shared
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
+
+<div class="form-card">
+    <h2 class="secao-titulo">Veículo em negociação</h2>
+    @if (Veiculo is not null)
+    {
+        <div class="veiculo-resumo">
+            <div class="resumo-principal">
+                <span class="resumo-marca-modelo">@Veiculo.Marca @Veiculo.Modelo</span>
+                <span class="resumo-ano">@Veiculo.Ano</span>
+            </div>
+            <div class="resumo-detalhes">
+                <div class="resumo-item">
+                    <span class="resumo-label">Placa</span>
+                    <span>@Veiculo.Placa</span>
+                </div>
+                <div class="resumo-item">
+                    <span class="resumo-label">Cor</span>
+                    <span>@Veiculo.Cor</span>
+                </div>
+                <div class="resumo-item">
+                    <span class="resumo-label">Quilometragem</span>
+                    <span>@Veiculo.Quilometragem km</span>
+                </div>
+                <div class="resumo-item">
+                    <span class="resumo-label">Motor</span>
+                    <span>@Veiculo.Motorizacao</span>
+                </div>
+                <div class="resumo-item">
+                    <span class="resumo-label">Câmbio</span>
+                    <span>@Veiculo.Cambio</span>
+                </div>
+                <div class="resumo-item">
+                    <span class="resumo-label">Combustível</span>
+                    <span>@Veiculo.Combustivel</span>
+                </div>
+                <div class="resumo-item">
+                    <span class="resumo-label">Valor de venda</span>
+                    <span class="resumo-valor">R$ @Veiculo.Valor.ToString("N2")</span>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <p class="sem-veiculo">Veículo não carregado.</p>
+    }
+</div>
+
+@code {
+    [Parameter] public VeiculoVendaDTO? Veiculo { get; set; }
+}
+
+<style>
+    .form-card { background: #fff; border: 0.5px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .secao-titulo { font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 16px; border-bottom: 0.5px solid #eee; padding-bottom: 10px; }
+    .veiculo-resumo { display: flex; flex-direction: column; gap: 12px; }
+    .resumo-principal { display: flex; justify-content: space-between; align-items: baseline; }
+    .resumo-marca-modelo { font-size: 16px; font-weight: 500; }
+    .resumo-ano { color: #888; font-size: 14px; }
+    .resumo-detalhes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .resumo-item { display: flex; justify-content: space-between; font-size: 13px; color: #555; }
+    .resumo-label { color: #888; }
+    .resumo-valor { font-weight: 600; color: #e02020; }
+    .sem-veiculo { color: #888; font-size: 13px; }
+</style>

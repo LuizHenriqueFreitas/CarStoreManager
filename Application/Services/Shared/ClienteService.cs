@@ -52,6 +52,30 @@ public class ClienteService : IClienteService
 
         return Result<ClienteDTO>.Ok(ClienteMapping.ToDto(cliente));
     }
+
+    public async Task<Result<List<ClienteListaDTO>>> PesquisarAsync(string termo)
+    {
+        try
+        {
+            var clientes = await _repository.PesquisarAsync(termo);
+
+            var dtos = clientes.Select(c => new ClienteListaDTO
+            {
+                Id = c.Id,
+                Nome = c.Nome,
+                Cpf = c.GetCpf(),   // extrai o número do Value Object
+                Telefone = c.GetTelefone(),
+                Email = c.GetEmail()
+            }).ToList();
+
+            return Result<List<ClienteListaDTO>>.Ok(dtos);
+        }
+        catch (Exception ex)
+        {
+            return Result<List<ClienteListaDTO>>.Fail($"Erro na pesquisa: {ex.Message}");
+        }
+    }
+    
     // =========================
     // CRIAÇÃO
     // =========================
