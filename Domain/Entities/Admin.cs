@@ -1,9 +1,17 @@
 // classe de administrador
 
 using CarStoreManager.Domain.Enums;
-using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Domain.Entities;
+
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de Admin.cs. Essa classe herda de
+    Usuario.cs, ela não aplica nada de novo propriamente dito.
+
+    Esta classe tem testes automaticos implementados para:
+        Nada ainda
+*/
 
 public class Admin : Usuario
 {
@@ -11,9 +19,10 @@ public class Admin : Usuario
 
     public Admin(
         string nome,
-        Email email,
-        Telefone telefone,
-        string senhaHash)
-        : base(nome, email, telefone, senhaHash, RoleUsuario.Admin)
+        string email,
+        string telefone,
+        string senha,
+        decimal salario)
+        : base(nome, email, telefone, senha, salario, RoleUsuario.Admin)
     { }
 }

@@ -7,7 +7,7 @@ namespace CarStoreManager.Web.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = "Admin,Mecanico")]
 public class VeiculoClienteController : ControllerBase
 {
     private readonly IVeiculoClienteService _service;

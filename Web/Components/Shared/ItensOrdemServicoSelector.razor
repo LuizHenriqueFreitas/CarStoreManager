@@ -1,0 +1,149 @@
+@namespace CarStoreManager.Web.Components.Shared
+@using CarStoreManager.Application.DTOs.Oficina.OrdemServico
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Oficina.Componente
+@inject IComponenteService ComponenteService
+
+<div class="form-card">
+    <h2 class="secao-titulo">Itens da Ordem (peças/serviços)</h2>
+
+    @if (itens.Any())
+    {
+        <table class="tabela-itens">
+            <thead>
+                <tr>
+                    <th>Componente</th>
+                    <th>Qtd</th>
+                    <th>Valor Unit.</th>
+                    <th>Total</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in itens)
+                {
+                    <tr>
+                        <td>@item.NomeComponente</td>
+                        <td>@item.Quantidade</td>
+                        <td>R$ @item.ValorUnitario.ToString("N2")</td>
+                        <td>R$ @((item.Quantidade * item.ValorUnitario).ToString("N2"))</td>
+                        <td><button class="btn-remover-pequeno" @onclick="() => RemoverItem(item)">×</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <div class="adicionar-item">
+        <select class="campo-input" @bind="componenteSelecionadoId">
+            <option value="">Selecione um componente...</option>
+            @foreach (var comp in componentesDisponiveis)
+            {
+                <option value="@comp.Id">@comp.Nome (R$ @comp.Valor.ToString("N2"))</option>
+            }
+        </select>
+        <input type="number" class="campo-input qtd" @bind="quantidade" placeholder="Qtd" min="1" />
+        <input type="number" step="0.01" class="campo-input valor" @bind="valorUnitario" placeholder="Valor Unit." />
+        <button class="btn-adicionar-item" @onclick="AdicionarItem" disabled="@(componenteSelecionadoId == Guid.Empty || quantidade < 1)">+</button>
+    </div>
+    @if (!string.IsNullOrEmpty(mensagemErroItem))
+    {
+        <div class="erro-banner">@mensagemErroItem</div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<ItemOrdemServicoDTO> Itens { get; set; } = new();
+    [Parameter] public EventCallback<List<ItemOrdemServicoDTO>> ItensChanged { get; set; }
+
+    private List<ComponenteListaDTO> componentesDisponiveis = new();
+    private Guid componenteSelecionadoId;
+    private int quantidade = 1;
+    private decimal valorUnitario;
+    private string? mensagemErroItem;
+
+    private List<ItemOrdemServicoTemp> itens = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarComponentes();
+        // Se houver itens iniciais (edição), popular a lista temp
+        foreach (var i in Itens)
+            itens.Add(new ItemOrdemServicoTemp { ComponenteId = i.ComponenteId, Quantidade = i.Quantidade, ValorUnitario = i.ValorUnitario });
+    }
+
+    private async Task CarregarComponentes()
+    {
+        var result = await ComponenteService.GetAllAsync();
+        if (result.IsSuccess && result.Value != null)
+            componentesDisponiveis = result.Value.ToList();
+    }
+
+    private void AdicionarItem()
+    {
+        var componente = componentesDisponiveis.FirstOrDefault(c => c.Id == componenteSelecionadoId);
+        if (componente == null)
+        {
+            mensagemErroItem = "Componente não encontrado.";
+            return;
+        }
+
+        // Usa o valor do campo se preenchido, senão o valor do componente
+        var valor = valorUnitario > 0 ? valorUnitario : componente.Valor;
+
+        itens.Add(new ItemOrdemServicoTemp
+        {
+            ComponenteId = componente.Id,
+            NomeComponente = componente.Nome,
+            Quantidade = quantidade,
+            ValorUnitario = valor
+        });
+
+        // Dispara alteração para o pai
+        Itens = itens.Select(i => new ItemOrdemServicoDTO
+        {
+            ComponenteId = i.ComponenteId,
+            Quantidade = i.Quantidade,
+            ValorUnitario = i.ValorUnitario
+        }).ToList();
+        ItensChanged.InvokeAsync(Itens);
+
+        componenteSelecionadoId = Guid.Empty;
+        quantidade = 1;
+        valorUnitario = 0;
+        mensagemErroItem = null;
+    }
+
+    private void RemoverItem(ItemOrdemServicoTemp item)
+    {
+        itens.Remove(item);
+        Itens = itens.Select(i => new ItemOrdemServicoDTO
+        {
+            ComponenteId = i.ComponenteId,
+            Quantidade = i.Quantidade,
+            ValorUnitario = i.ValorUnitario
+        }).ToList();
+        ItensChanged.InvokeAsync(Itens);
+    }
+
+    private class ItemOrdemServicoTemp
+    {
+        public Guid ComponenteId { get; set; }
+        public string NomeComponente { get; set; } = "";
+        public int Quantidade { get; set; }
+        public decimal ValorUnitario { get; set; }
+    }
+}
+
+<style>
+    .tabela-itens { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+    .tabela-itens th, .tabela-itens td { text-align: left; padding: 8px 6px; border-bottom: 0.5px solid #eee; font-size: 13px; }
+    .btn-remover-pequeno { background: none; border: none; color: #e02020; font-size: 16px; cursor: pointer; }
+    .adicionar-item { display: flex; gap: 8px; align-items: center; }
+    .campo-input { border: 0.5px solid #ccc; border-radius: 8px; padding: 9px 12px; font-size: 14px; outline: none; }
+    .qtd { width: 60px; }
+    .valor { width: 110px; }
+    .btn-adicionar-item { background: #e02020; color: #fff; border: none; border-radius: 8px; padding: 9px 16px; font-size: 18px; cursor: pointer; }
+    .btn-adicionar-item:disabled { opacity: 0.5; cursor: not-allowed; }
+    .erro-banner { background: #fff5f5; border: 0.5px solid #fca5a5; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #e02020; margin-top: 8px; }
+</style>

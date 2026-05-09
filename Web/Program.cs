@@ -95,15 +95,16 @@ async Task SeedAdminAsync(AppDbContext context)
 
     var admin = new Admin(
         "Administrador",
-        new Email("admin@teste.com"),
-        new Telefone("00000000000"),
-        BCrypt.Net.BCrypt.HashPassword("123456")
+        "admin@teste.com",
+        "11215126548",
+        "12345A",
+        6000
     );
 
     context.Usuarios.Add(admin);
     await context.SaveChangesAsync();
 
-    Console.WriteLine("Admin criado — email: admin@carstoremanager.com / senha: Admin@123");
+    Console.WriteLine("Admin criado — email: admin@teste.com / senha: 12345A");
 }
 
 // =========================

@@ -62,7 +62,7 @@ public static class ComponenteMapping
             dto.Nome,
             dto.Modelo,
             ConverterSistema(dto.Sistema),
-            new Dinheiro(dto.Valor),
+            dto.Valor,
             dto.QuantidadeEstoque,
             dto.EstoqueMinimo
         );
@@ -73,8 +73,8 @@ public static class ComponenteMapping
     // =========================
     public static void UpdateEntity(Componente entity, AtualizarComponenteDTO dto)
     {
-        entity.AtualizarDados(
-            new Dinheiro(dto.Valor),
+        entity.AtualizarDadosComponente(
+            dto.Valor,
             dto.QuantidadeEstoque,
             dto.EstoqueMinimo
         );

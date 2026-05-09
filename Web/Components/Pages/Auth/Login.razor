@@ -7,6 +7,7 @@
 @inject JwtAuthStateProvider AuthProvider
 @using CarStoreManager.Application.DTOs.Auth
 @using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Domain.Enums
 @using CarStoreManager.Web.Components.Shared
 @using CarStoreManager.Web.Components.Shared.Auth
 @using Microsoft.AspNetCore.Components.Web
@@ -94,11 +95,19 @@
             }
 
             await AuthProvider.LoginAsync(resultado.Value!.Token);
-            Nav.NavigateTo("/");
+
+            if (resultado.Value!.Role == RoleUsuario.Admin.ToString())
+                Nav.NavigateTo("/dashboard");
+            else if (resultado.Value!.Role == RoleUsuario.Vendedor.ToString())
+                Nav.NavigateTo("/concessionaria");
+            else if (resultado.Value!.Role == RoleUsuario.Mecanico.ToString())
+                Nav.NavigateTo("/oficina");
         }
-        catch
+        catch (Exception ex)
         {
-            erro = "Erro de conexão. Tente novamente.";
+            //erro = "Erro de conexão. Tente novamente.";
+            erro = $"Erro inesperado: {ex.Message}";
+            Console.WriteLine($"ERRO LOGIN: {ex}");
         }
         finally
         {

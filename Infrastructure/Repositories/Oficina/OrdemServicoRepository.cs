@@ -15,10 +15,6 @@ public class OrdemServicoRepository : IOrdemServicoRepository
         _context = context;
     }
 
-    // =========================
-    // BASE
-    // =========================
-
     public async Task<OrdemServico?> GetByIdAsync(Guid id)
     {
         return await _context.OrdensServico
@@ -54,10 +50,6 @@ public class OrdemServicoRepository : IOrdemServicoRepository
     {
         await _context.SaveChangesAsync();
     }
-
-    // =========================
-    // ESPECÍFICOS
-    // =========================
 
     public async Task<OrdemServico?> ObterPorNumeroPublicoAsync(string numeroPublico)
     {

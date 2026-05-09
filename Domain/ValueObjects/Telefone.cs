@@ -2,45 +2,68 @@ using System.Text.RegularExpressions;
 
 namespace CarStoreManager.Domain.ValueObjects;
 
+/*
+    Neste arquivo temos as implementações de verificações 
+    e regras de negócios do VO de Telefone, alem dos metodos 
+    get e set.
+
+    Testes automaticos implementados para:
+        Criar telefones validos,
+        Bloquear telefones invalidos,
+        Permitir Atualização de numero valido,
+        Bloquear Atualização de numero invalido,
+        Verifivar a formatação de saida com o metodo ToString()
+*/
+
 public class Telefone
 {
-    public string Numero { get; } = null!;
+    private string Numero { get; set; } = null!;
 
-    protected Telefone() { } // EF
+    protected Telefone() { }
 
+    //construtor com validação
     public Telefone(string numero)
     {
-        if (string.IsNullOrWhiteSpace(numero))
+        AtualizarTelefone(numero);
+    }
+
+    //metodo get - pega o numero do telefone sem formatação
+    public string GetTelefone()
+    {
+        return Numero;
+    }
+
+    //atualiza o numero atual por um novo
+    public void AtualizarTelefone(string novoNumero)
+    {
+        if (string.IsNullOrWhiteSpace(novoNumero))
             throw new ArgumentException("Telefone não pode ser vazio");
 
-        var apenasNumeros = RemoverMascara(numero);
+        var apenasNumeros = NormalizaTelefone(novoNumero);
 
-        if (!EhValido(apenasNumeros))
+        if (!ValidaTelefone(apenasNumeros))
             throw new ArgumentException("Telefone inválido");
 
         Numero = apenasNumeros;
     }
 
-    // =========================
-    // VALIDAÇÃO
-    // =========================
-
-    private static string RemoverMascara(string input)
+    //normaliza a entrada adequadamente - retira tudo que não for um numero
+    private string NormalizaTelefone(string input)
     {
         return Regex.Replace(input, @"\D", "");
     }
 
-    private static bool EhValido(string numero)
+    /*
+        valida a quantidade de caracteres do telefone
+        no padrão brasileiro: DDD (2) + número (8 ou 9)
+    */
+    private bool ValidaTelefone(string numero)
     {
-        // Brasil: DDD (2) + número (8 ou 9)
         return numero.Length is 10 or 11;
     }
 
-    // =========================
-    // FORMATAÇÃO
-    // =========================
-
-    public string Formatado()
+    //sobre escreve a função ToString() para incluir a formatação correta
+    public override string ToString()
     {
         if (Numero.Length == 11)
         {
@@ -50,12 +73,8 @@ public class Telefone
         return $"({Numero[..2]}) {Numero[2..6]}-{Numero[6..]}";
     }
 
-    public override string ToString() => Formatado();
 
-    // =========================
-    // Equals
-    // =========================
-
+    //funcoes utilitarias de bibliotecas inclusas
     public override bool Equals(object? obj)
     {
         if (obj is not Telefone other)

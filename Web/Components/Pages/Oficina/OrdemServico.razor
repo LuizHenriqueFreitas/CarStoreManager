@@ -29,6 +29,7 @@
 
         <div class="form-card">
             <h2 class="secao-titulo">Mecânico e Serviços</h2>
+            
             <div class="form-grid">
                 <div class="form-campo span-2">
                     <label class="campo-label">Mecânico responsável *</label>
@@ -46,6 +47,13 @@
                               placeholder="Ex: Troca de óleo e revisão dos freios"></textarea>
                 </div>
                 <div class="form-campo">
+                    <label class="campo-label">Câmbio</label>
+                    <select class="campo-input" @bind="form.Tipo">
+                        <option value="Manutencao">Manutencao</option>
+                        <option value="Revisao">Revisao</option>
+                    </select>
+                </div>
+                <div class="form-campo">
                     <label class="campo-label">Valor total estimado (R$)</label>
                     <input type="number" step="0.01" class="campo-input" @bind="form.CustoServico" />
                 </div>
@@ -54,6 +62,7 @@
                     <input type="date" class="campo-input" @bind="form.PrazoEstimado" />
                 </div>
             </div>
+            <ItensOrdemServicoSelector @bind-Itens="form.Itens" />
         </div>
 
         @if (!string.IsNullOrEmpty(erro))

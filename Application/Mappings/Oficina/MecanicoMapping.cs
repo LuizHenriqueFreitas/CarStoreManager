@@ -17,7 +17,7 @@ public static class MecanicoMapping
             Telefone = entity.GetTelefone(),
             Especialidade = entity.GetEspecialidade(),
             Ocupado = entity.GetOcupado(),
-            Nivel = entity.GetNivel(),
+            Nivel = entity.GetNivelExperiencia(),
             DataContratacao = entity.GetDataContratacao()
         };
     }
@@ -29,7 +29,7 @@ public static class MecanicoMapping
             Id = entity.GetId(),
             Nome = entity.GetNome(),
             Especialidade = entity.GetEspecialidade(),
-            Nivel = entity.GetNivel()
+            Nivel = entity.GetNivelExperiencia()
         };
     }
 
@@ -46,9 +46,10 @@ public static class MecanicoMapping
     {
         return new Mecanico(
             dto.Nome,
-            new Email(dto.Email),
-            new Telefone(dto.Telefone),
-            BCrypt.Net.BCrypt.HashPassword(dto.Senha),
+            dto.Email,
+            dto.Telefone,
+            dto.Senha,
+            dto.Salario,
             ConverterEnum<EspecialidadeMecanico>(dto.Especialidade, "Especialidade"),
             ConverterEnum<NivelFuncionario>(dto.Nivel, "Nivel"),
             DateTime.UtcNow
@@ -62,8 +63,7 @@ public static class MecanicoMapping
         );
 
         entity.AtualizarDadosFuncionario(
-            ConverterEnum<NivelFuncionario>(dto.Nivel, "Nivel"),
-            entity.DadosFuncionario.DataContratacao
+            ConverterEnum<NivelFuncionario>(dto.Nivel, "Nivel")
         );
     }
 

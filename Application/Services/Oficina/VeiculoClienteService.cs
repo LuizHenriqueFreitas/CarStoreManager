@@ -3,9 +3,16 @@ using CarStoreManager.Application.DTOs.Oficina.VeiculoCliente;
 using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Application.Mappings.Oficina;
 using CarStoreManager.Domain.Repositories;
-using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Application.Services;
+
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de VeiculoClienteService.cs.
+
+    Esta classe tem testes automaticos implementados para:
+        nada ainda
+*/
 
 public class VeiculoClienteService : IVeiculoClienteService
 {
@@ -20,6 +27,11 @@ public class VeiculoClienteService : IVeiculoClienteService
         _clienteRepository = clienteRepository;
     }
 
+    /*
+        metodo de busca por id valida que
+        caso veiculoCliente buscado seja vazio
+        retorna o aviso que não foi encontrado
+    */
     public async Task<Result<VeiculoClienteDTO>> GetByIdAsync(Guid id)
     {
         var veiculo = await _repository.GetByIdAsync(id);
@@ -30,6 +42,7 @@ public class VeiculoClienteService : IVeiculoClienteService
         return Result<VeiculoClienteDTO>.Ok(VeiculoClienteMapping.ToDto(veiculo));
     }
 
+    //busca todos os veiculoCliente
     public async Task<Result<IEnumerable<VeiculoClienteListaDTO>>> GetAllAsync()
     {
         var veiculos = await _repository.GetAllAsync();
@@ -38,6 +51,11 @@ public class VeiculoClienteService : IVeiculoClienteService
         );
     }
 
+    /*
+        metodo de busca de veiculoCliente pelo Cliente 
+        vinculado valida que caso Cliente buscado 
+        seja vazio retorna o aviso que não foi encontrado
+    */
     public async Task<Result<IEnumerable<VeiculoClienteListaDTO>>> ObterPorClienteAsync(Guid clienteId)
     {
         var cliente = await _clienteRepository.GetByIdAsync(clienteId);
@@ -51,6 +69,12 @@ public class VeiculoClienteService : IVeiculoClienteService
         );
     }
 
+    /*
+        metodo para criar novo VeiculoCliente
+        verifica que o cliente existe fazendo
+        uma busca por id, caso seja vazio a 
+        criação do VeiculoCliente falha.
+    */
     public async Task<Result<Guid>> AddAsync(CriarVeiculoClienteDTO dto)
     {
         var cliente = await _clienteRepository.GetByIdAsync(dto.ClienteId);
@@ -73,6 +97,11 @@ public class VeiculoClienteService : IVeiculoClienteService
         }
     }
 
+    /*
+        metodo que atualiza veiculoCliente ja existente
+        faz busca por id e caso veiculoCliente seja vazio 
+        ele retona o aviso que nao foi encontrado
+    */
     public async Task<Result> UpdateAsync(AtualizarVeiculoClienteDTO dto)
     {
         var veiculo = await _repository.GetByIdAsync(dto.Id);
@@ -82,11 +111,11 @@ public class VeiculoClienteService : IVeiculoClienteService
 
         try
         {
-            veiculo.AtualizarDados(
+            veiculo.AtualizarDadosVeiculoCliente(
                 dto.Marca,
                 dto.Modelo,
                 dto.Cor,
-                new Ano(dto.Ano)
+                dto.Ano
             );
 
             _repository.Update(veiculo);
@@ -100,6 +129,11 @@ public class VeiculoClienteService : IVeiculoClienteService
         }
     }
 
+    /*
+        metodo que remove veiculoCliente 
+        por id caso seja vazio retona 
+        o aviso que nao foi encontrado
+    */
     public async Task<Result> RemoveAsync(Guid id)
     {
         var veiculo = await _repository.GetByIdAsync(id);

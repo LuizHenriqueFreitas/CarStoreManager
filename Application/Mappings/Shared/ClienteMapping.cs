@@ -42,9 +42,9 @@ public static class ClienteMapping
     {
         return new Cliente(
             dto.Nome,
-            new Cpf(dto.Cpf),
-            new Telefone(dto.Telefone),
-            new Email(dto.Email)
+            dto.Cpf,
+            dto.Telefone,
+            dto.Email
         );
     }
 
@@ -53,9 +53,10 @@ public static class ClienteMapping
     // =========================
     public static void UpdateEntity(Cliente entity, AtualizarClienteDTO dto)
     {
-        entity.AtualizarDados(
-            new Telefone(dto.Telefone),
-            new Email (dto.Email)
+        entity.AtualizarClienteDados(
+            dto.Nome,
+            dto.Telefone,
+            dto.Email
         );
     }
 }

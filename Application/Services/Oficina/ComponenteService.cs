@@ -5,9 +5,16 @@ using CarStoreManager.Application.Mappings.Oficina;
 using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Repositories;
-using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Application.Services;
+
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de ComponenteService.cs.
+
+    Esta classe tem testes automaticos implementados para:
+        nada ainda
+*/
 
 public class ComponenteService : IComponenteService
 {
@@ -18,10 +25,15 @@ public class ComponenteService : IComponenteService
         _repository = repository;
     }
 
-    // =========================
-    // CONSULTAS
-    // =========================
+    /* ======================
+        metodos de PESQUISA
+     =======================*/
 
+    /*
+        metodo de busca por id valida que
+        caso componente buscado seja vazio
+        retorna o aviso que não foi encontrado
+    */
     public async Task<Result<ComponenteDTO>> GetByIdAsync(Guid id)
     {
         var componente = await _repository.GetByIdAsync(id);
@@ -34,6 +46,7 @@ public class ComponenteService : IComponenteService
         );
     }
 
+    //busca todos os componentes
     public async Task<Result<IEnumerable<ComponenteListaDTO>>> GetAllAsync()
     {
         var componentes = await _repository.GetAllAsync();
@@ -44,6 +57,11 @@ public class ComponenteService : IComponenteService
         return Result<IEnumerable<ComponenteListaDTO>>.Ok(lista);
     }
 
+    /*
+        metodo que busca os componentes com estoque baixo
+        caso o componente buscado por id seja vazio
+        ele retorna o aviso que o componente nao foi encontrado
+    */
     public async Task<Result<IEnumerable<ComponenteListaDTO>>> ObterComEstoqueBaixoAsync()
     {
         var componentes = await _repository.GetAllAsync();
@@ -55,6 +73,11 @@ public class ComponenteService : IComponenteService
         return Result<IEnumerable<ComponenteListaDTO>>.Ok(lista);
     }
 
+    /*
+        metodo que filtra os componentes de 
+        acordo com o sistema que fazem parte
+        retorna falha caso o sistema informado seja invalido
+    */
     public async Task<Result<IEnumerable<ComponenteLookupDTO>>> ObterPorSistemaAsync(string sistema)
     {
         if (!Enum.TryParse<SistemaComponente>(sistema, true, out var sistemaEnum))
@@ -69,10 +92,7 @@ public class ComponenteService : IComponenteService
         return Result<IEnumerable<ComponenteLookupDTO>>.Ok(lista);
     }
 
-    // =========================
-    // CRIAÇÃO
-    // =========================
-
+    //metodo para criar novo componente
     public async Task<Result<Guid>> AddAsync(CriarComponenteDTO dto)
     {
         if(!Enum.TryParse<SistemaComponente>(dto.Sistema, true, out var sistema))
@@ -83,7 +103,7 @@ public class ComponenteService : IComponenteService
                 dto.Nome,
                 dto.Modelo,
                 sistema,
-                new Dinheiro(dto.Valor),
+                dto.Valor,
                 dto.QuantidadeEstoque,
                 dto.EstoqueMinimo
             );
@@ -99,10 +119,11 @@ public class ComponenteService : IComponenteService
         }
     }
 
-    // =========================
-    // ATUALIZAÇÃO
-    // =========================
-
+    /*
+        metodo que atualiza componente ja existente
+        faz busca por id e caso componente seja vazio 
+        retona o aviso que nao foi encontrado
+    */
     public async Task<Result> UpdateAsync(AtualizarComponenteDTO dto)
     {
         var componente = await _repository.GetByIdAsync(dto.Id);
@@ -112,8 +133,8 @@ public class ComponenteService : IComponenteService
 
         try
         {
-            componente.AtualizarDados(
-                new Dinheiro(dto.Valor),
+            componente.AtualizarDadosComponente(
+                dto.Valor,
                 dto.QuantidadeEstoque,
                 dto.EstoqueMinimo
             );
@@ -129,10 +150,15 @@ public class ComponenteService : IComponenteService
         }
     }
 
-    // =========================
-    // ESTOQUE (MUITO IMPORTANTE)
-    // =========================
+    /* ===========================
+        gerencimento de ESTOQUE
+     ===========================*/
 
+    /*
+        metodo para entrada de estoque
+        busca o componente por id
+        falha caso o componete seja vazio
+    */
     public async Task<Result> EntradaEstoqueAsync(Guid id, int quantidade)
     {
         var componente = await _repository.GetByIdAsync(id);
@@ -155,6 +181,11 @@ public class ComponenteService : IComponenteService
         }
     }
 
+    /*
+        metodo para saida de estoque
+        busca o componente por id
+        falha caso o componete seja vazio
+    */
     public async Task<Result> SaidaEstoqueAsync(Guid id, int quantidade)
     {
         var componente = await _repository.GetByIdAsync(id);
@@ -177,10 +208,11 @@ public class ComponenteService : IComponenteService
         }
     }
 
-    // =========================
-    // REMOÇÃO
-    // =========================
-
+    /*
+        metodo que remove componente por id
+        caso seja vazio retona 
+        o aviso que nao foi encontrado
+    */
     public async Task<Result> RemoveAsync(Guid id)
     {
         var componente = await _repository.GetByIdAsync(id);

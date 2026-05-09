@@ -1,11 +1,17 @@
-//classe base das ordens de servico
-
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Services.Oficina;
 using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Domain.Entities.Oficina;
+
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de OrdemServico.cs
+
+    Esta classe tem testes automaticos implementados para:
+        Nada ainda
+*/
 
 public class OrdemServico : Entity
 {
@@ -27,10 +33,11 @@ public class OrdemServico : Entity
     public StatusOrdemServico Status { get; private set; }
 
     public List<ItemOrdemServico> Itens { get; private set; } = new();
-    public List<ChecklistItem> Checklist { get; private set; } = new();
+    public List<ChecklistOrdemServico> Checklist { get; private set; } = new();
 
     protected OrdemServico() { }
 
+    //o construtor verifica que a descrição nao seja nula e que o prazo seja valido
     public OrdemServico(
         Guid veiculoClienteId,
         Guid mecanicoId,
@@ -38,7 +45,7 @@ public class OrdemServico : Entity
         TipoServico tipo,
         string descricao,
         DateTime prazoEstimado,
-        Dinheiro custoServico)
+        decimal custoServico)
     {
         if (string.IsNullOrWhiteSpace(descricao))
             throw new ArgumentException("Descrição inválida");
@@ -54,19 +61,18 @@ public class OrdemServico : Entity
         Descricao = descricao.Trim();
         PrazoEstimado = prazoEstimado;
 
-        CustoServico = custoServico;
+        CustoServico = new Dinheiro(custoServico);
 
         DataCriacao = DateTime.UtcNow;
         Status = StatusOrdemServico.Pendente;
-        NumeroPublico = GerarNumeroPublico();
+        NumeroPublico = GerarNumeroPublicoAcessoAPI();
 
         RecalcularTotal();
     }
 
-    // ============================
-    // GETERS
-    // ============================
-
+    /* =====================================
+        metodos GETTERS de cada atributo
+     =====================================*/
     public Guid GetVeiculoClienteId() => VeiculoClienteId;
     public Guid GetMecacnicoId() => MecanicoId;
     public Guid GetClienteId() => ClienteId;
@@ -75,13 +81,13 @@ public class OrdemServico : Entity
     public string GetNumeroPublico() => NumeroPublico;
     public DateTime GetDataCriacao() => DataCriacao;
     public DateTime GetPrazoEstimado() => PrazoEstimado;
-    public decimal GetCustoServico() => CustoServico.Valor;
-    public decimal GetValorTotal() => ValorTotal.Valor;
+    public decimal GetCustoServico() => CustoServico.GetValorDinheiro();
+    public decimal GetValorTotal() => ValorTotal.GetValorDinheiro();
     public string GetStatus() => Status.ToString();
     public string GetItens()
     {
         
-        if (Itens == null)
+        if (Itens.Count == 0)
         {
             return $"Ordem não possui Itens listados.";
         }
@@ -95,7 +101,7 @@ public class OrdemServico : Entity
     public string GetChecklist()
     {
         
-        if (Checklist == null)
+        if (Checklist.Count == 0)
         {
             return $"Ordem não possui checklist.";
         }
@@ -107,11 +113,12 @@ public class OrdemServico : Entity
         return $"{temp}.";
     }
 
-    // =========================
-    // SETERS
-    // =========================
+    /*  ==================================
+        metodos SETTERS para os atributos
+      =================================  */
 
-        public void DefinirCliente(Guid clienteId)
+    //definir cliente por Id com verificação que existe esse cadastro
+    public void DefinirCliente(Guid clienteId)
     {
         if (clienteId == Guid.Empty)
             throw new ArgumentException("Cliente inválido");
@@ -119,6 +126,7 @@ public class OrdemServico : Entity
         ClienteId = clienteId;
     }
 
+    //definir veiculo por Id com verificação que existe esse cadastro
     public void DefinirVeiculo(Guid veiculoClienteId)
     {
         if (veiculoClienteId == Guid.Empty)
@@ -127,48 +135,58 @@ public class OrdemServico : Entity
         VeiculoClienteId = veiculoClienteId;
     }
 
+    //setter do tipo de servico a ser feito com base no enum TipoServico
     public void SetTipo(TipoServico tipo)
     {
         Tipo = tipo;
     }
 
-    private static string GerarNumeroPublico()
+    /* ===============================================
+        Este metodo faz a geração de uma string
+        especifica e alearotia para que o cliente
+        possa colocar ela na api de busca da OS
+        e que assim ele possa verificar a situação
+        da ordem de servico pela internet sem ter que
+        ligar ou ir até a oficina.
+    ================================================ */
+    private static string GerarNumeroPublicoAcessoAPI()
     {
         var bytes = Guid.NewGuid().ToByteArray();
-        return Convert.ToHexString(bytes)[..8].ToUpper(); // ex: "A3F2BC91"
+        return Convert.ToHexString(bytes)[..8].ToUpper();
     }
 
-    // ==================================
-    // CHECKLIST
-    // ==================================
-
+    /* ==============================
+        Gerenciamento de CHECKLIST
+      ==============================*/
+    //metodo que faz a criação automatica da checklist padrão
     public void GerarChecklistAutomatico()
     {
         if (Checklist.Any(c => c.Origem == OrigemChecklistItem.Automatico))
-            return; // já gerado, não duplica
+            return;
 
         var itens = ChecklistTemplates.ObterPorTipo(Tipo);
         for (int i = 0; i < itens.Count; i++)
         {
-            var item = new ChecklistItem(Id, itens[i], OrigemChecklistItem.Automatico, i + 1);
+            var item = new ChecklistOrdemServico(Id, itens[i], OrigemChecklistItem.Automatico, i + 1);
             Checklist.Add(item);
         }
     }
 
+    //metodo que adiciona mais itens na checklist padrão já criada
     public void AdicionarItemChecklist(string descricao)
     {
         if (Status == StatusOrdemServico.Finalizada || Status == StatusOrdemServico.Cancelada)
             throw new InvalidOperationException("Não é possível alterar o checklist desta OS");
 
         var ordem = Checklist.Count + 1;
-        var item = new ChecklistItem(Id, descricao, OrigemChecklistItem.Manual, ordem);
+        var item = new ChecklistOrdemServico(Id, descricao, OrigemChecklistItem.Manual, ordem);
         Checklist.Add(item);
     }
 
-    // =========================
-    // ITENS
-    // =========================
-
+    /*
+        Gerenciamento de Itens
+    */
+    //metodo que adiciona um item necessario para ordem de servico
     public void AdicionarItem(ItemOrdemServico item)
     {
         if (Status == StatusOrdemServico.Finalizada)
@@ -178,6 +196,7 @@ public class OrdemServico : Entity
         RecalcularTotal();
     }
 
+    //metodo que remove um item ja colocado na ordem de servico
     public void RemoverItem(Guid itemId)
     {
         var item = Itens.FirstOrDefault(i => i.Id == itemId);
@@ -189,21 +208,25 @@ public class OrdemServico : Entity
         RecalcularTotal();
     }
 
-            public void AtualizarItem(Guid itemId, int novaQuantidade)
-        {
-            var item = Itens.FirstOrDefault(i => i.Id == itemId);
+    //atualiza um item ja colocado na OS por outro item
+    public void AtualizarItem(Guid itemId, int novaQuantidade)
+    {
+        var item = Itens.FirstOrDefault(i => i.Id == itemId);
 
-            if (item is null)
-                throw new InvalidOperationException("Item não encontrado");
+        if (item is null)
+            throw new InvalidOperationException("Item não encontrado");
 
-            item.AlterarQuantidade(novaQuantidade);
+        item.AlterarQuantidade(novaQuantidade);
 
-            RecalcularTotal();
-        }
+        RecalcularTotal();
+    }
 
-    // =========================
-    // CÁLCULO
-    // =========================
+    /* ===================================================
+        metodo de supote que calcula o valor total
+        da Ordem de Servico, a regra adotada é que
+        o valor total sera a soma entre o valor 
+        total dos itens com o valor de custo do servico
+     =====================================================*/
 
     public void RecalcularTotal()
     {
@@ -214,38 +237,55 @@ public class OrdemServico : Entity
         ValorTotal = totalItens.Somar(CustoServico);
     }
 
-    // =========================
-    // STATUS (FLUXO CONTROLADO)
-    // =========================
+    /* ==============================================
+        Gerenciamento de STATUS da ordem de servico
+     ===============================================*/
 
+    /*
+        metodo que incia uma OS
+        a regra é que só pode ser iniciada 
+        caso o estado anterior seja "Pendente"
+    */
     public void Iniciar()
     {
         ValidarStatus(StatusOrdemServico.Pendente);
         Status = StatusOrdemServico.EmAndamento;
     }
 
+    /*
+        metodo que finaliza uma OS
+        a regra é que só pode ser finalizada 
+        caso o estado anterior seja "EmAndamento"
+    */
     public void Finalizar()
     {
         ValidarStatus(StatusOrdemServico.EmAndamento);
         Status = StatusOrdemServico.Finalizada;
     }
 
+    //metodo para cancelar uma OS - pode ser cancelada a qualquer momento
     public void Cancelar()
     {
         Status = StatusOrdemServico.Cancelada;
     }
 
+    /*
+        metodo generico para atualizar senha
+        deve bloquear atualizações em OS
+        finalizada ou Cancelada.
+    */
     public void AtualizarStatus(StatusOrdemServico novoStatus)
     {
         if (Status == StatusOrdemServico.Finalizada)
-            throw new InvalidOperationException("OS já finalizada");
+            throw new InvalidOperationException("Ordem já finalizada");
 
         if (Status == StatusOrdemServico.Cancelada)
-            throw new InvalidOperationException("OS cancelada não pode ser alterada");
+            throw new InvalidOperationException("Ordem cancelada não pode ser alterada");
 
         Status = novoStatus;
     }
 
+    //metodo que verifica que o status seja igual ao esperado
     private void ValidarStatus(StatusOrdemServico esperado)
     {
         if (Status != esperado)

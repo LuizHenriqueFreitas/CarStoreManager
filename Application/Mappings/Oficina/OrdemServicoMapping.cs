@@ -76,6 +76,11 @@ public static class OrdemServicoMapping
         };
     }
 
+    public static void UpdateEntity(OrdemServico ordem, AtualizarItemOrdemServicoDTO dto)
+    {
+        //ainda nao foi implementada uma maneira de atualizar as informações da OS
+    }
+
     public static OrdemServico ToEntity(CriarOrdemServicoDTO dto)
     {
         return new OrdemServico(
@@ -85,7 +90,7 @@ public static class OrdemServicoMapping
             ConverterTipo(dto.Tipo),
             dto.Descricao,
             dto.PrazoEstimado,
-            new Dinheiro(dto.CustoServico)
+            dto.CustoServico
         );
     }
 

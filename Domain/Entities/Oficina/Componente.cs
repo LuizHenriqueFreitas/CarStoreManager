@@ -6,6 +6,14 @@ using CarStoreManager.Domain.Enums;
 
 namespace CarStoreManager.Domain.Entities.Oficina;
 
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de Componente.cs
+
+    Esta classe tem testes automaticos implementados para:
+        Nada ainda
+*/
+
 public class Componente : Entity
 {
     public string Nome { get; private set; } = null!;
@@ -19,11 +27,16 @@ public class Componente : Entity
 
     protected Componente() { }
 
+    /*
+        construtor valida que
+        quantidadeInicial e estoqueMinimo
+        sejam maiores ou iguais a 0
+    */
     public Componente(
         string nome,
         string modelo,
         SistemaComponente sistema,
-        Dinheiro valor,
+        decimal valor,
         int quantidadeInicial,
         int estoqueMinimo)
     {
@@ -31,7 +44,7 @@ public class Componente : Entity
         DefinirModelo(modelo);
 
         Sistema = sistema;
-        Valor = valor;
+        Valor = new Dinheiro(valor);
 
         if (quantidadeInicial < 0)
             throw new ArgumentException("Estoque inicial inválido");
@@ -43,21 +56,22 @@ public class Componente : Entity
         EstoqueMinimo = estoqueMinimo;
     }
 
-    // ========================
-    // GETERS
-    // ========================
-
+    /* ================================
+        metodos GETTERS dos atributos
+     ================================*/
     public string GetNome() => Nome;
     public string GetModelo() => Modelo;
     public string GetSistema() => Sistema.ToString();
-    public decimal GetValor() => Valor.Valor;
+    public decimal GetValor() => Valor.GetValorDinheiro();
     public int GetQuantidade() => QuantidadeEstoque;
     public int GetEstoqueMinimo() => EstoqueMinimo;
 
-    // =========================
-    // SETERS
-    // =========================
+    /* =====================================
+        metodos SETTERS de cada atributo
+        com regras de negocio aplicadas
+     =====================================*/
 
+    //verifica que o novo Nome nao seja vazio
     public void DefinirNome(string nome)
     {
         if (string.IsNullOrWhiteSpace(nome))
@@ -66,6 +80,7 @@ public class Componente : Entity
         Nome = nome.Trim();
     }
 
+    //verifica que o novo Modelo nao seja vazio
     public void DefinirModelo(string modelo)
     {
         if (string.IsNullOrWhiteSpace(modelo))
@@ -74,11 +89,13 @@ public class Componente : Entity
         Modelo = modelo.Trim();
     }
 
+    //atualiza o valor da peça pelo metodo setter do dinheiro
     public void AtualizarValor(Dinheiro valor)
     {
-        Valor = valor;
+        Valor.SetValorDinheiro(valor);
     }
 
+    //valida que o novo estoque minimo seja maior ou igual a 0
     public void DefinirEstoqueMinimo(int minimo)
     {
         if (minimo < 0)
@@ -87,22 +104,27 @@ public class Componente : Entity
         EstoqueMinimo = minimo;
     }
 
-    public void AtualizarDados
+    //Atualiza valor, quantidadeEstoque e quantidadeMinima juntos
+    public void AtualizarDadosComponente
     (
-        Dinheiro valor,
+        decimal valor,
         int quantidadeEstoque,
         int quantidadeMinima
     )
     {
-        AtualizarValor(valor);
+        AtualizarValor(new Dinheiro(valor));
         QuantidadeEstoque = quantidadeEstoque;
         EstoqueMinimo = quantidadeMinima;
     }
 
-    // =========================
-    // CONTROLE DE ESTOQUE
-    // =========================
+    /* ===========================
+        gerenciamento de ESTOQUE
+     ============================*/
 
+    /*
+        metodo para adicionar estoque valida que
+        a quantidade seja maior que 0 
+    */
     public void AdicionarEstoque(int quantidade)
     {
         if (quantidade <= 0)
@@ -111,6 +133,11 @@ public class Componente : Entity
         QuantidadeEstoque += quantidade;
     }
 
+    /*
+        metodo para remover estoque valida que
+        a quantidade seja maior que 0 e
+        tambem seja menor que a quantidade em estoque
+    */
     public void RemoverEstoque(int quantidade)
     {
         if (quantidade <= 0)
@@ -122,11 +149,22 @@ public class Componente : Entity
         QuantidadeEstoque -= quantidade;
     }
 
+    /*
+        metodo bool que retorna 
+        se quantidade no estoque é 
+        menor ou igual a quantidade minima
+    */
     public bool EstoqueBaixo()
     {
         return QuantidadeEstoque <= EstoqueMinimo;
     }
 
+    /*
+        metodo bool que verifica se tem estoque
+        suficiente para uma OS que retorna 
+        se quantidade no estoque é maior 
+        ou igual a que a quantidade necessaria
+    */
     public bool TemEstoque(int quantidade)
     {
         return QuantidadeEstoque >= quantidade;

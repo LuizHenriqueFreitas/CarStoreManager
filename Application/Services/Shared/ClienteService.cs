@@ -4,9 +4,16 @@ using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Application.Mappings.Shared;
 using CarStoreManager.Domain.Entities;
 using CarStoreManager.Domain.Repositories;
-using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Application.Services;
+
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de ClientService.cs.
+
+    Esta classe tem testes automaticos implementados para:
+        nada ainda
+*/
 
 public class ClienteService : IClienteService
 {
@@ -17,10 +24,11 @@ public class ClienteService : IClienteService
         _repository = repository;
     }
 
-    // =========================
-    // CONSULTAS
-    // =========================
-
+    /*
+        metodo de busca por id valida que
+        caso cliente buscado seja vazio
+        retorna o aviso que não foi encontrado
+    */
     public async Task<Result<ClienteDTO>> GetByIdAsync(Guid id)
     {
         var cliente = await _repository.GetByIdAsync(id);
@@ -33,6 +41,7 @@ public class ClienteService : IClienteService
         );
     }
 
+    //busca todos os clientes
     public async Task<Result<IEnumerable<ClienteListaDTO>>> GetAllAsync()
     {
         var clientes = await _repository.GetAllAsync();
@@ -43,6 +52,11 @@ public class ClienteService : IClienteService
         return Result<IEnumerable<ClienteListaDTO>>.Ok(lista);
     }
 
+    /*
+        metodo de busca por CPF valida que
+        caso cliente buscado seja vazio
+        retorna o aviso que não foi encontrado
+    */
     public async Task<Result<ClienteDTO>> ObterPorCpfAsync(string cpf)
     {
         var cliente = await _repository.ObterPorCpfAsync(cpf);
@@ -53,6 +67,12 @@ public class ClienteService : IClienteService
         return Result<ClienteDTO>.Ok(ClienteMapping.ToDto(cliente));
     }
 
+    /*
+        metodo de busca por termo faz uma
+        lista com todos os clientes que tenha
+        o termo em questao em algum dos campos
+        de seu cadastro, nome, email, CPF, etc
+    */
     public async Task<Result<List<ClienteListaDTO>>> PesquisarAsync(string termo)
     {
         try
@@ -63,7 +83,7 @@ public class ClienteService : IClienteService
             {
                 Id = c.Id,
                 Nome = c.Nome,
-                Cpf = c.GetCpf(),   // extrai o número do Value Object
+                Cpf = c.GetCpf(), 
                 Telefone = c.GetTelefone(),
                 Email = c.GetEmail()
             }).ToList();
@@ -76,10 +96,11 @@ public class ClienteService : IClienteService
         }
     }
     
-    // =========================
-    // CRIAÇÃO
-    // =========================
-
+    /*
+        metodo para criar novo cliente
+        bloqueia criar outro cliente
+        com CPF ja cadastrado no sistema
+    */
     public async Task<Result<Guid>> AddAsync(CriarClienteDTO dto)
     {
         if (await _repository.CpfExisteAsync(dto.Cpf))
@@ -89,9 +110,9 @@ public class ClienteService : IClienteService
         {
             var cliente = new Cliente(
                 dto.Nome,
-                new Cpf(dto.Cpf),
-                new Telefone(dto.Telefone),
-                new Email(dto.Email)
+                dto.Email,
+                dto.Telefone,
+                dto.Cpf
             );
 
             await _repository.AddAsync(cliente);
@@ -105,10 +126,11 @@ public class ClienteService : IClienteService
         }
     }
 
-    // =========================
-    // ATUALIZAÇÃO
-    // =========================
-
+    /*
+        metodo que atualiza cliente ja existente
+        faz busca por id e caso cliente seja vazio 
+        ele retona o aviso que nao foi encontrado
+    */
     public async Task<Result> UpdateAsync(AtualizarClienteDTO dto)
     {
         var cliente = await _repository.GetByIdAsync(dto.Id);
@@ -118,9 +140,10 @@ public class ClienteService : IClienteService
 
         try
         {
-            cliente.AtualizarDados(
-                new Telefone(dto.Telefone),
-                new Email (dto.Email)
+            cliente.AtualizarClienteDados(
+                dto.Nome,
+                dto.Telefone,
+                dto.Email
             );
 
             _repository.Update(cliente);
@@ -134,10 +157,11 @@ public class ClienteService : IClienteService
         }
     }
 
-    // =========================
-    // REMOÇÃO
-    // =========================
-
+    /*
+        metodo que remove cliente por id
+        caso seja vazio retona 
+        o aviso que nao foi encontrado
+    */
     public async Task<Result> RemoveAsync(Guid id)
     {
         var cliente = await _repository.GetByIdAsync(id);

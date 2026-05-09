@@ -18,8 +18,6 @@ public static class PropostaVendaMapping
             DescontoPercentual = entity.GetDesconto(),
             ValorFinal = entity.GetValorFinal(),
             Entrada = entity.GetEntrada(),
-            ValorFinanciado = entity.GetValorFinanciado(),
-            Parcelas = entity.GetParcelas(),
             DataCriacao = entity.GetDataCriacao(),
             Status = entity.Status.ToString()
         };
@@ -44,17 +42,17 @@ public static class PropostaVendaMapping
             dto.VendedorId,
             dto.VeiculoVendaId,
             dto.ClienteId,
-            new Dinheiro(dto.ValorBase),
+            dto.ValorBase,
             dto.DescontoPercentual
         );
     }
 
-    public static Percentual ToDesconto(AplicarDescontoDTO dto)
-        => new Percentual(dto.Percentual);
+    public static decimal ToDesconto(AplicarDescontoDTO dto)
+        => dto.Percentual;
 
-    public static Dinheiro ToEntrada(DefinirEntradaDTO dto)
-        => new Dinheiro(dto.ValorEntrada);
+    public static decimal ToEntrada(DefinirEntradaDTO dto)
+        => dto.ValorEntrada;
 
-    public static Parcelas ToParcelas(GerarFinanciamentoDTO dto)
-        => new Parcelas(dto.Parcelas);
+    public static int ToParcelas(GerarFinanciamentoDTO dto)
+        => dto.Parcelas;
 }

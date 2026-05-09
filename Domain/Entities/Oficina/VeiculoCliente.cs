@@ -5,6 +5,14 @@ using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Domain.Entities.Oficina;
 
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de VeiculoCliente.cs
+
+    Esta classe tem testes automaticos implementados para:
+        Nada ainda
+*/
+
 public class VeiculoCliente : Entity
 {
     public Guid ClienteId { get; private set; }
@@ -18,40 +26,40 @@ public class VeiculoCliente : Entity
 
     protected VeiculoCliente() { }
 
+    //construtor verifica se o Id do cliente não é vazio
     public VeiculoCliente(
         Guid clienteId,
         string marca,
         string modelo,
         string cor,
-        Ano ano)
+        int ano)
     {
         if (clienteId == Guid.Empty)
             throw new ArgumentException("Cliente inválido");
 
         ClienteId = clienteId;
 
-        AlterarMarca(marca);
-        AlterarModelo(modelo);
-        AlterarCor(cor);
+        AtualizarMarcaVeiculoCliente(marca);
+        AtualizarModeloVeiculoCliente(modelo);
+        AtualizarCorVeiculoCliente(cor);
 
-        Ano = ano;
+        Ano = new Ano(ano);
     }
 
-    // =========================
-    // GETTERS
-    // =========================
-
+    /* ================================
+        metodos GETTERS dos atributos
+     ================================*/
     public Guid GetClienteId() => ClienteId;
     public string GetMarca() => Marca;
     public string GetModelo() => Modelo;
     public string GetCor() => Cor;
-    public int GetAno() => Ano.Valor;
+    public int GetAno() => Ano.GetValorAno();
     public string GetHistorico()
     {
         
-        if (HistoricoServicos == null)
+        if (HistoricoServicos.Count == 0)
         {
-            return $"Veiculo não possui histórico.";
+            return "Veiculo não possui histórico.";
         }
         string temp = "Relatorio: ";
         for(int i =0; i< HistoricoServicos.Count; i++)
@@ -60,38 +68,42 @@ public class VeiculoCliente : Entity
         }
         return $"{temp}.";
     }
+    //a descrição não é um atributo, mas é uma formatação com os dados do veiculo
+    public string GetDescricao() => $"{Marca} {Modelo} {Cor} {Ano.GetValorAno()}";
     
-    // =========================
-    // REGRAS DE NEGOCIOS - SETERS
-    // =========================
-    public string GetDescricao() => $"{Marca} {Modelo} {Cor} {Ano.Valor}";
-
-    public void AlterarMarca(string marca)
+    /* ================================
+        metodos SETTERS dos atributos
+        os metodos para mudar:
+        Marca, Modelo e Cor do veiculo
+        verificam que o campo não esteja vazio.
+     ================================*/
+    public void AtualizarMarcaVeiculoCliente(string marca)
     {
         if (string.IsNullOrWhiteSpace(marca))
             throw new ArgumentException("Marca inválida");
         Marca = marca.Trim();
     }
 
-    public void AlterarModelo(string modelo)
+    public void AtualizarModeloVeiculoCliente(string modelo)
     {
         if (string.IsNullOrWhiteSpace(modelo))
             throw new ArgumentException("Modelo inválido");
         Modelo = modelo.Trim();
     }
 
-    public void AlterarCor(string cor)
+    public void AtualizarCorVeiculoCliente(string cor)
     {
         if (string.IsNullOrWhiteSpace(cor))
             throw new ArgumentException("Cor inválida");
         Cor = cor.Trim();
     }
 
-    public void AtualizarDados(string marca, string modelo, string cor, Ano ano)
+    //atualizar todos os atributos de uma vez utilizando dos metodos separados
+    public void AtualizarDadosVeiculoCliente(string marca, string modelo, string cor, int ano)
     {
-        AlterarMarca(marca);
-        AlterarModelo(modelo);
-        AlterarCor(cor);
-        Ano = ano;
+        AtualizarMarcaVeiculoCliente(marca);
+        AtualizarModeloVeiculoCliente(modelo);
+        AtualizarCorVeiculoCliente(cor);
+        Ano.AtualizaAno(ano);
     }
 }

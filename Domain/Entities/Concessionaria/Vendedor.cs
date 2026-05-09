@@ -5,36 +5,39 @@ using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Domain.Entities.Concessionaria;
 
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de Cliente.cs
+
+    Esta classe tem testes automaticos implementados para:
+        Nada ainda
+*/
+
 public class Vendedor : Usuario
 {
     public DadosFuncionario DadosFuncionario { get; private set; } = null!;
 
     protected Vendedor() { }
 
+    //construtor herdado de Usuario.cs
     public Vendedor(
         string nome,
-        Email email,
-        Telefone telefone,
+        string email,
+        string telefone,
         string senhaHash,
+        decimal salario,
         NivelFuncionario nivel,
         DateTime dataContratacao)
-        : base(nome, email, telefone, senhaHash, RoleUsuario.Vendedor)
+        : base(nome, email, telefone, senhaHash, salario, RoleUsuario.Vendedor)
     {
         DadosFuncionario = new DadosFuncionario(nivel, dataContratacao);
     }
 
-    // =====================
-    // GETTERS
-    // =====================
+    // getters
+    public string GetNivel() => DadosFuncionario.GetNivel().ToString();
+    public DateTime GetDataContratacao() => DadosFuncionario.GetDataContratacao();
 
-    public string GetNivel() => DadosFuncionario.Nivel.ToString();
-
-    public DateTime GetDataContratacao() => DadosFuncionario.DataContratacao;
-
-    // =============================
-    // REGRAS DE NEGOCIOS - SETERS
-    // =============================
-
-    public void AtualizarDadosFuncionario(NivelFuncionario nivel, DateTime dataContratacao)
-        => DadosFuncionario = new DadosFuncionario(nivel, dataContratacao);
+    // setter de nivel
+    public void AtualizarNivelVendedor(NivelFuncionario nivel)
+        => DadosFuncionario.AtualizarNivelFuncionario(nivel);
 }

@@ -22,13 +22,13 @@ public class ClienteRepository : IClienteRepository
 
     public async Task<Cliente?> ObterPorCpfAsync(string cpf)
         => await _context.Clientes
-            .FirstOrDefaultAsync(c => c.CPF.Numero == cpf);
+            .FirstOrDefaultAsync(c => c.Cpf.Numero == cpf);
 
     public async Task<bool> CpfExisteAsync(string cpf)
         => await _context.Clientes
-            .AnyAsync(c => c.CPF.Numero == cpf);
+            .AnyAsync(c => c.Cpf.Numero == cpf);
 
-    public async Task<List<Cliente>> PesquisarAsync(string termo)  // Nome igual ao da interface
+    public async Task<List<Cliente>> PesquisarAsync(string termo)
     {
         if (string.IsNullOrWhiteSpace(termo))
             return new List<Cliente>();
@@ -37,7 +37,7 @@ public class ClienteRepository : IClienteRepository
 
         return await _context.Clientes
             .Where(c => c.Nome.ToLower().Contains(termo) ||
-                        c.GetCpf().Contains(termo))  // Ajuste se Cpf for string simples
+                        c.GetCpf().Contains(termo)) 
             .Take(20)
             .ToListAsync();
     }

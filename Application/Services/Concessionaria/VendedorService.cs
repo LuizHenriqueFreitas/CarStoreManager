@@ -6,6 +6,14 @@ using CarStoreManager.Domain.Repositories;
 
 namespace CarStoreManager.Application.Services;
 
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de VendedorService.cs.
+
+    Esta classe tem testes automaticos implementados para:
+        nada ainda
+*/
+
 public class VendedorService : IVendedorService
 {
     private readonly IVendedorRepository _repository;
@@ -15,6 +23,11 @@ public class VendedorService : IVendedorService
         _repository = repository;
     }
 
+    /*
+        metodo de busca por id valida que
+        caso vendedor buscado seja vazio
+        retorna o aviso que não foi encontrado
+    */
     public async Task<Result<VendedorDTO>> GetByIdAsync(Guid id)
     {
         var vendedor = await _repository.GetByIdAsync(id);
@@ -24,6 +37,7 @@ public class VendedorService : IVendedorService
         return Result<VendedorDTO>.Ok(VendedorMapping.ToDto(vendedor));
     }
 
+    //busca todos os vendedores
     public async Task<Result<IEnumerable<VendedorListaDTO>>> GetAllAsync()
     {
         var vendedores = await _repository.GetAllAsync();
@@ -31,6 +45,7 @@ public class VendedorService : IVendedorService
             vendedores.Select(VendedorMapping.ToListaDto));
     }
 
+    //metodo para criar novo vendedor
     public async Task<Result<Guid>> AddAsync(CriarVendedorDTO dto)
     {
         try
@@ -48,6 +63,11 @@ public class VendedorService : IVendedorService
         }
     }
 
+    /*
+        metodo que atualiza vendedor ja existente
+        faz busca por id e caso vendedor seja vazio 
+        ele retona o aviso que nao foi encontrado
+    */
     public async Task<Result> UpdateAsync(AtualizarVendedorDTO dto)
     {
         var vendedor = await _repository.GetByIdAsync(dto.Id);
@@ -67,6 +87,11 @@ public class VendedorService : IVendedorService
         }
     }
 
+    /*
+        metodo que remove vendedor por id
+        caso seja vazio retona 
+        o aviso que nao foi encontrado
+    */
     public async Task<Result> RemoveAsync(Guid id)
     {
         var vendedor = await _repository.GetByIdAsync(id);

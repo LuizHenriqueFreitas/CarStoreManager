@@ -1,10 +1,16 @@
-//classe base dos veiculos da concessionaria
-
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Domain.Entities.Concessionaria;
+
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de VeiculoVenda.cs
+
+    Esta classe tem testes automaticos implementados para:
+        Nada ainda
+*/
 
 public class VeiculoVenda : Entity
 {
@@ -33,12 +39,12 @@ public class VeiculoVenda : Entity
         string modelo,
         string cor,
         string motorizacao,
-        Ano ano,
-        Quilometragem quilometragem,
-        PlacaVeiculo placa,
+        int ano,
+        int quilometragem,
+        string placa,
         TipoCambio cambio,
         TipoCombustivel combustivel,
-        Dinheiro valor,
+        decimal valor,
         AcessoriosVeiculo acessorios = AcessoriosVeiculo.Nenhum)
     {
         AlterarMarca(marca);
@@ -46,30 +52,32 @@ public class VeiculoVenda : Entity
         AlterarCor(cor);
         AlterarMotorizacao(motorizacao);
 
-        Ano = ano ?? throw new ArgumentNullException(nameof(ano));
-        Quilometragem = quilometragem ?? throw new ArgumentNullException(nameof(quilometragem));
-        Placa = placa ?? throw new ArgumentNullException(nameof(placa));
+        Ano = new Ano(ano);
+        Quilometragem = new Quilometragem(quilometragem);
+        Placa = new PlacaVeiculo(placa);
 
         Cambio = cambio;
         Combustivel = combustivel;
+
         Disponibilidade = DisponibilidadeVeiculo.Disponivel;
-        Valor = valor ?? throw new ArgumentNullException(nameof(valor));
+        Valor = new Dinheiro(valor);
         Acessorios = acessorios;
     }
 
-    // =========================
-    // GETTERS
-    // =========================
+    /*
+        Abaixo estão em sequencia todos os getters
+        eles estao utilizando a sintaxe mais compacta.
+    */
     public string GetMarca() => Marca;
     public string GetModelo() => Modelo;
     public string GetCor() => Cor;
     public string GetMotorizacao() => Motorizacao; 
-    public int GetAno() => Ano.Valor;
-    public int GetQuilometragem() => Quilometragem.Valor;
-    public string GetPlaca() => Placa.ToString();
+    public int GetAno() => Ano.GetValorAno();
+    public int GetQuilometragem() => Quilometragem.GetQuilometragem();
+    public string GetPlacaCarro() => Placa.GetPlaca();
     public string GetCambio() => Cambio.ToString();
-    public string getCombustivel() => Combustivel.ToString();
-    public decimal GetValor() => Valor.Valor;
+    public string GetCombustivel() => Combustivel.ToString();
+    public decimal GetValor() => Valor.GetValorDinheiro();
 
     public AcessoriosVeiculo GetAcessoriosVeiculo() => Acessorios;
 
@@ -81,80 +89,89 @@ public class VeiculoVenda : Entity
             .ToList();
     }
 
-    // =========================
-    // REGRAS DE NEGOCIOS - SETERS
-    // =========================
-
+    /*
+        A seguir temos metodos de atualização que 
+        servem vomo Setters. Mesmo que muitos nem
+        tenham perspectiva de serem usados, 
+        ja estao implementados.
+        
+        Recomendado aumentar a validação:
+        - AlterarMarca()
+        - AlterarModelo()
+        - AlterarCor()
+        - AlterarMotorizacao()
+    */
     public void AlterarMarca(string marca)
     {
         if (string.IsNullOrWhiteSpace(marca))
             throw new ArgumentException("Marca inválida");
         Marca = marca.Trim();
     }
-
     public void AlterarModelo(string modelo)
     {
         if (string.IsNullOrWhiteSpace(modelo))
             throw new ArgumentException("Modelo inválido");
         Modelo = modelo.Trim();
     }
-
     public void AlterarCor(string cor)
     {
         if (string.IsNullOrWhiteSpace(cor))
             throw new ArgumentException("Cor inválida");
         Cor = cor.Trim();
     }
-
     public void AlterarMotorizacao(string motorizacao)
     {
         if (string.IsNullOrWhiteSpace(motorizacao))
             throw new ArgumentException("Motorização inválida");
         Motorizacao = motorizacao.Trim();
     }
-
     public void AlterarQuilometragem(int novaKm)
-        => Quilometragem.Atualizar(novaKm);
-
+        => Quilometragem.AtualizarQuilometragem(novaKm);
 
     public void AtualizarValor(Dinheiro novoValor)
     {
-        if (novoValor.Valor <= 0)
+        if (novoValor.GetValorDinheiro() <= 0)
             throw new ArgumentException("Valor inválido");
-        Valor = novoValor;
+        Valor.SetValorDinheiro(novoValor);
     }
 
-    // acessorios
+    //atualizar dados relevantes do veiculo
+    public void AtualizarVeiculoVendaDados(
+        Dinheiro novoValor,
+        DisponibilidadeVeiculo disponibilidade)
+    {
+        AtualizarValor(novoValor);
+        AlterarDisponibilidade(disponibilidade);
+    }
 
+    /*
+        gerenciamento dos acessorios
+    */
     public void AdicionarAcessorio(AcessoriosVeiculo acessorio)
         => Acessorios |= acessorio;
-
     public void RemoverAcessorio(AcessoriosVeiculo acessorio)
         => Acessorios &= ~acessorio;
-
     public void DefinirAcessorios(AcessoriosVeiculo acessorios)
         => Acessorios = acessorios;
 
-    // status
+    /*
+        gerenciamento dos status
+    */
     public void AlterarDisponibilidade(DisponibilidadeVeiculo disponibilidade)
         => Disponibilidade = disponibilidade;
-
     public void MarcarComoVendido()
         => Disponibilidade = DisponibilidadeVeiculo.Vendido;
-
     public void MarcarComoDisponivel()
         => Disponibilidade = DisponibilidadeVeiculo.Disponivel;
 
-    // =========================
-    // FOTOS
-    // =========================
-
+    /*
+        gerenciamento das fotos
+    */
     public void AdicionarFoto(string url)
     {
         var ordem = Fotos.Count;
         Fotos.Add(new FotoVeiculo(Id, url, ordem));
     }
-
     public void RemoverFoto(Guid fotoId)
     {
         var foto = Fotos.FirstOrDefault(f => f.Id == fotoId)
@@ -163,15 +180,6 @@ public class VeiculoVenda : Entity
         Fotos.Remove(foto);
         ReordenarFotos();
     }
-
-    public void AtualizarDados(
-        Dinheiro novoValor,
-        DisponibilidadeVeiculo disponibilidade)
-    {
-        AtualizarValor(novoValor);
-        AlterarDisponibilidade(disponibilidade);
-    }
-
     private void ReordenarFotos()
     {
         for (int i = 0; i < Fotos.Count; i++)

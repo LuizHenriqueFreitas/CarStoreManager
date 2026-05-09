@@ -8,6 +8,14 @@ using CarStoreManager.Domain.Repositories;
 
 namespace CarStoreManager.Application.Services;
 
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de VeiculoVendaService.cs.
+
+    Esta classe tem testes automaticos implementados para:
+        nada ainda
+*/
+
 public class VeiculoVendaService : IVeiculoVendaService
 {
     private readonly IVeiculoVendaRepository _repository;
@@ -17,6 +25,11 @@ public class VeiculoVendaService : IVeiculoVendaService
         _repository = repository;
     }
 
+    /*
+        metodo de busca por id valida que
+        caso veiculoVenda buscado seja vazio
+        retorna o aviso que não foi encontrado
+    */
     public async Task<Result<VeiculoVendaDTO>> GetByIdAsync(Guid id)
     {
         var veiculo = await _repository.GetByIdAsync(id);
@@ -26,6 +39,7 @@ public class VeiculoVendaService : IVeiculoVendaService
         return Result<VeiculoVendaDTO>.Ok(VeiculoVendaMapping.ToDto(veiculo));
     }
 
+    //buscar todos os veiculoVenda
     public async Task<Result<IEnumerable<VeiculoVendaListaDTO>>> GetAllAsync()
     {
         var veiculos = await _repository.GetAllAsync();
@@ -33,6 +47,7 @@ public class VeiculoVendaService : IVeiculoVendaService
             veiculos.Select(VeiculoVendaMapping.ToListaDto));
     }
 
+    //metodo que filtra os veiculoVenda com status disponivel
     public async Task<Result<IEnumerable<VeiculoVendaListaDTO>>> ObterDisponiveisAsync()
     {
         var veiculos = await _repository.ObterDisponiveisAsync();
@@ -40,6 +55,7 @@ public class VeiculoVendaService : IVeiculoVendaService
             veiculos.Select(VeiculoVendaMapping.ToListaDto));
     }
 
+    //metodo para criar novo veiculoVenda
     public async Task<Result<Guid>> AddAsync(CriarVeiculoVendaDTO dto)
     {
         try
@@ -55,6 +71,11 @@ public class VeiculoVendaService : IVeiculoVendaService
         }
     }
 
+    /*
+        metodo que atualiza veiculoVenda ja existente
+        faz busca por id e caso veiculoVenda seja vazio 
+        retona o aviso que nao foi encontrado
+    */
     public async Task<Result> UpdateAsync(AtualizarVeiculoVendaDTO dto)
     {
         var veiculo = await _repository.GetByIdAsync(dto.Id);
@@ -74,6 +95,10 @@ public class VeiculoVendaService : IVeiculoVendaService
         }
     }
 
+    /*
+        metodo que muda o status do veiculoVenda
+        para vendido falha caso o veiculo seja vazio
+    */
     public async Task<Result> MarcarComoVendidoAsync(Guid id)
     {
         var veiculo = await _repository.GetByIdAsync(id);
@@ -93,6 +118,10 @@ public class VeiculoVendaService : IVeiculoVendaService
         }
     }
 
+    /*
+        metodo que muda o status do veiculoVenda
+        para disponivel falha caso o veiculo seja vazio
+    */
     public async Task<Result> MarcarComoDisponivelAsync(Guid id)
     {
         var veiculo = await _repository.GetByIdAsync(id);
@@ -112,6 +141,10 @@ public class VeiculoVendaService : IVeiculoVendaService
         }
     }
 
+    /*
+        metodo que atualiza a quilometragem do veiculoVenda
+        falha caso o veiculo seja vazio
+    */
     public async Task<Result> AtualizarQuilometragemAsync(Guid id, int km)
     {
         var veiculo = await _repository.GetByIdAsync(id);
@@ -131,6 +164,10 @@ public class VeiculoVendaService : IVeiculoVendaService
         }
     }
 
+    /*
+        metodo que adiciona uma foto ao anuncio
+        falha caso o veiculo nao exista
+    */
     public async Task<Result> AdicionarFotoAsync(Guid id, string url)
     {
         var veiculo = await _repository.GetByIdAsync(id);
@@ -150,6 +187,10 @@ public class VeiculoVendaService : IVeiculoVendaService
         }
     }
 
+    /*
+        metodo que remove uma foto do anuncio
+        falha caso o veiculo nao exista
+    */
     public async Task<Result> RemoverFotoAsync(Guid id, Guid fotoId)
     {
         var veiculo = await _repository.GetByIdAsync(id);
@@ -169,6 +210,11 @@ public class VeiculoVendaService : IVeiculoVendaService
         }
     }
 
+    /*
+        metodo que remove veiculoVenda por id
+        caso seja vazio retona 
+        o aviso que nao foi encontrado
+    */
     public async Task<Result> RemoveAsync(Guid id)
     {
         var veiculo = await _repository.GetByIdAsync(id);

@@ -6,6 +6,7 @@ public class CriarVendedorDTO
     public string Email { get; set; } = null!;
     public string Telefone { get; set; } = null!;
     public string Senha { get; set; } = null!;
+    public decimal Salario { get; set; }
     public string Nivel { get; set; } = null!;
     public DateTime DataContratacao { get; set; }
 }

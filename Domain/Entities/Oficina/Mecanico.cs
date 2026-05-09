@@ -5,6 +5,14 @@ using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Domain.Entities.Oficina;
 
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de Mecanico.cs
+
+    Esta classe tem testes automaticos implementados para:
+        Nada ainda
+*/
+
 public class Mecanico : Usuario
 {
     public EspecialidadeMecanico Especialidade { get; private set; }
@@ -16,31 +24,36 @@ public class Mecanico : Usuario
 
     public Mecanico(
         string nome,
-        Email email,
-        Telefone telefone,
+        string email,
+        string telefone,
         string senhaHash,
+        decimal salario,
         EspecialidadeMecanico especialidade,
         NivelFuncionario nivel,
         DateTime dataContratacao)
-        : base(nome, email, telefone, senhaHash, RoleUsuario.Mecanico)
+        : base(nome, email, telefone, senhaHash, salario, RoleUsuario.Mecanico)
     {
         Especialidade = especialidade;
         DadosFuncionario = new DadosFuncionario(nivel, dataContratacao);
     }
 
-    // =====================
-    // GETTERS
-    // =====================
-
+    /* ================================
+        metodos GETTERS dos atributos
+     ================================*/
     public string GetEspecialidade() => Especialidade.ToString();
     public string GetOcupado() => Ocupado.ToString();
-    public string GetNivel() => DadosFuncionario.Nivel.ToString();
-    public DateTime GetDataContratacao() => DadosFuncionario.DataContratacao;
+    public string GetNivelExperiencia() => DadosFuncionario.GetNivel().ToString();
+    public DateTime GetDataContratacao() => DadosFuncionario.GetDataContratacao();
 
-    // =============================
-    // REGRAS DE NEGOCIOS - SETERS
-    // =============================
+    /* =====================================
+        metodos SETTERS de cada atributo
+        com regras de negocio aplicadas
+     =====================================*/
 
+    /*
+        Altera o nivela de ocupacao de acordo 
+        com o numero de trabalhos ativos
+    */
     public void AlterarOcupado()
     {
         if (TrabalhosAtivos.Count >= 5)
@@ -55,6 +68,6 @@ public class Mecanico : Usuario
     public void AlterarEspecialidade(EspecialidadeMecanico especialidade)
         => Especialidade = especialidade;
 
-    public void AtualizarDadosFuncionario(NivelFuncionario nivel, DateTime dataContratacao)
-        => DadosFuncionario = new DadosFuncionario(nivel, dataContratacao);
+    public void AtualizarDadosFuncionario(NivelFuncionario nivel)
+        => DadosFuncionario.AtualizarNivelFuncionario(nivel);
 }

@@ -1,3 +1,16 @@
+## 2026-05-08
+
+### Atualização
+- refatoração total do projeto
+- implementação de testes automaticos para todos os VOs e entidades
+- front end provisorio implementado
+- financiamento foi terceirizado para financiadoras, fora do nosso sistema
+
+### Problemas pendentes
+- refatoração e re-estruturação do front end - principalmente formularios
+- revisão dos atributos de veiculos da concessionaria e componentes
+- implementar sistema de graficos com pagamento de salarios, componentes e lucros
+
 ## 2026-03-28
 
 ### Atualizações

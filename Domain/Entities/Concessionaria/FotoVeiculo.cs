@@ -4,6 +4,14 @@ using CarStoreManager.Domain.Base;
 
 namespace CarStoreManager.Domain.Entities.Concessionaria;
 
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de FotosVeiculo.cs
+
+    Esta classe tem testes automaticos implementados para:
+        Nada ainda
+*/
+
 public class FotoVeiculo : Entity
 {
     public Guid VeiculoVendaId { get; private set; }

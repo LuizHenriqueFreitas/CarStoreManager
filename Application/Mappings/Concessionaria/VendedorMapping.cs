@@ -17,7 +17,7 @@ public static class VendedorMapping
             Telefone = entity.GetTelefone(),
             Nivel = entity.GetNivel(),
             DataContratacao = entity.GetDataContratacao(),
-            AnosEmpresa = entity.DadosFuncionario.GetAnosEmpresa()
+            AnosEmpresa = entity.DadosFuncionario.CalcularAnosEmpresa()
         };
     }
 
@@ -39,9 +39,10 @@ public static class VendedorMapping
 
         return new Vendedor(
             dto.Nome,
-            new Email(dto.Email),
-            new Telefone(dto.Telefone),
+            dto.Email,
+            dto.Telefone,
             senhaHash,
+            dto.Salario,
             nivel,
             dto.DataContratacao
         );
@@ -49,10 +50,7 @@ public static class VendedorMapping
 
     public static void UpdateEntity(Vendedor entity, AtualizarVendedorDTO dto)
     {
-        if (!Enum.TryParse<NivelFuncionario>(dto.Nivel, true, out var nivel))
-            throw new ArgumentException($"Nível inválido: {dto.Nivel}");
-
-        entity.AlterarEmail(new Email(dto.Email));
-        entity.AlterarTelefone(new Telefone(dto.Telefone));
+        entity.AtualizarEmail(dto.Email);
+        entity.AtualizarTelefone(dto.Telefone);
     }
 }

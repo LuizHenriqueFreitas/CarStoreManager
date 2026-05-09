@@ -10,8 +10,6 @@ public class PropostaVendaDTO
     public decimal DescontoPercentual { get; set; }
     public decimal ValorFinal { get; set; }
     public decimal Entrada { get; set; }
-    public decimal ValorFinanciado { get; set; }
-    public int Parcelas { get; set; }
     public DateTime DataCriacao { get; set; }
     public string Status { get; set; } = null!;
 }

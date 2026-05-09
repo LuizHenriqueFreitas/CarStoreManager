@@ -16,29 +16,43 @@ public class MecanicoRepository : IMecanicoRepository
     }
 
     public async Task<Mecanico?> GetByIdAsync(Guid id)
-        => await _context.Mecanicos.FirstOrDefaultAsync(x => x.Id == id);
+        => await _context.Usuarios
+            .OfType<Mecanico>()
+            .FirstOrDefaultAsync(m => m.Id == id);
 
     public async Task<IEnumerable<Mecanico>> GetAllAsync()
-        => await _context.Mecanicos.ToListAsync();
+        => await _context.Usuarios
+            .OfType<Mecanico>()
+            .ToListAsync();
 
-    public async Task<IEnumerable<Mecanico>> ObterPorEspecialidadeAsync(EspecialidadeMecanico especialidade)
-        => await _context.Mecanicos
-            .Where(x => x.Especialidade == especialidade)
+    public async Task<IEnumerable<Mecanico>> ObterPorEspecialidadeAsync(
+        EspecialidadeMecanico especialidade)
+        => await _context.Usuarios
+            .OfType<Mecanico>()
+            .Where(m => m.Especialidade == especialidade)
             .ToListAsync();
 
     public async Task<IEnumerable<Mecanico>> ObterPorNivelAsync(NivelFuncionario nivel)
-        => await _context.Mecanicos
-            .Where(x => x.DadosFuncionario.Nivel == nivel)
+        => await _context.Usuarios
+            .OfType<Mecanico>()
+            .Where(m => m.DadosFuncionario.GetNivel() == nivel)
+            .ToListAsync();
+
+    public async Task<IEnumerable<Mecanico>> ObterDisponiveisAsync()
+        => await _context.Usuarios
+            .OfType<Mecanico>()
+            .Where(m => m.Ativo &&
+                        m.Ocupado == NivelOcupacaoMecanico.Disponivel)
             .ToListAsync();
 
     public async Task AddAsync(Mecanico mecanico)
-        => await _context.Mecanicos.AddAsync(mecanico);
+        => await _context.Usuarios.AddAsync(mecanico);
 
     public void Update(Mecanico mecanico)
-        => _context.Mecanicos.Update(mecanico);
+        => _context.Usuarios.Update(mecanico);
 
     public void Remove(Mecanico mecanico)
-        => _context.Mecanicos.Remove(mecanico);
+        => _context.Usuarios.Remove(mecanico);
 
     public async Task SaveChangesAsync()
         => await _context.SaveChangesAsync();

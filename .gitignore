@@ -31,7 +31,6 @@ Thumbs.db
 publish/
 *.publishsettings
 
-
 # Node (caso use libs JS no futuro)
 node_modules/
 
@@ -42,6 +41,9 @@ appsettings.Development.json
 .idea/
 *.sln.iml
 
+# outros
 /Web/teste.http
 /Infrastructure/Migrations
 *.db*
+
+coverage.info

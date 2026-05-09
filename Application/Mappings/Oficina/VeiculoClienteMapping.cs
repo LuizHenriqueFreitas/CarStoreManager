@@ -40,7 +40,7 @@ public static class VeiculoClienteMapping
             dto.Marca,
             dto.Modelo,
             dto.Cor,
-            new Ano(dto.Ano)
+            dto.Ano
         );
     }
 }

@@ -3,9 +3,16 @@ using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda;
 using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Application.Mappings.Concessionaria;
 using CarStoreManager.Domain.Repositories;
-using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Application.Services;
+
+/*
+    Esta arquivo contem a declaração dos atributos e tambem
+    dos metodos da Classe de PropostaVendaService.cs.
+
+    Esta classe tem testes automaticos implementados para:
+        nada ainda
+*/
 
 public class PropostaVendaService : IPropostaVendaService
 {
@@ -20,6 +27,10 @@ public class PropostaVendaService : IPropostaVendaService
         _veiculoRepository = veiculoRepository;
     }
 
+    /*
+        metodo que busca a proposta por Id
+        falha caso seja vazia
+    */
     public async Task<Result<PropostaVendaDTO>> GetByIdAsync(Guid id)
     {
         var proposta = await _repository.GetByIdAsync(id);
@@ -29,6 +40,7 @@ public class PropostaVendaService : IPropostaVendaService
         return Result<PropostaVendaDTO>.Ok(PropostaVendaMapping.ToDto(proposta));
     }
 
+    //busca todas as propostas
     public async Task<Result<IEnumerable<PropostaVendaListaDTO>>> GetAllAsync()
     {
         var propostas = await _repository.GetAllAsync();
@@ -36,6 +48,8 @@ public class PropostaVendaService : IPropostaVendaService
             propostas.Select(PropostaVendaMapping.ToListaDto));
     }
 
+    
+    //metodo que busca a proposta pelo id do vendedor vinculado
     public async Task<Result<IEnumerable<PropostaVendaListaDTO>>> ObterPorVendedorAsync(Guid vendedorId)
     {
         var propostas = await _repository.ObterPorVendedorAsync(vendedorId);
@@ -43,6 +57,7 @@ public class PropostaVendaService : IPropostaVendaService
             propostas.Select(PropostaVendaMapping.ToListaDto));
     }
 
+    //metodo que busca a proposta pelo id do cliente vinculado
     public async Task<Result<IEnumerable<PropostaVendaListaDTO>>> ObterPorClienteAsync(Guid clienteId)
     {
         var propostas = await _repository.ObterPorClienteAsync(clienteId);
@@ -50,6 +65,11 @@ public class PropostaVendaService : IPropostaVendaService
             propostas.Select(PropostaVendaMapping.ToListaDto));
     }
 
+    /*
+        metodo que cria novas propostas
+        valida que o veiculo exista,
+        valida que o veiculo estaja disponivel
+    */
     public async Task<Result<Guid>> AddAsync(CriarPropostaVendaDTO dto)
     {
         var veiculo = await _veiculoRepository.GetByIdAsync(dto.VeiculoVendaId);
@@ -72,10 +92,15 @@ public class PropostaVendaService : IPropostaVendaService
         }
     }
 
+    /*
+        metodo que aplica o desconto da venda
+        falha caso a proposta nao seja encontrada
+    */
     public async Task<Result> AplicarDescontoAsync(AplicarDescontoDTO dto)
     {
         var proposta = await _repository.GetByIdAsync(dto.PropostaId);
-        if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (proposta is null) 
+            return Result.Fail("Proposta não encontrada");
 
         try
         {
@@ -87,14 +112,19 @@ public class PropostaVendaService : IPropostaVendaService
         catch (Exception ex) { return Result.Fail(ex.Message); }
     }
 
+    /*
+        metodo para colocar valor da entrada do financiamento
+        falha caso a proposta nao seja encontrada
+    */
     public async Task<Result> DefinirEntradaAsync(DefinirEntradaDTO dto)
     {
         var proposta = await _repository.GetByIdAsync(dto.PropostaId);
-        if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (proposta is null) 
+            return Result.Fail("Proposta não encontrada");
 
         try
         {
-            proposta.DefinirEntrada(new Dinheiro(dto.ValorEntrada));
+            proposta.AtualizarEntrada(dto.ValorEntrada);
             _repository.Update(proposta);
             await _repository.SaveChangesAsync();
             return Result.Ok();
@@ -102,6 +132,10 @@ public class PropostaVendaService : IPropostaVendaService
         catch (Exception ex) { return Result.Fail(ex.Message); }
     }
 
+    /*
+        metodo que gera o financiamento completo
+        falha caso a proposta nao seja encontrada
+    */
     public async Task<Result> GerarFinanciamentoAsync(GerarFinanciamentoDTO dto)
     {
         var proposta = await _repository.GetByIdAsync(dto.PropostaId);
@@ -109,7 +143,7 @@ public class PropostaVendaService : IPropostaVendaService
 
         try
         {
-            proposta.GerarFinanciamento(PropostaVendaMapping.ToParcelas(dto));
+            proposta.GerarFinanciamento(dto.valorBase, dto.Parcelas, dto.entrada);
             _repository.Update(proposta);
             await _repository.SaveChangesAsync();
             return Result.Ok();
@@ -117,16 +151,21 @@ public class PropostaVendaService : IPropostaVendaService
         catch (Exception ex) { return Result.Fail(ex.Message); }
     }
 
+    /*
+        metodo para aprovar a proposta
+        marca o veiculo como vendido automaticamente
+        falha caso a proposta nao seja encontrada
+    */
     public async Task<Result> AprovarAsync(Guid propostaId)
     {
         var proposta = await _repository.GetByIdAsync(propostaId);
-        if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (proposta is null) 
+            return Result.Fail("Proposta não encontrada");
 
         try
         {
             proposta.Aprovar();
 
-            // marca o veículo como vendido automaticamente
             var veiculo = await _veiculoRepository.GetByIdAsync(proposta.VeiculoVendaId);
             veiculo?.MarcarComoVendido();
             if (veiculo is not null) _veiculoRepository.Update(veiculo);
@@ -138,10 +177,15 @@ public class PropostaVendaService : IPropostaVendaService
         catch (Exception ex) { return Result.Fail(ex.Message); }
     }
 
+    /*
+        metodo para marcar proposta como rejeitada
+        falha caso a proposta nao seja encontrada
+    */
     public async Task<Result> RejeitarAsync(Guid propostaId)
     {
         var proposta = await _repository.GetByIdAsync(propostaId);
-        if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (proposta is null) 
+            return Result.Fail("Proposta não encontrada");
 
         try
         {
@@ -153,10 +197,15 @@ public class PropostaVendaService : IPropostaVendaService
         catch (Exception ex) { return Result.Fail(ex.Message); }
     }
 
+    /*
+        metodo para marcar proposta como cancelada
+        falha caso a proposta nao seja encontrada
+    */
     public async Task<Result> CancelarAsync(Guid propostaId)
     {
         var proposta = await _repository.GetByIdAsync(propostaId);
-        if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (proposta is null) 
+            return Result.Fail("Proposta não encontrada");
 
         proposta.Cancelar();
         _repository.Update(proposta);
@@ -164,12 +213,26 @@ public class PropostaVendaService : IPropostaVendaService
         return Result.Ok();
     }
 
+    //metodo ainda nao implementado
     public async Task<Result> UpdateAsync(PropostaVendaDTO dto)
     {
         return Result.Fail("Metodo vazio");   
     }
+
+    /*
+        metodo que remove proposta por id
+        caso seja vazia retorna erro
+    */    
     public async Task<Result> RemoveAsync(Guid propostaVendaId)
     {
-        return Result.Fail("Metodo vazio");   
+        var proposta = await _repository.GetByIdAsync(propostaVendaId);
+
+        if (proposta is null)
+            return Result.Fail("Mecânico não encontrado");
+
+        _repository.Remove(proposta);
+        await _repository.SaveChangesAsync();
+
+        return Result.Ok();   
     }
 }

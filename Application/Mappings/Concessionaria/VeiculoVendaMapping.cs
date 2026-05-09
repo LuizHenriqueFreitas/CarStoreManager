@@ -20,7 +20,7 @@ public static class VeiculoVendaMapping
             Motorizacao = entity.GetMotorizacao(),
             Ano = entity.GetAno(),
             Quilometragem = entity.GetQuilometragem(),
-            Placa = entity.GetPlaca(),
+            Placa = entity.GetPlacaCarro(),
             Cambio = entity.Cambio.ToString(),
             Combustivel = entity.Combustivel.ToString(),
             Disponibilidade = entity.Disponibilidade.ToString(),
@@ -57,19 +57,19 @@ public static class VeiculoVendaMapping
             dto.Modelo,
             dto.Cor,
             dto.Motorizacao,
-            new Ano(dto.Ano),
-            new Quilometragem(dto.Quilometragem),
-            new PlacaVeiculo(dto.Placa),
+            dto.Ano,
+            dto.Quilometragem,
+            dto.Placa,
             ConverterEnum<TipoCambio>(dto.Cambio, "Câmbio"),
             ConverterEnum<TipoCombustivel>(dto.Combustivel, "Combustível"),
-            new Dinheiro(dto.Valor),
+            dto.Valor,
             ConverterAcessorios(dto.Acessorios)
         );
     }
 
     public static void UpdateEntity(VeiculoVenda entity, AtualizarVeiculoVendaDTO dto)
     {
-        entity.AtualizarDados(
+        entity.AtualizarVeiculoVendaDados(
             new Dinheiro(dto.Valor),
             ConverterEnum<DisponibilidadeVeiculo>(dto.Disponibilidade, "Disponibilidade")
         );

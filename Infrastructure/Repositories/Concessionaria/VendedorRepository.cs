@@ -28,7 +28,7 @@ public class VendedorRepository : IVendedorRepository
     public async Task<IEnumerable<Vendedor>> ObterPorNivelAsync(NivelFuncionario nivel)
         => await _context.Usuarios
             .OfType<Vendedor>()
-            .Where(v => v.DadosFuncionario.Nivel == nivel)
+            .Where(v => v.DadosFuncionario.GetNivel() == nivel)
             .ToListAsync();
 
     public async Task AddAsync(Vendedor vendedor)

@@ -1,43 +1,75 @@
 namespace CarStoreManager.Domain.ValueObjects;
 
+/*
+    Neste arquivo temos as implementações de verificações 
+    e regras de negócios do VO de Percentuais, alem 
+    dos metodos get e set,
+
+    Testes automaticos implementados para:
+        Criar percentual valido,
+        Bloquear percentuais Invalidos,
+        Valida apresentação do valor do desconto,
+        Valida apresentação do desconto em percentual,
+        Valida Atualização do desconto
+*/
+
 public class Percentual : IEquatable<Percentual>
 {
-    public decimal Valor { get; }
+    private decimal Valor { get; set; }
 
     protected Percentual () {}
 
+    //metodo construtos com validação
     public Percentual(decimal valor)
     {
+        if (!ValidaDesconto(valor))
+            throw new ArgumentException("Percentual deve estar entre 0 e 100");
+
         Valor = valor;
     }
 
-    public static Percentual Criar(decimal valor)
+    //pega o valor do desconto com base no valor total
+    public decimal GetDescontoValor()
     {
-        if (valor < 0 || valor > 100)
-            throw new ArgumentException("Percentual deve estar entre 0 e 100");
-
-        return new Percentual(valor);
+        return Valor;
     }
 
+    //pega a porcentagem de desconto
+    public string GetDescontoPercentual()
+    {
+        Console.WriteLine($"Valor interno: {Valor}");
+        return $"{Valor}%";
+    }
+
+    //metodo de atualizar o desconto
+    public void AtualizarPercentual(decimal valor)
+    {
+        if (!ValidaDesconto(valor))
+            throw new ArgumentException("Percentual deve estar entre 0 e 100");
+
+        Valor = valor;
+    }
+
+    //metodo que valida o desconto de 0 até 100
+    public bool ValidaDesconto(decimal valor)
+    {
+        if (valor < 0 || valor > 100)
+            return false;
+
+        return true;
+    }
+
+    //colocar o percentual como zero
     public static Percentual Zero() => new Percentual(0);
 
-    // =========================
-    // COMPORTAMENTO
-    // =========================
-
-    public Dinheiro CalcularValor(Dinheiro baseValor)
+    //calcula o valor em dinheiro
+    public Dinheiro CalcularDescontoValor(Dinheiro baseValor)
     {
-        var resultado = baseValor.Valor * (Valor / 100m);
+        var resultado = baseValor.GetValorDinheiro() * Valor / 100m;
         return new Dinheiro(resultado);
     }
 
-    public decimal ParaDecimal()
-        => Valor / 100m;
-
-    // =========================
-    // EQUALITY (VO)
-    // =========================
-
+    //funcoes utilitarias de bibliotecas inclusas
     public bool Equals(Percentual? other)
     {
         if (other is null) return false;
@@ -55,7 +87,4 @@ public class Percentual : IEquatable<Percentual>
 
     public static bool operator !=(Percentual a, Percentual b)
         => !Equals(a, b);
-
-    public override string ToString()
-        => $"{Valor}%";
 }

@@ -38,7 +38,7 @@ public class VeiculoVendaRepository : IVeiculoVendaRepository
 
     public async Task<VeiculoVenda?> ObterPorPlacaAsync(string placa)
         => await _context.VeiculosVenda
-            .FirstOrDefaultAsync(v => v.Placa.ToString() == placa);
+            .FirstOrDefaultAsync(v => v.Placa.Valor == placa);
 
     public async Task AddAsync(VeiculoVenda veiculo)
         => await _context.VeiculosVenda.AddAsync(veiculo);
