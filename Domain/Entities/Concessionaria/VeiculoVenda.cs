@@ -22,6 +22,7 @@ public class VeiculoVenda : Entity
     public Ano Ano { get; private set; } = null!;
     public Quilometragem Quilometragem { get; private set; } = null!;
     public PlacaVeiculo Placa { get; private set; } = null!;
+    public string Renavan { get; private set; } = null!; //trocar por VO
 
     public TipoCambio Cambio { get; private set; }
     public TipoCombustivel Combustivel { get; private set; }
@@ -30,7 +31,7 @@ public class VeiculoVenda : Entity
 
     public Dinheiro Valor { get; private set; } = null!;
 
-    public List<FotoVeiculo> Fotos { get; private set; } = new();
+    public List<Foto> Fotos { get; private set; } = new();
 
     protected VeiculoVenda() { }
 
@@ -170,7 +171,7 @@ public class VeiculoVenda : Entity
     public void AdicionarFoto(string url)
     {
         var ordem = Fotos.Count;
-        Fotos.Add(new FotoVeiculo(Id, url, ordem));
+        Fotos.Add(new Foto(Id, url, ordem));
     }
     public void RemoverFoto(Guid fotoId)
     {
@@ -183,6 +184,6 @@ public class VeiculoVenda : Entity
     private void ReordenarFotos()
     {
         for (int i = 0; i < Fotos.Count; i++)
-            Fotos[i].AlterarOrdem(i);
+            Fotos[i].AtualizarOrdem(i);
     }
 }

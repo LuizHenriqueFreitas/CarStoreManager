@@ -1,8 +1,10 @@
+using System.ComponentModel;
 using CarStoreManager.Domain.Entities;
 using CarStoreManager.Domain.Entities.Concessionaria;
 using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
+using Oficina.Domain.Entities;
 
 namespace CarStoreManager.Infrastructure.Data;
 
@@ -34,7 +36,7 @@ public class AppDbContext : DbContext
     // CONCESSIONÁRIA
     // =========================
     public DbSet<VeiculoVenda> VeiculosVenda { get; set; }
-    public DbSet<FotoVeiculo> FotosVeiculo { get; set; }
+    public DbSet<Foto> Fotos { get; set; }
     public DbSet<PropostaVenda> PropostasVenda { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

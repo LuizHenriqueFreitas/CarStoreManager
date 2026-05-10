@@ -4,6 +4,6 @@ namespace CarStoreManager.Domain.Base
     {
         public Guid Id { get; protected set; } = Guid.NewGuid();
 
-        public Guid GetId() => Id;
+        public DateTime DataCriacao { get; protected set; } = DateTime.UtcNow;
     }
 }

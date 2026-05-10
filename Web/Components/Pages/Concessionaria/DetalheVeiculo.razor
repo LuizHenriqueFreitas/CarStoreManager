@@ -10,8 +10,8 @@
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
 @using CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
-
-@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Forms
+@using System.IO
 
 @if (carregando)
 {
@@ -160,48 +160,11 @@ else
                     <button class="modal-fechar" @onclick="() => modalFormEdicaoVisivel = false">×</button>
                 </div>
 
-                <div class="form-grid"><!--
-                    <div class="form-campo">
-                        <label class="campo-label">Marca</label>
-                        <input class="campo-input" @bind="formEdicao.Marca" />
-                    </div>
-                    <div class="form-campo">
-                        <label class="campo-label">Modelo</label>
-                        <input class="campo-input" @bind="formEdicao.Modelo" />
-                    </div>
-                    <div class="form-campo">
-                        <label class="campo-label">Cor</label>
-                        <input class="campo-input" @bind="formEdicao.Cor" />
-                    </div>
-                    <div class="form-campo">
-                        <label class="campo-label">Motorização</label>
-                        <input class="campo-input" @bind="formEdicao.Motorizacao" />
-                    </div>
-                    <div class="form-campo">
-                        <label class="campo-label">Quilometragem</label>
-                        <input type="number" class="campo-input" @bind="formEdicao.Quilometragem" />
-                    </div>
+                <div class="form-grid">
                     <div class="form-campo">
                         <label class="campo-label">Valor (R$)</label>
                         <input type="number" class="campo-input" @bind="formEdicao.Valor" />
                     </div>
-                    <div class="form-campo">
-                        <label class="campo-label">Câmbio</label>
-                        <select class="campo-input" @bind="formEdicao.Cambio">
-                            <option value="Manual">Manual</option>
-                            <option value="Automatico">Automático</option>
-                        </select>
-                    </div>
-                    <div class="form-campo">
-                        <label class="campo-label">Combustível</label>
-                        <select class="campo-input" @bind="formEdicao.Combustivel">
-                            <option value="Flex">Flex</option>
-                            <option value="Gasolina">Gasolina</option>
-                            <option value="Alcool">Álcool</option>
-                            <option value="Diesel">Diesel</option>
-                            <option value="Eletrico">Elétrico</option>
-                            <option value="Hibrido">Híbrido</option>
-                        </select>
                     <div class="form-campo">
                         <label class="campo-label">Disponibilidade</label>
                         <select class="campo-input" @bind="formEdicao.Disponibilidade">
@@ -209,7 +172,59 @@ else
                             <option value="Reservado">Reservado</option>
                             <option value="Vendido">Vendido</option>
                         </select>
-                    </div>-->
+                    </div>
+                </div>
+
+                <!-- SEÇÃO DE GERENCIAMENTO DE FOTOS -->
+                <div class="form-secao">
+                    <h3 class="secao-titulo">Fotos do veículo</h3>
+
+                    @if (fotosEditaveis.Any())
+                    {
+                        <div class="fotos-lista">
+                            @for (int i = 0; i < fotosEditaveis.Count; i++)
+                            {
+                                var foto = fotosEditaveis[i];
+                                var idx = i;
+                                <div class="foto-item">
+                                    <img src="@foto.Url" class="foto-thumb" />
+                                    <div class="foto-acoes">
+                                        <button type="button" class="btn-ordem" @onclick="() => MoverFotoParaCima(idx)" disabled="@(idx == 0)">▲</button>
+                                        <button type="button" class="btn-ordem" @onclick="() => MoverFotoParaBaixo(idx)" disabled="@(idx == fotosEditaveis.Count - 1)">▼</button>
+                                        <button type="button" class="btn-remover-foto" @onclick="() => RemoverFoto(idx)">🗑️</button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="sem-fotos-msg">Nenhuma foto cadastrada.</div>
+                    }
+
+                    <div class="upload-area">
+                        <label class="upload-label">
+                            <InputFile OnChange="OnArquivoSelecionado" multiple accept="image/jpeg,image/png" />
+                            <span class="upload-icone">📸</span> Selecionar novas fotos
+                        </label>
+                        @if (arquivosSelecionados.Any())
+                        {
+                            <div class="preview-novas">
+                                @foreach (var preview in previewsNovasFotos)
+                                {
+                                    <img src="@preview" class="preview-thumb" />
+                                }
+                                <button class="btn-upload" @onclick="UploadNovasFotos" disabled="@uploading">
+                                    @(uploading ? "Enviando..." : $"Enviar {arquivosSelecionados.Count} foto(s)")
+                                </button>
+                                <button class="btn-cancelar-upload" @onclick="CancelarUpload">Cancelar</button>
+                            </div>
+                        }
+                        @if (erroUpload != null)
+                        {
+                            <div class="erro-upload">@erroUpload</div>
+                        }
+                    </div>
                 </div>
 
                 @if (erroEdicao is not null)
@@ -253,18 +268,36 @@ else
 
     private Guid UsuarioAtualId;
 
+    // Propriedades para gerenciamento de fotos
+    private List<FotoVeiculoDTO> fotosEditaveis = new();
+    private List<IBrowserFile> arquivosSelecionados = new();
+    private List<string> previewsNovasFotos = new();
+    private bool uploading = false;
+    private string? erroUpload = null;
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var claim = authState.User.FindFirst(
             System.Security.Claims.ClaimTypes.NameIdentifier);
 
-    if (claim is not null)
-        UsuarioAtualId = Guid.Parse(claim.Value);
+        if (claim is not null)
+            UsuarioAtualId = Guid.Parse(claim.Value);
+
         try
         {
             var resultado = await VeiculoService.GetByIdAsync(Id);
             veiculo = resultado.IsSuccess ? resultado.Value : null;
+            if (veiculo != null)
+            {
+                // Converte as URLs para lista de FotoVeiculoDTO
+                fotosEditaveis = veiculo.Fotos.Select((url, idx) => new FotoVeiculoDTO
+                {
+                    Id = Guid.NewGuid(), // TEMPORÁRIO - substituir pelo ID real vindo do backend
+                    Url = url,
+                    Ordem = idx
+                }).ToList();
+            }
         }
         catch { veiculo = null; }
         finally { carregando = false; }
@@ -297,52 +330,55 @@ else
             Disponibilidade = veiculo.Disponibilidade
         };
 
+        await RecarregarFotos();
+
         modalEdicaoVisivel = false;
         modalFormEdicaoVisivel = true;
     }
 
     private async Task SalvarEdicao()
-{
-    salvando = true;
-    erroEdicao = null;
-
-    try
     {
-        var resultado = await VeiculoService.UpdateAsync(formEdicao);
+        salvando = true;
+        erroEdicao = null;
+
+        try
+        {
+            var resultado = await VeiculoService.UpdateAsync(formEdicao);
+            if (resultado.IsSuccess)
+            {
+                modalFormEdicaoVisivel = false;
+                var atualizado = await VeiculoService.GetByIdAsync(Id);
+                veiculo = atualizado.IsSuccess ? atualizado.Value : veiculo;
+                StateHasChanged();
+            }
+            else
+            {
+                erroEdicao = resultado.Error ?? "Erro ao salvar.";
+            }
+        }
+        catch
+        {
+            erroEdicao = "Erro de conexão.";
+        }
+        finally { salvando = false; }
+    }
+
+    private async Task ConfirmarExclusao(string senha)
+    {
+        var ok = await VerificarSenha(senha);
+        if (!ok) { modalExclusaoRef?.MostrarErro(); return; }
+
+        var resultado = await VeiculoService.RemoveAsync(veiculo!.Id);
         if (resultado.IsSuccess)
         {
-            modalFormEdicaoVisivel = false;
-            var atualizado = await VeiculoService.GetByIdAsync(Id);
-            veiculo = atualizado.IsSuccess ? atualizado.Value : veiculo;
+            modalExclusaoVisivel = false;
+            Nav.NavigateTo("/concessionaria");
         }
         else
         {
-            erroEdicao = resultado.Error ?? "Erro ao salvar.";
+            modalExclusaoRef?.MostrarErro();
         }
     }
-    catch
-    {
-        erroEdicao = "Erro de conexão.";
-    }
-    finally { salvando = false; }
-}
-
-    private async Task ConfirmarExclusao(string senha)
-{
-    var ok = await VerificarSenha(senha);
-    if (!ok) { modalExclusaoRef?.MostrarErro(); return; }
-
-    var resultado = await VeiculoService.RemoveAsync(veiculo!.Id);
-    if (resultado.IsSuccess)
-    {
-        modalExclusaoVisivel = false;
-        Nav.NavigateTo("/concessionaria");
-    }
-    else
-    {
-        modalExclusaoRef?.MostrarErro();
-    }
-}
 
     private async Task<bool> VerificarSenha(string senha)
     {
@@ -359,9 +395,177 @@ else
         "Vendido"    => "badge badge-vendido",
         _            => "badge badge-reservado"
     };
+
+    // Métodos para gerenciamento de fotos
+
+    private async Task OnArquivoSelecionado(InputFileChangeEventArgs e)
+    {
+        arquivosSelecionados.Clear();
+        previewsNovasFotos.Clear();
+        erroUpload = null;
+
+        foreach (var file in e.GetMultipleFiles(10))
+        {
+            if (file.Size > 5 * 1024 * 1024) // 5 MB
+            {
+                erroUpload = $"Arquivo {file.Name} excede 5MB.";
+                continue;
+            }
+            if (!(file.ContentType == "image/jpeg" || file.ContentType == "image/png"))
+            {
+                erroUpload = $"Formato não suportado: {file.Name}. Use JPEG ou PNG.";
+                continue;
+            }
+
+            arquivosSelecionados.Add(file);
+            var preview = await file.RequestImageFileAsync("image/jpeg", 200, 150);
+            var stream = preview.OpenReadStream();
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+            previewsNovasFotos.Add($"data:image/jpeg;base64,{base64}");
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task UploadNovasFotos()
+    {
+        if (!arquivosSelecionados.Any()) return;
+
+        uploading = true;
+        erroUpload = null;
+        var sucessos = 0;
+
+        try
+        {
+            foreach (var file in arquivosSelecionados)
+            {
+                var resultado = await VeiculoService.UploadFotoAsync(veiculo!.Id, file);
+                if (resultado.IsSuccess)
+                {
+                    var novaFoto = resultado.Value;
+                    fotosEditaveis.Add(novaFoto);
+                    sucessos++;
+                }
+                else
+                {
+                    erroUpload = resultado.Error ?? "Erro ao enviar uma ou mais fotos.";
+                }
+            }
+
+            if (sucessos > 0)
+            {
+                await RecarregarFotos();
+                arquivosSelecionados.Clear();
+                previewsNovasFotos.Clear();
+            }
+        }
+        catch (Exception ex)
+        {
+            erroUpload = $"Erro no upload: {ex.Message}";
+        }
+        finally
+        {
+            uploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CancelarUpload()
+    {
+        arquivosSelecionados.Clear();
+        previewsNovasFotos.Clear();
+        erroUpload = null;
+        StateHasChanged();
+    }
+
+    private async Task RemoverFoto(int indice)
+    {
+        if (indice < 0 || indice >= fotosEditaveis.Count) return;
+        var foto = fotosEditaveis[indice];
+
+        if (foto.Id != Guid.Empty)
+        {
+            var resultado = await VeiculoService.RemoverFotoAsync(veiculo!.Id, foto.Id);
+            if (!resultado.IsSuccess)
+            {
+                erroUpload = resultado.Error ?? "Erro ao remover foto.";
+                return;
+            }
+        }
+
+        fotosEditaveis.RemoveAt(indice);
+        for (int i = 0; i < fotosEditaveis.Count; i++)
+            fotosEditaveis[i].Ordem = i;
+
+        await SalvarOrdem();
+        await RecarregarFotos();
+    }
+
+    private async Task MoverFotoParaCima(int indice)
+    {
+        if (indice <= 0) return;
+        var foto = fotosEditaveis[indice];
+        fotosEditaveis.RemoveAt(indice);
+        fotosEditaveis.Insert(indice - 1, foto);
+        for (int i = 0; i < fotosEditaveis.Count; i++)
+            fotosEditaveis[i].Ordem = i;
+        await SalvarOrdem();
+        await RecarregarFotos();
+    }
+
+    private async Task MoverFotoParaBaixo(int indice)
+    {
+        if (indice >= fotosEditaveis.Count - 1) return;
+        var foto = fotosEditaveis[indice];
+        fotosEditaveis.RemoveAt(indice);
+        fotosEditaveis.Insert(indice + 1, foto);
+        for (int i = 0; i < fotosEditaveis.Count; i++)
+            fotosEditaveis[i].Ordem = i;
+        await SalvarOrdem();
+        await RecarregarFotos();
+    }
+
+    private async Task SalvarOrdem()
+    {
+        var ordemIds = fotosEditaveis.Select(f => f.Id).ToList();
+        var resultado = await VeiculoService.ReordenarFotosAsync(veiculo!.Id, ordemIds);
+        if (!resultado.IsSuccess)
+        {
+            erroUpload = resultado.Error ?? "Erro ao reordenar fotos.";
+        }
+    }
+
+    private async Task RecarregarFotos()
+    {
+        var resultado = await VeiculoService.GetByIdAsync(Id);
+        if (resultado.IsSuccess && resultado.Value != null)
+        {
+            veiculo = resultado.Value;
+            // Aqui você deve ajustar conforme seu DTO.
+            // Se veiculo.Fotos já for List<FotoVeiculoDTO>, use diretamente.
+            // Caso contrário, mapeie.
+            fotosEditaveis = veiculo.Fotos.Select((url, idx) => new FotoVeiculoDTO
+            {
+                Id = Guid.NewGuid(), // ajuste para o ID real se disponível
+                Url = url,
+                Ordem = idx
+            }).ToList();
+        }
+    }
+
+    // DTO auxiliar (mova para seu domínio se necessário)
+    public class FotoVeiculoDTO
+    {
+        public Guid Id { get; set; }
+        public string Url { get; set; } = string.Empty;
+        public int Ordem { get; set; }
+    }
 }
 
 <style>
+    /* Seus estilos existentes (mantidos) */
     .detalhe-carousel {
         background: #1a1a1a;
         height: 320px;
@@ -371,15 +575,8 @@ else
         position: relative;
         overflow: hidden;
     }
-
-    .carousel-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
+    .carousel-img { width: 100%; height: 100%; object-fit: cover; }
     .carousel-vazio { color: #555; font-size: 14px; }
-
     .carousel-arr {
         position: absolute;
         top: 50%;
@@ -396,10 +593,8 @@ else
         align-items: center;
         justify-content: center;
     }
-
     .carousel-arr.left { left: 16px; }
     .carousel-arr.right { right: 16px; }
-
     .carousel-dots {
         position: absolute;
         bottom: 14px;
@@ -408,7 +603,6 @@ else
         display: flex;
         gap: 6px;
     }
-
     .dot {
         width: 8px;
         height: 8px;
@@ -417,9 +611,7 @@ else
         cursor: pointer;
         transition: background 0.2s;
     }
-
     .dot.ativo { background: #e02020; }
-
     .thumbs-bar {
         background: #111;
         padding: 10px 24px;
@@ -427,7 +619,6 @@ else
         gap: 8px;
         overflow-x: auto;
     }
-
     .thumb {
         width: 64px;
         height: 44px;
@@ -437,10 +628,8 @@ else
         cursor: pointer;
         flex-shrink: 0;
     }
-
     .thumb.ativo { border-color: #e02020; }
     .thumb img { width: 100%; height: 100%; object-fit: cover; }
-
     .detalhe-content {
         max-width: 1200px;
         margin: 0 auto;
@@ -449,17 +638,14 @@ else
         grid-template-columns: 1fr 300px;
         gap: 20px;
     }
-
     .detalhe-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 20px;
     }
-
     .detalhe-titulo { font-size: 24px; font-weight: 500; margin-bottom: 4px; }
     .detalhe-sub { font-size: 14px; color: #888; }
-
     .detalhe-section {
         background: #fff;
         border-radius: 10px;
@@ -467,7 +653,6 @@ else
         padding: 16px;
         margin-bottom: 16px;
     }
-
     .section-titulo {
         font-size: 14px;
         font-weight: 500;
@@ -475,19 +660,15 @@ else
         padding-bottom: 8px;
         border-bottom: 0.5px solid #eee;
     }
-
     .specs-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 12px;
     }
-
     .spec { display: flex; flex-direction: column; gap: 2px; }
     .spec-label { font-size: 11px; color: #888; }
     .spec-val { font-size: 14px; font-weight: 500; }
-
     .acc-lista { display: flex; flex-wrap: wrap; gap: 8px; }
-
     .acc-tag {
         background: #f4f4f4;
         border: 0.5px solid #e0e0e0;
@@ -499,14 +680,7 @@ else
         align-items: center;
         gap: 6px;
     }
-
-    .acc-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #16a34a;
-    }
-
+    .acc-dot { width: 6px; height: 6px; border-radius: 50%; background: #16a34a; }
     .preco-card {
         background: #fff;
         border-radius: 10px;
@@ -518,16 +692,13 @@ else
         position: sticky;
         top: 72px;
     }
-
     .preco-label { font-size: 12px; color: #888; }
-
     .preco-val {
         font-size: 28px;
         font-weight: 600;
         color: #e02020;
         margin-bottom: 8px;
     }
-
     .btn-primary {
         background: #e02020;
         color: #fff;
@@ -539,9 +710,7 @@ else
         cursor: pointer;
         width: 100%;
     }
-
     .btn-primary:hover { background: #c01818; }
-
     .btn-secondary {
         background: #fff;
         color: #1a1a1a;
@@ -552,9 +721,7 @@ else
         cursor: pointer;
         width: 100%;
     }
-
     .btn-secondary:hover { background: #f9f9f9; }
-
     .btn-excluir {
         background: #fff;
         color: #e02020;
@@ -565,9 +732,7 @@ else
         cursor: pointer;
         width: 100%;
     }
-
     .btn-excluir:hover { background: #fff5f5; }
-
     .btn-voltar {
         background: none;
         border: none;
@@ -578,9 +743,7 @@ else
         padding: 4px 0;
         margin-top: 4px;
     }
-
     .btn-voltar:hover { color: #1a1a1a; }
-
     .modal-overlay {
         position: fixed;
         inset: 0;
@@ -590,27 +753,23 @@ else
         justify-content: center;
         z-index: 1000;
     }
-
     .modal-form {
         background: #fff;
         border-radius: 12px;
         padding: 24px;
         width: 100%;
-        max-width: 640px;
+        max-width: 800px;
         max-height: 90vh;
         overflow-y: auto;
         border: 0.5px solid #e0e0e0;
     }
-
     .modal-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 20px;
     }
-
     .modal-titulo { font-size: 16px; font-weight: 500; color: #1a1a1a; }
-
     .modal-fechar {
         background: none;
         border: none;
@@ -620,20 +779,15 @@ else
         line-height: 1;
         padding: 0 4px;
     }
-
     .modal-fechar:hover { color: #1a1a1a; }
-
     .form-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 12px;
         margin-bottom: 16px;
     }
-
     .form-campo { display: flex; flex-direction: column; gap: 6px; }
-
     .campo-label { font-size: 12px; color: #555; font-weight: 500; }
-
     .campo-input {
         border: 0.5px solid #ccc;
         border-radius: 8px;
@@ -643,9 +797,7 @@ else
         width: 100%;
         transition: border-color 0.2s;
     }
-
     .campo-input:focus { border-color: #e02020; }
-
     .erro-banner {
         background: #fff5f5;
         border: 0.5px solid #fca5a5;
@@ -655,14 +807,12 @@ else
         color: #e02020;
         margin-bottom: 12px;
     }
-
     .modal-acoes {
         display: flex;
         gap: 8px;
         justify-content: flex-end;
         margin-top: 16px;
     }
-
     .btn-cancelar {
         background: #fff;
         border: 0.5px solid #ccc;
@@ -672,9 +822,7 @@ else
         cursor: pointer;
         color: #444;
     }
-
     .btn-cancelar:hover { background: #f5f5f5; }
-
     .btn-confirmar {
         background: #1a1a1a;
         border: none;
@@ -686,25 +834,136 @@ else
         cursor: pointer;
         transition: background 0.2s;
     }
-
     .btn-confirmar:hover:not(:disabled) { background: #333; }
     .btn-confirmar:disabled { opacity: 0.5; cursor: not-allowed; }
-
     .badge {
         font-size: 11px;
         padding: 3px 10px;
         border-radius: 20px;
         font-weight: 500;
     }
-
     .badge-disponivel { background: #dcfce7; color: #166534; }
     .badge-vendido { background: #f1f1f1; color: #666; }
     .badge-reservado { background: #fef9c3; color: #854d0e; }
-
     .loading {
         text-align: center;
         padding: 80px;
         color: #888;
         font-size: 14px;
+    }
+
+    /* Estilos para gerenciamento de fotos */
+    .form-secao {
+        margin-top: 20px;
+        border-top: 1px solid #eee;
+        padding-top: 16px;
+    }
+    .secao-titulo {
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 12px;
+    }
+    .fotos-lista {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 16px;
+        max-height: 240px;
+        overflow-y: auto;
+        padding: 4px;
+    }
+    .foto-item {
+        width: 100px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #f9f9f9;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .foto-thumb {
+        width: 100%;
+        height: 80px;
+        object-fit: cover;
+    }
+    .foto-acoes {
+        display: flex;
+        justify-content: center;
+        gap: 4px;
+        padding: 6px;
+    }
+    .btn-ordem, .btn-remover-foto {
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        padding: 2px 6px;
+        transition: all 0.1s;
+    }
+    .btn-ordem:hover:not(:disabled) { background: #f0f0f0; }
+    .btn-ordem:disabled { opacity: 0.4; cursor: default; }
+    .btn-remover-foto { color: #e02020; border-color: #e02020; }
+    .btn-remover-foto:hover { background: #fff5f5; }
+    .upload-area {
+        margin-top: 12px;
+    }
+    .upload-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #f4f4f4;
+        border: 1px dashed #aaa;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .upload-label:hover { background: #eaeaea; }
+    .upload-icone { font-size: 16px; }
+    .preview-novas {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+        align-items: center;
+    }
+    .preview-thumb {
+        width: 60px;
+        height: 45px;
+        object-fit: cover;
+        border-radius: 4px;
+        border: 0.5px solid #ccc;
+    }
+    .btn-upload {
+        background: #e02020;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    .btn-upload:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-cancelar-upload {
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 6px;
+        padding: 5px 10px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    .erro-upload {
+        background: #fff5f5;
+        color: #e02020;
+        font-size: 12px;
+        padding: 6px;
+        border-radius: 6px;
+        margin-top: 8px;
+    }
+    .sem-fotos-msg {
+        color: #888;
+        font-size: 13px;
+        padding: 8px 0;
     }
 </style>

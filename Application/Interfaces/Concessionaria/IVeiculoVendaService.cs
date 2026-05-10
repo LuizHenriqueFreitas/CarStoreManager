@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda;
 
@@ -14,5 +15,6 @@ public interface IVeiculoVendaService : IService<
     Task<Result> MarcarComoDisponivelAsync(Guid id);
     Task<Result> AtualizarQuilometragemAsync(Guid id, int km);
     Task<Result> AdicionarFotoAsync(Guid id, string url);
+    Task<Result> ReordenarFotosAsync(Guid id, List<Guid> fotos);
     Task<Result> RemoverFotoAsync(Guid id, Guid fotoId);
 }

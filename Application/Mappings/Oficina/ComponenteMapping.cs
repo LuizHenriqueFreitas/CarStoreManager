@@ -1,93 +1,93 @@
+// Application/Mappings/Oficina/ComponenteMapping.cs
 using CarStoreManager.Application.DTOs.Oficina.Componente;
-using CarStoreManager.Domain.Entities.Oficina;
-using CarStoreManager.Domain.Enums;
-using CarStoreManager.Domain.ValueObjects;
+using Oficina.Domain.Entities;
 
 namespace CarStoreManager.Application.Mappings.Oficina;
 
 public static class ComponenteMapping
 {
     // =========================
-    // ENTITY → DTO (DETALHE)
+    // Entity → DTO
     // =========================
     public static ComponenteDTO ToDto(Componente entity)
     {
+        if (entity == null)
+            throw new ArgumentNullException(nameof(entity));
+
         return new ComponenteDTO
         {
-            Id = entity.GetId(),
-            Nome = entity.GetNome(),
-            Modelo = entity.GetModelo(),
-            Valor = entity.GetValor(),
-            QuantidadeEstoque = entity.GetQuantidade(),
-            EstoqueMinimo = entity.GetEstoqueMinimo(),
-            Sistema = entity.GetSistema()
+            Id = entity.Id,
+            SKUInterno = entity.SKUInterno,
+            Nome = entity.Nome,
+            Descricao = entity.Descricao,
+            MarcaFabricante = entity.MarcaFabricante,
+            PartNumber = entity.PartNumber,
+            CodigoOEM = entity.CodigoOEM,
+            CodigoBarras = entity.CodigoBarras,
+            NCM = entity.NCM,
+            CEST = entity.CEST,
+            Categoria = entity.Categoria,
+            Unidade = entity.Unidade,
+            Peso = entity.Peso,
+            GarantiaDias = entity.GarantiaDias,
+            Ativo = entity.Ativo
         };
     }
 
     // =========================
-    // ENTITY → DTO (LISTA)
+    // DTO → Entity (criação)
     // =========================
-    public static ComponenteListaDTO ToListaDto(Componente entity)
+    public static Componente ToEntity(ComponenteDTO dto)
     {
-        return new ComponenteListaDTO
-        {
-            Id = entity.GetId(),
-            Nome = entity.GetNome(),
-            QuantidadeEstoque = entity.GetQuantidade(),
-            Sistema = entity.GetSistema()
-        };
-    }
+        if (dto == null)
+            throw new ArgumentNullException(nameof(dto));
 
-    // =========================
-    // ENTITY → DTO (LOOKUP)
-    // =========================
-    public static ComponenteLookupDTO ToLookupDto(Componente entity)
-    {
-        return new ComponenteLookupDTO
-        {
-            Id = entity.GetId(),
-            Nome = entity.GetNome(),
-            Modelo = entity.GetModelo(),
-            Valor = entity.GetValor(),
-            Sistema = entity.GetSistema()
-        };
-    }
-
-    // =========================
-    // DTO → ENTITY (CREATE)
-    // =========================
-    public static Componente ToEntity(CriarComponenteDTO dto)
-    {
         return new Componente(
-            dto.Nome,
-            dto.Modelo,
-            ConverterSistema(dto.Sistema),
-            dto.Valor,
-            dto.QuantidadeEstoque,
-            dto.EstoqueMinimo
+            skuInterno: dto.SKUInterno,
+            nome: dto.Nome,
+            descricao: dto.Descricao,
+            marcaFabricante: dto.MarcaFabricante,
+            partNumber: dto.PartNumber,
+            codigoOEM: dto.CodigoOEM,
+            codigoBarras: dto.CodigoBarras,
+            ncm: dto.NCM,
+            cest: dto.CEST,
+            categoria: dto.Categoria,
+            unidade: dto.Unidade,
+            peso: dto.Peso,
+            garantiaDias: dto.GarantiaDias
         );
+        // Obs.: O construtor já define Ativo = true por padrão.
+        // Se quiser permitir criar inativo, deve ajustar o construtor.
     }
 
     // =========================
-    // UPDATE
+    // DTO → Entity (atualização)
     // =========================
-    public static void UpdateEntity(Componente entity, AtualizarComponenteDTO dto)
+    public static void UpdateEntity(Componente entity, ComponenteDTO dto)
     {
-        entity.AtualizarDadosComponente(
-            dto.Valor,
-            dto.QuantidadeEstoque,
-            dto.EstoqueMinimo
-        );
-    }
+        if (entity == null) throw new ArgumentNullException(nameof(entity));
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
 
-    // =========================
-    // HELPERS
-    // =========================
-    private static SistemaComponente ConverterSistema(string valor)
-    {
-        if (!Enum.TryParse<SistemaComponente>(valor, true, out var resultado))
-            throw new ArgumentException($"Sistema inválido: {valor}");
+        // SKU não deve ser alterado após criação (é chave interna)
+        // entity.SetSKUInterno(dto.SKUInterno); // comente se não quiser permitir
 
-        return resultado;
+        entity.SetNome(dto.Nome);
+        entity.SetDescricao(dto.Descricao);
+        entity.SetMarcaFabricante(dto.MarcaFabricante);
+        entity.SetPartNumber(dto.PartNumber);
+        entity.SetCodigoOEM(dto.CodigoOEM);
+        entity.SetCodigoBarras(dto.CodigoBarras);
+        entity.SetNCM(dto.NCM);
+        entity.SetCEST(dto.CEST);
+        entity.SetCategoria(dto.Categoria);
+        entity.SetUnidade(dto.Unidade);
+        entity.SetPeso(dto.Peso);
+        entity.SetGarantiaDias(dto.GarantiaDias);
+        
+        if (dto.Ativo && !entity.Ativo)
+            entity.Ativar();
+        else if (!dto.Ativo && entity.Ativo)
+            entity.Desativar();
     }
 }

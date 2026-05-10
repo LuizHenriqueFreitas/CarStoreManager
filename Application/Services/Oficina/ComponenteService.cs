@@ -5,6 +5,7 @@ using CarStoreManager.Application.Mappings.Oficina;
 using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Repositories;
+using Oficina.Domain.Entities;
 
 namespace CarStoreManager.Application.Services;
 
@@ -47,22 +48,22 @@ public class ComponenteService : IComponenteService
     }
 
     //busca todos os componentes
-    public async Task<Result<IEnumerable<ComponenteListaDTO>>> GetAllAsync()
+    public async Task<Result<IEnumerable<ComponenteDTO>>> GetAllAsync()
     {
         var componentes = await _repository.GetAllAsync();
 
         var lista = componentes
-            .Select(ComponenteMapping.ToListaDto);
+            .Select(ComponenteMapping.ToDto);
 
-        return Result<IEnumerable<ComponenteListaDTO>>.Ok(lista);
+        return Result<IEnumerable<ComponenteDTO>>.Ok(lista);
     }
 
     /*
         metodo que busca os componentes com estoque baixo
         caso o componente buscado por id seja vazio
         ele retorna o aviso que o componente nao foi encontrado
-    */
-    public async Task<Result<IEnumerable<ComponenteListaDTO>>> ObterComEstoqueBaixoAsync()
+    *//*
+    public async Task<Result<IEnumerable<ComponenteDTO>>> ObterComEstoqueBaixoAsync()
     {
         var componentes = await _repository.GetAllAsync();
 
@@ -70,42 +71,38 @@ public class ComponenteService : IComponenteService
             .Where(c => c.EstoqueBaixo())
             .Select(ComponenteMapping.ToListaDto);
 
-        return Result<IEnumerable<ComponenteListaDTO>>.Ok(lista);
-    }
+        return Result<IEnumerable<ComponenteDTO>>.Ok(lista);
+    }*/
 
     /*
         metodo que filtra os componentes de 
         acordo com o sistema que fazem parte
         retorna falha caso o sistema informado seja invalido
-    */
-    public async Task<Result<IEnumerable<ComponenteLookupDTO>>> ObterPorSistemaAsync(string sistema)
+    *//*
+    public async Task<Result<IEnumerable<ComponenteDTO>>> ObterPorSistemaAsync(string sistema)
     {
         if (!Enum.TryParse<SistemaComponente>(sistema, true, out var sistemaEnum))
-            return Result<IEnumerable<ComponenteLookupDTO>>.Fail("Sistema inválido");
+            return Result<IEnumerable<ComponenteDTO>>.Fail("Sistema inválido");
 
         var componentes = await _repository.GetAllAsync();
 
         var lista = componentes
             .Where(c => c.Sistema == sistemaEnum)
-            .Select(ComponenteMapping.ToLookupDto);
+            .Select(ComponenteMapping.ToDto);
 
-        return Result<IEnumerable<ComponenteLookupDTO>>.Ok(lista);
-    }
+        return Result<IEnumerable<ComponenteDTO>>.Ok(lista);
+    }*/
 
     //metodo para criar novo componente
-    public async Task<Result<Guid>> AddAsync(CriarComponenteDTO dto)
+    /*
+    public async Task<Result<Guid>> AddAsync(ComponenteDTO dto)
     {
         if(!Enum.TryParse<SistemaComponente>(dto.Sistema, true, out var sistema))
             return Result<Guid>.Fail("Sistema inválido");
         try
         {
             var componente = new Componente(
-                dto.Nome,
-                dto.Modelo,
-                sistema,
-                dto.Valor,
-                dto.QuantidadeEstoque,
-                dto.EstoqueMinimo
+                //implementar
             );
 
             await _repository.AddAsync(componente);
@@ -117,14 +114,14 @@ public class ComponenteService : IComponenteService
         {
             return Result<Guid>.Fail($"Erro ao criar componente: {ex.Message}");
         }
-    }
+    }*/
 
     /*
         metodo que atualiza componente ja existente
         faz busca por id e caso componente seja vazio 
         retona o aviso que nao foi encontrado
     */
-    public async Task<Result> UpdateAsync(AtualizarComponenteDTO dto)
+    public async Task<Result> UpdateAsync(ComponenteDTO dto)
     {
         var componente = await _repository.GetByIdAsync(dto.Id);
 

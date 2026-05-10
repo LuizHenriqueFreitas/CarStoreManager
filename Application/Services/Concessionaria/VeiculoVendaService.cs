@@ -1,6 +1,7 @@
 // Service da entidade VeiculoVenda : Herda da interface IVeiculoVenda.cs
 
 using CarStoreManager.Application.Common;
+using CarStoreManager.Application.DTOs;
 using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda;
 using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Application.Mappings.Concessionaria;
@@ -208,6 +209,11 @@ public class VeiculoVendaService : IVeiculoVendaService
         {
             return Result.Fail(ex.Message);
         }
+    }
+
+    public async Task<Result> ReordenarFotosAsync(Guid id)
+    {
+        //nada
     }
 
     /*

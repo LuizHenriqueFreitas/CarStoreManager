@@ -5,13 +5,13 @@ namespace CarStoreManager.Application.Interfaces;
 
 public interface IComponenteService : IService<
     ComponenteDTO,
-    ComponenteListaDTO,
-    CriarComponenteDTO,
-    AtualizarComponenteDTO>
+    ComponenteDTO,
+    ComponenteDTO,
+    ComponenteDTO>
 {
     // CONSULTAS
-    Task<Result<IEnumerable<ComponenteListaDTO>>> ObterComEstoqueBaixoAsync();
-    Task<Result<IEnumerable<ComponenteLookupDTO>>> ObterPorSistemaAsync(string sistema);
+    Task<Result<IEnumerable<ComponenteDTO>>> ObterComEstoqueBaixoAsync();
+    Task<Result<IEnumerable<ComponenteDTO>>> ObterPorSistemaAsync(string sistema);
 
     // ESTOQUE (REGRA DE NEGÓCIO)
     Task<Result> EntradaEstoqueAsync(Guid componenteId, int quantidade);

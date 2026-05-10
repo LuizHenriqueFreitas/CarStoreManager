@@ -21,6 +21,7 @@ public class VeiculoCliente : Entity
     public string Modelo { get; private set; } = null!;
     public string Cor { get; private set; } = null!;
     public Ano Ano { get; private set; } = null!;
+    public PlacaVeiculo Placa { get; private set; } = null!;
 
     public List<OrdemServico> HistoricoServicos { get; private set; } = new();
 
@@ -32,7 +33,8 @@ public class VeiculoCliente : Entity
         string marca,
         string modelo,
         string cor,
-        int ano)
+        int ano,
+        string placa)
     {
         if (clienteId == Guid.Empty)
             throw new ArgumentException("Cliente inválido");
@@ -42,8 +44,10 @@ public class VeiculoCliente : Entity
         AtualizarMarcaVeiculoCliente(marca);
         AtualizarModeloVeiculoCliente(modelo);
         AtualizarCorVeiculoCliente(cor);
-
+        
         Ano = new Ano(ano);
+        Placa = new PlacaVeiculo(placa);
+
     }
 
     /* ================================
