@@ -23,4 +23,13 @@ public interface IOrdemServicoService : IService<
 
     // CÁLCULO
     Task<Result> RecalcularValoresAsync(Guid ordemId);
+
+    // FLUXO DE APROVAÇÃO
+    Task<Result> EnviarParaRevisaoAsync(Guid ordemId);
+    Task<Result> AprovarPeloMecanicoAsync(Guid ordemId);
+    Task<Result> DevolverParaAjustesAsync(Guid ordemId);
+    Task<Result> RegistrarAprovacaoDoClienteAsync(Guid ordemId);
+    Task<Result> IniciarAsync(Guid ordemId);
+    Task<Result> FinalizarAsync(Guid ordemId);
+    Task<Result> CancelarAsync(Guid ordemId);
 }

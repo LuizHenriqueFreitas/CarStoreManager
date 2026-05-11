@@ -69,6 +69,20 @@ public class VeiculoClienteService : IVeiculoClienteService
         );
     }
 
+    public async Task<Result<List<VeiculoClienteListaDTO>>> PesquisarAsync(string termo, Guid? clienteId = null)
+    {
+        try
+        {
+            var veiculos = await _repository.PesquisarAsync(termo, clienteId);
+            return Result<List<VeiculoClienteListaDTO>>.Ok(
+                veiculos.Select(VeiculoClienteMapping.ToListaDto).ToList());
+        }
+        catch (Exception ex)
+        {
+            return Result<List<VeiculoClienteListaDTO>>.Fail($"Erro na pesquisa: {ex.Message}");
+        }
+    }
+
     /*
         metodo para criar novo VeiculoCliente
         verifica que o cliente existe fazendo

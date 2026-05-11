@@ -189,8 +189,8 @@ public class OrdemServico : Entity
     //metodo que adiciona um item necessario para ordem de servico
     public void AdicionarItem(ItemOrdemServico item)
     {
-        if (Status == StatusOrdemServico.Finalizada)
-            throw new InvalidOperationException("Não é possível alterar itens");
+        if (Status == StatusOrdemServico.Finalizada || Status == StatusOrdemServico.Cancelada)
+            throw new InvalidOperationException("Não é possível alterar itens em OS finalizada/cancelada");
 
         Itens.Add(item);
         RecalcularTotal();
@@ -242,13 +242,55 @@ public class OrdemServico : Entity
      ===============================================*/
 
     /*
+        FLUXO DE APROVAÇÃO
+
+        1) Pendente               — recepcionista cria o orçamento (rascunho).
+        2) EmAnalise              — recepcionista envia pra mecânico revisar.
+        3) AguardandoCliente      — mecânico revisou; recepcionista vai mostrar pro cliente.
+        4) Aprovada               — cliente aprovou; OS pronta pra começar.
+        5) EmAndamento            — mecânico iniciou o serviço.
+        6) Finalizada             — serviço concluído.
+
+        A OS pode ser cancelada a qualquer momento (exceto se já finalizada).
+    */
+
+    public void EnviarParaRevisaoMecanico()
+    {
+        ValidarStatus(StatusOrdemServico.Pendente);
+        Status = StatusOrdemServico.EmAnalise;
+    }
+
+    public void DevolverParaAjustesDoRecepcionista()
+    {
+        // mecânico achou que o orçamento precisa de ajustes (volta pra Pendente)
+        ValidarStatus(StatusOrdemServico.EmAnalise);
+        Status = StatusOrdemServico.Pendente;
+    }
+
+    public void AprovarPeloMecanico()
+    {
+        // mecânico revisou e está OK; agora aguarda o cliente
+        ValidarStatus(StatusOrdemServico.EmAnalise);
+        Status = StatusOrdemServico.AguardandoCliente;
+    }
+
+    public void RegistrarAprovacaoDoCliente()
+    {
+        ValidarStatus(StatusOrdemServico.AguardandoCliente);
+        Status = StatusOrdemServico.Aprovada;
+    }
+
+    /*
         metodo que incia uma OS
-        a regra é que só pode ser iniciada 
-        caso o estado anterior seja "Pendente"
+        a regra é que só pode ser iniciada
+        caso o estado anterior seja "Aprovada" (cliente já confirmou)
+        ou "Pendente" (fluxo legacy/atalho do admin para começar direto).
     */
     public void Iniciar()
     {
-        ValidarStatus(StatusOrdemServico.Pendente);
+        if (Status != StatusOrdemServico.Aprovada && Status != StatusOrdemServico.Pendente)
+            throw new InvalidOperationException(
+                "Só é possível iniciar OS aprovada pelo cliente.");
         Status = StatusOrdemServico.EmAndamento;
     }
 

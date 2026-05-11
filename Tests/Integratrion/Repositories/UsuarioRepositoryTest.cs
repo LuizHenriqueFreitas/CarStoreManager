@@ -24,7 +24,7 @@ private readonly UsuarioRepository _repository;
 
 public UsuarioRepositoryTests()
 {
-_connection = new SqliteConnection("DataSource=:memory:");
+_connection = new SqliteConnection("DataSource=:memory:;Foreign Keys=False");
 _connection.Open();
 
 var options = new DbContextOptionsBuilder<AppDbContext>()

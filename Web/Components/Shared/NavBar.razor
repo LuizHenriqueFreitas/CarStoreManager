@@ -5,21 +5,50 @@
 @inject NavigationManager Navigation
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
-@inject IJSRuntime JS 
+@inject IJSRuntime JS
 
 <nav class="navbar">
     <a href="/" class="navbar-logo">AUTOSTORE</a>
 
     <div class="navbar-links">
-        <NavLink href="/concessionaria" class="nav-link" ActiveClass="nav-link-active">
-            Concessionária
-        </NavLink>
-        <NavLink href="/oficina" class="nav-link" ActiveClass="nav-link-active">
-            Oficina
-        </NavLink>
-        <NavLink href="/dashboard" class="nav-link" ActiveClass="nav-link-active">
-            Relatórios
-        </NavLink>
+        <AuthorizeView Roles="Admin,Vendedor">
+            <NavLink href="/concessionaria" class="nav-link" ActiveClass="nav-link-active">
+                Concessionária
+            </NavLink>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin,Mecanico,Recepcionista">
+            <NavLink href="/oficina" class="nav-link" ActiveClass="nav-link-active">
+                Oficina
+            </NavLink>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin,Recepcionista">
+            <NavLink href="/recepcao" class="nav-link" ActiveClass="nav-link-active">
+                Recepção
+            </NavLink>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin,Mecanico">
+            <NavLink href="/oficina/componentes" class="nav-link" ActiveClass="nav-link-active">
+                Estoque
+            </NavLink>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin">
+            <NavLink href="/oficina/notas-fiscais" class="nav-link" ActiveClass="nav-link-active">
+                NF-e
+            </NavLink>
+            <NavLink href="/dashboard" class="nav-link" ActiveClass="nav-link-active">
+                Dashboard
+            </NavLink>
+            <NavLink href="/admin/usuarios" class="nav-link" ActiveClass="nav-link-active">
+                Usuários
+            </NavLink>
+            <NavLink href="/admin/configuracoes" class="nav-link" ActiveClass="nav-link-active">
+                Configurações
+            </NavLink>
+        </AuthorizeView>
     </div>
 
     <div class="navbar-user" @onclick="ToggleDropdown">
@@ -32,7 +61,10 @@
         @if (mostrarDropdown)
         {
             <div class="dropdown-menu" @onclick:stopPropagation>
-                <div class="dropdown-header">@NomeUsuario</div>
+                <div class="dropdown-header">
+                    <div class="dropdown-nome">@NomeUsuario</div>
+                    <div class="dropdown-role">@Role</div>
+                </div>
                 <button class="dropdown-item" @onclick="IrParaConfiguracoes">
                     Configurações
                 </button>
@@ -46,13 +78,11 @@
 
 @code {
     [Parameter] public string NomeUsuario { get; set; } = "Usuário";
+    [Parameter] public string Role { get; set; } = string.Empty;
 
     private bool mostrarDropdown = false;
 
-    private void ToggleDropdown()
-    {
-        mostrarDropdown = !mostrarDropdown;
-    }
+    private void ToggleDropdown() => mostrarDropdown = !mostrarDropdown;
 
     private void IrParaConfiguracoes()
     {
@@ -65,20 +95,14 @@
         mostrarDropdown = false;
         try
         {
-            // Remove o token JWT do localStorage (onde provavelmente está armazenado)
-            await JS.InvokeVoidAsync("localStorage.removeItem", "authToken");
-            
-            // Opcional: chama o backend para invalidar (já implementado)
-            // var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            // var claim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-            // if (claim != null) await AuthService.LogoutAsync(Guid.Parse(claim.Value));
+            // Limpa cookie de sessão (server-side) E token do storage local.
+            await JS.InvokeVoidAsync("carstoreLogout");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Erro ao limpar token: {ex.Message}");
+            Console.WriteLine($"Erro ao limpar sessão: {ex.Message}");
         }
-        
-        // Redireciona para login com recarga completa para limpar todo o estado do circuito
+
         Navigation.NavigateTo("/login?logout=true", forceLoad: true);
     }
 }
@@ -101,6 +125,7 @@
         font-size: 18px;
         font-weight: 600;
         letter-spacing: 1px;
+        text-decoration: none;
     }
 
     .navbar-links {
@@ -167,11 +192,12 @@
 
     .dropdown-header {
         padding: 8px 16px;
-        font-weight: 500;
-        color: #1a1a1a;
         border-bottom: 0.5px solid #eee;
         margin-bottom: 4px;
     }
+
+    .dropdown-nome { font-weight: 500; color: #1a1a1a; }
+    .dropdown-role { font-size: 11px; color: #888; margin-top: 2px; }
 
     .dropdown-item {
         display: block;
@@ -185,7 +211,5 @@
         cursor: pointer;
     }
 
-    .dropdown-item:hover {
-        background: #f4f4f4;
-    }
+    .dropdown-item:hover { background: #f4f4f4; }
 </style>

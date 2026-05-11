@@ -23,6 +23,8 @@
             Nav.NavigateTo("/concessionaria");
         else if (user.IsInRole("Mecanico"))
             Nav.NavigateTo("/oficina");
+        else if (user.IsInRole("Recepcionista"))
+            Nav.NavigateTo("/recepcao");
         else
             Nav.NavigateTo("/login");
     }

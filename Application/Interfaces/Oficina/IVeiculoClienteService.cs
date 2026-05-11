@@ -10,4 +10,5 @@ public interface IVeiculoClienteService :IService<
     AtualizarVeiculoClienteDTO>
 {
     Task<Result<IEnumerable<VeiculoClienteListaDTO>>> ObterPorClienteAsync(Guid clienteId);
+    Task<Result<List<VeiculoClienteListaDTO>>> PesquisarAsync(string termo, Guid? clienteId = null);
 }

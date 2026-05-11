@@ -1,10 +1,13 @@
 @page "/concessionaria/veiculo/{Id:guid}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Vendedor")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
 @inject IVeiculoVendaService VeiculoService
+@inject IFotoService FotoService
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
+@using CarStoreManager.Application.Common
 @using CarStoreManager.Application.Interfaces
 @inject NavigationManager Nav
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
@@ -132,13 +135,13 @@ else
     </div>
 
     <ConfirmacaoSenhaModal
-        Visivel="modalEdicaoVisivel"
-        Titulo="Editar veículo"
-        Descricao="Confirme sua senha para editar os dados deste veículo."
-        TextoBotao="Continuar para edição"
-        OnConfirmar="ConfirmarEdicao"
-        OnCancelar="() => modalEdicaoVisivel = false"
-        @ref="modalEdicaoRef" />
+        Visivel="modalSalvarEdicaoVisivel"
+        Titulo="Confirmar alterações"
+        Descricao="@($"Salvar alterações em {veiculo.Marca} {veiculo.Modelo}? Confirme com sua senha.")"
+        TextoBotao="Salvar alterações"
+        OnConfirmar="ConfirmarSalvarEdicao"
+        OnCancelar="() => modalSalvarEdicaoVisivel = false"
+        @ref="modalSalvarEdicaoRef" />
 
     <ConfirmacaoSenhaModal
         Visivel="modalExclusaoVisivel"
@@ -255,13 +258,13 @@ else
     private bool carregando = true;
     private int fotoAtiva = 0;
 
-    private bool modalEdicaoVisivel = false;
     private bool modalExclusaoVisivel = false;
     private bool modalFormEdicaoVisivel = false;
+    private bool modalSalvarEdicaoVisivel = false;
     private bool salvando = false;
     private string? erroEdicao;
 
-    private ConfirmacaoSenhaModal? modalEdicaoRef;
+    private ConfirmacaoSenhaModal? modalSalvarEdicaoRef;
     private ConfirmacaoSenhaModal? modalExclusaoRef;
 
     private AtualizarVeiculoVendaDTO formEdicao = new();
@@ -270,7 +273,8 @@ else
 
     // Propriedades para gerenciamento de fotos
     private List<FotoVeiculoDTO> fotosEditaveis = new();
-    private List<IBrowserFile> arquivosSelecionados = new();
+    private record FotoEmMemoria(string Nome, string ContentType, byte[] Conteudo);
+    private List<FotoEmMemoria> arquivosSelecionados = new();
     private List<string> previewsNovasFotos = new();
     private bool uploading = false;
     private string? erroUpload = null;
@@ -315,32 +319,36 @@ else
             fotoAtiva = (fotoAtiva - 1 + veiculo.Fotos.Count) % veiculo.Fotos.Count;
     }
 
-    private void AbrirModalEdicao() => modalEdicaoVisivel = true;
-    private void AbrirModalExclusao() => modalExclusaoVisivel = true;
-
-    private async Task ConfirmarEdicao(string senha)
+    private async Task AbrirModalEdicao()
     {
-        var ok = await VerificarSenha(senha);
-        if (!ok) { modalEdicaoRef?.MostrarErro(); return; }
-
+        // Abre o formulário direto — sem pedir senha aqui.
+        // A confirmação de senha acontece no SUBMIT (botão Salvar alterações).
         formEdicao = new AtualizarVeiculoVendaDTO
         {
             Id = veiculo!.Id,
             Valor = veiculo.Valor,
             Disponibilidade = veiculo.Disponibilidade
         };
-
         await RecarregarFotos();
-
-        modalEdicaoVisivel = false;
         modalFormEdicaoVisivel = true;
     }
 
-    private async Task SalvarEdicao()
-    {
-        salvando = true;
-        erroEdicao = null;
+    private void AbrirModalExclusao() => modalExclusaoVisivel = true;
 
+    private void SalvarEdicao()
+    {
+        // Pede a senha antes de aplicar a alteração.
+        erroEdicao = null;
+        modalSalvarEdicaoVisivel = true;
+    }
+
+    private async Task ConfirmarSalvarEdicao(string senha)
+    {
+        var ok = await VerificarSenha(senha);
+        if (!ok) { modalSalvarEdicaoRef?.MostrarErro(); return; }
+
+        modalSalvarEdicaoVisivel = false;
+        salvando = true;
         try
         {
             var resultado = await VeiculoService.UpdateAsync(formEdicao);
@@ -387,7 +395,7 @@ else
     }
 
     private void GerarProposta() =>
-        Nav.NavigateTo($"/concessionaria/proposta/nova?veiculoId={Id}");
+        Nav.NavigateTo($"/concessionaria/proposta/nova/{Id}");
 
     private string BadgeClass => veiculo?.Disponibilidade switch
     {
@@ -417,13 +425,16 @@ else
                 continue;
             }
 
-            arquivosSelecionados.Add(file);
-            var preview = await file.RequestImageFileAsync("image/jpeg", 200, 150);
-            var stream = preview.OpenReadStream();
-            using var ms = new MemoryStream();
-            await stream.CopyToAsync(ms);
-            var base64 = Convert.ToBase64String(ms.ToArray());
-            previewsNovasFotos.Add($"data:image/jpeg;base64,{base64}");
+            // Lê o conteúdo do arquivo IMEDIATAMENTE — o stream do IBrowserFile
+            // só é válido enquanto este handler está rodando.
+            using var msArquivo = new MemoryStream();
+            await file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(msArquivo);
+            var bytes = msArquivo.ToArray();
+            arquivosSelecionados.Add(new FotoEmMemoria(file.Name, file.ContentType, bytes));
+
+            // Preview também a partir do mesmo conteúdo.
+            var base64 = Convert.ToBase64String(bytes);
+            previewsNovasFotos.Add($"data:{file.ContentType};base64,{base64}");
         }
 
         StateHasChanged();
@@ -439,26 +450,25 @@ else
 
         try
         {
-            foreach (var file in arquivosSelecionados)
-            {
-                var resultado = await VeiculoService.UploadFotoAsync(veiculo!.Id, file);
-                if (resultado.IsSuccess)
-                {
-                    var novaFoto = resultado.Value;
-                    fotosEditaveis.Add(novaFoto);
-                    sucessos++;
-                }
-                else
-                {
-                    erroUpload = resultado.Error ?? "Erro ao enviar uma ou mais fotos.";
-                }
-            }
+            var arquivos = arquivosSelecionados
+                .Select(f => new ArquivoUpload(
+                    f.Nome,
+                    f.Conteudo.Length,
+                    f.ContentType,
+                    () => new MemoryStream(f.Conteudo)))
+                .ToList();
 
-            if (sucessos > 0)
+            var resultado = await FotoService.UploadFotosAsync("VeiculoVenda", veiculo!.Id, arquivos);
+            if (resultado.IsSuccess)
             {
+                sucessos = resultado.Value!.Count;
                 await RecarregarFotos();
                 arquivosSelecionados.Clear();
                 previewsNovasFotos.Clear();
+            }
+            else
+            {
+                erroUpload = resultado.Error ?? "Erro ao enviar uma ou mais fotos.";
             }
         }
         catch (Exception ex)

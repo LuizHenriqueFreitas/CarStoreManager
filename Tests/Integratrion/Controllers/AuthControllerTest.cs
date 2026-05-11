@@ -16,7 +16,6 @@ using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs.Auth;
 using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Web;
-using Microsoft.VisualStudio.TestPlatform.TestHost;
 using Microsoft.Extensions.Options;
 using System.Text.Encodings.Web;
 using Microsoft.Extensions.Logging;

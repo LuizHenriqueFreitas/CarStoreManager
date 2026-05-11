@@ -1,0 +1,142 @@
+@page "/concessionaria/assinar/{Token}"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@rendermode InteractiveServer
+
+@inject IPropostaVendaService PropostaService
+@inject NavigationManager Nav
+
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda
+
+<PageTitle>Termo de entrega — assinatura</PageTitle>
+
+<div class="assinar-page">
+    <div class="logo">CARSTORE</div>
+    <h1>Termo de entrega do veículo</h1>
+
+    @if (carregando)
+    {
+        <p class="muted">Carregando termo...</p>
+    }
+    else if (termo is null)
+    {
+        <div class="banner banner-erro">
+            @(erro ?? "Link inválido ou expirado.")
+        </div>
+    }
+    else if (termo.Status == "Assinado")
+    {
+        <div class="banner banner-ok">
+            ✓ Termo já assinado em @termo.DataAssinatura?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+            por @termo.AssinaturaNomeCliente.
+        </div>
+        <h2>Conteúdo do termo</h2>
+        <pre class="termo-texto">@termo.TextoTermo</pre>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(mensagem))
+        {
+            <div class="banner @(mensagemErro ? "banner-erro" : "banner-ok")">@mensagem</div>
+        }
+
+        <h2>Leia atentamente</h2>
+        <pre class="termo-texto">@termo.TextoTermo</pre>
+
+        <div class="form-assinar">
+            <h2>Assinatura eletrônica</h2>
+            <p class="muted">
+                Conforme a Lei 14.063/2020, sua assinatura eletrônica simples
+                tem validade jurídica quando preencher os dados abaixo e
+                marcar o aceite. Sua data/hora e endereço IP serão registrados.
+            </p>
+
+            <label>Nome completo</label>
+            <input type="text" @bind="dto.NomeCliente" placeholder="Como consta no documento" />
+
+            <label>CPF</label>
+            <input type="text" @bind="dto.CpfCliente" placeholder="000.000.000-00" maxlength="14" />
+
+            <label class="check-line">
+                <input type="checkbox" @bind="dto.Aceite" />
+                <span>Li e <b>concordo integralmente</b> com o termo acima. Aceito assinar eletronicamente
+                    o documento e tenho ciência de que esta operação tem validade jurídica.</span>
+            </label>
+
+            <button class="btn-assinar" @onclick="Assinar"
+                    disabled="@(processando || !dto.Aceite || string.IsNullOrWhiteSpace(dto.NomeCliente) || string.IsNullOrWhiteSpace(dto.CpfCliente))">
+                @(processando ? "Registrando assinatura..." : "✍ Assinar termo")
+            </button>
+        </div>
+    }
+</div>
+
+<style>
+    .assinar-page { max-width: 760px; margin: 0 auto; padding: 32px 24px; font-family: Arial, sans-serif; }
+    .logo { color:#e02020; font-size:1.4rem; font-weight:700; letter-spacing:1px; margin-bottom:24px; }
+    h1 { margin:0 0 24px; font-size:1.6rem; }
+    h2 { font-size:1.1rem; margin:24px 0 8px; }
+    .muted { color:#666; font-size:0.92em; }
+    .banner { padding:14px 18px; border-radius:8px; margin-bottom:16px; }
+    .banner-ok { background:#e6f7ed; color:#1f7a3a; border:1px solid #b6e4c2; }
+    .banner-erro { background:#fdecea; color:#a72020; border:1px solid #f5c2bd; }
+    .termo-texto {
+        background:#f8f8f8; border:1px solid #e0e0e0; border-radius:6px; padding:16px;
+        white-space:pre-wrap; font-family: 'Georgia', serif; font-size:0.95em; line-height:1.6;
+        max-height:400px; overflow:auto;
+    }
+    .form-assinar { margin-top:24px; padding-top:16px; border-top:1px solid #e0e0e0; }
+    .form-assinar label { display:block; margin:14px 0 4px; font-weight:500; font-size:0.9em; }
+    .form-assinar input[type="text"] {
+        width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:6px; font-size:1em;
+    }
+    .check-line { display:flex; gap:10px; align-items:flex-start; margin-top:18px; }
+    .check-line input { margin-top:4px; }
+    .btn-assinar {
+        margin-top:24px; background:#1f7a3a; color:#fff; padding:14px 28px;
+        border-radius:8px; border:0; font-weight:600; cursor:pointer; font-size:1em;
+    }
+    .btn-assinar:disabled { background:#aaa; cursor:not-allowed; }
+</style>
+
+@code {
+    [Parameter] public string Token { get; set; } = "";
+
+    private TermoEntregaDTO? termo;
+    private bool carregando = true;
+    private bool processando;
+    private string? erro;
+    private string mensagem = "";
+    private bool mensagemErro;
+
+    private AssinarTermoDTO dto = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var r = await PropostaService.ObterTermoPorTokenAsync(Token);
+        if (r.IsSuccess) termo = r.Value;
+        else erro = r.Error;
+        carregando = false;
+    }
+
+    private async Task Assinar()
+    {
+        processando = true;
+        var r = await PropostaService.AssinarTermoAsync(Token, dto, ipOrigem: "via Blazor");
+        processando = false;
+
+        if (r.IsSuccess)
+        {
+            mensagem = "Assinatura registrada com sucesso!";
+            mensagemErro = false;
+            // recarrega para mostrar status assinado
+            var refresh = await PropostaService.ObterTermoPorTokenAsync(Token);
+            if (refresh.IsSuccess) termo = refresh.Value;
+        }
+        else
+        {
+            mensagem = r.Error ?? "Erro ao assinar.";
+            mensagemErro = true;
+        }
+    }
+}

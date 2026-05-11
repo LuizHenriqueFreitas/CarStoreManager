@@ -21,15 +21,13 @@ public class ComponenteRepository : IComponenteRepository
     public async Task<IEnumerable<Componente>> GetAllAsync()
         => await _context.Componentes.ToListAsync();
 
-    public async Task<IEnumerable<Componente>> ObterComEstoqueBaixoAsync()
-        => await _context.Componentes
-            .Where(c => c.QuantidadeEstoque <= c.EstoqueMinimo)
-            .ToListAsync();
+    // TODO: portar para EstoqueComponente quando o repositório de estoque existir.
+    public Task<IEnumerable<Componente>> ObterComEstoqueBaixoAsync()
+        => Task.FromResult<IEnumerable<Componente>>(Array.Empty<Componente>());
 
-    public async Task<IEnumerable<Componente>> ObterPorSistemaAsync(SistemaComponente sistema)
-        => await _context.Componentes
-            .Where(c => c.Sistema == sistema)
-            .ToListAsync();
+    // Componente não tem mais propriedade Sistema; o filtro precisa de outro critério.
+    public Task<IEnumerable<Componente>> ObterPorSistemaAsync(SistemaComponente sistema)
+        => Task.FromResult<IEnumerable<Componente>>(Array.Empty<Componente>());
 
     public async Task AddAsync(Componente componente)
         => await _context.Componentes.AddAsync(componente);

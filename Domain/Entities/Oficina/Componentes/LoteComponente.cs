@@ -1,6 +1,6 @@
 using CarStoreManager.Domain.Base;
 
-namespace Oficina.Domain.Entities;
+namespace CarStoreManager.Domain.Entities.Oficina;
 
 public class LoteComponente : Entity
 {

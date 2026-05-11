@@ -1,6 +1,6 @@
 using CarStoreManager.Domain.Base;
 
-namespace Oficina.Domain.Entities;
+namespace CarStoreManager.Domain.Entities.Oficina;
 
 public class EstoqueComponente : Entity
 {
@@ -24,14 +24,25 @@ public class EstoqueComponente : Entity
 
     public void Adicionar(int quantidade)
     {
+        if (quantidade <= 0)
+            throw new ArgumentException("Quantidade deve ser positiva.", nameof(quantidade));
         QuantidadeAtual += quantidade;
     }
 
     public void Remover(int quantidade)
     {
+        if (quantidade <= 0)
+            throw new ArgumentException("Quantidade deve ser positiva.", nameof(quantidade));
         if (QuantidadeAtual < quantidade)
-            throw new Exception("Estoque insuficiente");
+            throw new InvalidOperationException("Estoque insuficiente");
 
         QuantidadeAtual -= quantidade;
+    }
+
+    public void DefinirMinimo(int quantidadeMinima)
+    {
+        if (quantidadeMinima < 0)
+            throw new ArgumentException("Quantidade mínima não pode ser negativa.", nameof(quantidadeMinima));
+        QuantidadeMinima = quantidadeMinima;
     }
 }

@@ -1,6 +1,5 @@
 using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Enums;
-using Oficina.Domain.Entities;
 
 namespace CarStoreManager.Domain.Repositories;
 

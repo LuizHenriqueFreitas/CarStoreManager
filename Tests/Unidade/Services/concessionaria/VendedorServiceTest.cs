@@ -14,7 +14,7 @@ using CarStoreManager.Domain.Entities.Concessionaria;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Repositories;
 
-namespace CarStoreManager.Tests.Unit.Application
+namespace CarStoreManager.Tests.Unidade.Services
 {
     public class VendedorServiceTests
     {
@@ -80,7 +80,7 @@ namespace CarStoreManager.Tests.Unit.Application
                 Telefone = "11988888888",
                 Senha = "Senha@123",
                 Nivel = "Pleno",
-                DataContratacao = DateTime.Today
+                DataContratacao = DateTime.Now.AddDays(1)
             };
 
             var result = await _service.AddAsync(dto);
@@ -97,7 +97,7 @@ namespace CarStoreManager.Tests.Unit.Application
             _repoMock.Setup(r => r.AddAsync(It.IsAny<Vendedor>())).ThrowsAsync(new Exception("Erro de persistência"));
             var dto = new CriarVendedorDTO
             {
-                Nome = "Falha", Email = "falha@teste.com", Telefone = "11900000000", Senha = "123", Nivel = "Junior", DataContratacao = DateTime.Today
+                Nome = "Falha", Email = "falha@teste.com", Telefone = "11900000000", Senha = "123", Nivel = "Junior", DataContratacao = DateTime.Now.AddDays(1)
             };
 
             var result = await _service.AddAsync(dto);
@@ -163,10 +163,10 @@ namespace CarStoreManager.Tests.Unit.Application
                 "Vendedor Teste",
                 "vendedor@teste.com",
                 "11999999999",
-                "hash",
+                "Senha123",
                 3000,
                 NivelFuncionario.Junior,
-                DateTime.Today
+                DateTime.Now.AddDays(1)
             );
             typeof(Vendedor).BaseType?.GetProperty("Id")?.SetValue(vendedor, Guid.NewGuid());
             return vendedor;

@@ -5,7 +5,6 @@ using CarStoreManager.Application.Mappings.Oficina;
 using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Repositories;
-using Oficina.Domain.Entities;
 
 namespace CarStoreManager.Application.Services;
 
@@ -48,80 +47,53 @@ public class ComponenteService : IComponenteService
     }
 
     //busca todos os componentes
-    public async Task<Result<IEnumerable<ComponenteDTO>>> GetAllAsync()
+    public async Task<Result<IEnumerable<ComponenteListaDTO>>> GetAllAsync()
     {
         var componentes = await _repository.GetAllAsync();
 
         var lista = componentes
-            .Select(ComponenteMapping.ToDto);
+            .Select(ComponenteMapping.ToListaDto);
 
-        return Result<IEnumerable<ComponenteDTO>>.Ok(lista);
+        return Result<IEnumerable<ComponenteListaDTO>>.Ok(lista);
     }
 
     /*
-        metodo que busca os componentes com estoque baixo
-        caso o componente buscado por id seja vazio
-        ele retorna o aviso que o componente nao foi encontrado
-    *//*
-    public async Task<Result<IEnumerable<ComponenteDTO>>> ObterComEstoqueBaixoAsync()
-    {
-        var componentes = await _repository.GetAllAsync();
-
-        var lista = componentes
-            .Where(c => c.EstoqueBaixo())
-            .Select(ComponenteMapping.ToListaDto);
-
-        return Result<IEnumerable<ComponenteDTO>>.Ok(lista);
-    }*/
+        Estoque agora vive em EstoqueComponente (entidade separada);
+        depende de IEstoqueRepository ainda não implementado.
+    */
+    public Task<Result<IEnumerable<ComponenteDTO>>> ObterComEstoqueBaixoAsync()
+        => Task.FromResult(Result<IEnumerable<ComponenteDTO>>.Fail(
+            "ObterComEstoqueBaixoAsync ainda não implementado — depende de IEstoqueRepository."));
 
     /*
-        metodo que filtra os componentes de 
-        acordo com o sistema que fazem parte
-        retorna falha caso o sistema informado seja invalido
-    *//*
-    public async Task<Result<IEnumerable<ComponenteDTO>>> ObterPorSistemaAsync(string sistema)
+        Componente atualmente não tem propriedade Sistema; o filtro por
+        SistemaComponente exige primeiro adicionar essa coluna na entidade.
+    */
+    public Task<Result<IEnumerable<ComponenteDTO>>> ObterPorSistemaAsync(string sistema)
+        => Task.FromResult(Result<IEnumerable<ComponenteDTO>>.Fail(
+            "ObterPorSistemaAsync ainda não implementado — Componente precisa do campo Sistema."));
+
+    public async Task<Result<Guid>> AddAsync(CriarComponenteDTO dto)
     {
-        if (!Enum.TryParse<SistemaComponente>(sistema, true, out var sistemaEnum))
-            return Result<IEnumerable<ComponenteDTO>>.Fail("Sistema inválido");
-
-        var componentes = await _repository.GetAllAsync();
-
-        var lista = componentes
-            .Where(c => c.Sistema == sistemaEnum)
-            .Select(ComponenteMapping.ToDto);
-
-        return Result<IEnumerable<ComponenteDTO>>.Ok(lista);
-    }*/
-
-    //metodo para criar novo componente
-    /*
-    public async Task<Result<Guid>> AddAsync(ComponenteDTO dto)
-    {
-        if(!Enum.TryParse<SistemaComponente>(dto.Sistema, true, out var sistema))
-            return Result<Guid>.Fail("Sistema inválido");
         try
         {
-            var componente = new Componente(
-                //implementar
-            );
-
+            var componente = ComponenteMapping.FromCriarDto(dto);
             await _repository.AddAsync(componente);
             await _repository.SaveChangesAsync();
-
             return Result<Guid>.Ok(componente.Id);
         }
         catch (Exception ex)
         {
             return Result<Guid>.Fail($"Erro ao criar componente: {ex.Message}");
         }
-    }*/
+    }
 
     /*
         metodo que atualiza componente ja existente
         faz busca por id e caso componente seja vazio 
         retona o aviso que nao foi encontrado
     */
-    public async Task<Result> UpdateAsync(ComponenteDTO dto)
+    public async Task<Result> UpdateAsync(AtualizarComponenteDTO dto)
     {
         var componente = await _repository.GetByIdAsync(dto.Id);
 
@@ -130,12 +102,7 @@ public class ComponenteService : IComponenteService
 
         try
         {
-            componente.AtualizarDadosComponente(
-                dto.Valor,
-                dto.QuantidadeEstoque,
-                dto.EstoqueMinimo
-            );
-
+            ComponenteMapping.ApplyAtualizarDto(componente, dto);
             _repository.Update(componente);
             await _repository.SaveChangesAsync();
 
@@ -151,58 +118,40 @@ public class ComponenteService : IComponenteService
         gerencimento de ESTOQUE
      ===========================*/
 
-    /*
-        metodo para entrada de estoque
-        busca o componente por id
-        falha caso o componete seja vazio
-    */
-    public async Task<Result> EntradaEstoqueAsync(Guid id, int quantidade)
+    // Estoque vive em EstoqueComponente (entidade separada).
+    // EntradaEstoque/SaidaEstoque foram desativados aqui até IEstoqueRepository existir.
+    public Task<Result> EntradaEstoqueAsync(Guid id, int quantidade)
+        => Task.FromResult(Result.Fail("EntradaEstoqueAsync ainda não implementado — depende de IEstoqueRepository."));
+
+    public Task<Result> SaidaEstoqueAsync(Guid id, int quantidade)
+        => Task.FromResult(Result.Fail("SaidaEstoqueAsync ainda não implementado — depende de IEstoqueRepository."));
+
+    /// <summary>
+    /// Encontra peças que servem como substituto pelo mesmo CodigoOEM
+    /// (cross-brand). Ex.: pastilha Bosch e pastilha Fras-le com o mesmo
+    /// OEM da montadora — qualquer marca com aquele OEM serve.
+    /// O próprio componente é excluído da lista.
+    /// </summary>
+    public async Task<Result<List<ComponenteListaDTO>>> ObterEquivalentesAsync(Guid componenteId)
     {
-        var componente = await _repository.GetByIdAsync(id);
+        var alvo = await _repository.GetByIdAsync(componenteId);
+        if (alvo is null)
+            return Result<List<ComponenteListaDTO>>.Fail("Componente não encontrado");
 
-        if (componente is null)
-            return Result.Fail("Componente não encontrado");
+        if (string.IsNullOrWhiteSpace(alvo.CodigoOEM))
+            return Result<List<ComponenteListaDTO>>.Ok(new List<ComponenteListaDTO>());
 
-        try
-        {
-            componente.AdicionarEstoque(quantidade);
+        var todos = await _repository.GetAllAsync();
+        var equivalentes = todos
+            .Where(c =>
+                c.Id != alvo.Id
+                && c.Ativo
+                && !string.IsNullOrWhiteSpace(c.CodigoOEM)
+                && string.Equals(c.CodigoOEM, alvo.CodigoOEM, StringComparison.OrdinalIgnoreCase))
+            .Select(ComponenteMapping.ToListaDto)
+            .ToList();
 
-            _repository.Update(componente);
-            await _repository.SaveChangesAsync();
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail(ex.Message);
-        }
-    }
-
-    /*
-        metodo para saida de estoque
-        busca o componente por id
-        falha caso o componete seja vazio
-    */
-    public async Task<Result> SaidaEstoqueAsync(Guid id, int quantidade)
-    {
-        var componente = await _repository.GetByIdAsync(id);
-
-        if (componente is null)
-            return Result.Fail("Componente não encontrado");
-
-        try
-        {
-            componente.RemoverEstoque(quantidade);
-
-            _repository.Update(componente);
-            await _repository.SaveChangesAsync();
-
-            return Result.Ok();
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail(ex.Message);
-        }
+        return Result<List<ComponenteListaDTO>>.Ok(equivalentes);
     }
 
     /*

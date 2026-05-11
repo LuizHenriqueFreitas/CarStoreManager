@@ -1,7 +1,7 @@
 using CarStoreManager.Domain.Base;
-using Oficina.Domain.Enums;
+using CarStoreManager.Domain.Enums;
 
-namespace Oficina.Domain.Entities;
+namespace CarStoreManager.Domain.Entities.Oficina;
 
 public class ComponenteEquivalente : Entity
 {

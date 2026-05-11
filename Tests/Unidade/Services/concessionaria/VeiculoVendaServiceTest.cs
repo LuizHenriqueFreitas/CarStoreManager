@@ -60,7 +60,7 @@ public class VeiculoVendaServiceTests
         var dto = new CriarVeiculoVendaDTO
         {
             Marca = "Honda", Modelo = "Fit", Cor = "Vermelho", Motorizacao = "1.4",
-            Ano = 2021, Quilometragem = 12000, Placa = "XYZ1A23",
+            Ano = 2021, Quilometragem = 12000, Placa = "XYZ1A23", Renavam = "12345678900",
             Cambio = "Automatico", Combustivel = "Flex", Valor = 60000.00m
         };
 
@@ -260,7 +260,7 @@ public class VeiculoVendaServiceTests
     {
         var veiculo = new VeiculoVenda(
             "Chevrolet", "Onix", "Branco", "1.0 Turbo",
-            2022, 20000, "DEF5G67",
+            2022, 20000, "DEF5G67", "12345678900",
             TipoCambio.Manual, TipoCombustivel.Gasolina,
             70000m, AcessoriosVeiculo.VidrosEletricos);
         // Definir um Id para a entidade (simulado)

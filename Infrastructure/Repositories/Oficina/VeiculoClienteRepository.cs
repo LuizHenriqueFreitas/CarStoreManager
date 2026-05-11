@@ -27,6 +27,25 @@ public class VeiculoClienteRepository : IVeiculoClienteRepository
             .Where(v => v.ClienteId == clienteId)
             .ToListAsync();
 
+    public async Task<List<VeiculoCliente>> PesquisarAsync(string termo, Guid? clienteId = null)
+    {
+        if (string.IsNullOrWhiteSpace(termo))
+            return new List<VeiculoCliente>();
+
+        var t = termo.Trim().ToLower();
+        var q = _context.VeiculosCliente.AsQueryable();
+        if (clienteId.HasValue && clienteId.Value != Guid.Empty)
+            q = q.Where(v => v.ClienteId == clienteId.Value);
+
+        return await q
+            .Where(v => v.Marca.ToLower().Contains(t)
+                     || v.Modelo.ToLower().Contains(t)
+                     || v.Cor.ToLower().Contains(t)
+                     || v.Placa.Valor.ToLower().Contains(t))
+            .Take(20)
+            .ToListAsync();
+    }
+
     public async Task AddAsync(VeiculoCliente veiculo)
         => await _context.VeiculosCliente.AddAsync(veiculo);
 

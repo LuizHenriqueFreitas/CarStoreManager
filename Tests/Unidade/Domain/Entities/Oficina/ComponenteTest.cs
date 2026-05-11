@@ -1,27 +1,25 @@
-// Este arquivo nao foi revisado nem documentado
-/*
 using FluentAssertions;
 using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Enums;
-using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Tests.Unidade.Domain.Entidades.Oficina;
 
 public class ComponenteTest
 {
-    // ==================== CONSTRUTOR ====================
-
     [Fact]
     public void Construtor_CamposValidos_AtribuiCorretamente()
     {
-        var componente = new Componente("Pastilha de freio", "P-2023", SistemaComponente.Freios, 120.50m, 10, 3);
+        var c = CriarComponenteValido();
 
-        componente.Nome.Should().Be("Pastilha de freio");
-        componente.Modelo.Should().Be("P-2023");
-        componente.Sistema.Should().Be(SistemaComponente.Freios);
-        componente.Valor.GetValorDinheiro().Should().Be(120.50m);
-        componente.QuantidadeEstoque.Should().Be(10);
-        componente.EstoqueMinimo.Should().Be(3);
+        c.Nome.Should().Be("Pastilha de freio dianteira");
+        c.SKUInterno.Should().Be("PFD-001");
+        c.PartNumber.Should().Be("PN-12345");
+        c.NCM.Should().Be("87083010");
+        c.Categoria.Should().Be("Freios");
+        c.Unidade.Should().Be("UN");
+        c.Peso.Should().Be(0.500m);
+        c.GarantiaDias.Should().Be(180);
+        c.Ativo.Should().BeTrue();
     }
 
     [Theory]
@@ -29,242 +27,139 @@ public class ComponenteTest
     [InlineData("   ")]
     public void Construtor_NomeInvalido_LancaArgumentException(string nome)
     {
-        Action act = () => new Componente(nome, "Modelo", SistemaComponente.Motor, 100, 0, 0);
-        act.Should().Throw<ArgumentException>().WithMessage("*Nome*");
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void Construtor_ModeloInvalido_LancaArgumentException(string modelo)
-    {
-        Action act = () => new Componente("Nome", modelo, SistemaComponente.Motor, 100, 0, 0);
-        act.Should().Throw<ArgumentException>().WithMessage("*Modelo*");
-    }
-
-    [Fact]
-    public void Construtor_QuantidadeInicialNegativa_LancaArgumentException()
-    {
-        Action act = () => new Componente("Nome", "Modelo", SistemaComponente.Motor, 100, -1, 0);
-        act.Should().Throw<ArgumentException>().WithMessage("*Estoque inicial*");
-    }
-
-    [Fact]
-    public void Construtor_EstoqueMinimoNegativo_LancaArgumentException()
-    {
-        Action act = () => new Componente("Nome", "Modelo", SistemaComponente.Motor, 100, 0, -1);
-        act.Should().Throw<ArgumentException>().WithMessage("*Estoque mínimo*");
-    }
-
-    [Fact]
-    public void Construtor_ValorNegativo_LancaArgumentException()
-    {
-        Action act = () => new Componente("Nome", "Modelo", SistemaComponente.Motor, -1, 0, 0);
-        act.Should().Throw<ArgumentException>().WithMessage("*Valor*"); // Dinheiro valida no construtor
-    }
-
-    [Fact]
-    public void Construtor_QuantidadeInicialZero_DeveAceitar()
-    {
-        var componente = new Componente("Filtro", "F-01", SistemaComponente.Motor, 50, 0, 0);
-        componente.QuantidadeEstoque.Should().Be(0);
-    }
-
-    // ==================== GETTERS ====================
-
-    [Fact]
-    public void GetNome_RetornaNome()
-    {
-        var componente = new Componente("Correia", "C-10", SistemaComponente.Motor, 80, 5, 1);
-        componente.GetNome().Should().Be("Correia");
-    }
-
-    [Fact]
-    public void GetModelo_RetornaModelo()
-    {
-        var componente = new Componente("Correia", "C-10", SistemaComponente.Motor, 80, 5, 1);
-        componente.GetModelo().Should().Be("C-10");
-    }
-
-    [Fact]
-    public void GetSistema_RetornaStringDoEnum()
-    {
-        var componente = new Componente("Amortecedor", "A-05", SistemaComponente.Suspensao, 200, 4, 2);
-        componente.GetSistema().Should().Be("Suspensao"); // ou o valor exato do ToString do enum
-    }
-
-    [Fact]
-    public void GetValor_RetornaDecimal()
-    {
-        var componente = new Componente("Peça", "XPTO", SistemaComponente.Eletrica, 75.9m, 3, 1);
-        componente.GetValor().Should().Be(75.9m);
-    }
-
-    [Fact]
-    public void GetQuantidade_RetornaEstoque()
-    {
-        var componente = new Componente("Peça", "XPTO", SistemaComponente.Eletrica, 75.9m, 3, 1);
-        componente.GetQuantidade().Should().Be(3);
-    }
-
-    [Fact]
-    public void GetEstoqueMinimo_RetornaMinimo()
-    {
-        var componente = new Componente("Peça", "XPTO", SistemaComponente.Eletrica, 75.9m, 3, 1);
-        componente.GetEstoqueMinimo().Should().Be(1);
-    }
-
-    // ==================== SETTERS ====================
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void DefinirNome_Invalido_LancaArgumentException(string nome)
-    {
-        var componente = new Componente("Original", "M-1", SistemaComponente.Motor, 10, 0, 0);
-        Action act = () => componente.DefinirNome(nome);
+        Action act = () => CriarComponente(nome: nome);
         act.Should().Throw<ArgumentException>().WithMessage("*Nome*");
     }
 
     [Fact]
-    public void DefinirNome_Valido_AlteraNome()
+    public void Construtor_NcmInvalido_LancaArgumentException()
     {
-        var componente = new Componente("Original", "M-1", SistemaComponente.Motor, 10, 0, 0);
-        componente.DefinirNome("Novo Nome");
-        componente.Nome.Should().Be("Novo Nome");
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void DefinirModelo_Invalido_LancaArgumentException(string modelo)
-    {
-        var componente = new Componente("Nome", "M-1", SistemaComponente.Motor, 10, 0, 0);
-        Action act = () => componente.DefinirModelo(modelo);
-        act.Should().Throw<ArgumentException>().WithMessage("*Modelo*");
+        Action act = () => CriarComponente(ncm: "1234");
+        act.Should().Throw<ArgumentException>().WithMessage("*NCM*");
     }
 
     [Fact]
-    public void DefinirModelo_Valido_AlteraModelo()
+    public void Construtor_SkuVazio_LancaArgumentException()
     {
-        var componente = new Componente("Nome", "M-1", SistemaComponente.Motor, 10, 0, 0);
-        componente.DefinirModelo("M-2");
-        componente.Modelo.Should().Be("M-2");
+        Action act = () => CriarComponente(sku: "");
+        act.Should().Throw<ArgumentException>().WithMessage("*SKU*");
     }
 
     [Fact]
-    public void AtualizarValor_AlteraValor()
+    public void Construtor_PartNumberVazio_LancaArgumentException()
     {
-        var componente = new Componente("Peça", "XPTO", SistemaComponente.Motor, 50, 1, 1);
-        componente.AtualizarValor(new Dinheiro(45.5m));
-        componente.Valor.GetValorDinheiro().Should().Be(45.5m);
+        Action act = () => CriarComponente(partNumber: "");
+        act.Should().Throw<ArgumentException>().WithMessage("*Part number*");
     }
 
     [Fact]
-    public void DefinirEstoqueMinimo_Negativo_LancaArgumentException()
+    public void Construtor_CodigoOEMVazio_AceitaComoOpcional()
     {
-        var componente = new Componente("Peça", "XPTO", SistemaComponente.Motor, 50, 1, 1);
-        Action act = () => componente.DefinirEstoqueMinimo(-1);
-        act.Should().Throw<ArgumentException>().WithMessage("*Estoque mínimo*");
+        var c = CriarComponente(codigoOEM: "");
+        c.CodigoOEM.Should().Be(string.Empty);
     }
 
     [Fact]
-    public void DefinirEstoqueMinimo_Valido_AlteraMinimo()
+    public void Construtor_CodigoBarrasVazio_AceitaComoOpcional()
     {
-        var componente = new Componente("Peça", "XPTO", SistemaComponente.Motor, 50, 1, 1);
-        componente.DefinirEstoqueMinimo(5);
-        componente.EstoqueMinimo.Should().Be(5);
+        var c = CriarComponente(codigoBarras: "");
+        c.CodigoBarras.Should().Be(string.Empty);
     }
 
     [Fact]
-    public void AtualizarDadosComponente_AtualizaValores()
+    public void Construtor_CodigoBarrasComLetras_LancaArgumentException()
     {
-        var componente = new Componente("Peça", "XPTO", SistemaComponente.Motor, 50, 1, 1);
-        componente.AtualizarDadosComponente(30.0m, 10, 3);
-        componente.GetValor().Should().Be(30.0m);
-        componente.GetQuantidade().Should().Be(10);
-        componente.GetEstoqueMinimo().Should().Be(3);
-    }
-
-    // ==================== GERENCIAMENTO DE ESTOQUE ====================
-
-    [Fact]
-    public void AdicionarEstoque_QuantidadePositiva_AumentaEstoque()
-    {
-        var componente = new Componente("Filtro", "F-1", SistemaComponente.Motor, 20, 5, 2);
-        componente.AdicionarEstoque(3);
-        componente.QuantidadeEstoque.Should().Be(8);
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-5)]
-    public void AdicionarEstoque_QuantidadeInvalida_LancaArgumentException(int quantidade)
-    {
-        var componente = new Componente("Filtro", "F-1", SistemaComponente.Motor, 20, 5, 2);
-        Action act = () => componente.AdicionarEstoque(quantidade);
-        act.Should().Throw<ArgumentException>().WithMessage("*Quantidade*");
+        Action act = () => CriarComponente(codigoBarras: "abcdefgh");
+        act.Should().Throw<ArgumentException>().WithMessage("*dígitos*");
     }
 
     [Fact]
-    public void RemoverEstoque_QuantidadeValida_ReduzEstoque()
+    public void Construtor_CestVazio_AceitaComoOpcional()
     {
-        var componente = new Componente("Óleo", "O-10", SistemaComponente.Motor, 40, 10, 2);
-        componente.RemoverEstoque(4);
-        componente.QuantidadeEstoque.Should().Be(6);
+        var c = CriarComponente(cest: "");
+        c.CEST.Should().Be(string.Empty);
     }
 
     [Fact]
-    public void RemoverEstoque_QuantidadeMaiorQueEstoque_LancaInvalidOperationException()
+    public void Construtor_CestComMenosDe7Digitos_LancaArgumentException()
     {
-        var componente = new Componente("Óleo", "O-10", SistemaComponente.Motor, 40, 3, 1);
-        Action act = () => componente.RemoverEstoque(5);
-        act.Should().Throw<InvalidOperationException>().WithMessage("*Estoque insuficiente*");
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-2)]
-    public void RemoverEstoque_QuantidadeInvalida_LancaArgumentException(int quantidade)
-    {
-        var componente = new Componente("Óleo", "O-10", SistemaComponente.Motor, 40, 5, 1);
-        Action act = () => componente.RemoverEstoque(quantidade);
-        act.Should().Throw<ArgumentException>().WithMessage("*Quantidade*");
+        Action act = () => CriarComponente(cest: "12345");
+        act.Should().Throw<ArgumentException>().WithMessage("*CEST*");
     }
 
     [Fact]
-    public void EstoqueBaixo_QuandoQuantidadeMenorQueMinimo_RetornaTrue()
+    public void Construtor_PesoNegativo_LancaArgumentException()
     {
-        var componente = new Componente("Pastilha", "P-1", SistemaComponente.Freios, 70, 2, 3);
-        componente.EstoqueBaixo().Should().BeTrue();
+        Action act = () => CriarComponente(peso: -1);
+        act.Should().Throw<ArgumentException>().WithMessage("*Peso*");
     }
 
     [Fact]
-    public void EstoqueBaixo_QuandoQuantidadeIgualAoMinimo_RetornaTrue()
+    public void Construtor_PesoAcimaDoLimite_LancaArgumentException()
     {
-        var componente = new Componente("Pastilha", "P-1", SistemaComponente.Freios, 70, 2, 2);
-        componente.EstoqueBaixo().Should().BeTrue();
+        Action act = () => CriarComponente(peso: 600);
+        act.Should().Throw<ArgumentException>().WithMessage("*Peso*");
     }
 
     [Fact]
-    public void EstoqueBaixo_QuandoQuantidadeMaiorQueMinimo_RetornaFalse()
+    public void Construtor_GarantiaNegativa_LancaArgumentException()
     {
-        var componente = new Componente("Pastilha", "P-1", SistemaComponente.Freios, 70, 5, 2);
-        componente.EstoqueBaixo().Should().BeFalse();
+        Action act = () => CriarComponente(garantiaDias: -1);
+        act.Should().Throw<ArgumentException>().WithMessage("*Garantia*");
     }
 
     [Fact]
-    public void TemEstoque_QuantidadeMenorOuIgual_RetornaTrue()
+    public void SetUnidade_NormalizaParaMaiusculas()
     {
-        var componente = new Componente("Disco", "D-1", SistemaComponente.Freios, 150, 4, 1);
-        componente.TemEstoque(4).Should().BeTrue();
-        componente.TemEstoque(2).Should().BeTrue();
+        var c = CriarComponenteValido();
+        c.SetUnidade("kg");
+        c.Unidade.Should().Be("KG");
     }
 
     [Fact]
-    public void TemEstoque_QuantidadeMaior_RetornaFalse()
+    public void Desativar_TornaInativo()
     {
-        var componente = new Componente("Disco", "D-1", SistemaComponente.Freios, 150, 4, 1);
-        componente.TemEstoque(5).Should().BeFalse();
+        var c = CriarComponenteValido();
+        c.Desativar();
+        c.Ativo.Should().BeFalse();
     }
-}*/
+
+    [Fact]
+    public void Ativar_AposDesativar_TornaAtivoNovamente()
+    {
+        var c = CriarComponenteValido();
+        c.Desativar();
+        c.Ativar();
+        c.Ativo.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AdicionarEquivalencia_NoMesmoComponente_LancaInvalidOperationException()
+    {
+        var c = CriarComponenteValido();
+        Action act = () => c.AdicionarEquivalencia(c, TipoEquivalencia.Similar);
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    private static Componente CriarComponenteValido() => CriarComponente();
+
+    private static Componente CriarComponente(
+        string sku = "PFD-001",
+        string nome = "Pastilha de freio dianteira",
+        string descricao = "Pastilha de freio cerâmica",
+        string marca = "Bosch",
+        string partNumber = "PN-12345",
+        string codigoOEM = "OEM-9876",
+        string codigoBarras = "7891234567890",
+        string ncm = "87083010",
+        string cest = "0102000",
+        string categoria = "Freios",
+        string unidade = "UN",
+        decimal peso = 0.500m,
+        int garantiaDias = 180)
+    {
+        return new Componente(
+            sku, nome, descricao, marca, partNumber, codigoOEM, codigoBarras,
+            ncm, cest, categoria, unidade, peso, garantiaDias);
+    }
+}

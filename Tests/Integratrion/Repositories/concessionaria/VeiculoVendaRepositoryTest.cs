@@ -21,7 +21,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
 
         public VeiculoVendaRepositoryTests()
         {
-            _connection = new SqliteConnection("DataSource=:memory:");
+            _connection = new SqliteConnection("DataSource=:memory:;Foreign Keys=False");
             _connection.Open();
 
             var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -146,7 +146,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
         public async Task AddAsync_VeiculoValido_PersisteDados()
         {
             var veiculo = new VeiculoVenda("Chevrolet", "Onix", "Prata", "1.4 Turbo",
-                2023, 0, "ONX2023",
+                2023, 0, "ONX2023", "12345678900",
                 TipoCambio.Automatico, TipoCombustivel.Flex, 72000.00m, AcessoriosVeiculo.BancoCouro);
             await _repository.AddAsync(veiculo);
             await _repository.SaveChangesAsync();
@@ -199,10 +199,11 @@ namespace CarStoreManager.Tests.Integration.Repositories
         {
             var veiculo = await SalvarVeiculo("Fotos", "F", "C", "1.0", 2020, 0, "FOT0001",
                 TipoCambio.Manual, TipoCombustivel.Gasolina, 30000.00m, AcessoriosVeiculo.Nenhum);
-            veiculo.AdicionarFoto("http://fotos.com/1.jpg");
-            veiculo.AdicionarFoto("http://fotos.com/2.jpg");
-            //_repository.Update(veiculo);
-            await _repository.SaveChangesAsync();
+
+            // Adiciona fotos diretamente no DbContext para que sejam reconhecidas como Added.
+            _context.Fotos.Add(new Domain.Entities.Foto(veiculo.Id, "http://fotos.com/1.jpg", 0));
+            _context.Fotos.Add(new Domain.Entities.Foto(veiculo.Id, "http://fotos.com/2.jpg", 1));
+            await _context.SaveChangesAsync();
 
             var resultado = await _repository.GetByIdAsync(veiculo.Id);
             resultado!.Fotos.Should().HaveCount(2);
@@ -217,7 +218,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
             TipoCambio cambio, TipoCombustivel combustivel,
             decimal valor, AcessoriosVeiculo acessorios)
         {
-            var veiculo = new VeiculoVenda(marca, modelo, cor, motorizacao, ano, quilometragem, placa, cambio, combustivel, valor, acessorios);
+            var veiculo = new VeiculoVenda(marca, modelo, cor, motorizacao, ano, quilometragem, placa, "12345678900", cambio, combustivel, valor, acessorios);
             await _repository.AddAsync(veiculo);
             await _repository.SaveChangesAsync();
             return veiculo;

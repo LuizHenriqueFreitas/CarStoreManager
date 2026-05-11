@@ -1,13 +1,17 @@
 @page "/concessionaria/proposta/nova/{VeiculoId:guid}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Vendedor")]
 @rendermode InteractiveServer
 @inject IPropostaVendaService PropostaVendaService
 @inject IVeiculoVendaService VeiculoVendaService
+@inject AuthenticationStateProvider AuthState
 @inject NavigationManager Navigation
 
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
 @using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Globalization
 
 <PageTitle>Nova Proposta</PageTitle>
 
@@ -16,39 +20,46 @@
         <button class="btn-voltar" @onclick='() => Navigation.NavigateTo($"/concessionaria/veiculo/{VeiculoId}")'>
             ← Voltar
         </button>
-        <h1 class="page-titulo">Nova Proposta de Venda</h1>
+        <h1 class="page-titulo">Nova proposta de venda</h1>
     </div>
 
-    <EditForm Model="@form" OnValidSubmit="Salvar">
-        <DataAnnotationsValidator />
+    @if (carregando)
+    {
+        <div class="loading">Carregando dados do veículo...</div>
+    }
+    else if (veiculoSelecionado is null)
+    {
+        <div class="erro-banner">@(erro ?? "Veículo não encontrado.")</div>
+    }
+    else
+    {
         <ClientSelector @bind-Value="form.ClienteId" />
 
-        @if (veiculoSelecionado is not null)
-        {
-            <VeiculoVendaInfoProposta Veiculo="veiculoSelecionado" />
-        }
-        else
-        {
-            <div class="erro-banner">Veículo não encontrado.</div>
-        }
+        <VeiculoVendaInfoProposta Veiculo="veiculoSelecionado" />
 
         <div class="form-card">
-            <h2 class="secao-titulo">Valores e Condições</h2>
+            <h2 class="secao-titulo">Valores e condições</h2>
             <div class="form-grid">
                 <div class="form-campo">
-                    <label class="campo-label">Valor Base (R$) *</label>
-                    <input type="number" step="0.01" class="campo-input" @bind="form.ValorBase" />
+                    <label class="campo-label">Valor base (R$) *</label>
+                    <input type="number" step="0.01" class="campo-input"
+                           @bind="form.ValorBase" @bind:event="oninput" />
                 </div>
                 <div class="form-campo">
-                    <label class="campo-label">Desconto (R$)</label>
-                    <input type="number" step="0.01" class="campo-input" @bind="form.DescontoPercentual" />
+                    <label class="campo-label">Desconto (%) *</label>
+                    <input type="number" step="0.5" min="0" max="100"
+                           class="campo-input"
+                           @bind="form.DescontoPercentual" @bind:event="oninput" />
                 </div>
                 <div class="form-campo">
-                    <label class="campo-label">Valor Final (R$)</label>
-                    <input type="text" class="campo-input" readonly
-                           value="@((form.ValorBase - form.DescontoPercentual).ToString("F2"))" />
+                    <label class="campo-label">Valor com desconto (R$)</label>
+                    <input type="text" class="campo-input destaque" readonly
+                           value="@FormatBRL(ValorFinalCalculado)" />
                 </div>
             </div>
+            <p class="dica">
+                Desconto vai de 0 a 100. Para 10% de desconto, digite <b>10</b>.
+            </p>
         </div>
 
         @if (!string.IsNullOrEmpty(erro))
@@ -65,49 +76,88 @@
                     @onclick='() => Navigation.NavigateTo($"/concessionaria/veiculo/{VeiculoId}")'>
                 Cancelar
             </button>
-            <button type="submit" class="btn-salvar" disabled="@salvando">
-                @(salvando ? "Salvando..." : "Registrar Proposta")
+            <button type="button" class="btn-salvar"
+                    @onclick="Salvar"
+                    disabled="@salvando">
+                @(salvando ? "Salvando..." : "Registrar proposta")
             </button>
         </div>
-    </EditForm>
+    }
 </div>
 
 @code {
     [Parameter] public Guid VeiculoId { get; set; }
 
     private CriarPropostaVendaDTO form = new();
-    private VeiculoVendaDTO? veiculoSelecionado;  // use o mesmo tipo que o serviço retorna
+    private VeiculoVendaDTO? veiculoSelecionado;
+    private bool carregando = true;
     private bool salvando = false;
     private bool sucesso = false;
     private string? erro;
+
+    private decimal ValorFinalCalculado
+    {
+        get
+        {
+            if (form.DescontoPercentual < 0) return form.ValorBase;
+            if (form.DescontoPercentual > 100) return 0;
+            return Math.Round(form.ValorBase * (1 - form.DescontoPercentual / 100m), 2);
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            // Vendedor logado vira o autor da proposta.
+            var state = await AuthState.GetAuthenticationStateAsync();
+            var idClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (idClaim is not null && Guid.TryParse(idClaim.Value, out var vendedorId))
+                form.VendedorId = vendedorId;
+
             var veiculoResult = await VeiculoVendaService.GetByIdAsync(VeiculoId);
             if (veiculoResult.IsSuccess && veiculoResult.Value is not null)
             {
                 veiculoSelecionado = veiculoResult.Value;
-                form.VeiculoVendaId = VeiculoId;          // ajuste se o DTO usar VeiculoId
+                form.VeiculoVendaId = VeiculoId;
                 form.ValorBase = veiculoSelecionado.Valor;
+                form.DescontoPercentual = 0;
             }
             else
             {
-                erro = "Veículo não encontrado.";
+                erro = veiculoResult.Error ?? "Veículo não encontrado.";
             }
         }
         catch (Exception ex)
         {
             erro = $"Erro ao carregar veículo: {ex.Message}";
         }
+        finally
+        {
+            carregando = false;
+        }
     }
 
     private async Task Salvar()
     {
-        if (form.ClienteId == Guid.Empty || form.VeiculoVendaId == Guid.Empty || form.ValorBase <= 0)
+        if (form.ClienteId == Guid.Empty)
         {
-            erro = "Preencha todos os campos obrigatórios.";
+            erro = "Selecione ou cadastre um cliente.";
+            return;
+        }
+        if (form.VeiculoVendaId == Guid.Empty)
+        {
+            erro = "Veículo inválido.";
+            return;
+        }
+        if (form.ValorBase <= 0)
+        {
+            erro = "Valor base deve ser maior que zero.";
+            return;
+        }
+        if (form.DescontoPercentual < 0 || form.DescontoPercentual > 100)
+        {
+            erro = "Desconto deve estar entre 0 e 100.";
             return;
         }
 
@@ -121,8 +171,8 @@
             if (resultado.IsSuccess)
             {
                 sucesso = true;
-                await Task.Delay(1200);
-                Navigation.NavigateTo($"/concessionaria/proposta/{resultado.Value}");
+                await Task.Delay(900);
+                Navigation.NavigateTo("/concessionaria/propostas");
             }
             else
             {
@@ -138,4 +188,103 @@
             salvando = false;
         }
     }
+
+    private static string FormatBRL(decimal v)
+        => v.ToString("C", new CultureInfo("pt-BR"));
 }
+
+<style>
+    .form-page { max-width: 800px; margin: 0 auto; padding: 24px; }
+    .page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+    .btn-voltar { background: none; border: none; color: #888; font-size: 14px; cursor: pointer; padding: 0; }
+    .btn-voltar:hover { color: #1a1a1a; }
+    .page-titulo { font-size: 22px; font-weight: 500; }
+
+    .form-card {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+    }
+    .secao-titulo {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1a1a1a;
+        margin-bottom: 16px;
+        padding-bottom: 10px;
+        border-bottom: 0.5px solid #eee;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 12px;
+    }
+    .form-campo { display: flex; flex-direction: column; gap: 6px; }
+    .campo-label { font-size: 12px; color: #555; font-weight: 500; }
+    .campo-input {
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 14px;
+        outline: none;
+        width: 100%;
+    }
+    .campo-input:focus { border-color: #e02020; }
+    .campo-input.destaque {
+        background: #fff5f5;
+        border-color: #fca5a5;
+        font-weight: 600;
+        color: #c01818;
+    }
+    .dica { font-size: 12px; color: #888; margin-top: 8px; }
+
+    .erro-banner {
+        background: #fff5f5;
+        border: 0.5px solid #fca5a5;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: #e02020;
+        margin-bottom: 16px;
+    }
+    .sucesso-banner {
+        background: #f0fdf4;
+        border: 0.5px solid #86efac;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: #166534;
+        margin-bottom: 16px;
+    }
+    .loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
+
+    .form-acoes {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 8px;
+    }
+    .btn-cancelar {
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-size: 14px;
+        cursor: pointer;
+        color: #444;
+    }
+    .btn-salvar {
+        background: #e02020;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 24px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .btn-salvar:hover:not(:disabled) { background: #c01818; }
+    .btn-salvar:disabled { opacity: 0.6; cursor: not-allowed; }
+</style>

@@ -1,5 +1,6 @@
 // WebApi/Controllers/FotosController.cs
 using Microsoft.AspNetCore.Mvc;
+using CarStoreManager.Application.Common;
 using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Application.DTOs;
 
@@ -20,7 +21,11 @@ public class FotosController : ControllerBase
     [HttpPost("upload/{entidadeTipo}/{entidadeId:guid}")]
     public async Task<IActionResult> UploadFotos(string entidadeTipo, Guid entidadeId, IList<IFormFile> files)
     {
-        var result = await _fotoService.UploadFotosAsync(entidadeTipo, entidadeId, files);
+        var arquivos = (files ?? new List<IFormFile>())
+            .Select(f => new ArquivoUpload(f.FileName, f.Length, f.ContentType, () => f.OpenReadStream()))
+            .ToList();
+
+        var result = await _fotoService.UploadFotosAsync(entidadeTipo, entidadeId, arquivos);
         if (!result.IsSuccess)
             return BadRequest(result.Error);
         return Ok(result.Value);

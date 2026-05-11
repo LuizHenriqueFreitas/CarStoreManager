@@ -16,32 +16,32 @@ public class FotoRepository : IFotoRepository
     }
 
     public async Task<Foto?> GetByIdAsync(Guid id) =>
-        await _context.FotosVeiculo.FindAsync(id);
+        await _context.Fotos.FindAsync(id);
 
     public async Task<List<Foto>> GetByEntidadeAsync(string entidadeTipo, Guid entidadeId) =>
-        await _context.FotosVeiculo
+        await _context.Fotos
             .Where(f => f.EntidadeTipo == entidadeTipo && f.EntidadeId == entidadeId)
             .OrderBy(f => f.Ordem)
             .ToListAsync();
 
     public async Task AddAsync(Foto foto) =>
-        await _context.FotosVeiculo.AddAsync(foto);
+        await _context.Fotos.AddAsync(foto);
 
     public Task UpdateAsync(Foto foto)
     {
-        _context.FotosVeiculo.Update(foto);
+        _context.Fotos.Update(foto);
         return Task.CompletedTask;
     }
 
     public Task DeleteAsync(Foto foto)
     {
-        _context.FotosVeiculo.Remove(foto);
+        _context.Fotos.Remove(foto);
         return Task.CompletedTask;
     }
 
     public async Task<int> GetNextOrdemAsync(string entidadeTipo, Guid entidadeId)
     {
-        var count = await _context.FotosVeiculo
+        var count = await _context.Fotos
             .CountAsync(f => f.EntidadeTipo == entidadeTipo && f.EntidadeId == entidadeId);
         return count;
     }

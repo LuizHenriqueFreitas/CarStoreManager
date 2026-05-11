@@ -11,10 +11,12 @@ namespace CarStoreManager.Web.Controllers;
 public class ComponenteController : ControllerBase
 {
     private readonly IComponenteService _service;
+    private readonly IEstoqueService _estoqueService;
 
-    public ComponenteController(IComponenteService service)
+    public ComponenteController(IComponenteService service, IEstoqueService estoqueService)
     {
         _service = service;
+        _estoqueService = estoqueService;
     }
 
     // =========================
@@ -41,6 +43,13 @@ public class ComponenteController : ControllerBase
     {
         var resultado = await _service.ObterComEstoqueBaixoAsync();
         return resultado.IsSuccess ? Ok(resultado.Value) : BadRequest(resultado.Error);
+    }
+
+    [HttpGet("{id:guid}/equivalentes")]
+    public async Task<IActionResult> GetEquivalentes(Guid id)
+    {
+        var resultado = await _service.ObterEquivalentesAsync(id);
+        return resultado.IsSuccess ? Ok(resultado.Value) : NotFound(resultado.Error);
     }
 
     [HttpGet("sistema/{sistema}")]
@@ -89,7 +98,7 @@ public class ComponenteController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> EntradaEstoque(Guid id, [FromBody] MovimentacaoEstoqueDTO dto)
     {
-        var resultado = await _service.EntradaEstoqueAsync(id, dto.Quantidade);
+        var resultado = await _estoqueService.EntradaAsync(id, dto.Quantidade);
         return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
     }
 
@@ -97,7 +106,7 @@ public class ComponenteController : ControllerBase
     [Authorize(Roles = "Admin,Mecanico")]
     public async Task<IActionResult> SaidaEstoque(Guid id, [FromBody] MovimentacaoEstoqueDTO dto)
     {
-        var resultado = await _service.SaidaEstoqueAsync(id, dto.Quantidade);
+        var resultado = await _estoqueService.SaidaAsync(id, dto.Quantidade);
         return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
     }
 }

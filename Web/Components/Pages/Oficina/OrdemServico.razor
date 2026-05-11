@@ -1,4 +1,5 @@
 @page "/oficina/os/nova"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Recepcionista")]
 @rendermode InteractiveServer
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -47,10 +48,13 @@
                               placeholder="Ex: Troca de óleo e revisão dos freios"></textarea>
                 </div>
                 <div class="form-campo">
-                    <label class="campo-label">Câmbio</label>
+                    <label class="campo-label">Tipo de serviço *</label>
                     <select class="campo-input" @bind="form.Tipo">
-                        <option value="Manutencao">Manutencao</option>
-                        <option value="Revisao">Revisao</option>
+                        <option value="Manutencao">Manutenção</option>
+                        <option value="Revisao">Revisão</option>
+                        <option value="TrocaPecas">Troca de peças</option>
+                        <option value="Diagnostico">Diagnóstico</option>
+                        <option value="Outro">Outro</option>
                     </select>
                 </div>
                 <div class="form-campo">
@@ -89,7 +93,10 @@
 @code {
     private CriarOrdemServicoDTO form = new()
     {
-        PrazoEstimado = DateTime.Today.AddDays(3)
+        PrazoEstimado = DateTime.Today.AddDays(3),
+        Tipo = "Manutencao",
+        Descricao = string.Empty,
+        Itens = new List<ItemOrdemServicoDTO>()
     };
 
     private List<MecanicoListaDTO> mecanicos = new();
@@ -131,7 +138,7 @@
             {
                 sucesso = true;
                 await Task.Delay(1200);
-                Navigation.NavigateTo($"/oficina/ordemservico/{resultado.Value}");
+                Navigation.NavigateTo($"/oficina/os/{resultado.Value}");
             }
             else
             {

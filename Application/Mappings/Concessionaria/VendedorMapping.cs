@@ -11,7 +11,7 @@ public static class VendedorMapping
     {
         return new VendedorDTO
         {
-            Id = entity.GetId(),
+            Id = entity.Id,
             Nome = entity.GetNome(),
             Email = entity.GetEmail(),
             Telefone = entity.GetTelefone(),
@@ -25,7 +25,7 @@ public static class VendedorMapping
     {
         return new VendedorListaDTO
         {
-            Id = entity.GetId(),
+            Id = entity.Id,
             Nome = entity.GetNome(),
             Telefone = entity.GetTelefone(),
             Nivel = entity.GetNivel()

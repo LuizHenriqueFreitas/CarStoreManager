@@ -1,9 +1,9 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @using CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 @inject AuthenticationStateProvider AuthStateProvider
 
-<NavBar NomeUsuario="@nomeUsuario" />
+<NavBar NomeUsuario="@nomeUsuario" Role="@role" />
 
 <main class="main-content">
     @Body
@@ -11,6 +11,7 @@
 
 @code {
     private string nomeUsuario = "Usuário";
+    private string role = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -21,17 +22,16 @@
 
             if (user.Identity?.IsAuthenticated == true)
             {
-                // Tenta obter o nome das claims comuns
                 nomeUsuario = user.FindFirst("name")?.Value
-                           ?? user.FindFirst("given_name")?.Value
-                           ?? user.FindFirst("unique_name")?.Value
+                           ?? user.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
                            ?? user.Identity.Name
                            ?? "Usuário";
+
+                role = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
             }
         }
         catch
         {
-            // Em caso de falha, mantém o valor padrão
             nomeUsuario = "Usuário";
         }
     }

@@ -1,75 +1,79 @@
+using System.Globalization;
+using System.Text;
 using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda;
 using CarStoreManager.Application.Interfaces;
+using CarStoreManager.Application.Interfaces.Sistema;
 using CarStoreManager.Application.Mappings.Concessionaria;
+using CarStoreManager.Domain.Entities.Concessionaria;
+using CarStoreManager.Domain.Enums;
+using CarStoreManager.Domain.Interfaces.Repositories.Concessionaria;
+using CarStoreManager.Domain.Interfaces.Repositories.Sistema;
 using CarStoreManager.Domain.Repositories;
 
 namespace CarStoreManager.Application.Services;
-
-/*
-    Esta arquivo contem a declaração dos atributos e tambem
-    dos metodos da Classe de PropostaVendaService.cs.
-
-    Esta classe tem testes automaticos implementados para:
-        nada ainda
-*/
 
 public class PropostaVendaService : IPropostaVendaService
 {
     private readonly IPropostaVendaRepository _repository;
     private readonly IVeiculoVendaRepository _veiculoRepository;
+    private readonly IClienteRepository _clienteRepository;
+    private readonly IConfiguracaoSistemaRepository _configRepository;
+    private readonly IEmailService _emailService;
+    private readonly IVistoriaRepository _vistoriaRepository;
+    private readonly ITermoEntregaRepository _termoRepository;
 
     public PropostaVendaService(
         IPropostaVendaRepository repository,
-        IVeiculoVendaRepository veiculoRepository)
+        IVeiculoVendaRepository veiculoRepository,
+        IClienteRepository clienteRepository,
+        IConfiguracaoSistemaRepository configRepository,
+        IEmailService emailService,
+        IVistoriaRepository vistoriaRepository,
+        ITermoEntregaRepository termoRepository)
     {
         _repository = repository;
         _veiculoRepository = veiculoRepository;
+        _clienteRepository = clienteRepository;
+        _configRepository = configRepository;
+        _emailService = emailService;
+        _vistoriaRepository = vistoriaRepository;
+        _termoRepository = termoRepository;
     }
 
-    /*
-        metodo que busca a proposta por Id
-        falha caso seja vazia
-    */
     public async Task<Result<PropostaVendaDTO>> GetByIdAsync(Guid id)
     {
         var proposta = await _repository.GetByIdAsync(id);
-        if (proposta is null)
-            return Result<PropostaVendaDTO>.Fail("Proposta não encontrada");
+        if (proposta is null) return Result<PropostaVendaDTO>.Fail("Proposta não encontrada");
 
+        await ExpirarSeNecessarioAsync(proposta);
         return Result<PropostaVendaDTO>.Ok(PropostaVendaMapping.ToDto(proposta));
     }
 
-    //busca todas as propostas
     public async Task<Result<IEnumerable<PropostaVendaListaDTO>>> GetAllAsync()
     {
-        var propostas = await _repository.GetAllAsync();
+        var propostas = (await _repository.GetAllAsync()).ToList();
+        await ExpirarLoteSeNecessarioAsync(propostas);
         return Result<IEnumerable<PropostaVendaListaDTO>>.Ok(
             propostas.Select(PropostaVendaMapping.ToListaDto));
     }
 
-    
-    //metodo que busca a proposta pelo id do vendedor vinculado
     public async Task<Result<IEnumerable<PropostaVendaListaDTO>>> ObterPorVendedorAsync(Guid vendedorId)
     {
-        var propostas = await _repository.ObterPorVendedorAsync(vendedorId);
+        var propostas = (await _repository.ObterPorVendedorAsync(vendedorId)).ToList();
+        await ExpirarLoteSeNecessarioAsync(propostas);
         return Result<IEnumerable<PropostaVendaListaDTO>>.Ok(
             propostas.Select(PropostaVendaMapping.ToListaDto));
     }
 
-    //metodo que busca a proposta pelo id do cliente vinculado
     public async Task<Result<IEnumerable<PropostaVendaListaDTO>>> ObterPorClienteAsync(Guid clienteId)
     {
-        var propostas = await _repository.ObterPorClienteAsync(clienteId);
+        var propostas = (await _repository.ObterPorClienteAsync(clienteId)).ToList();
+        await ExpirarLoteSeNecessarioAsync(propostas);
         return Result<IEnumerable<PropostaVendaListaDTO>>.Ok(
             propostas.Select(PropostaVendaMapping.ToListaDto));
     }
 
-    /*
-        metodo que cria novas propostas
-        valida que o veiculo exista,
-        valida que o veiculo estaja disponivel
-    */
     public async Task<Result<Guid>> AddAsync(CriarPropostaVendaDTO dto)
     {
         var veiculo = await _veiculoRepository.GetByIdAsync(dto.VeiculoVendaId);
@@ -92,15 +96,12 @@ public class PropostaVendaService : IPropostaVendaService
         }
     }
 
-    /*
-        metodo que aplica o desconto da venda
-        falha caso a proposta nao seja encontrada
-    */
     public async Task<Result> AplicarDescontoAsync(AplicarDescontoDTO dto)
     {
         var proposta = await _repository.GetByIdAsync(dto.PropostaId);
-        if (proposta is null) 
-            return Result.Fail("Proposta não encontrada");
+        if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (await ExpirarSeNecessarioAsync(proposta))
+            return Result.Fail("Proposta expirou.");
 
         try
         {
@@ -112,15 +113,12 @@ public class PropostaVendaService : IPropostaVendaService
         catch (Exception ex) { return Result.Fail(ex.Message); }
     }
 
-    /*
-        metodo para colocar valor da entrada do financiamento
-        falha caso a proposta nao seja encontrada
-    */
     public async Task<Result> DefinirEntradaAsync(DefinirEntradaDTO dto)
     {
         var proposta = await _repository.GetByIdAsync(dto.PropostaId);
-        if (proposta is null) 
-            return Result.Fail("Proposta não encontrada");
+        if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (await ExpirarSeNecessarioAsync(proposta))
+            return Result.Fail("Proposta expirou.");
 
         try
         {
@@ -132,18 +130,17 @@ public class PropostaVendaService : IPropostaVendaService
         catch (Exception ex) { return Result.Fail(ex.Message); }
     }
 
-    /*
-        metodo que gera o financiamento completo
-        falha caso a proposta nao seja encontrada
-    */
-    public async Task<Result> GerarFinanciamentoAsync(GerarFinanciamentoDTO dto)
+    public async Task<Result> DefinirModoPagamentoAsync(Guid propostaId, string modoPagamento)
     {
-        var proposta = await _repository.GetByIdAsync(dto.PropostaId);
+        var proposta = await _repository.GetByIdAsync(propostaId);
         if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (await ExpirarSeNecessarioAsync(proposta))
+            return Result.Fail("Proposta expirou.");
 
         try
         {
-            proposta.GerarFinanciamento(dto.valorBase, dto.Parcelas, dto.entrada);
+            var modo = PropostaVendaMapping.ParseModoPagamento(modoPagamento);
+            proposta.DefinirModoPagamento(modo);
             _repository.Update(proposta);
             await _repository.SaveChangesAsync();
             return Result.Ok();
@@ -151,16 +148,68 @@ public class PropostaVendaService : IPropostaVendaService
         catch (Exception ex) { return Result.Fail(ex.Message); }
     }
 
-    /*
-        metodo para aprovar a proposta
-        marca o veiculo como vendido automaticamente
-        falha caso a proposta nao seja encontrada
-    */
+    public async Task<Result> SolicitarFinanciamentoAsync(Guid propostaId)
+    {
+        var proposta = await _repository.GetByIdAsync(propostaId);
+        if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (await ExpirarSeNecessarioAsync(proposta))
+            return Result.Fail("Proposta expirou.");
+
+        var cfg = await _configRepository.ObterAsync();
+        if (!cfg.FinanciadoraConfigurada())
+            return Result.Fail("Financiadora não está configurada. Acesse Configurações do sistema.");
+        if (!cfg.SmtpConfigurado())
+            return Result.Fail("SMTP não está configurado. Acesse Configurações do sistema.");
+
+        var veiculo = await _veiculoRepository.GetByIdAsync(proposta.VeiculoVendaId);
+        var cliente = await _clienteRepository.GetByIdAsync(proposta.ClienteId);
+        if (veiculo is null || cliente is null)
+            return Result.Fail("Cliente ou veículo não encontrado.");
+
+        try
+        {
+            // Persiste a transição PRIMEIRO — se o e-mail falhar, ainda marcamos
+            // a tentativa de solicitação. Admin pode reenviar manualmente.
+            proposta.SolicitarFinanciamento();
+            _repository.Update(proposta);
+            await _repository.SaveChangesAsync();
+
+            var corpo = MontarEmailFinanciadora(proposta, veiculo, cliente, cfg.NomeFinanciadora);
+            var assunto = $"[CarStore] Solicitação de financiamento — {cliente.GetNome()} — Proposta {proposta.Id.ToString()[..8]}";
+            var envio = await _emailService.EnviarAsync(cfg.EmailFinanciadora, assunto, corpo, isHtml: true);
+
+            if (!envio.IsSuccess)
+                return Result.Fail($"Solicitação registrada, mas falha ao enviar e-mail: {envio.Error}");
+
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+    }
+
+    public async Task<Result> RegistrarRespostaFinanciadoraAsync(Guid propostaId, RegistrarRespostaFinanciadoraDTO dto)
+    {
+        var proposta = await _repository.GetByIdAsync(propostaId);
+        if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (await ExpirarSeNecessarioAsync(proposta))
+            return Result.Fail("Proposta expirou.");
+
+        try
+        {
+            proposta.RegistrarRespostaFinanciadora(
+                dto.Parcelas, dto.ValorParcela, dto.TaxaJurosMensal, dto.Observacoes);
+            _repository.Update(proposta);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+    }
+
     public async Task<Result> AprovarAsync(Guid propostaId)
     {
         var proposta = await _repository.GetByIdAsync(propostaId);
-        if (proposta is null) 
-            return Result.Fail("Proposta não encontrada");
+        if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (await ExpirarSeNecessarioAsync(proposta))
+            return Result.Fail("Proposta expirou.");
 
         try
         {
@@ -177,19 +226,16 @@ public class PropostaVendaService : IPropostaVendaService
         catch (Exception ex) { return Result.Fail(ex.Message); }
     }
 
-    /*
-        metodo para marcar proposta como rejeitada
-        falha caso a proposta nao seja encontrada
-    */
-    public async Task<Result> RejeitarAsync(Guid propostaId)
+    public async Task<Result> RejeitarAsync(Guid propostaId, string motivo)
     {
         var proposta = await _repository.GetByIdAsync(propostaId);
-        if (proposta is null) 
-            return Result.Fail("Proposta não encontrada");
+        if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (await ExpirarSeNecessarioAsync(proposta))
+            return Result.Fail("Proposta expirou.");
 
         try
         {
-            proposta.Rejeitar();
+            proposta.Rejeitar(motivo);
             _repository.Update(proposta);
             await _repository.SaveChangesAsync();
             return Result.Ok();
@@ -197,42 +243,260 @@ public class PropostaVendaService : IPropostaVendaService
         catch (Exception ex) { return Result.Fail(ex.Message); }
     }
 
-    /*
-        metodo para marcar proposta como cancelada
-        falha caso a proposta nao seja encontrada
-    */
-    public async Task<Result> CancelarAsync(Guid propostaId)
+    public async Task<Result> CancelarAsync(Guid propostaId, string motivo)
     {
         var proposta = await _repository.GetByIdAsync(propostaId);
-        if (proposta is null) 
-            return Result.Fail("Proposta não encontrada");
+        if (proposta is null) return Result.Fail("Proposta não encontrada");
 
-        proposta.Cancelar();
-        _repository.Update(proposta);
+        try
+        {
+            proposta.Cancelar(motivo);
+            _repository.Update(proposta);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+    }
+
+    // ============================================================
+    // Vistoria
+    // ============================================================
+
+    public async Task<Result> IniciarVistoriaAsync(Guid propostaId)
+    {
+        var proposta = await _repository.GetByIdAsync(propostaId);
+        if (proposta is null) return Result.Fail("Proposta não encontrada");
+
+        try
+        {
+            proposta.IniciarVistoria();
+            _repository.Update(proposta);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+    }
+
+    public async Task<Result<VistoriaDTO>> RegistrarVistoriaAsync(
+        Guid propostaId, Guid vistoriadorId, RegistrarVistoriaDTO dto)
+    {
+        var proposta = await _repository.GetByIdAsync(propostaId);
+        if (proposta is null) return Result<VistoriaDTO>.Fail("Proposta não encontrada");
+
+        try
+        {
+            var vistoria = new Vistoria(propostaId, vistoriadorId, dto.Observacoes, dto.Aprovado);
+            await _vistoriaRepository.AddAsync(vistoria);
+
+            proposta.RegistrarResultadoVistoria(dto.Aprovado);
+            _repository.Update(proposta);
+
+            await _repository.SaveChangesAsync();
+            return Result<VistoriaDTO>.Ok(MapVistoria(vistoria));
+        }
+        catch (Exception ex) { return Result<VistoriaDTO>.Fail(ex.Message); }
+    }
+
+    public async Task<Result<IEnumerable<VistoriaDTO>>> ListarVistoriasAsync(Guid propostaId)
+    {
+        var vistorias = await _vistoriaRepository.ObterPorPropostaAsync(propostaId);
+        return Result<IEnumerable<VistoriaDTO>>.Ok(vistorias.Select(MapVistoria));
+    }
+
+    // ============================================================
+    // Termo de entrega
+    // ============================================================
+
+    public async Task<Result<TermoEntregaDTO>> CriarOuEditarTermoAsync(
+        Guid propostaId, Guid adminId, CriarOuEditarTermoDTO dto)
+    {
+        var proposta = await _repository.GetByIdAsync(propostaId);
+        if (proposta is null) return Result<TermoEntregaDTO>.Fail("Proposta não encontrada");
+
+        try
+        {
+            var termo = await _termoRepository.ObterPorPropostaAsync(propostaId);
+            if (termo is null)
+            {
+                termo = new TermoEntrega(propostaId, adminId, dto.TextoTermo);
+                await _termoRepository.AddAsync(termo);
+            }
+            else
+            {
+                termo.EditarTexto(dto.TextoTermo);
+                _termoRepository.Update(termo);
+            }
+            await _termoRepository.SaveChangesAsync();
+            return Result<TermoEntregaDTO>.Ok(MapTermo(termo));
+        }
+        catch (Exception ex) { return Result<TermoEntregaDTO>.Fail(ex.Message); }
+    }
+
+    public async Task<Result<TermoEntregaDTO>> ObterTermoAsync(Guid propostaId)
+    {
+        var termo = await _termoRepository.ObterPorPropostaAsync(propostaId);
+        return termo is null
+            ? Result<TermoEntregaDTO>.Fail("Termo não criado para esta proposta.")
+            : Result<TermoEntregaDTO>.Ok(MapTermo(termo));
+    }
+
+    public async Task<Result> EnviarTermoParaAssinaturaAsync(Guid propostaId)
+    {
+        var proposta = await _repository.GetByIdAsync(propostaId);
+        if (proposta is null) return Result.Fail("Proposta não encontrada");
+
+        var termo = await _termoRepository.ObterPorPropostaAsync(propostaId);
+        if (termo is null) return Result.Fail("Crie o termo antes de enviá-lo para assinatura.");
+
+        try
+        {
+            termo.EnviarParaAssinatura();
+            proposta.EnviarTermoParaAssinatura();
+            _termoRepository.Update(termo);
+            _repository.Update(proposta);
+            await _termoRepository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+    }
+
+    public async Task<Result<TermoEntregaDTO>> ObterTermoPorTokenAsync(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return Result<TermoEntregaDTO>.Fail("Token inválido.");
+
+        var termo = await _termoRepository.ObterPorTokenAsync(token);
+        return termo is null
+            ? Result<TermoEntregaDTO>.Fail("Termo não encontrado ou link inválido.")
+            : Result<TermoEntregaDTO>.Ok(MapTermo(termo));
+    }
+
+    public async Task<Result> AssinarTermoAsync(string token, AssinarTermoDTO dto, string ipOrigem)
+    {
+        if (!dto.Aceite)
+            return Result.Fail("É necessário marcar o aceite explícito do termo.");
+
+        var termo = await _termoRepository.ObterPorTokenAsync(token);
+        if (termo is null) return Result.Fail("Termo não encontrado ou link inválido.");
+
+        var proposta = await _repository.GetByIdAsync(termo.PropostaVendaId);
+        if (proposta is null) return Result.Fail("Proposta vinculada não encontrada.");
+
+        try
+        {
+            termo.Assinar(dto.NomeCliente, dto.CpfCliente, ipOrigem);
+            proposta.Concluir();
+            _termoRepository.Update(termo);
+            _repository.Update(proposta);
+            await _termoRepository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+    }
+
+    private static VistoriaDTO MapVistoria(Vistoria v) => new()
+    {
+        Id = v.Id,
+        PropostaVendaId = v.PropostaVendaId,
+        VistoriadorId = v.VistoriadorId,
+        DataRealizada = v.DataRealizada,
+        Observacoes = v.Observacoes,
+        Aprovado = v.Aprovado
+    };
+
+    private static TermoEntregaDTO MapTermo(TermoEntrega t) => new()
+    {
+        Id = t.Id,
+        PropostaVendaId = t.PropostaVendaId,
+        TextoTermo = t.TextoTermo,
+        Status = t.Status.ToString(),
+        DataRedacao = t.DataRedacao,
+        DataUltimaEdicao = t.DataUltimaEdicao,
+        TokenAssinatura = t.TokenAssinatura,
+        DataAssinatura = t.DataAssinatura,
+        AssinaturaNomeCliente = t.AssinaturaNomeCliente,
+        AssinaturaCpfCliente = t.AssinaturaCpfCliente,
+        AssinaturaIp = t.AssinaturaIp
+    };
+
+    public Task<Result> GerarFinanciamentoAsync(GerarFinanciamentoDTO dto)
+        => Task.FromResult(Result.Fail(
+            "Endpoint depreciado. Use DefinirModoPagamento + SolicitarFinanciamento + RegistrarRespostaFinanciadora."));
+
+    public Task<Result> UpdateAsync(PropostaVendaDTO dto)
+        => Task.FromResult(Result.Fail("Update direto não suportado — use as transições específicas."));
+
+    public async Task<Result> RemoveAsync(Guid propostaVendaId)
+    {
+        var proposta = await _repository.GetByIdAsync(propostaVendaId);
+        if (proposta is null) return Result.Fail("Proposta não encontrada");
+
+        _repository.Remove(proposta);
         await _repository.SaveChangesAsync();
         return Result.Ok();
     }
 
-    //metodo ainda nao implementado
-    public async Task<Result> UpdateAsync(PropostaVendaDTO dto)
+    // ============================================================
+    // helpers internos
+    // ============================================================
+
+    private async Task<bool> ExpirarSeNecessarioAsync(PropostaVenda proposta)
     {
-        return Result.Fail("Metodo vazio");   
+        if (!proposta.TentarExpirar()) return false;
+        _repository.Update(proposta);
+        await _repository.SaveChangesAsync();
+        return true;
     }
 
-    /*
-        metodo que remove proposta por id
-        caso seja vazia retorna erro
-    */    
-    public async Task<Result> RemoveAsync(Guid propostaVendaId)
+    private async Task ExpirarLoteSeNecessarioAsync(IEnumerable<PropostaVenda> propostas)
     {
-        var proposta = await _repository.GetByIdAsync(propostaVendaId);
+        var alterada = false;
+        foreach (var p in propostas)
+            if (p.TentarExpirar())
+            {
+                _repository.Update(p);
+                alterada = true;
+            }
+        if (alterada) await _repository.SaveChangesAsync();
+    }
 
-        if (proposta is null)
-            return Result.Fail("Mecânico não encontrado");
+    private static string MontarEmailFinanciadora(
+        PropostaVenda proposta,
+        Domain.Entities.Concessionaria.VeiculoVenda veiculo,
+        Domain.Entities.Cliente cliente,
+        string nomeFinanciadora)
+    {
+        var ci = CultureInfo.GetCultureInfo("pt-BR");
+        var sb = new StringBuilder();
+        sb.AppendLine("<html><body style='font-family: Arial, sans-serif; color:#222;'>");
+        sb.AppendLine($"<h2>Solicitação de simulação de financiamento</h2>");
+        sb.AppendLine($"<p>Prezados {nomeFinanciadora},</p>");
+        sb.AppendLine("<p>Solicitamos análise para o financiamento abaixo:</p>");
 
-        _repository.Remove(proposta);
-        await _repository.SaveChangesAsync();
+        sb.AppendLine("<h3>Cliente</h3><table cellpadding='4'>");
+        sb.AppendLine($"<tr><td><b>Nome:</b></td><td>{cliente.GetNome()}</td></tr>");
+        sb.AppendLine($"<tr><td><b>CPF:</b></td><td>{cliente.GetCpf()}</td></tr>");
+        sb.AppendLine($"<tr><td><b>Telefone:</b></td><td>{cliente.GetTelefone()}</td></tr>");
+        sb.AppendLine($"<tr><td><b>E-mail:</b></td><td>{cliente.GetEmail()}</td></tr>");
+        sb.AppendLine("</table>");
 
-        return Result.Ok();   
+        sb.AppendLine("<h3>Veículo</h3><table cellpadding='4'>");
+        sb.AppendLine($"<tr><td><b>Modelo:</b></td><td>{veiculo.GetMarca()} {veiculo.GetModelo()}</td></tr>");
+        sb.AppendLine($"<tr><td><b>Ano:</b></td><td>{veiculo.GetAno()}</td></tr>");
+        sb.AppendLine($"<tr><td><b>Placa:</b></td><td>{veiculo.Placa}</td></tr>");
+        sb.AppendLine($"<tr><td><b>Renavam:</b></td><td>{veiculo.Renavam}</td></tr>");
+        sb.AppendLine("</table>");
+
+        sb.AppendLine("<h3>Valores da operação</h3><table cellpadding='4'>");
+        sb.AppendLine($"<tr><td><b>Valor do veículo:</b></td><td>{proposta.GetValorFinal().ToString("C", ci)}</td></tr>");
+        sb.AppendLine($"<tr><td><b>Entrada:</b></td><td>{proposta.GetEntrada().ToString("C", ci)}</td></tr>");
+        sb.AppendLine($"<tr><td><b>Valor a financiar:</b></td><td><b>{proposta.ValorLiquidoFinanciamento().ToString("C", ci)}</b></td></tr>");
+        sb.AppendLine("</table>");
+
+        sb.AppendLine($"<p>Proposta interna: <code>{proposta.Id}</code></p>");
+        sb.AppendLine("<p>Aguardamos retorno com simulação de parcelas, taxa e demais condições.</p>");
+        sb.AppendLine("<p>Atenciosamente,<br/>Equipe CarStore</p>");
+        sb.AppendLine("</body></html>");
+        return sb.ToString();
     }
 }

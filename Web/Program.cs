@@ -7,7 +7,9 @@ using CarStoreManager.Application.Services;
 using CarStoreManager.Infrastructure.Repositories;
 using CarStoreManager.Domain.Repositories;
 using CarStoreManager.Application.Common;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using CarStoreManager.Infrastructure.Data;
@@ -43,8 +45,32 @@ builder.Services.Configure<JwtSettings>(
 
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()!;
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+// "Smart" scheme: se o request tem header Authorization: Bearer, usa JwtBearer.
+// Caso contrário, usa Cookie. Assim o mesmo controller serve API REST + Razor.
+const string SmartScheme = "Smart";
+builder.Services.AddAuthentication(SmartScheme)
+    .AddPolicyScheme(SmartScheme, "Bearer ou Cookie", options =>
+    {
+        options.ForwardDefaultSelector = context =>
+        {
+            var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
+            return authHeader?.StartsWith("Bearer ") == true
+                ? JwtBearerDefaults.AuthenticationScheme
+                : CookieAuthenticationDefaults.AuthenticationScheme;
+        };
+    })
+    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+    {
+        options.LoginPath = "/login";
+        options.LogoutPath = "/login?logout=true";
+        options.AccessDeniedPath = "/";
+        options.ExpireTimeSpan = TimeSpan.FromHours(jwtSettings.ExpiracaoHoras);
+        options.SlidingExpiration = true;
+        options.Cookie.Name = "carstore.auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+    })
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -59,7 +85,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+// Authorize por padrão usa o "Smart" scheme — que decide Cookie vs JwtBearer.
+builder.Services.AddAuthorization(options =>
+{
+    options.DefaultPolicy = new AuthorizationPolicyBuilder(SmartScheme)
+        .RequireAuthenticatedUser()
+        .Build();
+});
+builder.Services.AddHttpContextAccessor();
 
 // =========================
 // AUTH STATE PROVIDER (BLAZOR SERVER)
@@ -131,3 +164,6 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+// Expõe a classe Program para que WebApplicationFactory<Program> consiga referenciá-la nos testes.
+public partial class Program { }

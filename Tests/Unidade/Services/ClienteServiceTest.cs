@@ -13,7 +13,7 @@ using CarStoreManager.Application.Services;
 using CarStoreManager.Domain.Entities;
 using CarStoreManager.Domain.Repositories;
 
-namespace CarStoreManager.Tests.Unit.Application
+namespace CarStoreManager.Tests.Unidade.Services
 {
     public class ClienteServiceTests
     {

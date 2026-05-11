@@ -1,8 +1,10 @@
 @page "/oficina/componentes"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Mecanico")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
 @inject IComponenteService ComponenteService
+@inject IEstoqueService EstoqueService
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
 @using CarStoreManager.Application.Interfaces
@@ -15,7 +17,7 @@
     <div class="page-header">
         <div>
             <h1 class="page-titulo">Componentes</h1>
-            <p class="page-sub">Estoque de peças da oficina</p>
+            <p class="page-sub">Cadastro de peças e controle de estoque</p>
         </div>
         @if (ehAdmin)
         {
@@ -23,12 +25,12 @@
         }
     </div>
 
-    @if (pecasEstoqueBaixo.Any())
+    @if (estoquesBaixo.Any())
     {
         <div class="alerta-estoque">
             <span class="alerta-icone">⚠</span>
-            <span>@pecasEstoqueBaixo.Count peça(s) com estoque abaixo do mínimo</span>
-            <button class="alerta-btn" @onclick='() => filtroAtivo = "EstoqueBaixo"'>
+            <span>@estoquesBaixo.Count peça(s) com estoque abaixo do mínimo</span>
+            <button class="alerta-btn" @onclick='() => FiltrarPor("EstoqueBaixo")'>
                 Ver peças
             </button>
         </div>
@@ -65,10 +67,10 @@
         <div class="comp-tabela">
             <div class="tabela-header">
                 <span>Nome</span>
+                <span>Part Number</span>
                 <span>Sistema</span>
                 <span>Estoque</span>
                 <span>Mínimo</span>
-                <span>Valor unit.</span>
                 @if (ehAdmin)
                 {
                     <span>Ações</span>
@@ -77,16 +79,15 @@
 
             @foreach (var c in componentesFiltrados)
             {
-                <div class="tabela-row @(c.QuantidadeEstoque <= 0 ? "sem-estoque" : "")">
-                    <span class="comp-nome">@c.Nome</span>
+                var est = ObterEstoque(c.Id);
+                <div class="tabela-row @(est is null || est.SemEstoque ? "sem-estoque" : "")">
+                    <span class="comp-nome clicavel" @onclick="() => AbrirModalDetalhe(c)">@c.Nome</span>
+                    <span class="comp-pn">@c.PartNumber</span>
                     <span class="comp-sistema">@c.Sistema</span>
-                    <span class="comp-qtd @EstoqueClass(c)">
-                        @c.QuantidadeEstoque
+                    <span class="comp-qtd @EstoqueClass(est)">
+                        @(est?.QuantidadeAtual ?? 0)
                     </span>
-                    <span class="comp-min">@c.EstoqueMinimo</span>
-                    <span class="comp-valor">
-                        @c.Valor.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
-                    </span>
+                    <span class="comp-min">@(est?.QuantidadeMinima ?? 0)</span>
                     @if (ehAdmin)
                     {
                         <div class="comp-acoes">
@@ -95,8 +96,8 @@
                                 + Entrada
                             </button>
                             <button class="btn-mini"
-                                    @onclick="() => AbrirModalEditar(c)">
-                                Editar
+                                    @onclick="() => AbrirModalMinimo(c, est)">
+                                Mínimo
                             </button>
                         </div>
                     }
@@ -111,9 +112,7 @@
     <div class="modal-overlay" @onclick="() => modalNovoVisivel = false">
         <div class="modal-form" @onclick:stopPropagation>
             <div class="modal-header">
-                <span class="modal-titulo">
-                    @(modoEditar ? "Editar componente" : "Novo componente")
-                </span>
+                <span class="modal-titulo">Novo componente</span>
                 <button class="modal-fechar"
                         @onclick="() => modalNovoVisivel = false">×</button>
             </div>
@@ -124,11 +123,27 @@
                     <input class="campo-input" @bind="formComp.Nome" />
                 </div>
                 <div class="form-campo span-2">
-                    <label class="campo-label">Modelo</label>
-                    <input class="campo-input" @bind="formComp.Modelo" />
+                    <label class="campo-label">Descrição</label>
+                    <input class="campo-input" @bind="formComp.Descricao" />
                 </div>
                 <div class="form-campo">
-                    <label class="campo-label">Sistema</label>
+                    <label class="campo-label">SKU interno *</label>
+                    <input class="campo-input" @bind="formComp.SKUInterno" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Marca *</label>
+                    <input class="campo-input" @bind="formComp.MarcaFabricante" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Part Number *</label>
+                    <input class="campo-input" @bind="formComp.PartNumber" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Código OEM</label>
+                    <input class="campo-input" @bind="formComp.CodigoOEM" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Sistema *</label>
                     <select class="campo-input" @bind="formComp.Sistema">
                         @foreach (var s in todosSistemas)
                         {
@@ -137,19 +152,28 @@
                     </select>
                 </div>
                 <div class="form-campo">
-                    <label class="campo-label">Valor (R$)</label>
-                    <input type="number" class="campo-input" @bind="formComp.Valor" />
+                    <label class="campo-label">NCM (8 dígitos) *</label>
+                    <input class="campo-input" @bind="formComp.NCM" />
                 </div>
                 <div class="form-campo">
-                    <label class="campo-label">Quantidade inicial</label>
-                    <input type="number" class="campo-input"
-                           @bind="formComp.QuantidadeEstoque"
-                           disabled="@modoEditar" />
+                    <label class="campo-label">CEST (7 dígitos)</label>
+                    <input class="campo-input" @bind="formComp.CEST" />
                 </div>
                 <div class="form-campo">
-                    <label class="campo-label">Estoque mínimo</label>
-                    <input type="number" class="campo-input"
-                           @bind="formComp.EstoqueMinimo" />
+                    <label class="campo-label">Categoria *</label>
+                    <input class="campo-input" @bind="formComp.Categoria" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Unidade *</label>
+                    <input class="campo-input" @bind="formComp.Unidade" placeholder="UN, KG, L..." />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Peso (kg)</label>
+                    <input type="number" step="0.001" class="campo-input" @bind="formComp.Peso" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Garantia (dias)</label>
+                    <input type="number" class="campo-input" @bind="formComp.GarantiaDias" />
                 </div>
             </div>
 
@@ -164,7 +188,7 @@
                 <button class="btn-confirmar"
                         @onclick="SalvarComponente"
                         disabled="@salvando">
-                    @(salvando ? "Salvando..." : (modoEditar ? "Salvar" : "Cadastrar"))
+                    @(salvando ? "Salvando..." : "Cadastrar")
                 </button>
             </div>
         </div>
@@ -182,7 +206,7 @@
             </div>
             <p class="modal-sub">@componenteSelecionado?.Nome</p>
             <p class="modal-sub">
-                Estoque atual: @componenteSelecionado?.QuantidadeEstoque unidades
+                Estoque atual: @(ObterEstoque(componenteSelecionado?.Id ?? Guid.Empty)?.QuantidadeAtual ?? 0) unidades
             </p>
 
             <div class="form-campo" style="margin-top: 16px;">
@@ -210,29 +234,183 @@
     </div>
 }
 
+@if (modalMinimoVisivel)
+{
+    <div class="modal-overlay" @onclick="() => modalMinimoVisivel = false">
+        <div class="modal-form pequeno" @onclick:stopPropagation>
+            <div class="modal-header">
+                <span class="modal-titulo">Estoque mínimo</span>
+                <button class="modal-fechar"
+                        @onclick="() => modalMinimoVisivel = false">×</button>
+            </div>
+            <p class="modal-sub">@componenteSelecionado?.Nome</p>
+
+            <div class="form-campo" style="margin-top: 16px;">
+                <label class="campo-label">Quantidade mínima</label>
+                <input type="number" class="campo-input"
+                       @bind="quantidadeMinima"
+                       min="0" />
+            </div>
+
+            @if (erroForm is not null)
+            {
+                <div class="erro-banner">@erroForm</div>
+            }
+
+            <div class="modal-acoes">
+                <button class="btn-cancelar"
+                        @onclick="() => modalMinimoVisivel = false">Cancelar</button>
+                <button class="btn-confirmar"
+                        @onclick="ConfirmarMinimo"
+                        disabled="@salvando">
+                    @(salvando ? "Salvando..." : "Salvar")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (modalDetalheVisivel && componenteDetalhe is not null)
+{
+    <div class="modal-overlay" @onclick="() => modalDetalheVisivel = false">
+        <div class="modal-form" @onclick:stopPropagation>
+            <div class="modal-header">
+                <span class="modal-titulo">@componenteDetalhe.Nome</span>
+                <button class="modal-fechar"
+                        @onclick="() => modalDetalheVisivel = false">×</button>
+            </div>
+
+            <div class="detalhe-grid">
+                <div class="detalhe-item">
+                    <span class="detalhe-label">SKU interno</span>
+                    <span class="detalhe-val">@componenteDetalhe.SKUInterno</span>
+                </div>
+                <div class="detalhe-item">
+                    <span class="detalhe-label">Part Number</span>
+                    <span class="detalhe-val mono">@componenteDetalhe.PartNumber</span>
+                </div>
+                <div class="detalhe-item">
+                    <span class="detalhe-label">Código OEM</span>
+                    <span class="detalhe-val mono">
+                        @(string.IsNullOrWhiteSpace(componenteDetalheCompleto?.CodigoOEM) ? "—" : componenteDetalheCompleto.CodigoOEM)
+                    </span>
+                </div>
+                <div class="detalhe-item">
+                    <span class="detalhe-label">Marca</span>
+                    <span class="detalhe-val">@componenteDetalhe.MarcaFabricante</span>
+                </div>
+                <div class="detalhe-item">
+                    <span class="detalhe-label">Categoria</span>
+                    <span class="detalhe-val">@componenteDetalhe.Categoria</span>
+                </div>
+                <div class="detalhe-item">
+                    <span class="detalhe-label">NCM</span>
+                    <span class="detalhe-val mono">@(componenteDetalheCompleto?.NCM ?? "—")</span>
+                </div>
+                <div class="detalhe-item">
+                    <span class="detalhe-label">CEST</span>
+                    <span class="detalhe-val mono">
+                        @(string.IsNullOrWhiteSpace(componenteDetalheCompleto?.CEST) ? "—" : componenteDetalheCompleto.CEST)
+                    </span>
+                </div>
+                <div class="detalhe-item">
+                    <span class="detalhe-label">Código de barras</span>
+                    <span class="detalhe-val mono">
+                        @(string.IsNullOrWhiteSpace(componenteDetalheCompleto?.CodigoBarras) ? "—" : componenteDetalheCompleto.CodigoBarras)
+                    </span>
+                </div>
+                <div class="detalhe-item">
+                    <span class="detalhe-label">Peso (kg)</span>
+                    <span class="detalhe-val">@(componenteDetalheCompleto?.Peso.ToString("F3") ?? "—")</span>
+                </div>
+                <div class="detalhe-item">
+                    <span class="detalhe-label">Garantia</span>
+                    <span class="detalhe-val">@(componenteDetalheCompleto?.GarantiaDias ?? 0) dias</span>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(componenteDetalheCompleto?.Descricao))
+            {
+                <div class="detalhe-descricao">
+                    <span class="detalhe-label">Descrição</span>
+                    <p>@componenteDetalheCompleto.Descricao</p>
+                </div>
+            }
+
+            <div class="detalhe-acoes">
+                <button class="btn-confirmar" @onclick="BuscarEquivalentes" disabled="@buscandoEquivalentes">
+                    @(buscandoEquivalentes ? "Buscando..." : "🔎 Buscar equivalentes (OEM)")
+                </button>
+            </div>
+
+            @if (equivalentesCarregados)
+            {
+                <div class="equivalentes-secao">
+                    <h3 class="secao-mini">Equivalentes encontrados</h3>
+                    @if (!equivalentes.Any())
+                    {
+                        <p class="vazio">
+                            Nenhuma peça equivalente encontrada para o OEM
+                            <code>@(componenteDetalheCompleto?.CodigoOEM ?? "—")</code>.
+                        </p>
+                    }
+                    else
+                    {
+                        <ul class="equivalentes-lista">
+                            @foreach (var e in equivalentes)
+                            {
+                                var estE = ObterEstoque(e.Id);
+                                <li class="equiv-item">
+                                    <div class="equiv-info">
+                                        <span class="equiv-nome">@e.Nome</span>
+                                        <span class="equiv-marca">@e.MarcaFabricante · @e.PartNumber</span>
+                                    </div>
+                                    <span class="equiv-estoque @EstoqueClass(estE)">
+                                        @(estE?.QuantidadeAtual ?? 0) un.
+                                    </span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
 @code {
-    private List<ComponenteDTO> componentes = new();
-    private List<ComponenteDTO> componentesFiltrados = new();
-    private List<ComponenteListaDTO> pecasEstoqueBaixo = new();
+    private List<ComponenteListaDTO> componentes = new();
+    private List<ComponenteListaDTO> componentesFiltrados = new();
+    private List<EstoqueComponenteDTO> estoques = new();
+    private List<EstoqueComponenteDTO> estoquesBaixo = new();
     private string filtroAtivo = "Todos";
     private string termoBusca = string.Empty;
     private bool carregando = true;
     private bool ehAdmin = false;
     private bool modalNovoVisivel = false;
     private bool modalEntradaVisivel = false;
-    private bool modoEditar = false;
+    private bool modalMinimoVisivel = false;
+    private bool modalDetalheVisivel = false;
     private bool salvando = false;
-    private string? erroForm;
-    private ComponenteDTO? componenteSelecionado;
-    private int quantidadeEntrada = 1;
 
-    private CriarComponenteDTO formComp = new();
-    private AtualizarComponenteDTO formEditar = new();
+    // Detalhe + equivalentes
+    private ComponenteListaDTO? componenteDetalhe;
+    private ComponenteDTO? componenteDetalheCompleto;
+    private List<ComponenteListaDTO> equivalentes = new();
+    private bool equivalentesCarregados = false;
+    private bool buscandoEquivalentes = false;
+    private string? erroForm;
+    private ComponenteListaDTO? componenteSelecionado;
+    private int quantidadeEntrada = 1;
+    private int quantidadeMinima = 0;
+
+    private CriarComponenteDTO formComp = NovoForm();
 
     private readonly List<string> todosSistemas = new()
     {
-        "Motor", "Freios", "Suspensao", "Eletrica",
-        "Transmissao", "Arrefecimento", "Escapamento", "Outro"
+        "Motor", "Suspensao", "Direcao", "Freios", "Eletrica",
+        "Lataria", "Transmissão", "Arrefecimento", "Escapamento",
+        "Acessorios", "Interior"
     };
 
     protected override async Task OnInitializedAsync()
@@ -248,28 +426,23 @@
         carregando = true;
 
         var resultado = await ComponenteService.GetAllAsync();
-        if (resultado.IsSuccess)
-        {
-            componentes = resultado.Value?
-                .Select(c => new ComponenteDTO
-                {
-                    Id = c.Id,
-                    Nome = c.Nome,
-                    Sistema = c.Sistema,
-                    QuantidadeEstoque = c.QuantidadeEstoque,
-                    Valor = c.Valor,
-                    Modelo = c.Modelo
-                }).ToList() ?? new();
-        }
-
-        var baixo = await ComponenteService.ObterComEstoqueBaixoAsync();
-        pecasEstoqueBaixo = baixo.IsSuccess
-            ? baixo.Value?.ToList() ?? new()
+        componentes = resultado.IsSuccess
+            ? resultado.Value?.ToList() ?? new()
             : new();
+
+        var rEstoque = await EstoqueService.ListarAsync();
+        estoques = rEstoque.IsSuccess
+            ? rEstoque.Value?.ToList() ?? new()
+            : new();
+
+        estoquesBaixo = estoques.Where(e => e.EstoqueBaixo).ToList();
 
         AplicarFiltro();
         carregando = false;
     }
+
+    private EstoqueComponenteDTO? ObterEstoque(Guid componenteId)
+        => estoques.FirstOrDefault(e => e.ComponenteId == componenteId);
 
     private void FiltrarPor(string filtro)
     {
@@ -282,7 +455,7 @@
         var base_ = filtroAtivo switch
         {
             "EstoqueBaixo" => componentes
-                .Where(c => c.QuantidadeEstoque <= c.EstoqueMinimo).ToList(),
+                .Where(c => estoquesBaixo.Any(e => e.ComponenteId == c.Id)).ToList(),
             "Todos" => componentes.ToList(),
             _ => componentes.Where(c => c.Sistema == filtroAtivo).ToList()
         };
@@ -295,41 +468,52 @@
 
     private void AbrirModalNovo()
     {
-        modoEditar = false;
-        formComp = new CriarComponenteDTO { Sistema = "Motor" };
+        formComp = NovoForm();
         erroForm = null;
         modalNovoVisivel = true;
     }
 
-    private void AbrirModalEditar(ComponenteDTO c)
-    {
-        modoEditar = true;
-        formEditar = new AtualizarComponenteDTO
-        {
-            Id = c.Id,
-            Valor = c.Valor,
-            QuantidadeEstoque = c.QuantidadeEstoque,
-            EstoqueMinimo = c.EstoqueMinimo
-        };
-        formComp = new CriarComponenteDTO
-        {
-            Nome = c.Nome,
-            Modelo = c.Modelo,
-            Sistema = c.Sistema,
-            Valor = c.Valor,
-            QuantidadeEstoque = c.QuantidadeEstoque,
-            EstoqueMinimo = c.EstoqueMinimo
-        };
-        erroForm = null;
-        modalNovoVisivel = true;
-    }
-
-    private void AbrirModalEntrada(ComponenteDTO c)
+    private void AbrirModalEntrada(ComponenteListaDTO c)
     {
         componenteSelecionado = c;
         quantidadeEntrada = 1;
         erroForm = null;
         modalEntradaVisivel = true;
+    }
+
+    private void AbrirModalMinimo(ComponenteListaDTO c, EstoqueComponenteDTO? est)
+    {
+        componenteSelecionado = c;
+        quantidadeMinima = est?.QuantidadeMinima ?? 0;
+        erroForm = null;
+        modalMinimoVisivel = true;
+    }
+
+    private async Task AbrirModalDetalhe(ComponenteListaDTO c)
+    {
+        componenteDetalhe = c;
+        componenteDetalheCompleto = null;
+        equivalentes.Clear();
+        equivalentesCarregados = false;
+        buscandoEquivalentes = false;
+        modalDetalheVisivel = true;
+
+        // Carrega o DTO completo (com OEM, NCM, descrição etc)
+        var r = await ComponenteService.GetByIdAsync(c.Id);
+        if (r.IsSuccess) componenteDetalheCompleto = r.Value;
+    }
+
+    private async Task BuscarEquivalentes()
+    {
+        if (componenteDetalhe is null) return;
+        buscandoEquivalentes = true;
+        equivalentes.Clear();
+
+        var r = await ComponenteService.ObterEquivalentesAsync(componenteDetalhe.Id);
+        if (r.IsSuccess) equivalentes = r.Value ?? new();
+
+        buscandoEquivalentes = false;
+        equivalentesCarregados = true;
     }
 
     private async Task SalvarComponente()
@@ -339,22 +523,18 @@
 
         try
         {
-            if (modoEditar)
+            var r = await ComponenteService.AddAsync(formComp);
+            if (r.IsSuccess)
             {
-                formEditar.Valor = formComp.Valor;
-                formEditar.EstoqueMinimo = formComp.EstoqueMinimo;
-                var r = await ComponenteService.UpdateAsync(formEditar);
-                if (r.IsSuccess) { modalNovoVisivel = false; await CarregarDados(); }
-                else erroForm = r.Error;
+                modalNovoVisivel = false;
+                await CarregarDados();
             }
             else
             {
-                var r = await ComponenteService.AddAsync(formComp);
-                if (r.IsSuccess) { modalNovoVisivel = false; await CarregarDados(); }
-                else erroForm = r.Error;
+                erroForm = r.Error;
             }
         }
-        catch { erroForm = "Erro ao salvar."; }
+        catch (Exception ex) { erroForm = $"Erro ao salvar: {ex.Message}"; }
         finally { salvando = false; }
     }
 
@@ -365,7 +545,7 @@
         salvando = true;
         erroForm = null;
 
-        var resultado = await ComponenteService.EntradaEstoqueAsync(
+        var resultado = await EstoqueService.EntradaAsync(
             componenteSelecionado.Id, quantidadeEntrada);
 
         if (resultado.IsSuccess)
@@ -381,20 +561,49 @@
         salvando = false;
     }
 
+    private async Task ConfirmarMinimo()
+    {
+        if (quantidadeMinima < 0 || componenteSelecionado is null) return;
+
+        salvando = true;
+        erroForm = null;
+
+        var resultado = await EstoqueService.CriarOuAtualizarMinimoAsync(
+            componenteSelecionado.Id, quantidadeMinima);
+
+        if (resultado.IsSuccess)
+        {
+            modalMinimoVisivel = false;
+            await CarregarDados();
+        }
+        else
+        {
+            erroForm = resultado.Error;
+        }
+
+        salvando = false;
+    }
+
     private string FiltroClass(string f) =>
         f == filtroAtivo ? "filtro-os ativo" : "filtro-os";
 
-    private string EstoqueClass(ComponenteDTO c)
+    private string EstoqueClass(EstoqueComponenteDTO? est)
     {
-        if (c.QuantidadeEstoque <= 0) return "qtd-zero";
-        if (c.QuantidadeEstoque <= c.EstoqueMinimo) return "qtd-baixo";
+        if (est is null || est.SemEstoque) return "qtd-zero";
+        if (est.EstoqueBaixo) return "qtd-baixo";
         return "qtd-ok";
     }
+
+    private static CriarComponenteDTO NovoForm() => new()
+    {
+        Sistema = "Motor",
+        Unidade = "UN"
+    };
 }
 
 <style>
     .comp-page {
-        max-width: 1000px;
+        max-width: 1100px;
         margin: 0 auto;
         padding: 32px 24px;
     }
@@ -499,7 +708,7 @@
 
     .tabela-header {
         display: grid;
-        grid-template-columns: 2fr 1fr 80px 80px 100px 120px;
+        grid-template-columns: 2fr 1fr 1fr 80px 80px 160px;
         padding: 10px 16px;
         background: #f4f4f4;
         font-size: 11px;
@@ -511,7 +720,7 @@
 
     .tabela-row {
         display: grid;
-        grid-template-columns: 2fr 1fr 80px 80px 100px 120px;
+        grid-template-columns: 2fr 1fr 1fr 80px 80px 160px;
         padding: 12px 16px;
         border-top: 0.5px solid #f0f0f0;
         align-items: center;
@@ -523,6 +732,9 @@
     .sem-estoque { opacity: 0.6; }
 
     .comp-nome { font-weight: 500; }
+    .comp-nome.clicavel { cursor: pointer; color: #2563eb; }
+    .comp-nome.clicavel:hover { text-decoration: underline; }
+    .comp-pn { font-family: monospace; color: #555; font-size: 12px; }
     .comp-sistema { color: #888; font-size: 12px; }
 
     .comp-qtd { font-weight: 600; }
@@ -531,7 +743,6 @@
     .qtd-zero  { color: #e02020; }
 
     .comp-min { color: #aaa; font-size: 12px; }
-    .comp-valor { font-weight: 500; }
 
     .comp-acoes { display: flex; gap: 6px; }
 
@@ -567,7 +778,7 @@
         border-radius: 12px;
         padding: 24px;
         width: 100%;
-        max-width: 520px;
+        max-width: 620px;
         max-height: 90vh;
         overflow-y: auto;
     }
@@ -662,5 +873,66 @@
         padding: 60px;
         color: #888;
         font-size: 14px;
+    }
+
+    /* Modal de detalhe + equivalentes */
+    .detalhe-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .detalhe-item { display: flex; flex-direction: column; gap: 2px; }
+    .detalhe-label { font-size: 11px; color: #888; }
+    .detalhe-val { font-size: 13px; font-weight: 500; }
+    .detalhe-val.mono { font-family: monospace; }
+
+    .detalhe-descricao {
+        background: #fafafa;
+        padding: 12px 14px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+    }
+    .detalhe-descricao p { margin: 4px 0 0; font-size: 13px; color: #444; }
+
+    .detalhe-acoes {
+        display: flex;
+        justify-content: flex-end;
+        margin: 8px 0 12px;
+    }
+
+    .equivalentes-secao {
+        border-top: 0.5px solid #eee;
+        padding-top: 14px;
+        margin-top: 8px;
+    }
+    .secao-mini {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1a1a1a;
+        margin: 0 0 10px;
+    }
+    .equivalentes-lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+
+    .equiv-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 8px;
+        background: #fafafa;
+    }
+    .equiv-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .equiv-nome { font-size: 13px; font-weight: 500; }
+    .equiv-marca { font-size: 11px; color: #888; }
+    .equiv-estoque { font-size: 12px; font-weight: 600; }
+
+    code {
+        font-family: monospace;
+        background: #f4f4f4;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 12px;
     }
 </style>

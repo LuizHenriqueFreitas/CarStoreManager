@@ -5,12 +5,15 @@
 @inject IAuthService AuthService
 @inject NavigationManager Nav
 @inject JwtAuthStateProvider AuthProvider
+@inject IJSRuntime JS
 @using CarStoreManager.Application.DTOs.Auth
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Domain.Enums
 @using CarStoreManager.Web.Components.Shared
 @using CarStoreManager.Web.Components.Shared.Auth
 @using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using System.Text.Json
 
 <div class="login-page">
     <div class="login-card">
@@ -82,30 +85,39 @@
 
         try
         {
-            var resultado = await AuthService.LoginAsync(new LoginDTO
-            {
-                Email = email,
-                Senha = senha
-            });
+            // Faz POST em /api/session/login que valida + emite COOKIE de sessão
+            // (necessário pro middleware de auth liberar páginas Razor server-rendered).
+            var loginResp = await JS.InvokeAsync<JsonElement>(
+                "carstoreLogin", email, senha);
 
-            if (!resultado.IsSuccess)
+            var success = loginResp.TryGetProperty("ok", out var okEl) && okEl.GetBoolean();
+            if (!success)
             {
-                erro = resultado.Error ?? "E-mail ou senha inválidos.";
+                erro = loginResp.TryGetProperty("error", out var errEl)
+                    ? errEl.GetString() ?? "E-mail ou senha inválidos."
+                    : "E-mail ou senha inválidos.";
                 return;
             }
 
-            await AuthProvider.LoginAsync(resultado.Value!.Token);
+            var token = loginResp.GetProperty("token").GetString()!;
+            var role = loginResp.GetProperty("role").GetString();
 
-            if (resultado.Value!.Role == RoleUsuario.Admin.ToString())
-                Nav.NavigateTo("/dashboard");
-            else if (resultado.Value!.Role == RoleUsuario.Vendedor.ToString())
-                Nav.NavigateTo("/concessionaria");
-            else if (resultado.Value!.Role == RoleUsuario.Mecanico.ToString())
-                Nav.NavigateTo("/oficina");
+            // Salva token também no ProtectedLocalStorage (UI/AuthorizeView).
+            await AuthProvider.LoginAsync(token);
+
+            // forceLoad faz o navegador anexar o cookie em todos os requests subsequentes.
+            var destino = role switch
+            {
+                "Admin" => "/dashboard",
+                "Vendedor" => "/concessionaria",
+                "Mecanico" => "/oficina",
+                "Recepcionista" => "/recepcao",
+                _ => "/"
+            };
+            Nav.NavigateTo(destino, forceLoad: true);
         }
         catch (Exception ex)
         {
-            //erro = "Erro de conexão. Tente novamente.";
             erro = $"Erro inesperado: {ex.Message}";
             Console.WriteLine($"ERRO LOGIN: {ex}");
         }

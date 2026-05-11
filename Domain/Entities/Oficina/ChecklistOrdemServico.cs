@@ -14,7 +14,7 @@ namespace CarStoreManager.Domain.Entities.Oficina;
 public class ChecklistOrdemServico : Entity
 {
     public Guid OrdemServicoId { get; private set; }
-    public string Titulo { get; private set; } = null!;
+    public string Titulo { get; private set; } = string.Empty;
     public string Descricao { get; private set; } = null!;
     public StatusChecklistItem Status { get; private set; }
     public OrigemChecklistItem Origem { get; private set; }

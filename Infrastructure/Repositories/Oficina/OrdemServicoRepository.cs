@@ -81,4 +81,20 @@ public class OrdemServicoRepository : IOrdemServicoRepository
             .Include(o => o.Itens)
             .ToListAsync();
     }
+
+    public async Task AdicionarItemAsync(ItemOrdemServico item)
+    {
+        await _context.ItensOrdemServico.AddAsync(item);
+    }
+
+    public async Task<IEnumerable<OrdemServico>> ObterComItensAguardandoAsync(Guid componenteId)
+    {
+        return await _context.OrdensServico
+            .Include(o => o.Itens)
+            .Where(o => o.Itens.Any(i =>
+                i.ComponenteId == componenteId
+                && i.Origem == OrigemItemOrdemServico.Encomenda
+                && i.StatusItem == StatusItemOrdemServico.AguardandoChegada))
+            .ToListAsync();
+    }
 }

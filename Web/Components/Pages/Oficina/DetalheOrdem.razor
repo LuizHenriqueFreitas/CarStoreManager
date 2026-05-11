@@ -1,15 +1,18 @@
 @page "/oficina/os/{Id:guid}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Mecanico,Recepcionista")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
 @inject IOrdemServicoService OrdemService
+@inject IComponenteService ComponenteService
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Oficina.OrdemServico
+@using CarStoreManager.Application.DTOs.Oficina.Componente
+@using CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Web
-
 
 @if (carregando)
 {
@@ -28,18 +31,46 @@ else
             </button>
             <div class="header-info">
                 <div class="os-numero-grande">OS @os.NumeroPublico</div>
-                <span class="os-status @StatusClass(os.Status)">@os.Status</span>
+                <span class="os-status @StatusClass(os.Status)">@StatusLabel(os.Status)</span>
             </div>
             <div class="header-acoes">
-                @if (os.Status == "Pendente")
+                @if (PodeEnviarRevisao)
                 {
-                    <button class="btn-acao azul" @onclick="IniciarOS">Iniciar OS</button>
+                    <button class="btn-acao azul" @onclick="EnviarRevisao">Enviar para revisão</button>
                 }
-                @if (os.Status == "EmAndamento")
+                @if (PodeAprovarMecanico)
                 {
-                    <button class="btn-acao verde" @onclick="FinalizarOS">Finalizar OS</button>
+                    <button class="btn-acao azul" @onclick="AprovarMecanico">Aprovar orçamento</button>
+                    <button class="btn-acao laranja" @onclick="Devolver">Pedir ajustes</button>
+                }
+                @if (PodeMarcarClienteAprovou)
+                {
+                    <button class="btn-acao verde" @onclick="ClienteAprovou">Cliente aprovou</button>
+                }
+                @if (PodeIniciar)
+                {
+                    <button class="btn-acao azul" @onclick="IniciarOS">Iniciar serviço</button>
+                }
+                @if (PodeFinalizar)
+                {
+                    <button class="btn-acao verde" @onclick="FinalizarOS">Finalizar</button>
+                }
+                @if (PodeCancelar)
+                {
+                    <button class="btn-acao vermelho" @onclick="CancelarOS">Cancelar</button>
                 }
             </div>
+        </div>
+
+        <!-- Trilha visual do fluxo -->
+        <div class="trilha">
+            @foreach (var etapa in trilha)
+            {
+                <div class="trilha-etapa @TrilhaClass(etapa.status)">
+                    <span class="trilha-bola">@etapa.numero</span>
+                    <span class="trilha-label">@etapa.label</span>
+                </div>
+            }
         </div>
 
         <div class="detalhe-content">
@@ -83,7 +114,7 @@ else
                 <div class="info-card">
                     <div class="card-header-row">
                         <h2 class="card-titulo">Checklist</h2>
-                        @if (os.Status != "Finalizada" && os.Status != "Cancelada")
+                        @if (PodeEditarChecklist)
                         {
                             <button class="btn-mini" @onclick="() => mostrarAdicionarItem = true">
                                 + Adicionar item
@@ -113,45 +144,72 @@ else
                             <div class="checklist-item @(item.Status == "Concluido" ? "concluido" : "")">
                                 <div class="check-circle @CheckClass(item.Status)"
                                      @onclick="() => AvancarStatusChecklist(item)">
-                                    @if (item.Status == "Concluido")
-                                    {
-                                        <span>✓</span>
-                                    }
-                                    else if (item.Status == "EmAndamento")
-                                    {
-                                        <span>●</span>
-                                    }
+                                    @if (item.Status == "Concluido") { <span>✓</span> }
+                                    else if (item.Status == "EmAndamento") { <span>●</span> }
                                 </div>
                                 <span class="check-descricao">@item.Descricao</span>
                                 <span class="check-origem @(item.Origem == "Manual" ? "origem-manual" : "origem-auto")">
                                     @item.Origem
                                 </span>
-                                <span class="check-status-label @CheckClass(item.Status)">
-                                    @item.Status
-                                </span>
+                                <span class="check-status-label @CheckClass(item.Status)">@item.Status</span>
                             </div>
+                        }
+                        @if (!os.Checklist.Any())
+                        {
+                            <p class="vazio">Nenhum item de checklist.</p>
                         }
                     </div>
                 </div>
 
-                @if (os.Itens.Any())
-                {
-                    <div class="info-card">
+                <div class="info-card">
+                    <div class="card-header-row">
                         <h2 class="card-titulo">Peças utilizadas</h2>
-                        <div class="itens-lista">
-                            @foreach (var item in os.Itens)
-                            {
-                                <div class="item-peca">
-                                    <span class="item-qtd">@item.Quantidade×</span>
-                                    <span class="item-nome">@item.ComponenteId</span>
-                                    <span class="item-valor">
-                                        @item.ValorTotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
-                                    </span>
-                                </div>
-                            }
-                        </div>
+                        @if (PodeEditarItens)
+                        {
+                            <button class="btn-mini" @onclick="AbrirModalAdicionarPeca">
+                                + Adicionar peça
+                            </button>
+                        }
                     </div>
-                }
+
+                    <div class="itens-lista">
+                        @foreach (var item in os.Itens)
+                        {
+                            var nome = NomeComponente(item.ComponenteId);
+                            <div class="item-peca">
+                                <span class="item-qtd">@item.Quantidade×</span>
+                                <span class="item-nome">@nome</span>
+                                <span class="origem-tag @OrigemClass(item.Origem)">@OrigemLabel(item.Origem)</span>
+                                @if (item.StatusItem == "AguardandoChegada")
+                                {
+                                    <span class="status-tag aguardando"
+                                          title="Esperando chegar no estoque — atualiza automaticamente">
+                                        ⏳ A caminho
+                                    </span>
+                                }
+                                else if (item.StatusItem == "Recebido")
+                                {
+                                    <span class="status-tag recebido"
+                                          title="@(item.DataRecebimento?.ToString("dd/MM HH:mm"))">
+                                        ✓ Recebida
+                                    </span>
+                                }
+                                <span class="item-valor">
+                                    @item.ValorTotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
+                                </span>
+                                @if (PodeEditarItens)
+                                {
+                                    <button class="btn-mini-icone" title="Remover"
+                                            @onclick="() => RemoverPeca(item.Id)">×</button>
+                                }
+                            </div>
+                        }
+                        @if (!os.Itens.Any())
+                        {
+                            <p class="vazio">Nenhuma peça adicionada.</p>
+                        }
+                    </div>
+                </div>
             </div>
 
             <div class="detalhe-sidebar">
@@ -173,6 +231,86 @@ else
     </div>
 }
 
+@if (modalPecaVisivel)
+{
+    <div class="modal-overlay" @onclick="() => modalPecaVisivel = false">
+        <div class="modal-form" @onclick:stopPropagation>
+            <div class="modal-header">
+                <span class="modal-titulo">Adicionar peça à OS</span>
+                <button class="modal-fechar" @onclick="() => modalPecaVisivel = false">×</button>
+            </div>
+
+            <div class="form-campo">
+                <label class="campo-label">Componente *</label>
+                <select class="campo-input" @bind="pecaComponenteId">
+                    <option value="">Selecione...</option>
+                    @foreach (var c in componentesDisponiveis)
+                    {
+                        <option value="@c.Id">@c.Nome (@c.PartNumber)</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-campo">
+                <label class="campo-label">Origem *</label>
+                <div class="origem-radios">
+                    <label class="origem-radio @(pecaOrigem == "Estoque" ? "ativo" : "")">
+                        <input type="radio" name="origem" value="Estoque"
+                               checked="@(pecaOrigem == "Estoque")"
+                               @onchange='() => pecaOrigem = "Estoque"' />
+                        <span class="origem-nome">📦 Estoque</span>
+                        <span class="origem-desc">Oficina já tem</span>
+                    </label>
+                    <label class="origem-radio @(pecaOrigem == "Cliente" ? "ativo" : "")">
+                        <input type="radio" name="origem" value="Cliente"
+                               checked="@(pecaOrigem == "Cliente")"
+                               @onchange='() => pecaOrigem = "Cliente"' />
+                        <span class="origem-nome">🧍 Cliente</span>
+                        <span class="origem-desc">Cliente trouxe</span>
+                    </label>
+                    <label class="origem-radio @(pecaOrigem == "Encomenda" ? "ativo" : "")">
+                        <input type="radio" name="origem" value="Encomenda"
+                               checked="@(pecaOrigem == "Encomenda")"
+                               @onchange='() => pecaOrigem = "Encomenda"' />
+                        <span class="origem-nome">🚚 Encomenda</span>
+                        <span class="origem-desc">A caminho</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-campo">
+                    <label class="campo-label">Quantidade *</label>
+                    <input type="number" min="1" class="campo-input" @bind="pecaQuantidade" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Valor unitário (R$) *</label>
+                    <input type="number" step="0.01" class="campo-input" @bind="pecaValorUnitario" />
+                </div>
+            </div>
+
+            @if (erroPeca is not null)
+            {
+                <div class="erro-banner">@erroPeca</div>
+            }
+
+            <div class="modal-acoes">
+                <button class="btn-cancelar" @onclick="() => modalPecaVisivel = false">Cancelar</button>
+                <button class="btn-confirmar" @onclick="AdicionarPeca" disabled="@salvandoPeca">
+                    @(salvandoPeca ? "Adicionando..." : "Adicionar")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (os is not null)
+{
+    <div style="max-width:1100px; margin:0 auto; padding: 0 24px 24px;">
+        <PainelPagamentoOS OrdemServicoId="@Id" />
+    </div>
+}
+
 @if (mensagem is not null)
 {
     <div class="toast @(erroToast ? "toast-erro" : "toast-ok")">@mensagem</div>
@@ -188,8 +326,28 @@ else
     private string? mensagem;
     private bool erroToast = false;
 
+    // Adicionar peça
+    private bool modalPecaVisivel = false;
+    private List<ComponenteListaDTO> componentesDisponiveis = new();
+    private Guid pecaComponenteId;
+    private int pecaQuantidade = 1;
+    private decimal pecaValorUnitario;
+    private string pecaOrigem = "Estoque";
+    private string? erroPeca;
+    private bool salvandoPeca = false;
+
+    // Auth state
+    private bool ehAdmin, ehMecanico, ehRecepcionista;
+
+    private (int numero, string label, string status)[] trilha = Array.Empty<(int, string, string)>();
+
     protected override async Task OnInitializedAsync()
     {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        ehAdmin = state.User.IsInRole("Admin");
+        ehMecanico = state.User.IsInRole("Mecanico");
+        ehRecepcionista = state.User.IsInRole("Recepcionista");
+
         await CarregarOS();
     }
 
@@ -198,22 +356,156 @@ else
         carregando = true;
         var resultado = await OrdemService.GetByIdAsync(Id);
         os = resultado.IsSuccess ? resultado.Value : null;
+        AtualizarTrilha();
         carregando = false;
     }
 
-    private async Task IniciarOS()
+    private void AtualizarTrilha()
     {
-        var resultado = await OrdemService.UpdateAsync(
-            new AtualizarOrdemServicoDTO { Id = Id, Status = "EmAndamento" });
-        await TratarResultado(resultado, "OS iniciada com sucesso.");
+        if (os is null) return;
+        var s = os.Status;
+        int atual = s switch
+        {
+            "Pendente"           => 1,
+            "EmAnalise"          => 2,
+            "AguardandoCliente"  => 3,
+            "Aprovada"           => 4,
+            "EmAndamento"        => 5,
+            "Finalizada"         => 6,
+            "Cancelada"          => 0,
+            _                    => 1
+        };
+
+        var etapas = new[]
+        {
+            (1, "Orçamento", ""),
+            (2, "Revisão mecânico", ""),
+            (3, "Aguardando cliente", ""),
+            (4, "Aprovado", ""),
+            (5, "Em andamento", ""),
+            (6, "Finalizada", "")
+        };
+
+        trilha = etapas.Select(e =>
+        {
+            var status = atual == 0
+                ? "cancelada"
+                : (e.Item1 < atual ? "ok"
+                : e.Item1 == atual ? "atual"
+                : "pendente");
+            return (e.Item1, e.Item2, status);
+        }).ToArray();
     }
 
+    // ========== Permissões ==========
+
+    private bool PodeEnviarRevisao =>
+        os?.Status == "Pendente" && (ehAdmin || ehRecepcionista);
+
+    private bool PodeAprovarMecanico =>
+        os?.Status == "EmAnalise" && (ehAdmin || ehMecanico);
+
+    private bool PodeMarcarClienteAprovou =>
+        os?.Status == "AguardandoCliente" && (ehAdmin || ehRecepcionista);
+
+    private bool PodeIniciar =>
+        os?.Status == "Aprovada" && (ehAdmin || ehMecanico);
+
+    private bool PodeFinalizar =>
+        os?.Status == "EmAndamento" && (ehAdmin || ehMecanico);
+
+    private bool PodeCancelar =>
+        os is not null
+        && os.Status != "Finalizada" && os.Status != "Cancelada"
+        && (ehAdmin || ehRecepcionista);
+
+    private bool OsAberta =>
+        os is not null && os.Status != "Finalizada" && os.Status != "Cancelada";
+
+    private bool PodeEditarChecklist => OsAberta;
+    private bool PodeEditarItens     => OsAberta && (ehAdmin || ehMecanico || ehRecepcionista);
+
+    // ========== Transições ==========
+
+    private async Task EnviarRevisao()
+        => await TratarResultado(await OrdemService.EnviarParaRevisaoAsync(Id), "Enviado para revisão.");
+
+    private async Task AprovarMecanico()
+        => await TratarResultado(await OrdemService.AprovarPeloMecanicoAsync(Id), "Orçamento aprovado pelo mecânico.");
+
+    private async Task Devolver()
+        => await TratarResultado(await OrdemService.DevolverParaAjustesAsync(Id), "Devolvido pra ajustes.");
+
+    private async Task ClienteAprovou()
+        => await TratarResultado(await OrdemService.RegistrarAprovacaoDoClienteAsync(Id), "Aprovação do cliente registrada.");
+
+    private async Task IniciarOS()
+        => await TratarResultado(await OrdemService.IniciarAsync(Id), "Serviço iniciado.");
+
     private async Task FinalizarOS()
+        => await TratarResultado(await OrdemService.FinalizarAsync(Id), "OS finalizada.");
+
+    private async Task CancelarOS()
+        => await TratarResultado(await OrdemService.CancelarAsync(Id), "OS cancelada.");
+
+    // ========== Itens da OS (peças) ==========
+
+    private async Task AbrirModalAdicionarPeca()
     {
-        var resultado = await OrdemService.UpdateAsync(
-            new AtualizarOrdemServicoDTO { Id = Id, Status = "Finalizada" });
-        await TratarResultado(resultado, "OS finalizada com sucesso.");
+        if (componentesDisponiveis.Count == 0)
+        {
+            var r = await ComponenteService.GetAllAsync();
+            if (r.IsSuccess && r.Value is not null)
+                componentesDisponiveis = r.Value.Where(c => c.Ativo).ToList();
+        }
+        pecaComponenteId = Guid.Empty;
+        pecaQuantidade = 1;
+        pecaValorUnitario = 0;
+        pecaOrigem = "Estoque";
+        erroPeca = null;
+        modalPecaVisivel = true;
     }
+
+    private async Task AdicionarPeca()
+    {
+        if (pecaComponenteId == Guid.Empty) { erroPeca = "Selecione um componente."; return; }
+        if (pecaQuantidade < 1)             { erroPeca = "Quantidade inválida.";   return; }
+        if (pecaValorUnitario <= 0)         { erroPeca = "Valor unitário inválido."; return; }
+
+        salvandoPeca = true;
+        var r = await OrdemService.AdicionarItemAsync(new AdicionarItemOrdemServicoDTO
+        {
+            OrdemServicoId = Id,
+            ComponenteId = pecaComponenteId,
+            Quantidade = pecaQuantidade,
+            ValorUnitario = pecaValorUnitario,
+            Origem = pecaOrigem
+        });
+        salvandoPeca = false;
+
+        if (r.IsSuccess)
+        {
+            modalPecaVisivel = false;
+            await CarregarOS();
+            await MostrarMensagem("Peça adicionada.", false);
+        }
+        else
+        {
+            erroPeca = r.Error;
+        }
+    }
+
+    private async Task RemoverPeca(Guid itemId)
+    {
+        var r = await OrdemService.RemoverItemAsync(Id, itemId);
+        if (r.IsSuccess) await CarregarOS();
+        else await MostrarMensagem(r.Error ?? "Erro ao remover.", true);
+    }
+
+    private string NomeComponente(Guid id)
+        => componentesDisponiveis.FirstOrDefault(c => c.Id == id)?.Nome ?? id.ToString()[..8];
+
+    // ========== Checklist ==========
 
     private async Task AdicionarItemChecklist()
     {
@@ -241,6 +533,7 @@ else
     private async Task AvancarStatusChecklist(ChecklistItemDTO item)
     {
         if (item.Status == "Concluido") return;
+        if (!OsAberta) return;
 
         var novoStatus = item.Status == "Pendente" ? "EmAndamento" : "Concluido";
         var resultado = await OrdemService.AtualizarStatusChecklistAsync(
@@ -284,13 +577,30 @@ else
         StateHasChanged();
     }
 
+    // ========== UI helpers ==========
+
+    private string StatusLabel(string s) => s switch
+    {
+        "Pendente"          => "Pendente",
+        "EmAnalise"         => "Em revisão (mecânico)",
+        "AguardandoCliente" => "Aguardando cliente",
+        "Aprovada"          => "Aprovada",
+        "EmAndamento"       => "Em andamento",
+        "Finalizada"        => "Finalizada",
+        "Cancelada"         => "Cancelada",
+        _                   => s
+    };
+
     private string StatusClass(string status) => status switch
     {
-        "Pendente"    => "status-pendente",
-        "EmAndamento" => "status-andamento",
-        "Finalizada"  => "status-finalizada",
-        "Cancelada"   => "status-cancelada",
-        _             => "status-pendente"
+        "Pendente"          => "status-pendente",
+        "EmAnalise"         => "status-analise",
+        "AguardandoCliente" => "status-aguardando",
+        "Aprovada"          => "status-aprovada",
+        "EmAndamento"       => "status-andamento",
+        "Finalizada"        => "status-finalizada",
+        "Cancelada"         => "status-cancelada",
+        _                   => "status-pendente"
     };
 
     private string CheckClass(string status) => status switch
@@ -299,39 +609,46 @@ else
         "EmAndamento" => "check-andamento",
         _             => "check-pendente"
     };
+
+    private string TrilhaClass(string status) => status switch
+    {
+        "ok"        => "trilha-ok",
+        "atual"     => "trilha-atual",
+        "cancelada" => "trilha-cancelada",
+        _           => "trilha-pendente"
+    };
+
+    private string OrigemLabel(string origem) => origem switch
+    {
+        "Estoque"   => "📦 Estoque",
+        "Cliente"   => "🧍 Cliente",
+        "Encomenda" => "🚚 Encomenda",
+        _           => origem
+    };
+
+    private string OrigemClass(string origem) => origem switch
+    {
+        "Cliente"   => "origem-cliente",
+        "Encomenda" => "origem-encomenda",
+        _           => "origem-estoque"
+    };
 }
 
 <style>
-    .detalhe-page {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 24px;
-    }
+    .detalhe-page { max-width: 1100px; margin: 0 auto; padding: 24px; }
 
     .detalhe-header {
         display: flex;
         align-items: center;
         gap: 16px;
-        margin-bottom: 24px;
+        margin-bottom: 16px;
         flex-wrap: wrap;
     }
 
-    .btn-voltar {
-        background: none;
-        border: none;
-        color: #888;
-        font-size: 14px;
-        cursor: pointer;
-    }
-
+    .btn-voltar { background: none; border: none; color: #888; font-size: 14px; cursor: pointer; }
     .btn-voltar:hover { color: #1a1a1a; }
 
-    .header-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex: 1;
-    }
+    .header-info { display: flex; align-items: center; gap: 12px; flex: 1; }
 
     .os-numero-grande {
         font-size: 20px;
@@ -340,22 +657,71 @@ else
         color: #3b82f6;
     }
 
-    .header-acoes { display: flex; gap: 8px; margin-left: auto; }
+    .header-acoes { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
 
     .btn-acao {
         border: none;
         border-radius: 8px;
-        padding: 8px 16px;
+        padding: 8px 14px;
         font-size: 13px;
         font-weight: 500;
         cursor: pointer;
         color: #fff;
     }
-
-    .btn-acao.azul { background: #2563eb; }
+    .btn-acao.azul     { background: #2563eb; }
     .btn-acao.azul:hover { background: #1d4ed8; }
-    .btn-acao.verde { background: #16a34a; }
+    .btn-acao.verde    { background: #16a34a; }
     .btn-acao.verde:hover { background: #15803d; }
+    .btn-acao.laranja  { background: #ea580c; }
+    .btn-acao.laranja:hover { background: #c2410c; }
+    .btn-acao.vermelho { background: #e02020; }
+    .btn-acao.vermelho:hover { background: #c01818; }
+
+    .trilha {
+        display: flex;
+        gap: 4px;
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin-bottom: 20px;
+        overflow-x: auto;
+    }
+    .trilha-etapa {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        font-size: 12px;
+        white-space: nowrap;
+        flex: 1;
+        justify-content: center;
+        position: relative;
+    }
+    .trilha-etapa:not(:last-child)::after {
+        content: '→';
+        position: absolute;
+        right: -8px;
+        color: #ccc;
+    }
+    .trilha-bola {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 11px;
+    }
+    .trilha-pendente .trilha-bola { background: #f4f4f4; color: #aaa; }
+    .trilha-pendente .trilha-label { color: #aaa; }
+    .trilha-ok .trilha-bola       { background: #dcfce7; color: #16a34a; }
+    .trilha-ok .trilha-label      { color: #16a34a; }
+    .trilha-atual .trilha-bola    { background: #2563eb; color: #fff; }
+    .trilha-atual .trilha-label   { color: #2563eb; font-weight: 600; }
+    .trilha-cancelada .trilha-bola { background: #fff5f5; color: #e02020; }
+    .trilha-cancelada .trilha-label { color: #e02020; }
 
     .detalhe-content {
         display: grid;
@@ -388,7 +754,6 @@ else
         padding-bottom: 10px;
         border-bottom: 0.5px solid #eee;
     }
-
     .card-header-row .card-titulo { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
 
     .info-grid {
@@ -418,7 +783,6 @@ else
         font-size: 13px;
         outline: none;
     }
-
     .campo-input-inline:focus { border-color: #3b82f6; }
 
     .btn-mini {
@@ -430,12 +794,18 @@ else
         cursor: pointer;
         white-space: nowrap;
     }
+    .btn-mini.azul { background: #2563eb; color: #fff; border-color: #2563eb; }
 
-    .btn-mini.azul {
-        background: #2563eb;
-        color: #fff;
-        border-color: #2563eb;
+    .btn-mini-icone {
+        background: none;
+        border: none;
+        color: #888;
+        font-size: 18px;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0 6px;
     }
+    .btn-mini-icone:hover { color: #e02020; }
 
     .checklist { display: flex; flex-direction: column; gap: 8px; }
 
@@ -449,7 +819,6 @@ else
         border: 0.5px solid #f0f0f0;
         transition: opacity 0.2s;
     }
-
     .checklist-item.concluido { opacity: 0.6; }
 
     .check-circle {
@@ -465,7 +834,6 @@ else
         flex-shrink: 0;
         transition: all 0.15s;
     }
-
     .check-pendente   { border-color: #ccc; }
     .check-andamento  { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
     .check-concluido  { border-color: #16a34a; color: #16a34a; background: #dcfce7; }
@@ -477,7 +845,6 @@ else
         padding: 2px 6px;
         border-radius: 4px;
     }
-
     .origem-auto   { background: #f0f4ff; color: #3b5bdb; }
     .origem-manual { background: #f4f4f4; color: #888; }
 
@@ -498,9 +865,53 @@ else
         border-bottom: 0.5px solid #f0f0f0;
     }
 
-    .item-qtd { font-weight: 600; color: #888; min-width: 28px; }
+    .item-qtd  { font-weight: 600; color: #888; min-width: 28px; }
     .item-nome { flex: 1; }
     .item-valor { font-weight: 500; color: #1a1a1a; }
+
+    .origem-tag {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        white-space: nowrap;
+    }
+    .origem-estoque   { background: #f0f4ff; color: #3b5bdb; }
+    .origem-cliente   { background: #fff7ed; color: #ea580c; }
+    .origem-encomenda { background: #fff5f5; color: #c01818; }
+
+    .status-tag {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .status-tag.aguardando { background: #fef9c3; color: #854d0e; }
+    .status-tag.recebido   { background: #dcfce7; color: #166534; }
+
+    .origem-radios {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    .origem-radio {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px 8px;
+        border: 1.5px solid #e0e0e0;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.15s;
+        gap: 4px;
+    }
+    .origem-radio input { display: none; }
+    .origem-radio:hover { border-color: #2563eb; }
+    .origem-radio.ativo { border-color: #2563eb; background: #eff6ff; }
+    .origem-nome { font-size: 13px; font-weight: 600; }
+    .origem-desc { font-size: 11px; color: #888; }
+
+    .vazio { font-size: 13px; color: #888; padding: 12px 4px; }
 
     .progresso-card {
         background: #fff;
@@ -513,42 +924,53 @@ else
         position: sticky;
         top: 72px;
     }
-
     .progresso-label { font-size: 12px; color: #888; }
-
-    .progresso-pct {
-        font-size: 36px;
-        font-weight: 500;
-        color: #2563eb;
-    }
-
-    .barra-fundo {
-        height: 6px;
-        background: #f0f0f0;
-        border-radius: 3px;
-        overflow: hidden;
-    }
-
-    .barra-fill {
-        height: 100%;
-        background: #2563eb;
-        border-radius: 3px;
-        transition: width 0.4s;
-    }
-
+    .progresso-pct { font-size: 36px; font-weight: 500; color: #2563eb; }
+    .barra-fundo { height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
+    .barra-fill { height: 100%; background: #2563eb; border-radius: 3px; transition: width 0.4s; }
     .progresso-detalhe { font-size: 12px; color: #888; }
 
     .os-status {
         font-size: 11px;
-        padding: 3px 10px;
+        padding: 4px 12px;
         border-radius: 20px;
         font-weight: 500;
     }
-
     .status-pendente   { background: #fef9c3; color: #854d0e; }
+    .status-analise    { background: #f0f4ff; color: #3b5bdb; }
+    .status-aguardando { background: #fff7ed; color: #ea580c; }
+    .status-aprovada   { background: #f0fdf4; color: #16a34a; }
     .status-andamento  { background: #eff6ff; color: #1d4ed8; }
     .status-finalizada { background: #dcfce7; color: #166534; }
     .status-cancelada  { background: #fff5f5; color: #e02020; }
+
+    /* Modal de adicionar peça */
+    .modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000;
+    }
+    .modal-form {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        width: 100%;
+        max-width: 480px;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modal-titulo { font-size: 16px; font-weight: 500; }
+    .modal-fechar { background: none; border: none; font-size: 20px; color: #888; cursor: pointer; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-campo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .campo-label { font-size: 12px; color: #555; font-weight: 500; }
+    .campo-input { border: 0.5px solid #ccc; border-radius: 8px; padding: 9px 12px; font-size: 14px; outline: none; width: 100%; }
+    .campo-input:focus { border-color: #2563eb; }
+    .erro-banner { background: #fff5f5; border: 0.5px solid #fca5a5; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #e02020; margin: 12px 0; }
+    .modal-acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .btn-cancelar { background: #fff; border: 0.5px solid #ccc; border-radius: 8px; padding: 9px 18px; font-size: 13px; cursor: pointer; }
+    .btn-confirmar { background: #2563eb; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 500; color: #fff; cursor: pointer; }
+    .btn-confirmar:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .toast {
         position: fixed;
@@ -560,14 +982,8 @@ else
         font-weight: 500;
         z-index: 2000;
     }
-
     .toast-ok  { background: #dcfce7; color: #166534; border: 0.5px solid #86efac; }
     .toast-erro { background: #fff5f5; color: #e02020; border: 0.5px solid #fca5a5; }
 
-    .loading {
-        text-align: center;
-        padding: 80px;
-        color: #888;
-        font-size: 14px;
-    }
+    .loading { text-align: center; padding: 80px; color: #888; font-size: 14px; }
 </style>

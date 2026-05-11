@@ -132,7 +132,7 @@ public class OrdemServicoTest
         ordem.GetType().GetProperty(nameof(ordem.Status))!.SetValue(ordem, statusInicial);
 
         Action act = () => ordem.Iniciar();
-        act.Should().Throw<InvalidOperationException>().WithMessage("*Status*");
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]

@@ -14,7 +14,7 @@ using CarStoreManager.Domain.Entities;
 using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Repositories;
 
-namespace CarStoreManager.Tests.Unit.Application
+namespace CarStoreManager.Tests.Unidade.Services
 {
     public class VeiculoClienteServiceTests
     {
@@ -109,7 +109,8 @@ namespace CarStoreManager.Tests.Unit.Application
                 Marca = "Fiat",
                 Modelo = "Uno",
                 Cor = "Vermelho",
-                Ano = 2015
+                Ano = 2015,
+                Placa = "ABC1D23"
             };
             _clienteRepoMock.Setup(r => r.GetByIdAsync(dto.ClienteId)).ReturnsAsync(clienteMock.Object);
             _veiculoRepoMock.Setup(r => r.AddAsync(It.IsAny<VeiculoCliente>())).Returns(Task.CompletedTask);
@@ -232,7 +233,8 @@ namespace CarStoreManager.Tests.Unit.Application
                 "Honda",
                 "Civic",
                 "Preto",
-                2020
+                2020,
+                "ABC1D23"
             );
             typeof(VeiculoCliente).BaseType?.GetProperty("Id")?.SetValue(veiculo, Guid.NewGuid());
             return veiculo;

@@ -52,6 +52,7 @@ public class PlacaVeiculo
     protected string Normalizar(string placa)
     {
         return placa.Replace("-", "")
+                    .Replace(" ", "")
                     .ToUpper()
                     .Trim();
     }
@@ -67,12 +68,13 @@ public class PlacaVeiculo
         if (string.IsNullOrWhiteSpace(placa))
             return false;
 
-        placa = placa.ToUpper().Trim();
+        // Normaliza antes de validar — usuário pode digitar com ou sem hífen/espaço
+        placa = Normalizar(placa);
 
-        // regex do formato antigo: ABC-1234 ou ABC1234
-        var antiga = new Regex(@"^[A-Z]{3}-?\d{4}$");
+        // formato antigo: ABC1234
+        var antiga = new Regex(@"^[A-Z]{3}\d{4}$");
 
-        // regex do mercosul: ABC1D23
+        // formato mercosul: ABC1D23
         var mercosul = new Regex(@"^[A-Z]{3}\d[A-Z]\d{2}$");
 
         return antiga.IsMatch(placa) || mercosul.IsMatch(placa);

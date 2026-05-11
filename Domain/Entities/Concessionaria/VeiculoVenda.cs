@@ -22,7 +22,11 @@ public class VeiculoVenda : Entity
     public Ano Ano { get; private set; } = null!;
     public Quilometragem Quilometragem { get; private set; } = null!;
     public PlacaVeiculo Placa { get; private set; } = null!;
-    public string Renavan { get; private set; } = null!; //trocar por VO
+    public Renavam Renavam { get; private set; } = null!;
+
+    // IPVA — controle do imposto anual.
+    // AnoUltimoIpvaPago null indica que nunca foi pago via sistema.
+    public int? AnoUltimoIpvaPago { get; private set; }
 
     public TipoCambio Cambio { get; private set; }
     public TipoCombustivel Combustivel { get; private set; }
@@ -43,10 +47,12 @@ public class VeiculoVenda : Entity
         int ano,
         int quilometragem,
         string placa,
+        string renavam,
         TipoCambio cambio,
         TipoCombustivel combustivel,
         decimal valor,
-        AcessoriosVeiculo acessorios = AcessoriosVeiculo.Nenhum)
+        AcessoriosVeiculo acessorios = AcessoriosVeiculo.Nenhum,
+        int? anoUltimoIpvaPago = null)
     {
         AlterarMarca(marca);
         AlterarModelo(modelo);
@@ -56,6 +62,7 @@ public class VeiculoVenda : Entity
         Ano = new Ano(ano);
         Quilometragem = new Quilometragem(quilometragem);
         Placa = new PlacaVeiculo(placa);
+        Renavam = new Renavam(renavam);
 
         Cambio = cambio;
         Combustivel = combustivel;
@@ -63,6 +70,7 @@ public class VeiculoVenda : Entity
         Disponibilidade = DisponibilidadeVeiculo.Disponivel;
         Valor = new Dinheiro(valor);
         Acessorios = acessorios;
+        AnoUltimoIpvaPago = anoUltimoIpvaPago;
     }
 
     /*
@@ -76,6 +84,8 @@ public class VeiculoVenda : Entity
     public int GetAno() => Ano.GetValorAno();
     public int GetQuilometragem() => Quilometragem.GetQuilometragem();
     public string GetPlacaCarro() => Placa.GetPlaca();
+    public string GetRenavam() => Renavam.GetNumeroRenavam();
+    public bool IpvaEmDia(int anoReferencia) => AnoUltimoIpvaPago.HasValue && AnoUltimoIpvaPago.Value >= anoReferencia;
     public string GetCambio() => Cambio.ToString();
     public string GetCombustivel() => Combustivel.ToString();
     public decimal GetValor() => Valor.GetValorDinheiro();
@@ -128,6 +138,20 @@ public class VeiculoVenda : Entity
     }
     public void AlterarQuilometragem(int novaKm)
         => Quilometragem.AtualizarQuilometragem(novaKm);
+
+    public void AlterarRenavam(string novoRenavam)
+        => Renavam = new Renavam(novoRenavam);
+
+    public void RegistrarPagamentoIpva(int ano)
+    {
+        if (ano < 1900 || ano > DateTime.UtcNow.Year + 1)
+            throw new ArgumentException("Ano de IPVA inválido.", nameof(ano));
+        if (AnoUltimoIpvaPago.HasValue && ano < AnoUltimoIpvaPago.Value)
+            throw new InvalidOperationException("Não é possível registrar IPVA de ano anterior ao último pago.");
+        AnoUltimoIpvaPago = ano;
+    }
+
+    public void LimparPagamentoIpva() => AnoUltimoIpvaPago = null;
 
     public void AtualizarValor(Dinheiro novoValor)
     {

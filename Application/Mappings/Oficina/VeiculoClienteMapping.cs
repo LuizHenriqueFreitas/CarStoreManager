@@ -10,7 +10,7 @@ public static class VeiculoClienteMapping
     {
         return new VeiculoClienteDTO
         {
-            Id = entity.GetId(),
+            Id = entity.Id,
             ClienteId = entity.GetClienteId(),
             Marca = entity.GetMarca(),
             Modelo = entity.GetModelo(),
@@ -24,7 +24,7 @@ public static class VeiculoClienteMapping
     {
         return new VeiculoClienteListaDTO
         {
-            Id = entity.GetId(),
+            Id = entity.Id,
             ClienteId = entity.GetClienteId(),
             Marca = entity.GetMarca(),
             Modelo = entity.GetModelo(),
@@ -40,7 +40,8 @@ public static class VeiculoClienteMapping
             dto.Marca,
             dto.Modelo,
             dto.Cor,
-            dto.Ano
+            dto.Ano,
+            dto.Placa
         );
     }
 }

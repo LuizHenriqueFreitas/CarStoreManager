@@ -33,10 +33,11 @@ public class MecanicoRepository : IMecanicoRepository
             .ToListAsync();
 
     public async Task<IEnumerable<Mecanico>> ObterPorNivelAsync(NivelFuncionario nivel)
-        => await _context.Usuarios
-            .OfType<Mecanico>()
-            .Where(m => m.DadosFuncionario.GetNivel() == nivel)
-            .ToListAsync();
+    {
+        // EF não traduz método de OwnedType — trazemos para memória e filtramos.
+        var todos = await _context.Usuarios.OfType<Mecanico>().ToListAsync();
+        return todos.Where(m => m.DadosFuncionario.GetNivel() == nivel);
+    }
 
     public async Task<IEnumerable<Mecanico>> ObterDisponiveisAsync()
         => await _context.Usuarios

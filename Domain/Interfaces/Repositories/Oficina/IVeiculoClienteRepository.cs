@@ -5,4 +5,5 @@ namespace CarStoreManager.Domain.Repositories;
 public interface IVeiculoClienteRepository : IRepository<VeiculoCliente>
 {
     Task<IEnumerable<VeiculoCliente>> ObterPorClienteAsync(Guid clienteId);
+    Task<List<VeiculoCliente>> PesquisarAsync(string termo, Guid? clienteId = null);
 }

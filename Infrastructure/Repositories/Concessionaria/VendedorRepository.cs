@@ -26,10 +26,11 @@ public class VendedorRepository : IVendedorRepository
             .ToListAsync();
 
     public async Task<IEnumerable<Vendedor>> ObterPorNivelAsync(NivelFuncionario nivel)
-        => await _context.Usuarios
-            .OfType<Vendedor>()
-            .Where(v => v.DadosFuncionario.GetNivel() == nivel)
-            .ToListAsync();
+    {
+        // EF não traduz método de OwnedType — trazemos para memória e filtramos.
+        var todos = await _context.Usuarios.OfType<Vendedor>().ToListAsync();
+        return todos.Where(v => v.DadosFuncionario.GetNivel() == nivel);
+    }
 
     public async Task AddAsync(Vendedor vendedor)
         => await _context.Usuarios.AddAsync(vendedor);

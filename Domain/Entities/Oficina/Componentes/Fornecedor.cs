@@ -1,7 +1,7 @@
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.ValueObjects;
 
-namespace Oficina.Domain.Entities;
+namespace CarStoreManager.Domain.Entities.Oficina;
 
 public class Fornecedor : Entity
 {
@@ -9,7 +9,7 @@ public class Fornecedor : Entity
 
     public string NomeFantasia { get; private set; } = null!;
 
-    public string Cnpj { get; private set; } = null!; // trocar por VO
+    public Cnpj Cnpj { get; private set; } = null!;
 
     public Email Email { get; private set; } = null!;
 
@@ -17,9 +17,7 @@ public class Fornecedor : Entity
 
     public bool Ativo { get; private set; } = true;
 
-    public DateTime Datacriação => DateTime.Today;
-
-    protected Fornecedor() {}
+    protected Fornecedor() { }
 
     public Fornecedor(
         string razaoSocial,
@@ -28,10 +26,31 @@ public class Fornecedor : Entity
         string email,
         string telefone)
     {
-        RazaoSocial = razaoSocial;
-        NomeFantasia = nomeFantasia;
-        Cnpj = cnpj;
+        SetRazaoSocial(razaoSocial);
+        SetNomeFantasia(nomeFantasia);
+        Cnpj = new Cnpj(cnpj);
         Email = new Email(email);
         Telefone = new Telefone(telefone);
     }
+
+    public void SetRazaoSocial(string razaoSocial)
+    {
+        if (string.IsNullOrWhiteSpace(razaoSocial))
+            throw new ArgumentException("Razão social não pode ser vazia.", nameof(razaoSocial));
+        if (razaoSocial.Length > 200)
+            throw new ArgumentException("Razão social não pode ter mais de 200 caracteres.", nameof(razaoSocial));
+        RazaoSocial = razaoSocial.Trim();
+    }
+
+    public void SetNomeFantasia(string nomeFantasia)
+    {
+        if (string.IsNullOrWhiteSpace(nomeFantasia))
+            throw new ArgumentException("Nome fantasia não pode ser vazio.", nameof(nomeFantasia));
+        if (nomeFantasia.Length > 200)
+            throw new ArgumentException("Nome fantasia não pode ter mais de 200 caracteres.", nameof(nomeFantasia));
+        NomeFantasia = nomeFantasia.Trim();
+    }
+
+    public void Ativar() => Ativo = true;
+    public void Desativar() => Ativo = false;
 }

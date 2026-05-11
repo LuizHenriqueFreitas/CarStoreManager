@@ -1,11 +1,20 @@
 @page "/concessionaria/veiculo/novo"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Vendedor")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
 @inject IVeiculoVendaService VeiculoService
+@inject IFotoService FotoService
 @inject NavigationManager Nav
+@inject IAuthService AuthService
+@inject AuthenticationStateProvider AuthState
+
+@using CarStoreManager.Application.Common
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
+@using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 
 @using Microsoft.AspNetCore.Components.Web
 
@@ -18,7 +27,7 @@
     </div>
 
     <div class="form-card">
-        <h2 class="secao-titulo">Informações básicas</h2>
+        <h2 class="secao-titulo">Identificação do veículo</h2>
         <div class="form-grid">
             <div class="form-campo">
                 <label class="campo-label">Marca *</label>
@@ -38,7 +47,11 @@
             </div>
             <div class="form-campo">
                 <label class="campo-label">Placa *</label>
-                <input class="campo-input" @bind="form.Placa" placeholder="ABC-1D23" />
+                <input class="campo-input" @bind="form.Placa" placeholder="ABC1D23 ou ABC1234" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">RENAVAM *</label>
+                <input class="campo-input" @bind="form.Renavam" placeholder="9 a 11 dígitos com DV" />
             </div>
             <div class="form-campo">
                 <label class="campo-label">Motorização *</label>
@@ -49,8 +62,13 @@
                 <input type="number" class="campo-input" @bind="form.Quilometragem" placeholder="0" />
             </div>
             <div class="form-campo">
-                <label class="campo-label">Valor (R$) *</label>
-                <input type="number" class="campo-input" @bind="form.Valor" placeholder="0,00" />
+                <label class="campo-label">Valor de venda (R$) *</label>
+                <input type="number" step="0.01" class="campo-input" @bind="form.Valor" placeholder="0,00" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Ano do último IPVA pago</label>
+                <input type="number" class="campo-input" @bind="form.AnoUltimoIpvaPago"
+                       placeholder="(opcional)" />
             </div>
         </div>
     </div>
@@ -94,6 +112,29 @@
         </div>
     </div>
 
+    <div class="form-card">
+        <h2 class="secao-titulo">Fotos do anúncio</h2>
+        <p class="secao-sub">JPEG ou PNG, até 5MB cada. Você poderá reordenar depois.</p>
+
+        <InputFile OnChange="OnFotosSelecionadas" multiple
+                   accept="image/jpeg,image/png" class="file-input" />
+
+        @if (previewsNovasFotos.Any())
+        {
+            <div class="previews">
+                @for (int i = 0; i < previewsNovasFotos.Count; i++)
+                {
+                    var idx = i;
+                    <div class="preview-item">
+                        <img src="@previewsNovasFotos[idx]" alt="prévia" />
+                        <button type="button" class="preview-remove"
+                                @onclick="() => RemoverFotoSelecionada(idx)">×</button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
     @if (erro is not null)
     {
         <div class="erro-banner">@erro</div>
@@ -109,11 +150,19 @@
                 @onclick='() => Nav.NavigateTo("/concessionaria")'>
             Cancelar
         </button>
-        <button class="btn-salvar" @onclick="Salvar" disabled="@salvando">
+        <button class="btn-salvar" @onclick="IniciarSalvamento" disabled="@salvando">
             @(salvando ? "Salvando..." : "Cadastrar veículo")
         </button>
     </div>
 </div>
+
+<ConfirmacaoSenhaModal Visivel="modalSenhaVisivel"
+                       Titulo="Confirmar cadastro do veículo"
+                       Descricao="Esta ação registrará um novo veículo no estoque da concessionária. Digite sua senha para confirmar."
+                       TextoBotao="Cadastrar veículo"
+                       OnConfirmar="OnSenhaConfirmada"
+                       OnCancelar="() => modalSenhaVisivel = false"
+                       @ref="modalSenhaRef" />
 
 @code {
     private CriarVeiculoVendaDTO form = new()
@@ -124,6 +173,11 @@
     };
 
     private List<string> acessoriosSelecionados = new();
+    // Carrega o byte[] na memória já no momento da seleção, porque o stream
+    // de IBrowserFile só é válido enquanto o handler está executando.
+    private record FotoEmMemoria(string Nome, string ContentType, byte[] Conteudo);
+    private List<FotoEmMemoria> arquivosSelecionados = new();
+    private List<string> previewsNovasFotos = new();
     private bool salvando = false;
     private bool sucesso = false;
     private string? erro;
@@ -152,15 +206,74 @@
             acessoriosSelecionados.Add(valor);
     }
 
-    private async Task Salvar()
+    private async Task OnFotosSelecionadas(InputFileChangeEventArgs e)
     {
+        const long max = 5 * 1024 * 1024;
+        foreach (var file in e.GetMultipleFiles(20))
+        {
+            if (file.Size > max) continue;
+            if (file.ContentType != "image/jpeg" && file.ContentType != "image/png") continue;
+
+            // Lê o conteúdo NESTE handler (única janela em que o stream é válido).
+            using var ms = new MemoryStream();
+            await file.OpenReadStream(maxAllowedSize: max).CopyToAsync(ms);
+            var bytes = ms.ToArray();
+
+            arquivosSelecionados.Add(new FotoEmMemoria(file.Name, file.ContentType, bytes));
+
+            var base64 = Convert.ToBase64String(bytes);
+            previewsNovasFotos.Add($"data:{file.ContentType};base64,{base64}");
+        }
+
+        StateHasChanged();
+    }
+
+    private void RemoverFotoSelecionada(int indice)
+    {
+        if (indice < 0 || indice >= arquivosSelecionados.Count) return;
+        arquivosSelecionados.RemoveAt(indice);
+        previewsNovasFotos.RemoveAt(indice);
+    }
+
+    private bool modalSenhaVisivel;
+    private ConfirmacaoSenhaModal? modalSenhaRef;
+
+    private void IniciarSalvamento()
+    {
+        // Pré-validação: só abre o modal de senha se o formulário já está OK.
         if (string.IsNullOrWhiteSpace(form.Marca) ||
             string.IsNullOrWhiteSpace(form.Modelo) ||
-            string.IsNullOrWhiteSpace(form.Placa))
+            string.IsNullOrWhiteSpace(form.Placa) ||
+            string.IsNullOrWhiteSpace(form.Renavam))
         {
-            erro = "Preencha todos os campos obrigatórios.";
+            erro = "Preencha todos os campos obrigatórios (incluindo RENAVAM).";
             return;
         }
+        erro = null;
+        modalSenhaVisivel = true;
+    }
+
+    private async Task OnSenhaConfirmada(string senha)
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var idClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (idClaim is null || !Guid.TryParse(idClaim.Value, out var usuarioId))
+        {
+            modalSenhaRef?.MostrarErro();
+            return;
+        }
+        var verif = await AuthService.VerificarSenhaAsync(usuarioId, senha);
+        if (!verif.IsSuccess)
+        {
+            modalSenhaRef?.MostrarErro();
+            return;
+        }
+        await ExecutarSalvamento();
+    }
+
+    private async Task ExecutarSalvamento()
+    {
+        modalSenhaVisivel = false;
 
         salvando = true;
         erro = null;
@@ -170,20 +283,40 @@
         try
         {
             var resultado = await VeiculoService.AddAsync(form);
-            if (resultado.IsSuccess)
-            {
-                sucesso = true;
-                await Task.Delay(1200);
-                Nav.NavigateTo($"/concessionaria/veiculo/{resultado.Value}");
-            }
-            else
+            if (!resultado.IsSuccess)
             {
                 erro = resultado.Error;
+                return;
             }
+
+            var veiculoId = resultado.Value;
+
+            // Sobe as fotos selecionadas, se houver — agora a partir do byte[]
+            // já carregado, então independe do ciclo de vida do IBrowserFile.
+            if (arquivosSelecionados.Count > 0)
+            {
+                var arquivos = arquivosSelecionados
+                    .Select(f => new ArquivoUpload(
+                        f.Nome, f.Conteudo.Length, f.ContentType,
+                        () => new MemoryStream(f.Conteudo)))
+                    .ToList();
+
+                var rUpload = await FotoService.UploadFotosAsync("VeiculoVenda", veiculoId, arquivos);
+                if (!rUpload.IsSuccess)
+                {
+                    erro = $"Veículo cadastrado, mas falhou o upload de fotos: {rUpload.Error}";
+                    Nav.NavigateTo($"/concessionaria/veiculo/{veiculoId}");
+                    return;
+                }
+            }
+
+            sucesso = true;
+            await Task.Delay(900);
+            Nav.NavigateTo($"/concessionaria/veiculo/{veiculoId}");
         }
-        catch
+        catch (Exception ex)
         {
-            erro = "Erro ao cadastrar veículo.";
+            erro = $"Erro ao cadastrar veículo: {ex.Message}";
         }
         finally { salvando = false; }
     }
@@ -228,10 +361,12 @@
         font-size: 14px;
         font-weight: 500;
         color: #1a1a1a;
-        margin-bottom: 16px;
+        margin-bottom: 6px;
         padding-bottom: 10px;
         border-bottom: 0.5px solid #eee;
     }
+
+    .secao-sub { font-size: 12px; color: #888; margin-bottom: 12px; }
 
     .form-grid {
         display: grid;
@@ -271,6 +406,49 @@
     }
 
     .acc-check input { cursor: pointer; accent-color: #e02020; }
+
+    .file-input {
+        display: block;
+        margin-bottom: 12px;
+        font-size: 13px;
+    }
+
+    .previews {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 8px;
+    }
+
+    .preview-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        aspect-ratio: 4/3;
+        background: #f4f4f4;
+    }
+
+    .preview-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .preview-remove {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.6);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 
     .erro-banner {
         background: #fff5f5;

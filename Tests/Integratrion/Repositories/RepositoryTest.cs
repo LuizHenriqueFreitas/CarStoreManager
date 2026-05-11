@@ -17,7 +17,7 @@ public class RepositoryTests : IDisposable
     //cenario de conexão do sistema
     public RepositoryTests()
     {
-        _connection = new SqliteConnection("DataSource=:memory:");
+        _connection = new SqliteConnection("DataSource=:memory:;Foreign Keys=False");
         _connection.Open();
 
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -231,7 +231,8 @@ public class RepositoryTests : IDisposable
             "Honda",
             "Civic",
             "Preto",
-            2020
+            2020,
+            "ABC1D23"
         );
     }
 }

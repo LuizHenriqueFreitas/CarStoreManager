@@ -1,4 +1,4 @@
-namespace Oficina.Domain.Enums;
+namespace CarStoreManager.Domain.Enums;
 
 public enum TipoNotaFiscal
 {

@@ -1,0 +1,215 @@
+@page "/admin/configuracoes"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+
+@inject IConfiguracaoSistemaService ConfigService
+
+@using CarStoreManager.Application.Interfaces.Sistema
+@using CarStoreManager.Application.DTOs.Sistema
+
+<div class="cfg-page">
+    <h1 class="page-titulo">Configurações do sistema</h1>
+    <p class="page-sub">Parâmetros de funcionamento gerenciados pelo administrador</p>
+
+    @if (!string.IsNullOrEmpty(mensagem))
+    {
+        <div class="banner @(mensagemErro ? "banner-erro" : "banner-ok")">@mensagem</div>
+    }
+
+    @if (carregando)
+    {
+        <p class="muted">Carregando...</p>
+    }
+    else if (config is not null)
+    {
+        <div class="cfg-grid">
+            <section class="cfg-card">
+                <h2>Financiadora preferida</h2>
+                <p class="muted">Para onde os pedidos de simulação de financiamento serão enviados.</p>
+
+                <label>Nome da financiadora</label>
+                <input @bind="config.NomeFinanciadora" placeholder="ex: Banco XYZ — Financiamento Auto" />
+
+                <label>E-mail da financiadora</label>
+                <input @bind="config.EmailFinanciadora" type="email" placeholder="financiamento@banco.com.br" />
+
+                <div class="status-line">
+                    @if (config.FinanciadoraConfigurada)
+                    {
+                        <span class="tag-ok">✓ Financiadora configurada</span>
+                    }
+                    else
+                    {
+                        <span class="tag-warn">⚠ Não configurada — propostas com financiamento ficarão bloqueadas</span>
+                    }
+                </div>
+            </section>
+
+            <section class="cfg-card">
+                <h2>Servidor SMTP</h2>
+                <p class="muted">Credenciais usadas pelo sistema para enviar e-mails (financiamento, termos, notificações).</p>
+
+                <div class="row-2">
+                    <div>
+                        <label>Host SMTP</label>
+                        <input @bind="config.SmtpHost" placeholder="smtp.gmail.com" />
+                    </div>
+                    <div>
+                        <label>Porta</label>
+                        <input @bind="config.SmtpPort" type="number" min="1" max="65535" />
+                    </div>
+                </div>
+
+                <label>Usuário</label>
+                <input @bind="config.SmtpUsuario" placeholder="conta@gmail.com" />
+
+                <label>Senha (deixe em branco para manter a atual)</label>
+                <input @bind="config.SmtpSenha" type="password" placeholder="••••••••" />
+
+                <label class="check-line">
+                    <input type="checkbox" @bind="config.SmtpUsarSsl" />
+                    Usar SSL/TLS (recomendado)
+                </label>
+
+                <div class="row-2">
+                    <div>
+                        <label>E-mail remetente (From)</label>
+                        <input @bind="config.EmailRemetente" type="email" placeholder="noreply@carstore.com.br" />
+                    </div>
+                    <div>
+                        <label>Nome remetente</label>
+                        <input @bind="config.NomeRemetente" placeholder="CarStore Concessionária" />
+                    </div>
+                </div>
+
+                <div class="status-line">
+                    @if (config.SmtpConfigurado)
+                    {
+                        <span class="tag-ok">✓ SMTP configurado</span>
+                    }
+                    else
+                    {
+                        <span class="tag-warn">⚠ Faltam dados — host e e-mail remetente são obrigatórios</span>
+                    }
+                </div>
+            </section>
+        </div>
+
+        <div class="acoes">
+            <button class="btn-salvar" @onclick="Salvar" disabled="@salvando">
+                @(salvando ? "Salvando..." : "Salvar configurações")
+            </button>
+
+            <div class="testar-bloco">
+                <input type="email" placeholder="Enviar e-mail de teste para..."
+                       @bind="emailTeste" class="input-teste" />
+                <button class="btn-testar" @onclick="TestarEnvio"
+                        disabled="@(string.IsNullOrWhiteSpace(emailTeste) || salvando || !config.SmtpConfigurado)">
+                    Testar envio
+                </button>
+            </div>
+        </div>
+
+        @if (config.DataUltimaAtualizacao.HasValue)
+        {
+            <p class="muted ultima">Última atualização: @config.DataUltimaAtualizacao.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+        }
+    }
+</div>
+
+<style>
+    .cfg-page { padding:24px; max-width:980px; margin:0 auto; }
+    .page-titulo { margin:0; font-size:1.6rem; }
+    .page-sub { margin:4px 0 24px; color:#666; }
+    .banner { padding:12px 16px; border-radius:6px; margin-bottom:16px; }
+    .banner-ok { background:#e6f7ed; color:#1f7a3a; border:1px solid #b6e4c2; }
+    .banner-erro { background:#fdecea; color:#a72020; border:1px solid #f5c2bd; }
+    .muted { color:#888; font-size:0.9em; }
+    .cfg-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+    .cfg-card {
+        background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:20px;
+    }
+    .cfg-card h2 { margin:0 0 4px; font-size:1.1rem; }
+    .cfg-card label { display:block; margin:14px 0 4px; font-size:0.9em; color:#444; font-weight:500; }
+    .cfg-card input[type="text"], .cfg-card input[type="email"],
+    .cfg-card input[type="password"], .cfg-card input[type="number"], .cfg-card input:not([type]) {
+        width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:0.95em;
+    }
+    .row-2 { display:grid; grid-template-columns:2fr 1fr; gap:12px; }
+    .check-line { display:flex; align-items:center; gap:8px; margin-top:14px; }
+    .check-line input { width:auto !important; }
+    .status-line { margin-top:14px; padding-top:12px; border-top:1px dashed #eee; }
+    .tag-ok { background:#dff5e1; color:#1f7a3a; padding:4px 10px; border-radius:12px; font-size:0.85em; }
+    .tag-warn { background:#fff5d9; color:#8a6d00; padding:4px 10px; border-radius:12px; font-size:0.85em; }
+    .acoes { display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
+    .btn-salvar {
+        background:#0a84ff; color:#fff; padding:10px 24px; border-radius:6px; border:0;
+        cursor:pointer; font-weight:500;
+    }
+    .btn-salvar:disabled { background:#aaa; cursor:not-allowed; }
+    .testar-bloco { display:flex; gap:8px; }
+    .input-teste { padding:8px; border:1px solid #ccc; border-radius:4px; min-width:240px; }
+    .btn-testar {
+        background:#666; color:#fff; padding:8px 16px; border-radius:6px; border:0; cursor:pointer;
+    }
+    .btn-testar:disabled { background:#ccc; cursor:not-allowed; }
+    .ultima { text-align:right; margin-top:14px; }
+
+    @@media (max-width: 800px) { .cfg-grid { grid-template-columns:1fr; } }
+</style>
+
+@code {
+    private ConfiguracaoSistemaDTO? config;
+    private bool carregando = true;
+    private bool salvando;
+    private string mensagem = "";
+    private bool mensagemErro;
+    private string emailTeste = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Carregar();
+    }
+
+    private async Task Carregar()
+    {
+        carregando = true;
+        var r = await ConfigService.ObterAsync();
+        if (r.IsSuccess) config = r.Value;
+        else MostrarErro(r.Error);
+        carregando = false;
+    }
+
+    private async Task Salvar()
+    {
+        if (config is null) return;
+        salvando = true;
+        var r = await ConfigService.AtualizarAsync(config);
+        salvando = false;
+        if (r.IsSuccess)
+        {
+            MostrarOk("Configurações salvas.");
+            await Carregar(); // recarrega para limpar campo Senha e atualizar DataUltimaAtualizacao
+        }
+        else
+        {
+            MostrarErro(r.Error);
+        }
+    }
+
+    private async Task TestarEnvio()
+    {
+        if (string.IsNullOrWhiteSpace(emailTeste)) return;
+        salvando = true;
+        var r = await ConfigService.TestarEnvioAsync(emailTeste);
+        salvando = false;
+        if (r.IsSuccess) MostrarOk($"E-mail de teste enviado para {emailTeste}. Verifique a caixa de entrada.");
+        else MostrarErro(r.Error);
+    }
+
+    private void MostrarOk(string? msg) { mensagem = msg ?? ""; mensagemErro = false; }
+    private void MostrarErro(string? msg) { mensagem = msg ?? "Erro"; mensagemErro = true; }
+}

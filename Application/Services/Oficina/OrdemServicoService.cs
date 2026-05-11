@@ -128,8 +128,8 @@ public class OrdemServicoService : IOrdemServicoService
         if (ordem is null || componente is null)
             return Result.Fail("Dados inválidos");
 
-        if (componente.QuantidadeEstoque < dto.Quantidade)
-            return Result.Fail("Estoque insuficiente");
+        if (!Enum.TryParse<Domain.Enums.OrigemItemOrdemServico>(dto.Origem, true, out var origem))
+            return Result.Fail($"Origem inválida: {dto.Origem}. Use Estoque, Cliente ou Encomenda.");
 
         try
         {
@@ -137,14 +137,16 @@ public class OrdemServicoService : IOrdemServicoService
                 dto.ComponenteId,
                 dto.OrdemServicoId,
                 dto.Quantidade,
-                componente.GetValor()
+                dto.ValorUnitario,
+                origem
             );
 
             ordem.AdicionarItem(item);
-            componente.RemoverEstoque(dto.Quantidade);
 
-            _repository.Update(ordem);
-            _componenteRepository.Update(componente);
+            // Registra o item explicitamente no DbSet — evita o caso em que o
+            // change tracker não detecta o Add via collection com OwnedTypes
+            // e tenta UPDATE numa linha inexistente.
+            await _repository.AdicionarItemAsync(item);
             await _repository.SaveChangesAsync();
 
             return Result.Ok();
@@ -282,12 +284,60 @@ public class OrdemServicoService : IOrdemServicoService
     }
 
     /*
-        ainda nao foi implementada uma maneira de atualizar 
+        ainda nao foi implementada uma maneira de atualizar
         as informações internas de uma OS
     */
     public async Task<Result> UpdateAsync (AtualizarOrdemServicoDTO entity)
     {
         return Result.Fail("Funcao nao implementada");
+    }
+
+    // =========================
+    // FLUXO DE APROVAÇÃO
+    // =========================
+
+    public Task<Result> EnviarParaRevisaoAsync(Guid ordemId)
+        => MutarOrdem(ordemId, o => o.EnviarParaRevisaoMecanico());
+
+    public Task<Result> AprovarPeloMecanicoAsync(Guid ordemId)
+        => MutarOrdem(ordemId, o => o.AprovarPeloMecanico());
+
+    public Task<Result> DevolverParaAjustesAsync(Guid ordemId)
+        => MutarOrdem(ordemId, o => o.DevolverParaAjustesDoRecepcionista());
+
+    public Task<Result> RegistrarAprovacaoDoClienteAsync(Guid ordemId)
+        => MutarOrdem(ordemId, o => o.RegistrarAprovacaoDoCliente());
+
+    public Task<Result> IniciarAsync(Guid ordemId)
+        => MutarOrdem(ordemId, o => o.Iniciar());
+
+    public Task<Result> FinalizarAsync(Guid ordemId)
+        => MutarOrdem(ordemId, o => o.Finalizar());
+
+    public Task<Result> CancelarAsync(Guid ordemId)
+        => MutarOrdem(ordemId, o => o.Cancelar());
+
+    private async Task<Result> MutarOrdem(Guid id, Action<Domain.Entities.Oficina.OrdemServico> mutacao)
+    {
+        var ordem = await _repository.GetByIdAsync(id);
+        if (ordem is null)
+            return Result.Fail("Ordem de serviço não encontrada");
+
+        try
+        {
+            mutacao(ordem);
+            _repository.Update(ordem);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Result.Fail(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Erro: {ex.Message}");
+        }
     }
 
     /*

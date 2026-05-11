@@ -1,0 +1,423 @@
+@page "/oficina/notas-fiscais"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+
+@inject INotaFiscalEntradaService NfService
+@inject IComponenteService ComponenteService
+
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Oficina.NotaFiscal
+@using CarStoreManager.Application.DTOs.Oficina.Componente
+@using Microsoft.AspNetCore.Components.Forms
+
+<div class="nf-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-titulo">Notas Fiscais de Entrada</h1>
+            <p class="page-sub">Importe XML da NF-e, mapeie itens ao estoque e aprove para gerar entrada fiscal</p>
+        </div>
+        <label class="btn-novo">
+            + Importar XML
+            <InputFile OnChange="OnArquivoSelecionado" accept=".xml" style="display:none" />
+        </label>
+    </div>
+
+    @if (!string.IsNullOrEmpty(mensagem))
+    {
+        <div class="banner @(mensagemErro ? "banner-erro" : "banner-ok")">@mensagem</div>
+    }
+
+    @if (carregandoLista)
+    {
+        <p class="muted">Carregando notas...</p>
+    }
+    else if (notas is null || !notas.Any())
+    {
+        <div class="vazio">
+            <p>Nenhuma nota fiscal importada ainda.</p>
+            <p class="muted">Faça upload de um XML de NF-e (modelo 55) para começar.</p>
+        </div>
+    }
+    else
+    {
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Nº/Série</th>
+                    <th>Fornecedor</th>
+                    <th>Data emissão</th>
+                    <th>Valor total</th>
+                    <th>Itens</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var n in notas)
+                {
+                    <tr>
+                        <td><strong>@n.Numero</strong>/@n.Serie</td>
+                        <td>
+                            <div>@n.FornecedorRazaoSocial</div>
+                            <small class="muted">CNPJ @FormatarCnpj(n.FornecedorCnpj)</small>
+                        </td>
+                        <td>@n.DataEmissao.ToString("dd/MM/yyyy")</td>
+                        <td>R$ @n.ValorTotal.ToString("N2")</td>
+                        <td>
+                            @n.ItensMapeados/@n.TotalItens mapeados
+                            @if (n.ItensMapeados < n.TotalItens && n.Status == "ImportadaAguardandoAprovacao")
+                            {
+                                <span class="tag-warn">⚠ pendente</span>
+                            }
+                        </td>
+                        <td><span class="tag-status tag-@n.Status.ToLower()">@StatusLabel(n.Status)</span></td>
+                        <td>
+                            <button class="btn-link" @onclick="() => AbrirDetalhe(n.Id)">Ver detalhes →</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@if (notaDetalhe is not null)
+{
+    <div class="modal-bg" @onclick="FecharDetalhe">
+        <div class="modal-painel" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h2>NF-e @notaDetalhe.Numero/@notaDetalhe.Serie</h2>
+                <button class="btn-fechar" @onclick="FecharDetalhe">✕</button>
+            </div>
+
+            <div class="cabecalho-nota">
+                <div><strong>Fornecedor:</strong> @notaDetalhe.FornecedorRazaoSocial (CNPJ @FormatarCnpj(notaDetalhe.FornecedorCnpj))</div>
+                <div><strong>Chave de acesso:</strong> <code>@notaDetalhe.ChaveAcesso</code></div>
+                <div><strong>Emissão:</strong> @notaDetalhe.DataEmissao.ToString("dd/MM/yyyy HH:mm")
+                    &nbsp;|&nbsp; <strong>Importada em:</strong> @notaDetalhe.DataImportacao.ToString("dd/MM/yyyy HH:mm")</div>
+                <div>
+                    <strong>Valor produtos:</strong> R$ @notaDetalhe.ValorProdutos.ToString("N2")
+                    &nbsp;|&nbsp; <strong>Impostos:</strong> R$ @notaDetalhe.ValorImpostos.ToString("N2")
+                    &nbsp;|&nbsp; <strong>Total nota:</strong> R$ @notaDetalhe.ValorTotal.ToString("N2")
+                </div>
+                <div><strong>Status:</strong> <span class="tag-status tag-@notaDetalhe.Status.ToLower()">@StatusLabel(notaDetalhe.Status)</span>
+                    @if (!string.IsNullOrEmpty(notaDetalhe.MotivoRejeicao))
+                    {
+                        <span class="muted">— @notaDetalhe.MotivoRejeicao</span>
+                    }
+                </div>
+            </div>
+
+            <h3>Itens da nota</h3>
+            <table class="tbl tbl-itens">
+                <thead>
+                    <tr>
+                        <th>cProd</th>
+                        <th>Descrição (XML)</th>
+                        <th>NCM</th>
+                        <th>CFOP</th>
+                        <th>Qtd</th>
+                        <th>Vlr unit.</th>
+                        <th>Vlr total</th>
+                        <th>ICMS</th>
+                        <th>Componente vinculado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in notaDetalhe.Itens)
+                    {
+                        <tr class="@(item.Mapeado ? "" : "linha-pendente")">
+                            <td><code>@item.CodigoProdutoFornecedor</code></td>
+                            <td>
+                                @item.DescricaoProdutoFornecedor
+                                @if (!string.IsNullOrEmpty(item.NumeroLoteFornecedor))
+                                {
+                                    <br /><small class="muted">Lote @item.NumeroLoteFornecedor
+                                        @if (item.DataValidade.HasValue) { <text> · val @item.DataValidade.Value.ToString("dd/MM/yyyy")</text> }
+                                    </small>
+                                }
+                            </td>
+                            <td>@item.Ncm</td>
+                            <td>@item.Cfop</td>
+                            <td>
+                                @if (PodeEditar)
+                                {
+                                    <input type="number" min="1" class="qtd-input"
+                                           value="@item.Quantidade"
+                                           @onchange="@(e => AlterarQuantidade(item.Id, e.Value?.ToString()))" />
+                                }
+                                else
+                                {
+                                    @item.Quantidade
+                                }
+                                @item.Unidade
+                            </td>
+                            <td>R$ @item.ValorUnitario.ToString("N2")</td>
+                            <td>R$ @item.ValorTotal.ToString("N2")</td>
+                            <td><small>@item.AliquotaIcms.ToString("N2")% (R$ @item.ValorIcms.ToString("N2"))</small></td>
+                            <td>
+                                @if (PodeEditar)
+                                {
+                                    <select class="comp-select"
+                                            value="@(item.ComponenteId?.ToString() ?? "")"
+                                            @onchange="@(e => VincularComponente(item.Id, e.Value?.ToString()))">
+                                        <option value="">-- escolher componente --</option>
+                                        @foreach (var c in componentes)
+                                        {
+                                            <option value="@c.Id">@c.Nome (@c.PartNumber)</option>
+                                        }
+                                    </select>
+                                }
+                                else if (item.Mapeado)
+                                {
+                                    <span>@item.ComponenteNome (@item.ComponentePartNumber)</span>
+                                }
+                                else
+                                {
+                                    <span class="muted">não vinculado</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            @if (PodeEditar)
+            {
+                <div class="acoes-nota">
+                    <button class="btn-aprovar" disabled="@(!TodosMapeados || aprovando)" @onclick="Aprovar">
+                        @(aprovando ? "Aprovando..." : "✓ Aprovar e dar entrada no estoque")
+                    </button>
+
+                    <div class="rejeitar-bloco">
+                        <input type="text" placeholder="Motivo da rejeição"
+                               @bind="motivoRejeicao" class="input-motivo" />
+                        <button class="btn-rejeitar"
+                                disabled="@(string.IsNullOrWhiteSpace(motivoRejeicao) || aprovando)"
+                                @onclick="Rejeitar">
+                            ✕ Rejeitar nota
+                        </button>
+                    </div>
+                </div>
+                @if (!TodosMapeados)
+                {
+                    <p class="muted">Vincule todos os itens a um componente antes de aprovar.</p>
+                }
+            }
+        </div>
+    </div>
+}
+
+<style>
+    .nf-page { padding: 24px; }
+    .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+    .page-titulo { margin:0; font-size:1.6rem; }
+    .page-sub { margin:4px 0 0; color:#666; }
+    .btn-novo {
+        background:#0a84ff; color:#fff; padding:10px 18px;
+        border-radius:6px; border:0; cursor:pointer; font-weight:500;
+    }
+    .btn-novo:hover { background:#0066cc; }
+    .banner { padding:12px 16px; border-radius:6px; margin-bottom:16px; }
+    .banner-ok { background:#e6f7ed; color:#1f7a3a; border:1px solid #b6e4c2; }
+    .banner-erro { background:#fdecea; color:#a72020; border:1px solid #f5c2bd; }
+    .vazio { text-align:center; padding:60px; color:#666; }
+    .muted { color:#888; font-size:0.9em; }
+    .tbl { width:100%; border-collapse:collapse; }
+    .tbl th, .tbl td { padding:10px; border-bottom:1px solid #eee; text-align:left; vertical-align:top; }
+    .tbl th { background:#f7f7f7; font-weight:600; font-size:0.9em; }
+    .tag-status { padding:3px 10px; border-radius:12px; font-size:0.8em; font-weight:500; }
+    .tag-importadaaguardandoaprovacao { background:#fff5d9; color:#8a6d00; }
+    .tag-aprovada { background:#dff5e1; color:#1f7a3a; }
+    .tag-rejeitada { background:#fdecea; color:#a72020; }
+    .tag-warn { background:#fff5d9; color:#8a6d00; padding:2px 8px; border-radius:8px; margin-left:6px; font-size:0.8em; }
+    .btn-link { background:none; border:0; color:#0a84ff; cursor:pointer; font-size:0.95em; }
+    .modal-bg {
+        position:fixed; inset:0; background:rgba(0,0,0,0.5);
+        display:flex; justify-content:center; align-items:center; z-index:1000;
+    }
+    .modal-painel {
+        background:#fff; border-radius:8px; max-width:1200px; width:95%;
+        max-height:90vh; overflow:auto; padding:24px;
+    }
+    .modal-header { display:flex; justify-content:space-between; margin-bottom:16px; }
+    .modal-header h2 { margin:0; }
+    .btn-fechar { background:none; border:0; font-size:1.5em; cursor:pointer; color:#666; }
+    .cabecalho-nota { background:#f7f7f7; padding:14px; border-radius:6px; margin-bottom:20px; line-height:1.8; font-size:0.95em; }
+    .cabecalho-nota code { background:#fff; padding:2px 6px; border-radius:3px; font-size:0.85em; }
+    .tbl-itens td { font-size:0.92em; }
+    .qtd-input { width:60px; padding:4px; border:1px solid #ccc; border-radius:4px; }
+    .comp-select { padding:4px; border:1px solid #ccc; border-radius:4px; min-width:200px; }
+    .linha-pendente { background:#fffbe6; }
+    .acoes-nota { margin-top:20px; display:flex; justify-content:space-between; gap:16px; align-items:center; }
+    .btn-aprovar {
+        background:#1f7a3a; color:#fff; padding:12px 24px;
+        border-radius:6px; border:0; cursor:pointer; font-weight:500;
+    }
+    .btn-aprovar:disabled { background:#aaa; cursor:not-allowed; }
+    .rejeitar-bloco { display:flex; gap:8px; }
+    .input-motivo { padding:8px; border:1px solid #ccc; border-radius:4px; min-width:240px; }
+    .btn-rejeitar {
+        background:#a72020; color:#fff; padding:8px 16px;
+        border-radius:6px; border:0; cursor:pointer;
+    }
+    .btn-rejeitar:disabled { background:#ccc; cursor:not-allowed; }
+</style>
+
+@code {
+    private List<NotaFiscalListaDTO> notas = new();
+    private NotaFiscalDTO? notaDetalhe;
+    private List<ComponenteListaDTO> componentes = new();
+
+    private string mensagem = "";
+    private bool mensagemErro;
+    private bool carregandoLista = true;
+    private bool aprovando;
+    private string motivoRejeicao = "";
+
+    private bool PodeEditar => notaDetalhe?.Status == "ImportadaAguardandoAprovacao";
+    private bool TodosMapeados => notaDetalhe is not null && notaDetalhe.Itens.All(i => i.Mapeado);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarComponentes();
+        await CarregarNotas();
+    }
+
+    private async Task CarregarNotas()
+    {
+        carregandoLista = true;
+        var r = await NfService.ListarAsync();
+        notas = r.IsSuccess ? r.Value!.ToList() : new();
+        if (!r.IsSuccess) MostrarErro(r.Error);
+        carregandoLista = false;
+    }
+
+    private async Task CarregarComponentes()
+    {
+        var r = await ComponenteService.GetAllAsync();
+        if (r.IsSuccess) componentes = r.Value!.ToList();
+    }
+
+    private async Task OnArquivoSelecionado(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+
+        try
+        {
+            using var sr = new StreamReader(file.OpenReadStream(maxAllowedSize: 10_000_000));
+            var xml = await sr.ReadToEndAsync();
+            var r = await NfService.ImportarXmlAsync(xml);
+            if (r.IsSuccess)
+            {
+                MostrarOk($"NF-e {r.Value!.Numero} importada com sucesso. Revise os itens e aprove.");
+                await CarregarNotas();
+                await AbrirDetalhe(r.Value.Id);
+            }
+            else
+            {
+                MostrarErro(r.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MostrarErro($"Falha ao ler arquivo: {ex.Message}");
+        }
+    }
+
+    private async Task AbrirDetalhe(Guid id)
+    {
+        var r = await NfService.ObterAsync(id);
+        if (r.IsSuccess)
+        {
+            notaDetalhe = r.Value;
+            motivoRejeicao = "";
+        }
+        else
+        {
+            MostrarErro(r.Error);
+        }
+    }
+
+    private void FecharDetalhe()
+    {
+        notaDetalhe = null;
+    }
+
+    private async Task VincularComponente(Guid itemId, string? componenteIdStr)
+    {
+        if (!Guid.TryParse(componenteIdStr, out var componenteId)) return;
+        var r = await NfService.VincularComponenteAsync(itemId, componenteId);
+        if (r.IsSuccess)
+            await AbrirDetalhe(notaDetalhe!.Id);
+        else
+            MostrarErro(r.Error);
+    }
+
+    private async Task AlterarQuantidade(Guid itemId, string? qtyStr)
+    {
+        if (!int.TryParse(qtyStr, out var qty) || qty <= 0) return;
+        var r = await NfService.AlterarQuantidadeItemAsync(itemId, qty);
+        if (r.IsSuccess)
+            await AbrirDetalhe(notaDetalhe!.Id);
+        else
+            MostrarErro(r.Error);
+    }
+
+    private async Task Aprovar()
+    {
+        if (notaDetalhe is null) return;
+        aprovando = true;
+        var r = await NfService.AprovarAsync(notaDetalhe.Id);
+        aprovando = false;
+        if (r.IsSuccess)
+        {
+            MostrarOk("Nota aprovada. Estoque atualizado e lotes registrados.");
+            await CarregarNotas();
+            await AbrirDetalhe(notaDetalhe.Id);
+        }
+        else
+        {
+            MostrarErro(r.Error);
+        }
+    }
+
+    private async Task Rejeitar()
+    {
+        if (notaDetalhe is null || string.IsNullOrWhiteSpace(motivoRejeicao)) return;
+        aprovando = true;
+        var r = await NfService.RejeitarAsync(notaDetalhe.Id, motivoRejeicao);
+        aprovando = false;
+        if (r.IsSuccess)
+        {
+            MostrarOk("Nota rejeitada.");
+            await CarregarNotas();
+            await AbrirDetalhe(notaDetalhe.Id);
+        }
+        else
+        {
+            MostrarErro(r.Error);
+        }
+    }
+
+    private void MostrarOk(string? msg) { mensagem = msg ?? ""; mensagemErro = false; }
+    private void MostrarErro(string? msg) { mensagem = msg ?? "Erro"; mensagemErro = true; }
+
+    private static string StatusLabel(string status) => status switch
+    {
+        "ImportadaAguardandoAprovacao" => "Aguardando aprovação",
+        "Aprovada" => "Aprovada",
+        "Rejeitada" => "Rejeitada",
+        _ => status
+    };
+
+    private static string FormatarCnpj(string cnpj)
+    {
+        if (string.IsNullOrEmpty(cnpj) || cnpj.Length != 14) return cnpj;
+        return $"{cnpj[..2]}.{cnpj[2..5]}.{cnpj[5..8]}/{cnpj[8..12]}-{cnpj[12..]}";
+    }
+}

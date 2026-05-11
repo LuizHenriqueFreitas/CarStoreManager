@@ -1,4 +1,5 @@
 @page "/concessionaria"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Vendedor")]
 
 @namespace CarStoreManager.Web.Components.Pages
 

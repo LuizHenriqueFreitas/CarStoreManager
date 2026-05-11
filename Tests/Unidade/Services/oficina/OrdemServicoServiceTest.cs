@@ -14,7 +14,7 @@ using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Repositories;
 
-namespace CarStoreManager.Tests.Unit.Application
+namespace CarStoreManager.Tests.Unidade.Services
 {
     public class OrdemServicoServiceTests
     {
@@ -169,24 +169,25 @@ namespace CarStoreManager.Tests.Unit.Application
         }
 
         [Fact]
-        public async Task AdicionarItemAsync_EstoqueInsuficiente_RetornaFalha()
+        public async Task AdicionarItemAsync_OrdemOuComponenteInexistente_RetornaFalha()
         {
-            var ordem = CriarOrdemValida();
-            var componente = CriarComponenteValido(quantidade: 1);
-            _ordemRepoMock.Setup(r => r.GetByIdAsync(ordem.Id)).ReturnsAsync(ordem);
-            _componenteRepoMock.Setup(c => c.GetByIdAsync(componente.Id)).ReturnsAsync(componente);
+            // OrdemServicoService não valida mais estoque (estoque vive em
+            // EstoqueComponente). Cobertura focada na validação de inexistência.
+            _ordemRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((OrdemServico?)null);
+            _componenteRepoMock.Setup(c => c.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Componente?)null);
 
             var dto = new AdicionarItemOrdemServicoDTO
             {
-                OrdemServicoId = ordem.Id,
-                ComponenteId = componente.Id,
-                Quantidade = 5
+                OrdemServicoId = Guid.NewGuid(),
+                ComponenteId = Guid.NewGuid(),
+                Quantidade = 5,
+                ValorUnitario = 10m
             };
 
             var result = await _service.AdicionarItemAsync(dto);
 
             result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Contain("Estoque insuficiente");
+            result.Error.Should().Contain("inválidos");
         }
 
         [Fact]
@@ -210,9 +211,9 @@ namespace CarStoreManager.Tests.Unit.Application
 
             result.IsSuccess.Should().BeTrue();
             ordem.Itens.Should().ContainSingle();
-            componente.GetQuantidade().Should().Be(7); // 10 - 3
-            _componenteRepoMock.Verify(c => c.Update(componente), Times.Once);
-            _ordemRepoMock.Verify(r => r.Update(ordem), Times.Once);
+            // estoque agora vive em EstoqueComponente; o service não decrementa Componente diretamente.
+            _componenteRepoMock.Verify(c => c.Update(It.IsAny<Componente>()), Times.Never);
+            _ordemRepoMock.Verify(r => r.AdicionarItemAsync(It.IsAny<ItemOrdemServico>()), Times.Once);
             _ordemRepoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
         }
 
@@ -525,13 +526,9 @@ namespace CarStoreManager.Tests.Unit.Application
         private static Componente CriarComponenteValido(int quantidade = 20)
         {
             var componente = new Componente(
-                "Filtro",
-                "F-01",
-                SistemaComponente.Motor,
-                30.00m,
-                quantidade,
-                5
-            );
+                "FIL-001", "Filtro", "Filtro de óleo", "Bosch", "PN-FIL-1",
+                "OEM-1", "7891234567890", "87083010", "0102000",
+                "Motor", "UN", 0.3m, 90);
             typeof(Componente).BaseType?.GetProperty("Id")?.SetValue(componente, Guid.NewGuid());
             return componente;
         }

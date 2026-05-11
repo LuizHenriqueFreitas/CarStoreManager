@@ -31,6 +31,10 @@
                 <label class="campo-label">Ano *</label>
                 <input type="number" class="campo-input" @bind="form.Ano" placeholder="2020" />
             </div>
+            <div class="form-campo">
+                <label class="campo-label">Placa *</label>
+                <input class="campo-input" @bind="form.Placa" placeholder="ABC1D23 ou ABC1234" />
+            </div>
         </div>
         <div class="cliente-acoes">
             <button type="button" class="btn-buscar" @onclick="AbrirBusca">Buscar veículo existente</button>
@@ -50,7 +54,14 @@
     <div class="modal-overlay" @onclick="FecharBusca">
         <div class="modal-busca" @onclick:stopPropagation>
             <h3>Buscar veículo do cliente</h3>
-            <input class="campo-input" type="text" @bind="termoBusca" @bind:event="oninput" placeholder="Marca, modelo ou cor..." />
+            <input class="campo-input" type="text"
+                   value="@termoBusca"
+                   @oninput="OnTermoChanged"
+                   placeholder="Marca, modelo, cor ou placa..." />
+            @if (buscando)
+            {
+                <p class="sem-resultados">Buscando...</p>
+            }
             @if (resultadosBusca.Any())
             {
                 <ul class="resultados-lista">
@@ -105,9 +116,10 @@
     private async Task CadastrarVeiculo()
     {
         mensagemErro = null;
-        if (string.IsNullOrWhiteSpace(form.Marca) || string.IsNullOrWhiteSpace(form.Modelo) || string.IsNullOrWhiteSpace(form.Cor))
+        if (string.IsNullOrWhiteSpace(form.Marca) || string.IsNullOrWhiteSpace(form.Modelo)
+            || string.IsNullOrWhiteSpace(form.Cor) || string.IsNullOrWhiteSpace(form.Placa))
         {
-            mensagemErro = "Preencha marca, modelo e cor.";
+            mensagemErro = "Preencha marca, modelo, cor e placa.";
             return;
         }
         if (ClienteId == Guid.Empty)
@@ -152,20 +164,34 @@
     private void AbrirBusca() => mostrarModalBusca = true;
     private void FecharBusca() => mostrarModalBusca = false;
 
-    private async Task BuscarAsync(string termo)
+    private bool buscando = false;
+    private CancellationTokenSource? _buscaCts;
+
+    private async Task OnTermoChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
     {
-        resultadosBusca = new();
-        if (string.IsNullOrWhiteSpace(termo))
+        termoBusca = e.Value?.ToString() ?? string.Empty;
+
+        _buscaCts?.Cancel();
+        _buscaCts = new CancellationTokenSource();
+        var ct = _buscaCts.Token;
+
+        if (string.IsNullOrWhiteSpace(termoBusca) || termoBusca.Length < 2)
+        {
+            resultadosBusca = new();
             return;
+        }
+
+        buscando = true;
         try
         {
-            // Supõe que o serviço tenha PesquisarAsync(string) que retorna Lista
-            // Se não existir, adapte para o método que você usa.
-            // Exemplo: var result = await VeiculoClienteService.PesquisarAsync(termo);
-            // Para agora, vamos deixar um placeholder.
-            // Como você ainda não tem esse método, manteremos resultadosBusca vazio.
+            await Task.Delay(250, ct);
+            var clienteId = ClienteId == Guid.Empty ? (Guid?)null : ClienteId;
+            var resultado = await VeiculoClienteService.PesquisarAsync(termoBusca, clienteId);
+            if (!ct.IsCancellationRequested && resultado.IsSuccess)
+                resultadosBusca = resultado.Value ?? new();
         }
-        catch { }
+        catch (TaskCanceledException) { }
+        finally { buscando = false; }
     }
 
     private async Task SelecionarVeiculo(Guid id)

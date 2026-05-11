@@ -10,10 +10,12 @@ public class VeiculoVendaDTO
     public int Ano { get; set; }
     public int Quilometragem { get; set; }
     public string Placa { get; set; } = null!;
+    public string Renavam { get; set; } = null!;
     public string Cambio { get; set; } = null!;
     public string Combustivel { get; set; } = null!;
     public string Disponibilidade { get; set; } = null!;
     public decimal Valor { get; set; }
+    public int? AnoUltimoIpvaPago { get; set; }
     public List<string> Acessorios { get; set; } = new();
     public List<string> Fotos { get; set; } = new();
 }

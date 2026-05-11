@@ -142,8 +142,8 @@ public class ClienteService : IClienteService
         {
             cliente.AtualizarClienteDados(
                 dto.Nome,
-                dto.Telefone,
-                dto.Email
+                dto.Email,
+                dto.Telefone
             );
 
             _repository.Update(cliente);

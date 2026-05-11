@@ -4,5 +4,6 @@ public enum RoleUsuario
 {
     Admin = 1,
     Vendedor = 2,
-    Mecanico = 3
+    Mecanico = 3,
+    Recepcionista = 4
 }

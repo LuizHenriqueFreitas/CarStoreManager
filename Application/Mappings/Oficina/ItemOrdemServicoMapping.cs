@@ -13,11 +13,14 @@ public static class ItemOrdemServicoMapping
     {
         return new ItemOrdemServicoDTO
         {
-            Id = entity.GetId(),
+            Id = entity.Id,
             ComponenteId = entity.GetComponentId(),
             Quantidade = entity.GetQuantidade(),
             ValorUnitario = entity.GetValorUnitario(),
-            ValorTotal = entity.GetValorTotal()
+            ValorTotal = entity.GetValorTotal(),
+            Origem = entity.GetOrigem(),
+            StatusItem = entity.GetStatusItem(),
+            DataRecebimento = entity.DataRecebimento
         };
     }
 

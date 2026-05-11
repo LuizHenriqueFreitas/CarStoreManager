@@ -11,6 +11,7 @@ public interface IAuthService
     Task<Result> DesativarUsuarioAsync(Guid usuarioId);
 
     Task<Result<UsuarioDTO>> ObterUsuarioAsync(Guid id);
+    Task<Result<IEnumerable<UsuarioDTO>>> ListarUsuariosAsync(string? role = null);
     Task<Result> AtualizarUsuarioAsync(Guid id, AtualizarUsuarioDTO dto);
     Task<Result> AlterarSenhaAsync(Guid id, string senhaAtual, string novaSenha);
     Task<Result> LogoutAsync(Guid usuarioId);

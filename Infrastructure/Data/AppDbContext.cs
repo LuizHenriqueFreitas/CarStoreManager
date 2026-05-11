@@ -1,10 +1,9 @@
-using System.ComponentModel;
 using CarStoreManager.Domain.Entities;
 using CarStoreManager.Domain.Entities.Concessionaria;
 using CarStoreManager.Domain.Entities.Oficina;
+using CarStoreManager.Domain.Entities.Sistema;
 using CarStoreManager.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
-using Oficina.Domain.Entities;
 
 namespace CarStoreManager.Infrastructure.Data;
 
@@ -31,6 +30,12 @@ public class AppDbContext : DbContext
     public DbSet<ItemOrdemServico> ItensOrdemServico { get; set; }
     public DbSet<ChecklistOrdemServico> ChecklistItens { get; set; }
     public DbSet<Componente> Componentes { get; set; }
+    public DbSet<EstoqueComponente> EstoqueComponentes { get; set; }
+    public DbSet<PagamentoOrdemServico> PagamentosOrdemServico { get; set; }
+    public DbSet<Fornecedor> Fornecedores { get; set; }
+    public DbSet<NotaFiscal> NotasFiscais { get; set; }
+    public DbSet<ItemNotaFiscal> ItensNotaFiscal { get; set; }
+    public DbSet<LoteComponente> LotesComponente { get; set; }
 
     // =========================
     // CONCESSIONÁRIA
@@ -38,6 +43,13 @@ public class AppDbContext : DbContext
     public DbSet<VeiculoVenda> VeiculosVenda { get; set; }
     public DbSet<Foto> Fotos { get; set; }
     public DbSet<PropostaVenda> PropostasVenda { get; set; }
+    public DbSet<Vistoria> Vistorias { get; set; }
+    public DbSet<TermoEntrega> TermosEntrega { get; set; }
+
+    // =========================
+    // SISTEMA
+    // =========================
+    public DbSet<ConfiguracaoSistema> ConfiguracoesSistema { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -50,7 +62,8 @@ public class AppDbContext : DbContext
             .HasDiscriminator<string>("TipoUsuario")
             .HasValue<Admin>("Admin")
             .HasValue<Vendedor>("Vendedor")
-            .HasValue<Mecanico>("Mecanico");
+            .HasValue<Mecanico>("Mecanico")
+            .HasValue<Recepcionista>("Recepcionista");
 
         modelBuilder.Entity<Usuario>().HasKey(u => u.Id);
 
@@ -87,6 +100,13 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Mecanico>()
             .OwnsOne(m => m.DadosFuncionario, d =>
+            {
+                d.Property("Nivel").HasColumnName("Nivel");
+                d.Property("DataContratacao").HasColumnName("DataContratacao");
+            });
+
+        modelBuilder.Entity<Recepcionista>()
+            .OwnsOne(r => r.DadosFuncionario, d =>
             {
                 d.Property("Nivel").HasColumnName("Nivel");
                 d.Property("DataContratacao").HasColumnName("DataContratacao");
@@ -132,6 +152,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<VeiculoCliente>()
             .OwnsOne(v => v.Ano, a =>
                 a.Property("Valor").HasColumnName("Ano"));
+
+        modelBuilder.Entity<VeiculoCliente>()
+            .OwnsOne(v => v.Placa, p =>
+                p.Property("Valor").HasColumnName("Placa").IsRequired());
 
         modelBuilder.Entity<VeiculoCliente>()
             .HasMany(v => v.HistoricoServicos)
@@ -185,15 +209,129 @@ public class AppDbContext : DbContext
         // CHECKLIST ITEM
         // =========================
         modelBuilder.Entity<ChecklistOrdemServico>().HasKey(c => c.Id);
+        modelBuilder.Entity<ChecklistOrdemServico>().Property(c => c.Titulo).IsRequired(false);
 
         // =========================
         // COMPONENTE
         // =========================
         modelBuilder.Entity<Componente>().HasKey(c => c.Id);
+        // SKUInterno, PartNumber, CodigoOEM, CodigoBarras, NCM, CEST
+        // são strings simples — EF mapeia automaticamente.
+
+        // Equivalências bidirecionais — duas navigations para a mesma tabela.
+        modelBuilder.Entity<ComponenteEquivalente>().HasKey(e => e.Id);
 
         modelBuilder.Entity<Componente>()
-            .OwnsOne(c => c.Valor, d =>
-                d.Property("Valor").HasColumnName("ValorUnitario"));
+            .HasMany(c => c.EquivalenciasOriginais)
+            .WithOne(e => e.ComponenteOriginal)
+            .HasForeignKey(e => e.ComponenteOriginalId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Componente>()
+            .HasMany(c => c.EquivalenciasRelacionadas)
+            .WithOne(e => e.ComponenteEquivalenteRelacionado)
+            .HasForeignKey(e => e.ComponenteEquivalenteId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // =========================
+        // PAGAMENTO ORDEM SERVICO
+        // =========================
+        modelBuilder.Entity<PagamentoOrdemServico>().HasKey(p => p.Id);
+        modelBuilder.Entity<PagamentoOrdemServico>()
+            .HasIndex(p => p.OrdemServicoId);
+        modelBuilder.Entity<PagamentoOrdemServico>()
+            .OwnsOne(p => p.Valor, vo =>
+                vo.Property("Valor").HasColumnName("Valor").HasPrecision(18, 2));
+
+        // =========================
+        // FORNECEDOR
+        // =========================
+        modelBuilder.Entity<Fornecedor>().HasKey(f => f.Id);
+
+        modelBuilder.Entity<Fornecedor>()
+            .OwnsOne(f => f.Cnpj, c =>
+                c.Property(x => x.Numero).HasColumnName("Cnpj").IsRequired());
+
+        modelBuilder.Entity<Fornecedor>()
+            .OwnsOne(f => f.Email, e =>
+                e.Property("Endereco").HasColumnName("Email").IsRequired());
+
+        modelBuilder.Entity<Fornecedor>()
+            .OwnsOne(f => f.Telefone, t =>
+                t.Property("Numero").HasColumnName("Telefone").IsRequired());
+
+        // =========================
+        // NOTA FISCAL (entrada)
+        // =========================
+        modelBuilder.Entity<NotaFiscal>().HasKey(n => n.Id);
+        modelBuilder.Entity<NotaFiscal>()
+            .HasIndex(n => n.ChaveAcesso).IsUnique();
+        modelBuilder.Entity<NotaFiscal>()
+            .Property(n => n.ValorProdutos).HasPrecision(18, 2);
+        modelBuilder.Entity<NotaFiscal>()
+            .Property(n => n.ValorImpostos).HasPrecision(18, 2);
+        modelBuilder.Entity<NotaFiscal>()
+            .Property(n => n.ValorTotal).HasPrecision(18, 2);
+        modelBuilder.Entity<NotaFiscal>()
+            .HasOne(n => n.Fornecedor)
+            .WithMany()
+            .HasForeignKey(n => n.FornecedorId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<NotaFiscal>()
+            .HasMany(n => n.Itens)
+            .WithOne(i => i.NotaFiscal)
+            .HasForeignKey(i => i.NotaFiscalId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ItemNotaFiscal>().HasKey(i => i.Id);
+        modelBuilder.Entity<ItemNotaFiscal>()
+            .Property(i => i.ValorUnitario).HasPrecision(18, 4);
+        modelBuilder.Entity<ItemNotaFiscal>()
+            .Property(i => i.ValorTotal).HasPrecision(18, 2);
+        modelBuilder.Entity<ItemNotaFiscal>()
+            .Property(i => i.AliquotaIcms).HasPrecision(5, 2);
+        modelBuilder.Entity<ItemNotaFiscal>()
+            .Property(i => i.ValorIcms).HasPrecision(18, 2);
+        modelBuilder.Entity<ItemNotaFiscal>()
+            .HasOne(i => i.Componente)
+            .WithMany()
+            .HasForeignKey(i => i.ComponenteId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // =========================
+        // LOTE COMPONENTE
+        // =========================
+        modelBuilder.Entity<LoteComponente>().HasKey(l => l.Id);
+        modelBuilder.Entity<LoteComponente>()
+            .HasOne(l => l.Componente)
+            .WithMany(c => c.Lotes)
+            .HasForeignKey(l => l.ComponenteId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LoteComponente>()
+            .HasOne(l => l.Fornecedor)
+            .WithMany()
+            .HasForeignKey(l => l.FornecedorId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LoteComponente>()
+            .HasOne(l => l.NotaFiscal)
+            .WithMany()
+            .HasForeignKey(l => l.NotaFiscalId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LoteComponente>()
+            .HasIndex(l => new { l.ComponenteId, l.NumeroLote });
+
+        // =========================
+        // ESTOQUE COMPONENTE
+        // =========================
+        modelBuilder.Entity<EstoqueComponente>().HasKey(e => e.Id);
+        modelBuilder.Entity<EstoqueComponente>()
+            .HasOne(e => e.Componente)
+            .WithMany()
+            .HasForeignKey(e => e.PecaId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<EstoqueComponente>()
+            .HasIndex(e => e.PecaId)
+            .IsUnique();
 
         // =========================
         // VEICULO VENDA
@@ -222,10 +360,15 @@ public class AppDbContext : DbContext
             .HasForeignKey(f => f.VeiculoVendaId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<VeiculoVenda>()
+            .OwnsOne(v => v.Renavam, r =>
+                r.Property(x => x.Numero).HasColumnName("Renavam").IsRequired());
+
         // =========================
-        // FOTO VEICULO
+        // FOTO
         // =========================
-        modelBuilder.Entity<FotoVeiculo>().HasKey(f => f.Id);
+        modelBuilder.Entity<Foto>().HasKey(f => f.Id);
+        modelBuilder.Entity<Foto>().HasIndex(f => new { f.EntidadeTipo, f.EntidadeId });
 
         // =========================
         // PROPOSTA VENDA
@@ -257,6 +400,32 @@ public class AppDbContext : DbContext
             });
 
             // ===== FINANCIAMENTO =====
+            entity.OwnsOne(p => p.ValorParcela, vo =>
+            {
+                vo.Property("Valor").HasColumnName("ValorParcela").HasPrecision(18, 2);
+            });
+            entity.Property(p => p.TaxaJurosMensal).HasPrecision(7, 4);
         });
+
+        // =========================
+        // VISTORIA
+        // =========================
+        modelBuilder.Entity<Vistoria>().HasKey(v => v.Id);
+        modelBuilder.Entity<Vistoria>()
+            .HasIndex(v => v.PropostaVendaId);
+
+        // =========================
+        // TERMO ENTREGA
+        // =========================
+        modelBuilder.Entity<TermoEntrega>().HasKey(t => t.Id);
+        modelBuilder.Entity<TermoEntrega>()
+            .HasIndex(t => t.PropostaVendaId).IsUnique();
+        modelBuilder.Entity<TermoEntrega>()
+            .HasIndex(t => t.TokenAssinatura);
+
+        // =========================
+        // CONFIGURAÇÃO SISTEMA (singleton)
+        // =========================
+        modelBuilder.Entity<ConfiguracaoSistema>().HasKey(c => c.Id);
     }
 }

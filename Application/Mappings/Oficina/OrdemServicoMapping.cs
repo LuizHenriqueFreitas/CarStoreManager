@@ -11,7 +11,7 @@ public static class OrdemServicoMapping
     {
         return new OrdemServicoDTO
         {
-            Id = entity.GetId(),
+            Id = entity.Id,
             ClienteId = entity.GetClienteId(),
             VeiculoClienteId = entity.GetVeiculoClienteId(),
             MecanicoId = entity.GetMecacnicoId(),
@@ -44,7 +44,7 @@ public static class OrdemServicoMapping
     {
         return new OrdemServicoListaDTO
         {
-            Id = entity.GetId(),
+            Id = entity.Id,
             ClienteId = entity.GetClienteId(),
             VeiculoClienteId = entity.GetVeiculoClienteId(),
             Tipo = entity.GetTipoServico(),

@@ -14,7 +14,7 @@ using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Repositories;
 
-namespace CarStoreManager.Tests.Unit.Application
+namespace CarStoreManager.Tests.Unidade.Services
 {
     public class MecanicoServiceTests
     {
@@ -80,14 +80,14 @@ namespace CarStoreManager.Tests.Unit.Application
                 Email = "joao@oficina.com",
                 Telefone = "11988888888",
                 Senha = "Senha@123",
-                Especialidade = "Motor",
+                Especialidade = "Mecanica",
                 Nivel = "Pleno",
-                DataContratacao = DateTime.Today
+                DataContratacao = DateTime.Now.AddDays(1)
             };
 
             var result = await _service.AddAsync(dto);
 
-            result.IsSuccess.Should().BeTrue();
+            result.IsSuccess.Should().BeTrue(result.Error);
             result.Value.Should().NotBeEmpty();
             _repoMock.Verify(r => r.AddAsync(It.IsAny<Mecanico>()), Times.Once);
             _repoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
@@ -227,11 +227,11 @@ namespace CarStoreManager.Tests.Unit.Application
                 "Mecânico Teste",
                 "mecanico@teste.com",
                 "11999999999",
-                "hash",
+                "Senha123",
                 3000,
                 EspecialidadeMecanico.Mecanica,
                 NivelFuncionario.Junior,
-                DateTime.Today
+                DateTime.Now.AddDays(1)
             );
             typeof(Mecanico).BaseType?.GetProperty("Id")?.SetValue(mecanico, Guid.NewGuid());
             return mecanico;

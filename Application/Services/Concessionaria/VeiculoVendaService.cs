@@ -211,9 +211,35 @@ public class VeiculoVendaService : IVeiculoVendaService
         }
     }
 
-    public async Task<Result> ReordenarFotosAsync(Guid id)
+    public async Task<Result> ReordenarFotosAsync(Guid id, List<Guid> fotos)
     {
-        //nada
+        var veiculo = await _repository.GetByIdAsync(id);
+        if (veiculo is null)
+            return Result.Fail("Veículo não encontrado");
+
+        try
+        {
+            // Reordena conforme a sequência informada de IDs de foto.
+            // Fotos não listadas mantêm sua ordem relativa após as listadas.
+            var lookup = veiculo.Fotos.ToDictionary(f => f.Id);
+            var ordem = 0;
+            foreach (var fotoId in fotos)
+            {
+                if (!lookup.TryGetValue(fotoId, out var foto))
+                    return Result.Fail($"Foto {fotoId} não pertence ao veículo");
+                foto.AtualizarOrdem(ordem++);
+            }
+            foreach (var foto in veiculo.Fotos.Where(f => !fotos.Contains(f.Id)))
+                foto.AtualizarOrdem(ordem++);
+
+            _repository.Update(veiculo);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail(ex.Message);
+        }
     }
 
     /*

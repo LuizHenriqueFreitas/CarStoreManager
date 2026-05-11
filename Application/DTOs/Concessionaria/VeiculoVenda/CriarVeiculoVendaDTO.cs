@@ -9,8 +9,10 @@ public class CriarVeiculoVendaDTO
     public int Ano { get; set; }
     public int Quilometragem { get; set; }
     public string Placa { get; set; } = null!;
+    public string Renavam { get; set; } = null!;
     public string Cambio { get; set; } = null!;
     public string Combustivel { get; set; } = null!;
     public decimal Valor { get; set; }
     public List<string> Acessorios { get; set; } = new();
+    public int? AnoUltimoIpvaPago { get; set; }
 }

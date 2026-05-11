@@ -22,7 +22,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
 
         public MecanicoRepositoryTests()
         {
-            _connection = new SqliteConnection("DataSource=:memory:");
+            _connection = new SqliteConnection("DataSource=:memory:;Foreign Keys=False");
             _connection.Open();
 
             var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -89,7 +89,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
             var m1 = await SalvarMecanico("M1", "m1@email.com", "11911111111", EspecialidadeMecanico.Funilaria);
             var m2 = await SalvarMecanico("M2", "m2@email.com", "11922222222", EspecialidadeMecanico.Mecanica);
             // Adiciona um vendedor para garantir que não aparece
-            var vendedor = new Vendedor("Vend", "vend@email.com", "11933333333", "hash", 2000, NivelFuncionario.Junior, DateTime.Today);
+            var vendedor = new Vendedor("Vend", "vend@email.com", "11933333333", "Senha123", 2000, NivelFuncionario.Junior, DateTime.Now.AddDays(1));
             _context.Usuarios.Add(vendedor);
             await _context.SaveChangesAsync();
 
@@ -172,8 +172,8 @@ namespace CarStoreManager.Tests.Integration.Repositories
         [Fact]
         public async Task AddAsync_MecanicoValido_PersisteCorretamente()
         {
-            var mecanico = new Mecanico("Carlos", "carlos@email.com", "11977777777", "hash", 2000,
-                EspecialidadeMecanico.Eletrica, NivelFuncionario.Junior, DateTime.Today);
+            var mecanico = new Mecanico("Carlos", "carlos@email.com", "11977777777", "Senha123", 2000,
+                EspecialidadeMecanico.Eletrica, NivelFuncionario.Junior, DateTime.Now.AddDays(1));
             await _repository.AddAsync(mecanico);
             await _repository.SaveChangesAsync();
 
@@ -223,7 +223,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
             EspecialidadeMecanico especialidade,
             NivelFuncionario nivel = NivelFuncionario.Junior)
         {
-            var mecanico = new Mecanico(nome, email, telefone, "hash", 3000, especialidade, nivel, DateTime.Today);
+            var mecanico = new Mecanico(nome, email, telefone, "Senha123", 3000, especialidade, nivel, DateTime.Now.AddDays(1));
             await _repository.AddAsync(mecanico);
             await _repository.SaveChangesAsync();
             return mecanico;

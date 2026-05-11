@@ -12,4 +12,16 @@ public interface IOrdemServicoRepository : IRepository<OrdemServico>
     Task<IEnumerable<OrdemServico>> ObterPorClienteAsync(Guid clienteId);
 
     Task<IEnumerable<OrdemServico>> ObterPorStatusAsync(StatusOrdemServico status);
+
+    /// <summary>
+    /// Devolve todas as OS que têm pelo menos um item de Encomenda aguardando
+    /// chegada de um determinado componente. Inclui os itens carregados.
+    /// </summary>
+    Task<IEnumerable<OrdemServico>> ObterComItensAguardandoAsync(Guid componenteId);
+
+    /// <summary>
+    /// Registra explicitamente um novo item no DbSet evitando ambiguidades de
+    /// detecção de mudanças quando o pai já está tracked.
+    /// </summary>
+    Task AdicionarItemAsync(ItemOrdemServico item);
 }

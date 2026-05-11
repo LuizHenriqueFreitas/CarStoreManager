@@ -33,11 +33,13 @@ public class ClienteRepository : IClienteRepository
         if (string.IsNullOrWhiteSpace(termo))
             return new List<Cliente>();
 
-        termo = termo.Trim().ToLower();
+        var termoLower = termo.Trim().ToLower();
+        // CPF é armazenado sem formatação; reduz o termo a dígitos para casar.
+        var termoCpf = new string(termo.Where(char.IsDigit).ToArray());
 
         return await _context.Clientes
-            .Where(c => c.Nome.ToLower().Contains(termo) ||
-                        c.GetCpf().Contains(termo)) 
+            .Where(c => c.Nome.ToLower().Contains(termoLower)
+                     || (termoCpf.Length > 0 && c.Cpf.Numero.Contains(termoCpf)))
             .Take(20)
             .ToListAsync();
     }

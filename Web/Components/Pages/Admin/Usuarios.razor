@@ -1,4 +1,5 @@
 @page "/admin/usuarios"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -20,7 +21,7 @@
     <div class="page-header">
         <div>
             <h1 class="page-titulo">Usuários</h1>
-            <p class="page-sub">Gerenciamento de vendedores e mecânicos</p>
+            <p class="page-sub">Gerenciamento de funcionários do sistema</p>
         </div>
         <button class="btn-novo" @onclick="AbrirModalNovoUsuario">+ Novo usuário</button>
     </div>
@@ -31,6 +32,12 @@
         </button>
         <button class="@AbaClass("Mecanico")" @onclick='() => abaAtiva = "Mecanico"'>
             Mecânicos (@mecanicos.Count)
+        </button>
+        <button class="@AbaClass("Recepcionista")" @onclick='() => abaAtiva = "Recepcionista"'>
+            Recepcionistas (@recepcionistas.Count)
+        </button>
+        <button class="@AbaClass("Admin")" @onclick='() => abaAtiva = "Admin"'>
+            Administradores (@admins.Count)
         </button>
     </div>
 
@@ -44,9 +51,7 @@
             @foreach (var v in vendedores)
             {
                 <div class="usuario-card">
-                    <div class="usuario-avatar vendedor">
-                        @v.Nome[0].ToString().ToUpper()
-                    </div>
+                    <div class="usuario-avatar vendedor">@v.Nome[0].ToString().ToUpper()</div>
                     <div class="usuario-info">
                         <span class="usuario-nome">@v.Nome</span>
                         <span class="usuario-detalhe">@v.Telefone · @v.Nivel</span>
@@ -58,17 +63,19 @@
                     </button>
                 </div>
             }
+            @if (!vendedores.Any())
+            {
+                <div class="vazio-aba">Nenhum vendedor cadastrado.</div>
+            }
         </div>
     }
-    else
+    else if (abaAtiva == "Mecanico")
     {
         <div class="usuarios-lista">
             @foreach (var m in mecanicos)
             {
                 <div class="usuario-card">
-                    <div class="usuario-avatar mecanico">
-                        @m.Nome[0].ToString().ToUpper()
-                    </div>
+                    <div class="usuario-avatar mecanico">@m.Nome[0].ToString().ToUpper()</div>
                     <div class="usuario-info">
                         <span class="usuario-nome">@m.Nome</span>
                         <span class="usuario-detalhe">@m.Especialidade · @m.Nivel</span>
@@ -79,6 +86,65 @@
                         Desativar
                     </button>
                 </div>
+            }
+            @if (!mecanicos.Any())
+            {
+                <div class="vazio-aba">Nenhum mecânico cadastrado.</div>
+            }
+        </div>
+    }
+    else if (abaAtiva == "Recepcionista")
+    {
+        <div class="usuarios-lista">
+            @foreach (var r in recepcionistas)
+            {
+                <div class="usuario-card">
+                    <div class="usuario-avatar recepcionista">@r.Nome[0].ToString().ToUpper()</div>
+                    <div class="usuario-info">
+                        <span class="usuario-nome">@r.Nome</span>
+                        <span class="usuario-detalhe">@r.Telefone · @r.Email</span>
+                    </div>
+                    <span class="usuario-role recepcionista-badge">Recepcionista</span>
+                    <button class="btn-desativar"
+                            @onclick="() => ConfirmarDesativar(r.Id, r.Nome)">
+                        Desativar
+                    </button>
+                </div>
+            }
+            @if (!recepcionistas.Any())
+            {
+                <div class="vazio-aba">Nenhum recepcionista cadastrado.</div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="usuarios-lista">
+            @foreach (var a in admins)
+            {
+                <div class="usuario-card">
+                    <div class="usuario-avatar admin">@a.Nome[0].ToString().ToUpper()</div>
+                    <div class="usuario-info">
+                        <span class="usuario-nome">@a.Nome</span>
+                        <span class="usuario-detalhe">@a.Telefone · @a.Email</span>
+                    </div>
+                    <span class="usuario-role admin-badge">Admin</span>
+                    @if (a.Id != usuarioAtualId)
+                    {
+                        <button class="btn-desativar"
+                                @onclick="() => ConfirmarDesativar(a.Id, a.Nome)">
+                            Desativar
+                        </button>
+                    }
+                    else
+                    {
+                        <span class="self-tag">você</span>
+                    }
+                </div>
+            }
+            @if (!admins.Any())
+            {
+                <div class="vazio-aba">Nenhum administrador cadastrado.</div>
             }
         </div>
     }
@@ -96,45 +162,56 @@
 
             <div class="form-grid">
                 <div class="form-campo span-2">
-                    <label class="campo-label">Tipo</label>
+                    <label class="campo-label">Tipo *</label>
                     <select class="campo-input" @bind="novoUsuario.Role">
                         <option value="Vendedor">Vendedor</option>
                         <option value="Mecanico">Mecânico</option>
+                        <option value="Recepcionista">Recepcionista</option>
+                        <option value="Admin">Administrador</option>
                     </select>
                 </div>
                 <div class="form-campo span-2">
-                    <label class="campo-label">Nome</label>
+                    <label class="campo-label">Nome completo *</label>
                     <input class="campo-input" @bind="novoUsuario.Nome" />
                 </div>
                 <div class="form-campo">
-                    <label class="campo-label">E-mail</label>
+                    <label class="campo-label">E-mail *</label>
                     <input type="email" class="campo-input" @bind="novoUsuario.Email" />
                 </div>
                 <div class="form-campo">
-                    <label class="campo-label">Telefone</label>
-                    <input class="campo-input" @bind="novoUsuario.Telefone" />
+                    <label class="campo-label">Telefone *</label>
+                    <input class="campo-input" @bind="novoUsuario.Telefone"
+                           placeholder="(11) 90000-0000" />
                 </div>
                 <div class="form-campo">
-                    <label class="campo-label">Senha inicial</label>
+                    <label class="campo-label">Senha inicial *</label>
                     <input type="password" class="campo-input" @bind="novoUsuario.Senha" />
                 </div>
                 <div class="form-campo">
-                    <label class="campo-label">Nível</label>
-                    <select class="campo-input" @bind="novoUsuario.Nivel">
-                        <option value="Junior">Junior</option>
-                        <option value="Pleno">Pleno</option>
-                        <option value="Senior">Sênior</option>
-                    </select>
+                    <label class="campo-label">Salário (R$) *</label>
+                    <input type="number" step="0.01" class="campo-input" @bind="novoUsuario.Salario" />
                 </div>
-                <div class="form-campo">
-                    <label class="campo-label">Data de contratação</label>
-                    <input type="date" class="campo-input" @bind="novoUsuario.DataContratacao" />
-                </div>
+
+                @if (novoUsuario.Role != "Admin")
+                {
+                    <div class="form-campo">
+                        <label class="campo-label">Nível *</label>
+                        <select class="campo-input" @bind="novoUsuario.Nivel">
+                            <option value="Junior">Júnior</option>
+                            <option value="Pleno">Pleno</option>
+                            <option value="Senior">Sênior</option>
+                        </select>
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Data de contratação *</label>
+                        <input type="date" class="campo-input" @bind="novoUsuario.DataContratacao" />
+                    </div>
+                }
 
                 @if (novoUsuario.Role == "Mecanico")
                 {
-                    <div class="form-campo">
-                        <label class="campo-label">Especialidade</label>
+                    <div class="form-campo span-2">
+                        <label class="campo-label">Especialidade *</label>
                         <select class="campo-input" @bind="novoUsuario.Especialidade">
                             <option value="Motor">Motor</option>
                             <option value="Eletrica">Elétrica</option>
@@ -180,6 +257,8 @@
 @code {
     private List<VendedorListaDTO> vendedores = new();
     private List<MecanicoListaDTO> mecanicos = new();
+    private List<UsuarioDTO> recepcionistas = new();
+    private List<UsuarioDTO> admins = new();
     private string abaAtiva = "Vendedor";
     private bool carregando = true;
     private bool modalNovoUsuarioVisivel = false;
@@ -191,17 +270,12 @@
     private Guid usuarioAtualId;
     private ConfirmacaoSenhaModal? modalDesativarRef;
 
-    private CriarUsuarioDTO novoUsuario = new()
-    {
-        Role = "Vendedor",
-        DataContratacao = DateTime.Today
-    };
+    private CriarUsuarioDTO novoUsuario = NovoFormPadrao();
 
     protected override async Task OnInitializedAsync()
     {
         var state = await AuthState.GetAuthenticationStateAsync();
-        var claim = state.User.FindFirst(
-            System.Security.Claims.ClaimTypes.NameIdentifier);
+        var claim = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
         if (claim is not null)
             usuarioAtualId = Guid.Parse(claim.Value);
 
@@ -218,17 +292,18 @@
         var rm = await MecanicoService.GetAllAsync();
         mecanicos = rm.IsSuccess ? rm.Value?.ToList() ?? new() : new();
 
+        var rRec = await AuthService.ListarUsuariosAsync("Recepcionista");
+        recepcionistas = rRec.IsSuccess ? rRec.Value?.ToList() ?? new() : new();
+
+        var rAdm = await AuthService.ListarUsuariosAsync("Admin");
+        admins = rAdm.IsSuccess ? rAdm.Value?.ToList() ?? new() : new();
+
         carregando = false;
     }
 
     private void AbrirModalNovoUsuario()
     {
-        Console.WriteLine("AbrirModalNovoUsuario chamado!");
-        novoUsuario = new CriarUsuarioDTO
-        {
-            Role = "Vendedor",
-            DataContratacao = DateTime.Today
-        };
+        novoUsuario = NovoFormPadrao();
         erroNovo = null;
         modalNovoUsuarioVisivel = true;
     }
@@ -240,6 +315,18 @@
 
         try
         {
+            // Limpa campos não usados conforme o tipo escolhido
+            if (novoUsuario.Role == "Admin")
+            {
+                novoUsuario.Nivel = null;
+                novoUsuario.Especialidade = null;
+                novoUsuario.DataContratacao = null;
+            }
+            else if (novoUsuario.Role != "Mecanico")
+            {
+                novoUsuario.Especialidade = null;
+            }
+
             var resultado = await AuthService.CriarUsuarioAsync(novoUsuario);
             if (resultado.IsSuccess)
             {
@@ -251,9 +338,9 @@
                 erroNovo = resultado.Error;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            erroNovo = "Erro ao criar usuário.";
+            erroNovo = $"Erro ao criar usuário: {ex.Message}";
         }
         finally { salvando = false; }
     }
@@ -284,11 +371,20 @@
 
     private string AbaClass(string aba) =>
         aba == abaAtiva ? "aba aba-ativa" : "aba";
+
+    private static CriarUsuarioDTO NovoFormPadrao() => new()
+    {
+        Role = "Vendedor",
+        Nivel = "Junior",
+        Especialidade = "Motor",
+        DataContratacao = DateTime.Today,
+        Salario = 0
+    };
 }
 
 <style>
     .usuarios-page {
-        max-width: 900px;
+        max-width: 980px;
         margin: 0 auto;
         padding: 32px 24px;
     }
@@ -321,6 +417,7 @@
         gap: 4px;
         border-bottom: 0.5px solid #e0e0e0;
         margin-bottom: 20px;
+        overflow-x: auto;
     }
 
     .aba {
@@ -332,6 +429,7 @@
         cursor: pointer;
         border-bottom: 2px solid transparent;
         margin-bottom: -1px;
+        white-space: nowrap;
     }
 
     .aba:hover { color: #1a1a1a; }
@@ -346,6 +444,13 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
+    }
+
+    .vazio-aba {
+        text-align: center;
+        padding: 40px;
+        color: #888;
+        font-size: 14px;
     }
 
     .usuario-card {
@@ -370,8 +475,10 @@
         flex-shrink: 0;
     }
 
-    .usuario-avatar.vendedor { background: #fff0f0; color: #e02020; }
-    .usuario-avatar.mecanico { background: #f0f4ff; color: #3b5bdb; }
+    .usuario-avatar.vendedor      { background: #fff0f0; color: #e02020; }
+    .usuario-avatar.mecanico      { background: #f0f4ff; color: #3b5bdb; }
+    .usuario-avatar.recepcionista { background: #fff7ed; color: #ea580c; }
+    .usuario-avatar.admin         { background: #f0fdf4; color: #16a34a; }
 
     .usuario-info {
         display: flex;
@@ -390,8 +497,17 @@
         font-weight: 500;
     }
 
-    .vendedor-badge { background: #fff0f0; color: #c01818; }
-    .mecanico-badge { background: #f0f4ff; color: #3b5bdb; }
+    .vendedor-badge      { background: #fff0f0; color: #c01818; }
+    .mecanico-badge      { background: #f0f4ff; color: #3b5bdb; }
+    .recepcionista-badge { background: #fff7ed; color: #ea580c; }
+    .admin-badge         { background: #f0fdf4; color: #16a34a; }
+
+    .self-tag {
+        font-size: 11px;
+        color: #888;
+        font-style: italic;
+        padding: 5px 12px;
+    }
 
     .btn-desativar {
         background: none;
@@ -420,7 +536,7 @@
         border-radius: 12px;
         padding: 24px;
         width: 100%;
-        max-width: 520px;
+        max-width: 580px;
         max-height: 90vh;
         overflow-y: auto;
     }

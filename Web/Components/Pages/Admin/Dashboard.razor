@@ -1,4 +1,5 @@
 @page "/dashboard"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -6,30 +7,57 @@
 @inject IVeiculoVendaService VeiculoService
 @inject IOrdemServicoService OrdemService
 @inject IClienteService ClienteService
-@inject IComponenteService ComponenteService
+@inject IPropostaVendaService PropostaService
+@inject IMecanicoService MecanicoService
+@inject IVendedorService VendedorService
+@inject IEstoqueService EstoqueService
 @inject NavigationManager Nav
 @using CarStoreManager.Application.Interfaces
-
-@using Microsoft.AspNetCore.Components.Web
+@using CarStoreManager.Application.DTOs.Oficina.OrdemServico
+@using CarStoreManager.Application.DTOs.Oficina.Componente
+@using System.Globalization
 
 <div class="dash-page">
     <div class="dash-header">
-        <h1 class="dash-titulo">Dashboard</h1>
-        <p class="dash-sub">Visão geral do sistema</p>
+        <div>
+            <h1 class="dash-titulo">Dashboard</h1>
+            <p class="dash-sub">Visão geral · @DateTime.Now.ToString("dd/MM/yyyy")</p>
+        </div>
     </div>
 
+    <h2 class="grupo-titulo">Concessionária</h2>
     <div class="metricas-grid">
         <div class="metrica-card">
             <span class="metrica-label">Veículos disponíveis</span>
             <span class="metrica-valor">@veiculosDisponiveis</span>
         </div>
         <div class="metrica-card">
-            <span class="metrica-label">Ordens em andamento</span>
-            <span class="metrica-valor">@ordensEmAndamento</span>
+            <span class="metrica-label">Veículos vendidos</span>
+            <span class="metrica-valor sucesso">@veiculosVendidos</span>
         </div>
         <div class="metrica-card">
-            <span class="metrica-label">Clientes cadastrados</span>
-            <span class="metrica-valor">@totalClientes</span>
+            <span class="metrica-label">Estoque (R$)</span>
+            <span class="metrica-valor">@FormatBRL(valorTotalEstoqueVeiculos)</span>
+        </div>
+        <div class="metrica-card">
+            <span class="metrica-label">Propostas em aberto</span>
+            <span class="metrica-valor warn">@propostasAbertas</span>
+        </div>
+    </div>
+
+    <h2 class="grupo-titulo">Oficina</h2>
+    <div class="metricas-grid">
+        <div class="metrica-card">
+            <span class="metrica-label">OS pendentes</span>
+            <span class="metrica-valor warn">@osPendentes</span>
+        </div>
+        <div class="metrica-card">
+            <span class="metrica-label">OS em andamento</span>
+            <span class="metrica-valor info">@osEmAndamento</span>
+        </div>
+        <div class="metrica-card">
+            <span class="metrica-label">OS finalizadas (mês)</span>
+            <span class="metrica-valor sucesso">@osFinalizadasMes</span>
         </div>
         <div class="metrica-card destaque">
             <span class="metrica-label">Peças com estoque baixo</span>
@@ -37,46 +65,135 @@
         </div>
     </div>
 
+    <h2 class="grupo-titulo">Pessoas</h2>
+    <div class="metricas-grid">
+        <div class="metrica-card">
+            <span class="metrica-label">Clientes</span>
+            <span class="metrica-valor">@totalClientes</span>
+        </div>
+        <div class="metrica-card">
+            <span class="metrica-label">Mecânicos</span>
+            <span class="metrica-valor">@totalMecanicos</span>
+        </div>
+        <div class="metrica-card">
+            <span class="metrica-label">Vendedores</span>
+            <span class="metrica-valor">@totalVendedores</span>
+        </div>
+    </div>
+
+    <div class="duas-colunas">
+        <div class="card">
+            <h3 class="card-titulo">Ordens de serviço recentes</h3>
+            @if (!osRecentes.Any())
+            {
+                <p class="vazio">Nenhuma OS cadastrada ainda.</p>
+            }
+            else
+            {
+                <ul class="lista-recente">
+                    @foreach (var os in osRecentes)
+                    {
+                        <li class="item-recente" @onclick='() => Nav.NavigateTo($"/oficina/os/{os.Id}")'>
+                            <span class="numero">@os.NumeroPublico</span>
+                            <span class="info">@os.Tipo</span>
+                            <span class="@StatusClass(os.Status)">@os.Status</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+
+        <div class="card">
+            <h3 class="card-titulo">Peças com estoque crítico</h3>
+            @if (!estoquesCriticos.Any())
+            {
+                <p class="vazio">Nenhuma peça abaixo do mínimo.</p>
+            }
+            else
+            {
+                <ul class="lista-recente">
+                    @foreach (var e in estoquesCriticos)
+                    {
+                        <li class="item-recente">
+                            <span class="info">@e.ComponenteNome</span>
+                            <span class="qtd-baixo">@e.QuantidadeAtual / @e.QuantidadeMinima</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+
+    <h2 class="grupo-titulo">Relatórios</h2>
+    <div class="relatorios-grid">
+        <a class="rel-card" href="/api/relatorio/veiculos-venda" target="_blank">
+            <div class="rel-icone">📄</div>
+            <div>
+                <div class="rel-nome">Veículos à venda</div>
+                <div class="rel-desc">CSV — todos os anúncios</div>
+            </div>
+        </a>
+        <a class="rel-card" href="/api/relatorio/ordens-servico" target="_blank">
+            <div class="rel-icone">🔧</div>
+            <div>
+                <div class="rel-nome">Ordens de serviço</div>
+                <div class="rel-desc">CSV — histórico completo</div>
+            </div>
+        </a>
+        <a class="rel-card" href="/api/relatorio/propostas-venda" target="_blank">
+            <div class="rel-icone">💼</div>
+            <div>
+                <div class="rel-nome">Propostas de venda</div>
+                <div class="rel-desc">CSV — todas as propostas</div>
+            </div>
+        </a>
+        <a class="rel-card" href="/api/relatorio/clientes" target="_blank">
+            <div class="rel-icone">👤</div>
+            <div>
+                <div class="rel-nome">Clientes</div>
+                <div class="rel-desc">CSV — base de clientes</div>
+            </div>
+        </a>
+        <a class="rel-card" href="/api/relatorio/mecanicos" target="_blank">
+            <div class="rel-icone">🛠</div>
+            <div>
+                <div class="rel-nome">Mecânicos</div>
+                <div class="rel-desc">CSV — equipe da oficina</div>
+            </div>
+        </a>
+    </div>
+
+    <h2 class="grupo-titulo">Atalhos</h2>
     <div class="dash-modulos">
         <div class="modulo-card" @onclick='() => Nav.NavigateTo("/concessionaria")'>
-            <div class="modulo-icone concessionaria">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v5"/>
-                    <circle cx="15.5" cy="17.5" r="2.5"/>
-                    <circle cx="4.5" cy="17.5" r="2.5"/>
-                </svg>
-            </div>
+            <div class="modulo-icone concessionaria">🚗</div>
             <div>
                 <div class="modulo-titulo">Concessionária</div>
                 <div class="modulo-sub">Veículos, propostas e vendas</div>
             </div>
             <span class="modulo-seta">→</span>
         </div>
-
         <div class="modulo-card" @onclick='() => Nav.NavigateTo("/oficina")'>
-            <div class="modulo-icone oficina">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
-                </svg>
-            </div>
+            <div class="modulo-icone oficina">🔧</div>
             <div>
                 <div class="modulo-titulo">Oficina</div>
                 <div class="modulo-sub">Ordens de serviço e mecânicos</div>
             </div>
             <span class="modulo-seta">→</span>
         </div>
-
-        <div class="modulo-card" @onclick='() => Nav.NavigateTo("/admin/usuarios")'>
-            <div class="modulo-icone usuarios">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
-                </svg>
+        <div class="modulo-card" @onclick='() => Nav.NavigateTo("/oficina/componentes")'>
+            <div class="modulo-icone estoque">📦</div>
+            <div>
+                <div class="modulo-titulo">Estoque</div>
+                <div class="modulo-sub">Componentes e peças da oficina</div>
             </div>
+            <span class="modulo-seta">→</span>
+        </div>
+        <div class="modulo-card" @onclick='() => Nav.NavigateTo("/admin/usuarios")'>
+            <div class="modulo-icone usuarios">👥</div>
             <div>
                 <div class="modulo-titulo">Usuários</div>
-                <div class="modulo-sub">Vendedores e mecânicos</div>
+                <div class="modulo-sub">Funcionários do sistema</div>
             </div>
             <span class="modulo-seta">→</span>
         </div>
@@ -84,55 +201,97 @@
 </div>
 
 @code {
-    private int veiculosDisponiveis = 0;
-    private int ordensEmAndamento = 0;
-    private int totalClientes = 0;
-    private int pecasEstoqueBaixo = 0;
+    private int veiculosDisponiveis;
+    private int veiculosVendidos;
+    private decimal valorTotalEstoqueVeiculos;
+    private int propostasAbertas;
+    private int osPendentes;
+    private int osEmAndamento;
+    private int osFinalizadasMes;
+    private int pecasEstoqueBaixo;
+    private int totalClientes;
+    private int totalMecanicos;
+    private int totalVendedores;
+
+    private List<OrdemServicoListaDTO> osRecentes = new();
+    private List<EstoqueComponenteDTO> estoquesCriticos = new();
 
     protected override async Task OnInitializedAsync()
     {
-        var veiculos = await VeiculoService.ObterDisponiveisAsync();
-        if (veiculos.IsSuccess)
-            veiculosDisponiveis = veiculos.Value?.Count() ?? 0;
+        var todosVeiculos = await VeiculoService.GetAllAsync();
+        if (todosVeiculos.IsSuccess && todosVeiculos.Value is not null)
+        {
+            var v = todosVeiculos.Value.ToList();
+            veiculosDisponiveis = v.Count(x => x.Disponibilidade == "Disponivel");
+            veiculosVendidos = v.Count(x => x.Disponibilidade == "Vendido");
+            valorTotalEstoqueVeiculos = v.Where(x => x.Disponibilidade == "Disponivel").Sum(x => x.Valor);
+        }
 
         var ordens = await OrdemService.GetAllAsync();
-        if (ordens.IsSuccess)
-            ordensEmAndamento = ordens.Value?
-                .Count(o => o.Status == "EmAndamento") ?? 0;
+        if (ordens.IsSuccess && ordens.Value is not null)
+        {
+            var todas = ordens.Value.ToList();
+            osPendentes = todas.Count(o => o.Status == "Pendente");
+            osEmAndamento = todas.Count(o => o.Status == "EmAndamento");
+            var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            osFinalizadasMes = todas.Count(o => o.Status == "Finalizada" && o.PrazoEstimado >= inicioMes);
+            osRecentes = todas.OrderByDescending(o => o.PrazoEstimado).Take(6).ToList();
+        }
 
         var clientes = await ClienteService.GetAllAsync();
-        if (clientes.IsSuccess)
-            totalClientes = clientes.Value?.Count() ?? 0;
+        if (clientes.IsSuccess) totalClientes = clientes.Value?.Count() ?? 0;
 
-        var pecas = await ComponenteService.ObterComEstoqueBaixoAsync();
-        if (pecas.IsSuccess)
-            pecasEstoqueBaixo = pecas.Value?.Count() ?? 0;
+        var mecanicos = await MecanicoService.GetAllAsync();
+        if (mecanicos.IsSuccess) totalMecanicos = mecanicos.Value?.Count() ?? 0;
+
+        var vendedores = await VendedorService.GetAllAsync();
+        if (vendedores.IsSuccess) totalVendedores = vendedores.Value?.Count() ?? 0;
+
+        var propostas = await PropostaService.GetAllAsync();
+        if (propostas.IsSuccess && propostas.Value is not null)
+            propostasAbertas = propostas.Value.Count(p =>
+                p.Status != "Aprovada" && p.Status != "Rejeitada" && p.Status != "Cancelada");
+
+        var baixos = await EstoqueService.ListarComEstoqueBaixoAsync();
+        if (baixos.IsSuccess && baixos.Value is not null)
+        {
+            estoquesCriticos = baixos.Value.Take(6).ToList();
+            pecasEstoqueBaixo = baixos.Value.Count();
+        }
     }
+
+    private static string FormatBRL(decimal v)
+        => v.ToString("C", new CultureInfo("pt-BR"));
+
+    private static string StatusClass(string status) => status switch
+    {
+        "Pendente" => "tag tag-amarelo",
+        "EmAndamento" => "tag tag-azul",
+        "Finalizada" => "tag tag-verde",
+        "Cancelada" => "tag tag-vermelho",
+        _ => "tag"
+    };
 }
 
 <style>
-    .dash-page {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 32px 24px;
-    }
-
-    .dash-header { margin-bottom: 28px; }
-
-    .dash-titulo {
-        font-size: 24px;
-        font-weight: 500;
-        color: #1a1a1a;
-        margin-bottom: 4px;
-    }
-
+    .dash-page { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+    .dash-header { margin-bottom: 24px; }
+    .dash-titulo { font-size: 24px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px; }
     .dash-sub { font-size: 14px; color: #888; }
+
+    .grupo-titulo {
+        font-size: 13px;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        margin: 24px 0 10px;
+    }
 
     .metricas-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 12px;
-        margin-bottom: 28px;
     }
 
     .metrica-card {
@@ -141,24 +300,107 @@
         padding: 16px;
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
     }
 
     .metrica-card.destaque { background: #fff5f5; }
 
     .metrica-label { font-size: 12px; color: #888; }
+    .metrica-valor { font-size: 26px; font-weight: 500; color: #1a1a1a; }
+    .metrica-valor.alerta  { color: #e02020; }
+    .metrica-valor.warn    { color: #ea580c; }
+    .metrica-valor.info    { color: #2563eb; }
+    .metrica-valor.sucesso { color: #16a34a; }
 
-    .metrica-valor {
-        font-size: 32px;
-        font-weight: 500;
-        color: #1a1a1a;
+    .duas-colunas {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-top: 16px;
     }
 
-    .metrica-valor.alerta { color: #e02020; }
+    .card {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 18px 20px;
+    }
+
+    .card-titulo { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 12px; }
+
+    .lista-recente { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+
+    .item-recente {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.1s;
+    }
+    .item-recente:hover { background: #fafafa; }
+
+    .item-recente .numero {
+        font-family: monospace;
+        font-size: 12px;
+        font-weight: 600;
+        color: #2563eb;
+        background: #eff6ff;
+        padding: 3px 8px;
+        border-radius: 5px;
+        min-width: 80px;
+        text-align: center;
+    }
+
+    .item-recente .info { flex: 1; font-size: 13px; }
+
+    .qtd-baixo {
+        font-size: 12px;
+        font-weight: 600;
+        color: #ea580c;
+    }
+
+    .tag {
+        font-size: 10px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 12px;
+    }
+    .tag-amarelo  { background: #fef9c3; color: #854d0e; }
+    .tag-azul     { background: #eff6ff; color: #1d4ed8; }
+    .tag-verde    { background: #dcfce7; color: #166534; }
+    .tag-vermelho { background: #fff5f5; color: #e02020; }
+
+    .vazio { font-size: 13px; color: #888; padding: 12px 4px; }
+
+    .relatorios-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 10px;
+    }
+
+    .rel-card {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 12px 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: inherit;
+        transition: border-color 0.2s, transform 0.15s;
+    }
+    .rel-card:hover { border-color: #2563eb; transform: translateY(-2px); }
+
+    .rel-icone { font-size: 22px; }
+    .rel-nome { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+    .rel-desc { font-size: 11px; color: #888; margin-top: 1px; }
 
     .dash-modulos {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
         gap: 10px;
     }
 
@@ -166,45 +408,36 @@
         background: #fff;
         border: 0.5px solid #e0e0e0;
         border-radius: 12px;
-        padding: 16px 20px;
+        padding: 14px 18px;
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 14px;
         cursor: pointer;
         transition: border-color 0.2s, transform 0.15s;
     }
-
-    .modulo-card:hover {
-        border-color: #e02020;
-        transform: translateX(4px);
-    }
+    .modulo-card:hover { border-color: #e02020; transform: translateX(3px); }
 
     .modulo-icone {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
         border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
+        font-size: 20px;
         flex-shrink: 0;
     }
-
     .modulo-icone.concessionaria { background: #fff0f0; color: #e02020; }
-    .modulo-icone.oficina { background: #f0f4ff; color: #3b5bdb; }
-    .modulo-icone.usuarios { background: #f0fff4; color: #2f9e44; }
+    .modulo-icone.oficina        { background: #f0f4ff; color: #3b5bdb; }
+    .modulo-icone.estoque        { background: #fff7ed; color: #ea580c; }
+    .modulo-icone.usuarios       { background: #f0fdf4; color: #2f9e44; }
 
-    .modulo-titulo {
-        font-size: 15px;
-        font-weight: 500;
-        color: #1a1a1a;
-        margin-bottom: 2px;
-    }
+    .modulo-titulo { font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 1px; }
+    .modulo-sub    { font-size: 12px; color: #888; }
+    .modulo-seta   { margin-left: auto; color: #ccc; font-size: 16px; }
 
-    .modulo-sub { font-size: 12px; color: #888; }
-
-    .modulo-seta {
-        margin-left: auto;
-        color: #ccc;
-        font-size: 18px;
+    @@media (max-width: 800px) {
+        .metricas-grid { grid-template-columns: repeat(2, 1fr); }
+        .duas-colunas  { grid-template-columns: 1fr; }
     }
 </style>

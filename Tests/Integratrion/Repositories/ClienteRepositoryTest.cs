@@ -20,7 +20,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
 
         public ClienteRepositoryTests()
         {
-            _connection = new SqliteConnection("DataSource=:memory:");
+            _connection = new SqliteConnection("DataSource=:memory:;Foreign Keys=False");
             _connection.Open();
 
             var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -169,9 +169,11 @@ namespace CarStoreManager.Tests.Integration.Repositories
         [Fact]
         public async Task PesquisarAsync_ResultadosLimitadosA20()
         {
-            // Cria 25 clientes com parte do nome comum
+            // Usa CPFs válidos pré-gerados (recicla os 3 entre vários clientes
+            // pois o teste só verifica o limite de 20).
+            var cpfs = new[] { "11144477735", "39053344705", "52998224725" };
             for (int i = 1; i <= 25; i++)
-                await SalvarCliente($"Cliente {i:D2}", $"c{i}@email.com", "11900000000", $"{i:D11}");
+                await SalvarCliente($"Cliente {i:D2}", $"c{i}@email.com", "11900000000", cpfs[i % 3]);
 
             var resultado = await _repository.PesquisarAsync("Cliente");
             resultado.Should().HaveCount(20);

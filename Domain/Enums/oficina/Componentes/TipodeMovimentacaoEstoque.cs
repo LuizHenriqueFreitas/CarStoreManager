@@ -1,3 +1,5 @@
+namespace CarStoreManager.Domain.Enums;
+
 public enum TipoMovimentacaoEstoque
 {
     EntradaPorNotaFiscal = 1,

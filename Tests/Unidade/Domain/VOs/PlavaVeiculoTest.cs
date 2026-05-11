@@ -26,6 +26,8 @@ public class PlacaVeiculoTest
     [InlineData("ABC-1234")]
     [InlineData("ABC1234")]
     [InlineData("ABC1D23")]
+    [InlineData("ABC-1D23")]    // Mercosul COM hífen — regressão (antes só aceitava sem)
+    [InlineData("abc1d23")]     // case-insensitive — normalização
     public void Deve_Criar_Placa_Valida(string numero)
     {
         // cenario

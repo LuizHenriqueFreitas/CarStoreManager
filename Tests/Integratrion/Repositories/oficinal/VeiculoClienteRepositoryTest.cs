@@ -20,7 +20,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
 
         public VeiculoClienteRepositoryTests()
         {
-            _connection = new SqliteConnection("DataSource=:memory:");
+            _connection = new SqliteConnection("DataSource=:memory:;Foreign Keys=False");
             _connection.Open();
 
             var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -171,7 +171,8 @@ namespace CarStoreManager.Tests.Integration.Repositories
                 "Honda",
                 "Civic",
                 "Preto",
-                2020
+                2020,
+                "ABC1D23"
             );
         }
     }

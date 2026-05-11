@@ -1,6 +1,5 @@
-// Application/Mappings/Oficina/ComponenteMapping.cs
 using CarStoreManager.Application.DTOs.Oficina.Componente;
-using Oficina.Domain.Entities;
+using CarStoreManager.Domain.Entities.Oficina;
 
 namespace CarStoreManager.Application.Mappings.Oficina;
 
@@ -11,8 +10,7 @@ public static class ComponenteMapping
     // =========================
     public static ComponenteDTO ToDto(Componente entity)
     {
-        if (entity == null)
-            throw new ArgumentNullException(nameof(entity));
+        if (entity is null) throw new ArgumentNullException(nameof(entity));
 
         return new ComponenteDTO
         {
@@ -28,19 +26,33 @@ public static class ComponenteMapping
             CEST = entity.CEST,
             Categoria = entity.Categoria,
             Unidade = entity.Unidade,
+            Sistema = string.Empty, // Componente atual não carrega Sistema
             Peso = entity.Peso,
             GarantiaDias = entity.GarantiaDias,
             Ativo = entity.Ativo
         };
     }
 
-    // =========================
-    // DTO → Entity (criação)
-    // =========================
-    public static Componente ToEntity(ComponenteDTO dto)
+    public static ComponenteListaDTO ToListaDto(Componente entity)
     {
-        if (dto == null)
-            throw new ArgumentNullException(nameof(dto));
+        if (entity is null) throw new ArgumentNullException(nameof(entity));
+
+        return new ComponenteListaDTO
+        {
+            Id = entity.Id,
+            SKUInterno = entity.SKUInterno,
+            Nome = entity.Nome,
+            MarcaFabricante = entity.MarcaFabricante,
+            PartNumber = entity.PartNumber,
+            Categoria = entity.Categoria,
+            Sistema = string.Empty,
+            Ativo = entity.Ativo
+        };
+    }
+
+    public static Componente FromCriarDto(CriarComponenteDTO dto)
+    {
+        if (dto is null) throw new ArgumentNullException(nameof(dto));
 
         return new Componente(
             skuInterno: dto.SKUInterno,
@@ -57,20 +69,12 @@ public static class ComponenteMapping
             peso: dto.Peso,
             garantiaDias: dto.GarantiaDias
         );
-        // Obs.: O construtor já define Ativo = true por padrão.
-        // Se quiser permitir criar inativo, deve ajustar o construtor.
     }
 
-    // =========================
-    // DTO → Entity (atualização)
-    // =========================
-    public static void UpdateEntity(Componente entity, ComponenteDTO dto)
+    public static void ApplyAtualizarDto(Componente entity, AtualizarComponenteDTO dto)
     {
-        if (entity == null) throw new ArgumentNullException(nameof(entity));
-        if (dto == null) throw new ArgumentNullException(nameof(dto));
-
-        // SKU não deve ser alterado após criação (é chave interna)
-        // entity.SetSKUInterno(dto.SKUInterno); // comente se não quiser permitir
+        if (entity is null) throw new ArgumentNullException(nameof(entity));
+        if (dto is null) throw new ArgumentNullException(nameof(dto));
 
         entity.SetNome(dto.Nome);
         entity.SetDescricao(dto.Descricao);
@@ -84,10 +88,54 @@ public static class ComponenteMapping
         entity.SetUnidade(dto.Unidade);
         entity.SetPeso(dto.Peso);
         entity.SetGarantiaDias(dto.GarantiaDias);
-        
-        if (dto.Ativo && !entity.Ativo)
-            entity.Ativar();
-        else if (!dto.Ativo && entity.Ativo)
-            entity.Desativar();
+
+        if (dto.Ativo && !entity.Ativo) entity.Ativar();
+        else if (!dto.Ativo && entity.Ativo) entity.Desativar();
+    }
+
+    // =========================
+    // Para criação a partir do ComponenteDTO genérico (compat)
+    // =========================
+    public static Componente ToEntity(ComponenteDTO dto)
+    {
+        if (dto is null) throw new ArgumentNullException(nameof(dto));
+
+        return new Componente(
+            skuInterno: dto.SKUInterno,
+            nome: dto.Nome,
+            descricao: dto.Descricao,
+            marcaFabricante: dto.MarcaFabricante,
+            partNumber: dto.PartNumber,
+            codigoOEM: dto.CodigoOEM,
+            codigoBarras: dto.CodigoBarras,
+            ncm: dto.NCM,
+            cest: dto.CEST,
+            categoria: dto.Categoria,
+            unidade: dto.Unidade,
+            peso: dto.Peso,
+            garantiaDias: dto.GarantiaDias
+        );
+    }
+
+    public static void UpdateEntity(Componente entity, ComponenteDTO dto)
+    {
+        if (entity is null) throw new ArgumentNullException(nameof(entity));
+        if (dto is null) throw new ArgumentNullException(nameof(dto));
+
+        entity.SetNome(dto.Nome);
+        entity.SetDescricao(dto.Descricao);
+        entity.SetMarcaFabricante(dto.MarcaFabricante);
+        entity.SetPartNumber(dto.PartNumber);
+        entity.SetCodigoOEM(dto.CodigoOEM);
+        entity.SetCodigoBarras(dto.CodigoBarras);
+        entity.SetNCM(dto.NCM);
+        entity.SetCEST(dto.CEST);
+        entity.SetCategoria(dto.Categoria);
+        entity.SetUnidade(dto.Unidade);
+        entity.SetPeso(dto.Peso);
+        entity.SetGarantiaDias(dto.GarantiaDias);
+
+        if (dto.Ativo && !entity.Ativo) entity.Ativar();
+        else if (!dto.Ativo && entity.Ativo) entity.Desativar();
     }
 }

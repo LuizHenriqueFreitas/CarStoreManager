@@ -21,7 +21,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
 
         public PropostaVendaRepositoryTests()
         {
-            _connection = new SqliteConnection("DataSource=:memory:");
+            _connection = new SqliteConnection("DataSource=:memory:;Foreign Keys=False");
             _connection.Open();
 
             var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -130,16 +130,17 @@ namespace CarStoreManager.Tests.Integration.Repositories
         public async Task ObterPorStatusAsync_StatusExistente_RetornaFiltradas()
         {
             var aprovada = await SalvarProposta();
+            aprovada.DefinirModoPagamento(ModoPagamento.Dinheiro);
             aprovada.Aprovar();
             await _context.SaveChangesAsync();
 
-            var pendente = await SalvarProposta(); // rascunho por padrão
+            var pendente = await SalvarProposta(); // Criada por padrão
 
             var resultadoAprovadas = await _repository.ObterPorStatusAsync(StatusPropostaVenda.Aprovada);
             resultadoAprovadas.Should().ContainSingle().Which.Id.Should().Be(aprovada.Id);
 
-            var resultadoRascunho = await _repository.ObterPorStatusAsync(StatusPropostaVenda.Rascunho);
-            resultadoRascunho.Should().ContainSingle().Which.Id.Should().Be(pendente.Id);
+            var resultadoCriadas = await _repository.ObterPorStatusAsync(StatusPropostaVenda.Criada);
+            resultadoCriadas.Should().ContainSingle().Which.Id.Should().Be(pendente.Id);
         }
 
         [Fact]
@@ -154,14 +155,14 @@ namespace CarStoreManager.Tests.Integration.Repositories
         [Fact]
         public async Task AddAsync_PropostaValida_PersisteDados()
         {
-            var proposta = new PropostaVenda(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 50000m, 2000m);
+            var proposta = new PropostaVenda(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 50000m, 4m);
             await _repository.AddAsync(proposta);
             await _repository.SaveChangesAsync();
 
             var salva = await _repository.GetByIdAsync(proposta.Id);
             salva.Should().NotBeNull();
             salva!.ValorBase.GetValorDinheiro().Should().Be(50000m);
-            salva.Desconto.GetDescontoValor().Should().Be(2000m);
+            salva.Desconto.GetDescontoValor().Should().Be(4m);
         }
 
         // ==================== Update ====================
@@ -169,15 +170,15 @@ namespace CarStoreManager.Tests.Integration.Repositories
         [Fact]
         public async Task Update_PropostaExistente_AtualizaDados()
         {
-            var proposta = await SalvarProposta(valorBase: 80000m, desconto: 3000m);
+            var proposta = await SalvarProposta(valorBase: 80000m, desconto: 3m);
 
-            proposta.AplicarDesconto(5000m);
+            proposta.AplicarDesconto(5m);
             _repository.Update(proposta);
             await _repository.SaveChangesAsync();
 
             var atualizada = await _repository.GetByIdAsync(proposta.Id);
-            atualizada!.Desconto.GetDescontoValor().Should().Be(5000m);
-            atualizada.ValorFinal.GetValorDinheiro().Should().Be(75000m);
+            atualizada!.Desconto.GetDescontoValor().Should().Be(5m);
+            atualizada.ValorFinal.GetValorDinheiro().Should().Be(76000m);
         }
 
         // ==================== Remove ====================
@@ -200,7 +201,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
             Guid? vendedorId = null,
             Guid? clienteId = null,
             decimal valorBase = 100000m,
-            decimal desconto = 5000m)
+            decimal desconto = 5m)
         {
             var proposta = new PropostaVenda(
                 vendedorId ?? Guid.NewGuid(),

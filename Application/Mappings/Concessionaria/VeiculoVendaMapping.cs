@@ -13,7 +13,7 @@ public static class VeiculoVendaMapping
     {
         return new VeiculoVendaDTO
         {
-            Id = entity.GetId(),
+            Id = entity.Id,
             Marca = entity.GetMarca(),
             Modelo = entity.GetModelo(),
             Cor = entity.GetCor(),
@@ -21,10 +21,12 @@ public static class VeiculoVendaMapping
             Ano = entity.GetAno(),
             Quilometragem = entity.GetQuilometragem(),
             Placa = entity.GetPlacaCarro(),
+            Renavam = entity.GetRenavam(),
             Cambio = entity.Cambio.ToString(),
             Combustivel = entity.Combustivel.ToString(),
             Disponibilidade = entity.Disponibilidade.ToString(),
             Valor = entity.GetValor(),
+            AnoUltimoIpvaPago = entity.AnoUltimoIpvaPago,
             Acessorios = entity.GetAcessoriosLista(),
             Fotos = entity.Fotos
                 .OrderBy(f => f.Ordem)
@@ -37,7 +39,7 @@ public static class VeiculoVendaMapping
     {
         return new VeiculoVendaListaDTO
         {
-            Id = entity.GetId(),
+            Id = entity.Id,
             Marca = entity.GetMarca(),
             Modelo = entity.GetModelo(),
             Ano = entity.GetAno(),
@@ -60,10 +62,12 @@ public static class VeiculoVendaMapping
             dto.Ano,
             dto.Quilometragem,
             dto.Placa,
+            dto.Renavam,
             ConverterEnum<TipoCambio>(dto.Cambio, "Câmbio"),
             ConverterEnum<TipoCombustivel>(dto.Combustivel, "Combustível"),
             dto.Valor,
-            ConverterAcessorios(dto.Acessorios)
+            ConverterAcessorios(dto.Acessorios),
+            dto.AnoUltimoIpvaPago
         );
     }
 

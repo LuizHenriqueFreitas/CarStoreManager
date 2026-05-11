@@ -39,7 +39,7 @@
             <option value="">Selecione um componente...</option>
             @foreach (var comp in componentesDisponiveis)
             {
-                <option value="@comp.Id">@comp.Nome (R$ @comp.Valor.ToString("N2"))</option>
+                <option value="@comp.Id">@comp.Nome (@comp.PartNumber)</option>
             }
         </select>
         <input type="number" class="campo-input qtd" @bind="quantidade" placeholder="Qtd" min="1" />
@@ -88,8 +88,14 @@
             return;
         }
 
-        // Usa o valor do campo se preenchido, senão o valor do componente
-        var valor = valorUnitario > 0 ? valorUnitario : componente.Valor;
+        // Componente não tem mais valor de referência fixo (estoque por lote);
+        // valor unitário precisa vir do operador.
+        if (valorUnitario <= 0)
+        {
+            mensagemErroItem = "Informe o valor unitário do item.";
+            return;
+        }
+        var valor = valorUnitario;
 
         itens.Add(new ItemOrdemServicoTemp
         {

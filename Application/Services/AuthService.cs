@@ -105,6 +105,7 @@ public class AuthService : IAuthService
                 RoleUsuario.Vendedor => CriarVendedor(dto),
                 RoleUsuario.Mecanico => CriarMecanico(dto),
                 RoleUsuario.Admin => CriarAdmin(dto),
+                RoleUsuario.Recepcionista => CriarRecepcionista(dto),
                 _ => throw new ArgumentException("Role inválido")
             };
 
@@ -184,6 +185,23 @@ public class AuthService : IAuthService
             dto.DataContratacao!.Value);
     }
 
+    private static Recepcionista CriarRecepcionista(CriarUsuarioDTO dto)
+    {
+        if (!Enum.TryParse<NivelFuncionario>(dto.Nivel, true, out var nivel))
+            throw new ArgumentException("Nível inválido");
+        if (dto.DataContratacao is null)
+            throw new ArgumentException("Data de contratação obrigatória para recepcionista");
+
+        return new Recepcionista(
+            dto.Nome,
+            dto.Email,
+            dto.Telefone,
+            dto.Senha,
+            dto.Salario,
+            nivel,
+            dto.DataContratacao.Value);
+    }
+
     /*
         metodo para criar usuario da role Admin
         Ele é basicamente o construtor do usuario mesmo.
@@ -214,6 +232,27 @@ public class AuthService : IAuthService
         return Result.Ok();
     }
 
+    //metodo para listar usuarios — opcionalmente filtrado por role
+    public async Task<Result<IEnumerable<UsuarioDTO>>> ListarUsuariosAsync(string? role = null)
+    {
+        var todos = await _repository.GetAllAsync();
+        var filtrados = todos.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(role))
+            filtrados = filtrados.Where(u => string.Equals(u.GetRole(), role, StringComparison.OrdinalIgnoreCase));
+
+        var dtos = filtrados.Select(u => new UsuarioDTO
+        {
+            Id = u.Id,
+            Nome = u.GetNome(),
+            Email = u.GetEmail(),
+            Telefone = u.GetTelefone(),
+            Role = u.GetRole()
+        });
+
+        return Result<IEnumerable<UsuarioDTO>>.Ok(dtos);
+    }
+
     //metodo para obter usuario
     public async Task<Result<UsuarioDTO>> ObterUsuarioAsync(Guid id)
     {
@@ -223,7 +262,7 @@ public class AuthService : IAuthService
 
         return Result<UsuarioDTO>.Ok(new UsuarioDTO
         {
-            Id = usuario.GetId(),
+            Id = usuario.Id,
             Nome = usuario.GetNome(),
             Email = usuario.GetEmail(),
             Telefone = usuario.GetTelefone(),

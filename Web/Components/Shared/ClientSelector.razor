@@ -3,6 +3,7 @@
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Shared.Cliente
 @using CarStoreManager.Domain.ValueObjects
+@using Microsoft.AspNetCore.Components.Web
 
 @inject IClienteService ClienteService
 
@@ -68,7 +69,14 @@
                 <h3>Buscar Cliente</h3>
                 <button class="modal-fechar" @onclick="FecharBusca">×</button>
             </div>
-            <input class="campo-input busca-input" type="text" @bind="termoBusca" @bind:event="oninput" placeholder="Nome ou CPF..." />
+            <input class="campo-input busca-input" type="text"
+                   value="@termoBusca"
+                   @oninput="OnTermoChanged"
+                   placeholder="Nome ou CPF..." />
+            @if (buscando)
+            {
+                <p class="sem-resultados">Buscando...</p>
+            }
             @if (resultadosBusca is not null && resultadosBusca.Any())
             {
                 <ul class="resultados-lista">
@@ -104,6 +112,34 @@
     private bool mostrarModalBusca = false;
     private string termoBusca = "";
     private List<ClienteListaDTO>? resultadosBusca;
+    private bool buscando = false;
+    private CancellationTokenSource? _buscaCts;
+
+    private async Task OnTermoChanged(ChangeEventArgs e)
+    {
+        termoBusca = e.Value?.ToString() ?? string.Empty;
+
+        // Cancela busca anterior pra debouncar
+        _buscaCts?.Cancel();
+        _buscaCts = new CancellationTokenSource();
+        var ct = _buscaCts.Token;
+
+        if (string.IsNullOrWhiteSpace(termoBusca) || termoBusca.Length < 2)
+        {
+            resultadosBusca = null;
+            buscando = false;
+            return;
+        }
+
+        buscando = true;
+        try
+        {
+            await Task.Delay(250, ct);
+            await BuscarClientes(termoBusca);
+        }
+        catch (TaskCanceledException) { /* nova digitação cancelou — OK */ }
+        finally { buscando = false; }
+    }
 
     protected override void OnInitialized()
     {

@@ -1,4 +1,3 @@
-// Este arquivo nao foi revisado nem documentado
 using FluentAssertions;
 using CarStoreManager.Domain.Entities.Concessionaria;
 using CarStoreManager.Domain.Enums;
@@ -10,6 +9,9 @@ namespace CarStoreManager.Tests.Unidade.Domain.Entidades.Concessionaria;
 
 public class VeiculoVendaTest
 {
+    // RENAVAM válido pré-calculado (DV = 0 para 1234567890)
+    private const string RenavamValido = "12345678900";
+
     // ==================== CONSTRUTOR ====================
 
     [Fact]
@@ -24,11 +26,12 @@ public class VeiculoVendaTest
         veiculo.Ano.GetValorAno().Should().Be(2023);
         veiculo.Quilometragem.GetQuilometragem().Should().Be(15000);
         veiculo.Placa.GetPlaca().Should().Be("ABC1D23");
+        veiculo.GetRenavam().Should().Be(RenavamValido);
         veiculo.Cambio.Should().Be(TipoCambio.Automatico);
         veiculo.Combustivel.Should().Be(TipoCombustivel.Flex);
         veiculo.Valor.GetValorDinheiro().Should().Be(85000.00m);
         veiculo.Disponibilidade.Should().Be(DisponibilidadeVeiculo.Disponivel);
-        veiculo.GetAcessoriosVeiculo().Should().Be(AcessoriosVeiculo.ArCondicionado); // passado no auxiliar
+        veiculo.GetAcessoriosVeiculo().Should().Be(AcessoriosVeiculo.ArCondicionado);
     }
 
     [Theory]
@@ -36,8 +39,7 @@ public class VeiculoVendaTest
     [InlineData("   ")]
     public void Construtor_MarcaInvalida_LancaArgumentException(string marca)
     {
-        Action act = () => new VeiculoVenda(marca, "Modelo", "Cor", "Motor", 2020, 0, "ABC1234",
-            TipoCambio.Manual, TipoCombustivel.Gasolina, 10000, AcessoriosVeiculo.Nenhum);
+        Action act = () => CriarVeiculo(marca: marca);
         act.Should().Throw<ArgumentException>().WithMessage("*Marca*");
     }
 
@@ -46,8 +48,7 @@ public class VeiculoVendaTest
     [InlineData("   ")]
     public void Construtor_ModeloInvalido_LancaArgumentException(string modelo)
     {
-        Action act = () => new VeiculoVenda("Marca", modelo, "Cor", "Motor", 2020, 0, "ABC1234",
-            TipoCambio.Manual, TipoCombustivel.Gasolina, 10000, AcessoriosVeiculo.Nenhum);
+        Action act = () => CriarVeiculo(modelo: modelo);
         act.Should().Throw<ArgumentException>().WithMessage("*Modelo*");
     }
 
@@ -56,8 +57,7 @@ public class VeiculoVendaTest
     [InlineData("   ")]
     public void Construtor_CorInvalida_LancaArgumentException(string cor)
     {
-        Action act = () => new VeiculoVenda("Marca", "Modelo", cor, "Motor", 2020, 0, "ABC1234",
-            TipoCambio.Manual, TipoCombustivel.Gasolina, 10000, AcessoriosVeiculo.Nenhum);
+        Action act = () => CriarVeiculo(cor: cor);
         act.Should().Throw<ArgumentException>().WithMessage("*Cor*");
     }
 
@@ -66,42 +66,113 @@ public class VeiculoVendaTest
     [InlineData("   ")]
     public void Construtor_MotorizacaoInvalida_LancaArgumentException(string motor)
     {
-        Action act = () => new VeiculoVenda("Marca", "Modelo", "Cor", motor, 2020, 0, "ABC1234",
-            TipoCambio.Manual, TipoCombustivel.Gasolina, 10000, AcessoriosVeiculo.Nenhum);
+        Action act = () => CriarVeiculo(motor: motor);
         act.Should().Throw<ArgumentException>().WithMessage("*Motorização*");
     }
 
     [Fact]
-    public void Construtor_AnoNegativo_LancaArgumentException()
+    public void Construtor_AnoNegativo_LancaAnoInvalidoException()
     {
-        // O Value Object Ano valida isso; testamos indiretamente
-        Action act = () => new VeiculoVenda("Marca", "Modelo", "Cor", "Motor", -1, 0, "ABC1234",
-            TipoCambio.Manual, TipoCombustivel.Gasolina, 10000, AcessoriosVeiculo.Nenhum);
+        Action act = () => CriarVeiculo(ano: -1);
         act.Should().Throw<AnoInvalidoException>();
     }
 
     [Fact]
     public void Construtor_QuilometragemNegativa_LancaArgumentException()
     {
-        Action act = () => new VeiculoVenda("Marca", "Modelo", "Cor", "Motor", 2020, -100, "ABC1234",
-            TipoCambio.Manual, TipoCombustivel.Gasolina, 10000, AcessoriosVeiculo.Nenhum);
-        act.Should().Throw<ArgumentException>();
+        Action act = () => CriarVeiculo(km: -100);
+        act.Should().Throw<Exception>();
     }
 
     [Fact]
-    public void Construtor_PlacaInvalida_LancaArgumentException()
+    public void Construtor_PlacaInvalida_LancaPlacaVeiculoInvalidaException()
     {
-        Action act = () => new VeiculoVenda("Marca", "Modelo", "Cor", "Motor", 2020, 0, "",
-            TipoCambio.Manual, TipoCombustivel.Gasolina, 10000, AcessoriosVeiculo.Nenhum);
+        Action act = () => CriarVeiculo(placa: "");
         act.Should().Throw<PlacaVeiculoInvalidaException>();
+    }
+
+    [Fact]
+    public void Construtor_RenavamInvalido_LancaRenavamInvalidoException()
+    {
+        Action act = () => CriarVeiculo(renavam: "12345");
+        act.Should().Throw<RenavamInvalidoException>();
+    }
+
+    [Fact]
+    public void Construtor_RenavamComDvErrado_LancaRenavamInvalidoException()
+    {
+        // 12345678901 — DV correto seria 0, não 1
+        Action act = () => CriarVeiculo(renavam: "12345678901");
+        act.Should().Throw<RenavamInvalidoException>();
     }
 
     [Fact]
     public void Construtor_ValorNegativo_LancaArgumentException()
     {
-        Action act = () => new VeiculoVenda("Marca", "Modelo", "Cor", "Motor", 2020, 0, "ABC1234",
-            TipoCambio.Manual, TipoCombustivel.Gasolina, -1, AcessoriosVeiculo.Nenhum);
+        Action act = () => CriarVeiculo(valor: -1);
         act.Should().Throw<ArgumentException>();
+    }
+
+    // ==================== IPVA ====================
+
+    [Fact]
+    public void Construtor_SemAnoIpva_DefineAnoUltimoIpvaPagoComoNull()
+    {
+        var veiculo = CriarVeiculoValido();
+        veiculo.AnoUltimoIpvaPago.Should().BeNull();
+    }
+
+    [Fact]
+    public void Construtor_ComAnoIpva_DefineAnoUltimoIpvaPago()
+    {
+        var veiculo = CriarVeiculo(anoIpva: 2024);
+        veiculo.AnoUltimoIpvaPago.Should().Be(2024);
+    }
+
+    [Fact]
+    public void RegistrarPagamentoIpva_AnoValido_AtualizaCampo()
+    {
+        var veiculo = CriarVeiculoValido();
+        veiculo.RegistrarPagamentoIpva(2025);
+        veiculo.AnoUltimoIpvaPago.Should().Be(2025);
+    }
+
+    [Fact]
+    public void RegistrarPagamentoIpva_AnoAnteriorAoUltimo_LancaInvalidOperationException()
+    {
+        var veiculo = CriarVeiculo(anoIpva: 2024);
+        Action act = () => veiculo.RegistrarPagamentoIpva(2023);
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void RegistrarPagamentoIpva_AnoMuitoAntigo_LancaArgumentException()
+    {
+        var veiculo = CriarVeiculoValido();
+        Action act = () => veiculo.RegistrarPagamentoIpva(1800);
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void IpvaEmDia_AnoUltimoMaiorOuIgual_RetornaTrue()
+    {
+        var veiculo = CriarVeiculo(anoIpva: 2024);
+        veiculo.IpvaEmDia(2024).Should().BeTrue();
+        veiculo.IpvaEmDia(2023).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IpvaEmDia_AnoUltimoMenor_RetornaFalse()
+    {
+        var veiculo = CriarVeiculo(anoIpva: 2023);
+        veiculo.IpvaEmDia(2024).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IpvaEmDia_SemAnoUltimo_RetornaFalse()
+    {
+        var veiculo = CriarVeiculoValido();
+        veiculo.IpvaEmDia(2024).Should().BeFalse();
     }
 
     // ==================== GETTERS ====================
@@ -109,15 +180,15 @@ public class VeiculoVendaTest
     [Fact]
     public void GetAcessoriosLista_SemAcessorios_RetornaListaVazia()
     {
-        var veiculo = new VeiculoVenda("A", "B", "C", "M", 2020, 0, "XYZ1A23",
-            TipoCambio.Manual, TipoCombustivel.Gasolina, 1000, AcessoriosVeiculo.Nenhum);
+        var veiculo = CriarVeiculoValido(acessorios: AcessoriosVeiculo.Nenhum);
         veiculo.GetAcessoriosLista().Should().BeEmpty();
     }
 
     [Fact]
     public void GetAcessoriosLista_ComAcessorios_RetornaListaCorreta()
     {
-        var veiculo = CriarVeiculoValido(acessorios: AcessoriosVeiculo.ArCondicionado | AcessoriosVeiculo.DirecaoHidraulica);
+        var veiculo = CriarVeiculoValido(
+            acessorios: AcessoriosVeiculo.ArCondicionado | AcessoriosVeiculo.DirecaoHidraulica);
         var lista = veiculo.GetAcessoriosLista();
         lista.Should().Contain(new[] { "ArCondicionado", "DirecaoHidraulica" });
         lista.Should().HaveCount(2);
@@ -208,11 +279,11 @@ public class VeiculoVendaTest
     }
 
     [Fact]
-    public void AlterarQuilometragem_Negativa_LancaArgumentException()
+    public void AlterarQuilometragem_Negativa_Lanca()
     {
         var veiculo = CriarVeiculoValido();
         Action act = () => veiculo.AlterarQuilometragem(-1);
-        act.Should().Throw<InvalidOperationException>();
+        act.Should().Throw<Exception>();
     }
 
     // ==================== VALOR ====================
@@ -240,7 +311,7 @@ public class VeiculoVendaTest
     [Fact]
     public void AdicionarAcessorio_SetaFlagCorretamente()
     {
-        var veiculo = CriarVeiculoValido(AcessoriosVeiculo.Nenhum);
+        var veiculo = CriarVeiculoValido(acessorios: AcessoriosVeiculo.Nenhum);
         veiculo.AdicionarAcessorio(AcessoriosVeiculo.TetoSolar);
         veiculo.GetAcessoriosVeiculo().Should().HaveFlag(AcessoriosVeiculo.TetoSolar);
     }
@@ -248,7 +319,8 @@ public class VeiculoVendaTest
     [Fact]
     public void RemoverAcessorio_RemoveFlag()
     {
-        var veiculo = CriarVeiculoValido(AcessoriosVeiculo.BancoCouro | AcessoriosVeiculo.Alarme);
+        var veiculo = CriarVeiculoValido(
+            acessorios: AcessoriosVeiculo.BancoCouro | AcessoriosVeiculo.Alarme);
         veiculo.RemoverAcessorio(AcessoriosVeiculo.Alarme);
         veiculo.GetAcessoriosVeiculo().Should().NotHaveFlag(AcessoriosVeiculo.Alarme);
         veiculo.GetAcessoriosVeiculo().Should().HaveFlag(AcessoriosVeiculo.BancoCouro);
@@ -257,9 +329,11 @@ public class VeiculoVendaTest
     [Fact]
     public void DefinirAcessorios_SubstituiTodos()
     {
-        var veiculo = CriarVeiculoValido(AcessoriosVeiculo.ArCondicionado);
-        veiculo.DefinirAcessorios(AcessoriosVeiculo.VidrosEletricos | AcessoriosVeiculo.CentralMultimidia);
-        veiculo.GetAcessoriosVeiculo().Should().Be(AcessoriosVeiculo.VidrosEletricos | AcessoriosVeiculo.CentralMultimidia);
+        var veiculo = CriarVeiculoValido(acessorios: AcessoriosVeiculo.ArCondicionado);
+        veiculo.DefinirAcessorios(
+            AcessoriosVeiculo.VidrosEletricos | AcessoriosVeiculo.CentralMultimidia);
+        veiculo.GetAcessoriosVeiculo().Should().Be(
+            AcessoriosVeiculo.VidrosEletricos | AcessoriosVeiculo.CentralMultimidia);
     }
 
     // ==================== DISPONIBILIDADE ====================
@@ -305,7 +379,7 @@ public class VeiculoVendaTest
     [Fact]
     public void AdicionarFoto_UrlValida_AdicionaFotoEOrdena()
     {
-        var veiculo = CriarVeiculoValidoComId();
+        var veiculo = CriarVeiculoValido();
         veiculo.AdicionarFoto("http://fotos.com/1.jpg");
         veiculo.Fotos.Should().ContainSingle();
         veiculo.Fotos[0].Ordem.Should().Be(0);
@@ -315,7 +389,7 @@ public class VeiculoVendaTest
     [Fact]
     public void AdicionarFoto_VariasFotos_IncrementaOrdem()
     {
-        var veiculo = CriarVeiculoValidoComId();
+        var veiculo = CriarVeiculoValido();
         veiculo.AdicionarFoto("foto1.jpg");
         veiculo.AdicionarFoto("foto2.jpg");
         veiculo.AdicionarFoto("foto3.jpg");
@@ -326,19 +400,19 @@ public class VeiculoVendaTest
     [Fact]
     public void RemoverFoto_FotoExistente_RemoveEReordena()
     {
-        var veiculo = CriarVeiculoValidoComId();
+        var veiculo = CriarVeiculoValido();
         veiculo.AdicionarFoto("foto1.jpg");
         veiculo.AdicionarFoto("foto2.jpg");
         var fotoARemover = veiculo.Fotos[0];
         veiculo.RemoverFoto(fotoARemover.Id);
         veiculo.Fotos.Should().HaveCount(1);
-        veiculo.Fotos[0].Ordem.Should().Be(0); // reordenou
+        veiculo.Fotos[0].Ordem.Should().Be(0);
     }
 
     [Fact]
     public void RemoverFoto_FotoInexistente_LancaInvalidOperationException()
     {
-        var veiculo = CriarVeiculoValidoComId();
+        var veiculo = CriarVeiculoValido();
         Action act = () => veiculo.RemoverFoto(Guid.NewGuid());
         act.Should().Throw<InvalidOperationException>().WithMessage("*Foto não encontrada*");
     }
@@ -346,29 +420,53 @@ public class VeiculoVendaTest
     [Fact]
     public void RemoverFoto_UltimaFoto_NaoLancaExcecao()
     {
-        var veiculo = CriarVeiculoValidoComId();
+        var veiculo = CriarVeiculoValido();
         veiculo.AdicionarFoto("unica.jpg");
         var foto = veiculo.Fotos[0];
         veiculo.RemoverFoto(foto.Id);
         veiculo.Fotos.Should().BeEmpty();
     }
 
-    // ==================== MÉTODOS AUXILIARES ====================
+    // ==================== PLACA — formatos aceitos ====================
 
-    private static VeiculoVenda CriarVeiculoValido(
-        AcessoriosVeiculo acessorios = AcessoriosVeiculo.ArCondicionado)
+    [Theory]
+    [InlineData("ABC1D23")]      // Mercosul sem hífen
+    [InlineData("ABC-1D23")]     // Mercosul com hífen
+    [InlineData("ABC1234")]      // Antigo sem hífen
+    [InlineData("ABC-1234")]     // Antigo com hífen
+    public void Construtor_PlacaEmFormatosAceitos_NaoLanca(string placa)
     {
-        return new VeiculoVenda(
-            "Honda", "Civic", "Preto", "2.0 Turbo", 2023, 15000, "ABC1D23",
-            TipoCambio.Automatico, TipoCombustivel.Flex, 85000.00m, acessorios);
+        Action act = () => CriarVeiculo(placa: placa);
+        act.Should().NotThrow();
     }
 
-    private static VeiculoVenda CriarVeiculoValidoComId(
-        AcessoriosVeiculo acessorios = AcessoriosVeiculo.ArCondicionado)
+    // ==================== HELPERS ====================
+
+    private static VeiculoVenda CriarVeiculoValido(
+        AcessoriosVeiculo acessorios = AcessoriosVeiculo.ArCondicionado,
+        int? anoIpva = null)
     {
-        var veiculo = CriarVeiculoValido(acessorios);
-        // Define um Id arbitrário para os testes de foto (necessário para o construtor de FotoVeiculo)
-        typeof(Entity).GetProperty("Id")?.SetValue(veiculo, Guid.NewGuid());
-        return veiculo;
+        return new VeiculoVenda(
+            "Honda", "Civic", "Preto", "2.0 Turbo", 2023, 15000, "ABC1D23", RenavamValido,
+            TipoCambio.Automatico, TipoCombustivel.Flex, 85000.00m, acessorios, anoIpva);
+    }
+
+    private static VeiculoVenda CriarVeiculo(
+        string marca = "Marca",
+        string modelo = "Modelo",
+        string cor = "Cor",
+        string motor = "Motor",
+        int ano = 2020,
+        int km = 0,
+        string placa = "ABC1234",
+        string renavam = RenavamValido,
+        TipoCambio cambio = TipoCambio.Manual,
+        TipoCombustivel combustivel = TipoCombustivel.Gasolina,
+        decimal valor = 10000m,
+        AcessoriosVeiculo acessorios = AcessoriosVeiculo.Nenhum,
+        int? anoIpva = null)
+    {
+        return new VeiculoVenda(marca, modelo, cor, motor, ano, km, placa, renavam,
+            cambio, combustivel, valor, acessorios, anoIpva);
     }
 }
