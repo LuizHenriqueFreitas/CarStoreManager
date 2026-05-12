@@ -136,12 +136,21 @@ public class OrdemServicoController : ControllerBase
         return r.IsSuccess ? NoContent() : BadRequest(r.Error);
     }
 
-    // mecânico finaliza
+    // mecânico finaliza o serviço técnico
     [HttpPatch("{id:guid}/finalizar")]
     [Authorize(Roles = "Admin,Mecanico")]
     public async Task<IActionResult> Finalizar(Guid id)
     {
         var r = await _service.FinalizarAsync(id);
+        return r.IsSuccess ? NoContent() : BadRequest(r.Error);
+    }
+
+    // recepção marca como entregue ao cliente (após cobrar)
+    [HttpPatch("{id:guid}/entregar")]
+    [Authorize(Roles = "Admin,Recepcionista")]
+    public async Task<IActionResult> Entregar(Guid id)
+    {
+        var r = await _service.EntregarAsync(id);
         return r.IsSuccess ? NoContent() : BadRequest(r.Error);
     }
 

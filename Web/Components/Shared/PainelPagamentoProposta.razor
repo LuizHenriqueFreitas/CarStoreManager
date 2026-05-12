@@ -1,0 +1,245 @@
+@namespace CarStoreManager.Web.Components.Shared
+@rendermode InteractiveServer
+
+@inject IPagamentoPropostaService PagamentoService
+@inject AuthenticationStateProvider AuthState
+
+@using System.Globalization
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda.Pagamento
+@using Microsoft.AspNetCore.Components.Authorization
+
+<AuthorizeView Roles="Admin,Vendedor">
+    <Authorized>
+        <div class="pagprop-card">
+            <h3>💰 Cobrança do veículo</h3>
+
+            @if (resumo is null)
+            {
+                <p class="muted">Carregando...</p>
+            }
+            else
+            {
+                <div class="pagprop-resumo">
+                    <div>
+                        <span class="muted">Valor do veículo</span>
+                        <span class="val total">@FmtBRL(resumo.ValorTotalProposta)</span>
+                    </div>
+                    <div>
+                        <span class="muted">Pago</span>
+                        <span class="val pago">@FmtBRL(resumo.ValorPago)</span>
+                    </div>
+                    <div>
+                        <span class="muted">Restante</span>
+                        <span class="val restante">@FmtBRL(resumo.ValorRestante)</span>
+                    </div>
+                    <div>
+                        <span class="muted">Status</span>
+                        <span class="tag tag-@resumo.StatusPagamento.ToLower()">
+                            @StatusLabel(resumo.StatusPagamento)
+                        </span>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(mensagem))
+                {
+                    <div class="banner @(mensagemErro ? "banner-erro" : "banner-ok")">@mensagem</div>
+                }
+
+                @if (resumo.StatusPagamento != "Pago")
+                {
+                    <div class="form-novo">
+                        <select @bind="novo.ModoPagamento">
+                            <option value="">— Modo —</option>
+                            <option value="Dinheiro">💵 Dinheiro</option>
+                            <option value="Pix">⚡ Pix</option>
+                            <option value="CartaoDebito">💳 Débito</option>
+                            <option value="CartaoCredito">💳 Crédito</option>
+                            <option value="Financiamento">💼 Financiamento</option>
+                            <option value="Boleto">📄 Boleto</option>
+                            <option value="Transferencia">🏦 Transferência</option>
+                        </select>
+                        <input type="number" step="0.01" min="0.01" @bind="novo.Valor"
+                               placeholder="Valor (R$)"
+                               max="@resumo.ValorRestante" />
+                        <input type="text" @bind="novo.ReferenciaExterna"
+                               placeholder="NSU/end-to-end (opc)" />
+                        <button class="btn-receber" @onclick="Registrar"
+                                disabled="@(processando || string.IsNullOrEmpty(novo.ModoPagamento) || novo.Valor <= 0)">
+                            @(processando ? "..." : "Registrar")
+                        </button>
+                    </div>
+                    <button class="btn-link" @onclick="ReceberRestante">
+                        Receber valor restante (@FmtBRL(resumo.ValorRestante))
+                    </button>
+                }
+                else
+                {
+                    <div class="confirmacao-pago">
+                        ✓ Veículo totalmente pago. O termo de entrega pode ser enviado para assinatura.
+                    </div>
+                }
+
+                @if (resumo.Pagamentos.Any())
+                {
+                    <table class="tbl-pagamentos">
+                        <thead>
+                            <tr>
+                                <th>Data</th><th>Modo</th><th>Valor</th><th>Ref.</th>
+                                <AuthorizeView Roles="Admin" Context="adminCol"><Authorized><th></th></Authorized></AuthorizeView>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in resumo.Pagamentos)
+                            {
+                                <tr>
+                                    <td>@p.DataPagamento.ToLocalTime().ToString("dd/MM HH:mm")</td>
+                                    <td>@ModoLabel(p.ModoPagamento)</td>
+                                    <td>@FmtBRL(p.Valor)</td>
+                                    <td><small>@(p.ReferenciaExterna ?? "—")</small></td>
+                                    <AuthorizeView Roles="Admin" Context="adminAcao">
+                                        <Authorized>
+                                            <td>
+                                                <button class="btn-estorno" @onclick="() => Estornar(p.Id)">↩</button>
+                                            </td>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p class="muted small">Nenhum pagamento registrado ainda.</p>
+                }
+            }
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+<style>
+    .pagprop-card { background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:16px; margin-top:16px; }
+    .pagprop-card h3 { margin:0 0 12px; font-size:1.05rem; }
+    .pagprop-resumo { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding:12px; background:#f8f8f8; border-radius:6px; margin-bottom:14px; }
+    .pagprop-resumo > div { display:flex; flex-direction:column; gap:4px; }
+    .muted { color:#888; font-size:0.85em; }
+    .small { font-size:0.85em; }
+    .val { font-weight:600; font-size:1.05em; }
+    .val.total { color:#333; }
+    .val.pago { color:#1f7a3a; }
+    .val.restante { color:#a72020; }
+    .tag { padding:3px 10px; border-radius:12px; font-size:0.8em; font-weight:500; align-self:flex-start; }
+    .tag-pago { background:#dcfce7; color:#166534; }
+    .tag-parcial { background:#fef3c7; color:#854d0e; }
+    .tag-pendente { background:#fff5f5; color:#a72020; }
+    .banner { padding:10px 14px; border-radius:6px; margin-bottom:12px; font-size:0.9em; }
+    .banner-ok { background:#e6f7ed; color:#1f7a3a; border:1px solid #b6e4c2; }
+    .banner-erro { background:#fdecea; color:#a72020; border:1px solid #f5c2bd; }
+    .confirmacao-pago { background:#dcfce7; color:#166534; padding:10px 14px; border-radius:6px; margin-bottom:12px; font-size:0.9em; font-weight:500; }
+    .form-novo { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+    .form-novo select, .form-novo input { padding:8px; border:1px solid #ccc; border-radius:4px; }
+    .form-novo input[type="number"] { width:130px; }
+    .form-novo input[type="text"] { width:160px; }
+    .btn-receber { background:#1f7a3a; color:#fff; padding:8px 16px; border-radius:4px; border:0; cursor:pointer; font-weight:500; }
+    .btn-receber:disabled { background:#aaa; cursor:not-allowed; }
+    .btn-link { background:none; border:0; color:#0a84ff; cursor:pointer; font-size:0.9em; padding:4px 0; margin-bottom:12px; }
+    .tbl-pagamentos { width:100%; border-collapse:collapse; margin-top:8px; }
+    .tbl-pagamentos th, .tbl-pagamentos td { padding:6px 8px; border-bottom:1px solid #eee; text-align:left; font-size:0.9em; }
+    .tbl-pagamentos th { background:#f7f7f7; font-weight:500; font-size:0.8em; }
+    .btn-estorno { background:none; border:0; color:#a72020; cursor:pointer; font-size:1.1em; }
+</style>
+
+@code {
+    [Parameter] public Guid PropostaId { get; set; }
+
+    private ResumoPagamentoPropostaDTO? resumo;
+    private RegistrarPagamentoPropostaDTO novo = new();
+    private bool processando;
+    private string mensagem = "";
+    private bool mensagemErro;
+    private Guid usuarioLogadoId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var idClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (idClaim is not null) Guid.TryParse(idClaim.Value, out usuarioLogadoId);
+
+        await Carregar();
+    }
+
+    private async Task Carregar()
+    {
+        var r = await PagamentoService.ObterResumoAsync(PropostaId);
+        if (r.IsSuccess) resumo = r.Value;
+        else { mensagem = r.Error ?? "Erro"; mensagemErro = true; }
+    }
+
+    private async Task Registrar()
+    {
+        if (usuarioLogadoId == Guid.Empty)
+        {
+            mensagem = "Sessão inválida — refaça login para registrar pagamentos.";
+            mensagemErro = true;
+            return;
+        }
+
+        processando = true;
+        var r = await PagamentoService.RegistrarPagamentoAsync(PropostaId, usuarioLogadoId, novo);
+        processando = false;
+        if (r.IsSuccess)
+        {
+            mensagem = $"Pagamento de {FmtBRL(novo.Valor)} registrado.";
+            mensagemErro = false;
+            novo = new();
+            await Carregar();
+        }
+        else
+        {
+            mensagem = r.Error ?? "Erro";
+            mensagemErro = true;
+        }
+    }
+
+    private async Task ReceberRestante()
+    {
+        if (resumo is null) return;
+        novo.Valor = resumo.ValorRestante;
+        if (string.IsNullOrEmpty(novo.ModoPagamento))
+        {
+            mensagem = "Selecione o modo de pagamento antes.";
+            mensagemErro = true;
+            return;
+        }
+        await Registrar();
+    }
+
+    private async Task Estornar(Guid pagamentoId)
+    {
+        var r = await PagamentoService.EstornarPagamentoAsync(pagamentoId);
+        if (r.IsSuccess) { mensagem = "Pagamento estornado."; mensagemErro = false; await Carregar(); }
+        else { mensagem = r.Error ?? "Erro"; mensagemErro = true; }
+    }
+
+    private static string FmtBRL(decimal v) => v.ToString("C", new CultureInfo("pt-BR"));
+
+    private static string ModoLabel(string m) => m switch
+    {
+        "Dinheiro"      => "💵 Dinheiro",
+        "Pix"           => "⚡ Pix",
+        "CartaoDebito"  => "💳 Débito",
+        "CartaoCredito" => "💳 Crédito",
+        "Boleto"        => "📄 Boleto",
+        "Transferencia" => "🏦 Transferência",
+        "Financiamento" => "💼 Financiamento",
+        _               => m
+    };
+
+    private static string StatusLabel(string s) => s switch
+    {
+        "Pago"    => "✓ Pago",
+        "Parcial" => "Parcial",
+        _         => "Pendente"
+    };
+}

@@ -3,7 +3,9 @@ using FluentAssertions;
 using CarStoreManager.Application.DTOs.Oficina.Componente;
 using CarStoreManager.Application.Services;
 using CarStoreManager.Domain.Entities.Oficina;
+using CarStoreManager.Domain.Entities.Sistema;
 using CarStoreManager.Domain.Enums;
+using CarStoreManager.Domain.Interfaces.Repositories.Sistema;
 using CarStoreManager.Domain.Repositories;
 
 namespace CarStoreManager.Tests.Unidade.Services;
@@ -11,11 +13,13 @@ namespace CarStoreManager.Tests.Unidade.Services;
 public class ComponenteServiceTests
 {
     private readonly Mock<IComponenteRepository> _repoMock = new();
+    private readonly Mock<IConfiguracaoSistemaRepository> _configRepoMock = new();
     private readonly ComponenteService _service;
 
     public ComponenteServiceTests()
     {
-        _service = new ComponenteService(_repoMock.Object);
+        _configRepoMock.Setup(r => r.ObterAsync()).ReturnsAsync(new ConfiguracaoSistema(true));
+        _service = new ComponenteService(_repoMock.Object, _configRepoMock.Object);
     }
 
     [Fact]

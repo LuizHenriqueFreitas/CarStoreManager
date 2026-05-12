@@ -82,4 +82,25 @@ public class NotaFiscalEntradaController : ControllerBase
         var r = await _service.RejeitarAsync(id, dto.Motivo);
         return r.IsSuccess ? NoContent() : BadRequest(r.Error);
     }
+
+    /// <summary>Sugestões automáticas de componentes para um item de NF-e.</summary>
+    [HttpGet("itens/{itemId:guid}/sugestoes")]
+    public async Task<IActionResult> SugerirComponentes(Guid itemId)
+    {
+        var r = await _service.SugerirComponentesAsync(itemId);
+        return r.IsSuccess ? Ok(r.Value) : BadRequest(r.Error);
+    }
+
+    /// <summary>
+    /// Cria componente a partir do item (campos vazios são preenchidos com
+    /// dados do XML) e já vincula automaticamente.
+    /// </summary>
+    [HttpPost("itens/{itemId:guid}/cadastrar-e-vincular")]
+    public async Task<IActionResult> CadastrarEVincular(
+        Guid itemId,
+        [FromBody] CarStoreManager.Application.DTOs.Oficina.Componente.CriarComponenteDTO dto)
+    {
+        var r = await _service.CriarComponenteEVincularAsync(itemId, dto);
+        return r.IsSuccess ? Ok(new { ComponenteId = r.Value }) : BadRequest(r.Error);
+    }
 }

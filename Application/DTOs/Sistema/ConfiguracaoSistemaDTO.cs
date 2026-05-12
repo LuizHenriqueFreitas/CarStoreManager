@@ -24,3 +24,10 @@ public class TestarEmailDTO
 {
     public string EmailDestino { get; set; } = "";
 }
+
+public class MargensDTO
+{
+    /// <summary>Mapa: nome do SistemaComponente (Motor, Freios, etc) → percentual.</summary>
+    public Dictionary<string, decimal> MargensPorSistema { get; set; } = new();
+    public decimal MargemPadraoGlobalPct { get; set; } = 30m;
+}

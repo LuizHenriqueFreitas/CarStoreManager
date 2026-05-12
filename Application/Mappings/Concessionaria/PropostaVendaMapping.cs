@@ -40,6 +40,9 @@ public static class PropostaVendaMapping
 
     public static PropostaVendaListaDTO ToListaDto(PropostaVenda entity)
     {
+        var prazo = entity.GetDataCriacao().AddDays(PropostaVenda.PrazoValidadeDias);
+        var diasRestantes = (int)Math.Ceiling((prazo - DateTime.UtcNow).TotalDays);
+
         return new PropostaVendaListaDTO
         {
             Id = entity.Id,
@@ -47,7 +50,10 @@ public static class PropostaVendaMapping
             VeiculoVendaId = entity.GetVeiculoId(),
             ValorFinal = entity.GetValorFinal(),
             Status = entity.Status.ToString(),
-            DataCriacao = entity.GetDataCriacao()
+            DataCriacao = entity.GetDataCriacao(),
+            ModoPagamento = entity.ModoPagamento.ToString(),
+            DiasRestantes = diasRestantes
+            // ClienteNome/VeiculoMarca/Modelo: preenchidos no service que tem acesso aos repos
         };
     }
 

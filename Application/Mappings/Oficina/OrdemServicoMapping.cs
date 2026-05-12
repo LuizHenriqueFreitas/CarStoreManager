@@ -46,6 +46,7 @@ public static class OrdemServicoMapping
         {
             Id = entity.Id,
             ClienteId = entity.GetClienteId(),
+            MecanicoId = entity.GetMecacnicoId(),
             VeiculoClienteId = entity.GetVeiculoClienteId(),
             Tipo = entity.GetTipoServico(),
             NumeroPublico = entity.GetNumeroPublico(),

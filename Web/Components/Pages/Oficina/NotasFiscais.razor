@@ -11,6 +11,7 @@
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Oficina.NotaFiscal
 @using CarStoreManager.Application.DTOs.Oficina.Componente
+@using CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Forms
 
 <div class="nf-page">
@@ -161,15 +162,15 @@
                             <td>
                                 @if (PodeEditar)
                                 {
-                                    <select class="comp-select"
-                                            value="@(item.ComponenteId?.ToString() ?? "")"
-                                            @onchange="@(e => VincularComponente(item.Id, e.Value?.ToString()))">
-                                        <option value="">-- escolher componente --</option>
-                                        @foreach (var c in componentes)
-                                        {
-                                            <option value="@c.Id">@c.Nome (@c.PartNumber)</option>
-                                        }
-                                    </select>
+                                    <SeletorComponenteNF
+                                        ItemId="@item.Id"
+                                        ComponenteIdAtual="@item.ComponenteId"
+                                        NomeAtual="@(item.ComponenteNome ?? "")"
+                                        PartNumberAtual="@(item.ComponentePartNumber ?? "")"
+                                        Editavel="true"
+                                        Componentes="@componentes"
+                                        OnVincular="@(id => VincularComponente(item.Id, id.ToString()))"
+                                        OnCriarNovo="AbrirModalCriarItem" />
                                 }
                                 else if (item.Mapeado)
                                 {
@@ -207,6 +208,90 @@
                     <p class="muted">Vincule todos os itens a um componente antes de aprovar.</p>
                 }
             }
+        </div>
+    </div>
+}
+
+@if (modalCriarItemId.HasValue && itemParaCriar is not null)
+{
+    <div class="modal-bg" @onclick="FecharModalCriar">
+        <div class="modal-criar" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h2>Cadastrar peça nova</h2>
+                <button class="btn-fechar" @onclick="FecharModalCriar">✕</button>
+            </div>
+
+            <p class="muted">
+                Os campos abaixo foram pré-preenchidos com dados do XML.
+                Revise e complete antes de cadastrar — a peça será criada e já
+                vinculada a este item da NF-e.
+            </p>
+
+            <div class="form-criar-grid">
+                <label>Nome *</label>
+                <input type="text" @bind="formCriar.Nome" />
+
+                <label>SKU interno *</label>
+                <input type="text" @bind="formCriar.SKUInterno" placeholder="código do seu cadastro" />
+
+                <label>PartNumber</label>
+                <input type="text" @bind="formCriar.PartNumber" />
+
+                <label>Código OEM</label>
+                <input type="text" @bind="formCriar.CodigoOEM" />
+
+                <label>Marca fabricante *</label>
+                <input type="text" @bind="formCriar.MarcaFabricante" />
+
+                <label>Categoria *</label>
+                <input type="text" @bind="formCriar.Categoria" />
+
+                <label>Sistema</label>
+                <select @bind="formCriar.Sistema">
+                    <option value="">— escolher —</option>
+                    @foreach (var s in SistemasDisponiveis)
+                    {
+                        <option value="@s">@s</option>
+                    }
+                </select>
+
+                <label>NCM *</label>
+                <input type="text" @bind="formCriar.NCM" />
+
+                <label>CEST</label>
+                <input type="text" @bind="formCriar.CEST" placeholder="7 dígitos" />
+
+                <label>Código de barras</label>
+                <input type="text" @bind="formCriar.CodigoBarras" placeholder="8 a 14 dígitos" />
+
+                <label>Unidade *</label>
+                <input type="text" @bind="formCriar.Unidade" />
+
+                <label>Peso (kg)</label>
+                <input type="number" step="0.001" @bind="formCriar.Peso" />
+
+                <label>Garantia (dias)</label>
+                <input type="number" min="0" @bind="formCriar.GarantiaDias" />
+
+                <label>Custo unitário (R$)</label>
+                <input type="number" step="0.01" min="0" @bind="formCriar.CustoUnitario" />
+
+                <label>Margem lucro (%, opcional)</label>
+                <input type="number" step="0.5" min="0" @bind="formCriar.MargemLucroPct"
+                       placeholder="vazio = padrão do sistema" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(erroCriar))
+            {
+                <div class="banner banner-erro" style="margin-top:12px">@erroCriar</div>
+            }
+
+            <div class="modal-acoes-criar">
+                <button class="btn-link" @onclick="FecharModalCriar">Cancelar</button>
+                <button class="btn-novo" @onclick="ConfirmarCriarEVincular" disabled="@criandoItem">
+                    @(criandoItem ? "Cadastrando..." : "✓ Cadastrar e vincular")
+                </button>
+            </div>
         </div>
     </div>
 }
@@ -265,6 +350,24 @@
         border-radius:6px; border:0; cursor:pointer;
     }
     .btn-rejeitar:disabled { background:#ccc; cursor:not-allowed; }
+
+    /* === Modal cadastrar peça nova === */
+    .modal-criar {
+        background:#fff; border-radius:8px; max-width:680px; width:95%;
+        max-height:90vh; overflow:auto; padding:24px;
+    }
+    .form-criar-grid {
+        display:grid; grid-template-columns: 160px 1fr; gap:8px 12px;
+        align-items:center; margin-top:14px;
+    }
+    .form-criar-grid label { font-size:0.88em; color:#444; }
+    .form-criar-grid input, .form-criar-grid select {
+        padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:0.9em;
+    }
+    .modal-acoes-criar {
+        display:flex; justify-content:flex-end; gap:10px; margin-top:18px;
+        padding-top:14px; border-top:1px solid #eee;
+    }
 </style>
 
 @code {
@@ -280,6 +383,82 @@
 
     private bool PodeEditar => notaDetalhe?.Status == "ImportadaAguardandoAprovacao";
     private bool TodosMapeados => notaDetalhe is not null && notaDetalhe.Itens.All(i => i.Mapeado);
+
+    // === Cadastro inline de peça (acionado do SeletorComponenteNF) ===
+    private Guid? modalCriarItemId;
+    private ItemNotaFiscalDTO? itemParaCriar;
+    private CriarComponenteDTO formCriar = new();
+    private bool criandoItem;
+    private string? erroCriar;
+    private static readonly string[] SistemasDisponiveis = new[]
+    {
+        "Motor", "Suspensao", "Direcao", "Freios", "Eletrica",
+        "Lataria", "Transmissão", "Arrefecimento", "Escapamento",
+        "Acessorios", "Interior"
+    };
+
+    private void AbrirModalCriarItem(Guid itemId)
+    {
+        var item = notaDetalhe?.Itens.FirstOrDefault(i => i.Id == itemId);
+        if (item is null) return;
+
+        modalCriarItemId = itemId;
+        itemParaCriar = item;
+        erroCriar = null;
+        // Pré-popula com o que veio do XML
+        formCriar = new CriarComponenteDTO
+        {
+            Nome = item.DescricaoProdutoFornecedor,
+            PartNumber = item.CodigoProdutoFornecedor,
+            NCM = item.Ncm,
+            Unidade = string.IsNullOrWhiteSpace(item.Unidade) ? "UN" : item.Unidade,
+            CustoUnitario = item.ValorUnitario,
+            // Sugestão de SKU baseada no PartNumber (admin pode trocar)
+            SKUInterno = item.CodigoProdutoFornecedor,
+            Categoria = "—"
+        };
+    }
+
+    private void FecharModalCriar()
+    {
+        modalCriarItemId = null;
+        itemParaCriar = null;
+        erroCriar = null;
+    }
+
+    private async Task ConfirmarCriarEVincular()
+    {
+        if (modalCriarItemId is null) return;
+        if (string.IsNullOrWhiteSpace(formCriar.Nome) ||
+            string.IsNullOrWhiteSpace(formCriar.SKUInterno) ||
+            string.IsNullOrWhiteSpace(formCriar.MarcaFabricante) ||
+            string.IsNullOrWhiteSpace(formCriar.Categoria) ||
+            string.IsNullOrWhiteSpace(formCriar.NCM) ||
+            string.IsNullOrWhiteSpace(formCriar.Unidade))
+        {
+            erroCriar = "Preencha os campos obrigatórios (Nome, SKU, Marca, Categoria, NCM, Unidade).";
+            return;
+        }
+
+        criandoItem = true;
+        erroCriar = null;
+
+        var r = await NfService.CriarComponenteEVincularAsync(modalCriarItemId.Value, formCriar);
+        criandoItem = false;
+
+        if (r.IsSuccess)
+        {
+            MostrarOk("Peça cadastrada e vinculada.");
+            FecharModalCriar();
+            // recarrega componentes (para a busca futura) e a nota detalhe
+            await CarregarComponentes();
+            if (notaDetalhe is not null) await AbrirDetalhe(notaDetalhe.Id);
+        }
+        else
+        {
+            erroCriar = r.Error;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

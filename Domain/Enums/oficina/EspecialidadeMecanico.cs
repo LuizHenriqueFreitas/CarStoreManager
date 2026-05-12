@@ -7,4 +7,9 @@ public enum EspecialidadeMecanico
     Eletrica = 3,
     Pintura = 4,
     Interior = 5,
+    Motor = 6,
+    Suspensao = 7,
+    Freios = 8,
+    Transmissao = 9,
+    ArCondicionado = 10
 }

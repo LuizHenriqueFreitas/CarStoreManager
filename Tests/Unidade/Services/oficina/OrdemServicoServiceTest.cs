@@ -358,7 +358,7 @@ namespace CarStoreManager.Tests.Unidade.Services
 
             result.IsSuccess.Should().BeTrue();
             ordem.Checklist.Should().ContainSingle();
-            _ordemRepoMock.Verify(r => r.Update(ordem), Times.Once);
+            _ordemRepoMock.Verify(r => r.AdicionarItemChecklistAsync(It.IsAny<ChecklistOrdemServico>()), Times.Once);
             _ordemRepoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
         }
 

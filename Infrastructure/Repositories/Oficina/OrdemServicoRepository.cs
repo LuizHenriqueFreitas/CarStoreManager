@@ -87,6 +87,11 @@ public class OrdemServicoRepository : IOrdemServicoRepository
         await _context.ItensOrdemServico.AddAsync(item);
     }
 
+    public async Task AdicionarItemChecklistAsync(ChecklistOrdemServico item)
+    {
+        await _context.ChecklistItens.AddAsync(item);
+    }
+
     public async Task<IEnumerable<OrdemServico>> ObterComItensAguardandoAsync(Guid componenteId)
     {
         return await _context.OrdensServico

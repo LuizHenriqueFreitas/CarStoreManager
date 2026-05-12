@@ -26,21 +26,48 @@ else if (veiculo is null)
 }
 else
 {
-    <div class="detalhe-carousel">
-        @if (veiculo.Fotos.Any())
-        {
-            <img src="@veiculo.Fotos[fotoAtiva]" class="carousel-img" alt="Foto do veículo" />
-        }
-        else
-        {
-            <div class="carousel-vazio">Sem fotos cadastradas</div>
-        }
+    <div class="galeria-wrapper">
+        <div class="galeria-principal">
+            @if (veiculo.Fotos.Any())
+            {
+                @* Mostra a foto principal com object-fit contain (sem esticar/cortar)
+                   e prévias parciais das fotos vizinhas nas margens. *@
+                <button class="galeria-arr left" @onclick="FotoAnterior"
+                        style="@(veiculo.Fotos.Count > 1 ? "" : "display:none")">‹</button>
+
+                @if (veiculo.Fotos.Count > 1)
+                {
+                    var idxAnt = (fotoAtiva - 1 + veiculo.Fotos.Count) % veiculo.Fotos.Count;
+                    <div class="galeria-vizinha esquerda" @onclick="FotoAnterior">
+                        <img src="@veiculo.Fotos[idxAnt]" alt="" />
+                    </div>
+                }
+
+                <div class="galeria-foto" @onclick="() => AbrirFullscreen(fotoAtiva)">
+                    <img src="@veiculo.Fotos[fotoAtiva]" alt="Foto do veículo" />
+                    <span class="galeria-zoom">🔍</span>
+                </div>
+
+                @if (veiculo.Fotos.Count > 1)
+                {
+                    var idxProx = (fotoAtiva + 1) % veiculo.Fotos.Count;
+                    <div class="galeria-vizinha direita" @onclick="ProximaFoto">
+                        <img src="@veiculo.Fotos[idxProx]" alt="" />
+                    </div>
+                }
+
+                <button class="galeria-arr right" @onclick="ProximaFoto"
+                        style="@(veiculo.Fotos.Count > 1 ? "" : "display:none")">›</button>
+            }
+            else
+            {
+                <div class="galeria-vazia">Sem fotos cadastradas</div>
+            }
+        </div>
 
         @if (veiculo.Fotos.Count > 1)
         {
-            <button class="carousel-arr left" @onclick="FotoAnterior">‹</button>
-            <button class="carousel-arr right" @onclick="ProximaFoto">›</button>
-            <div class="carousel-dots">
+            <div class="galeria-dots">
                 @for (int i = 0; i < veiculo.Fotos.Count; i++)
                 {
                     var idx = i;
@@ -51,17 +78,16 @@ else
         }
     </div>
 
-    @if (veiculo.Fotos.Count > 1)
+    @if (fotoFullscreenIdx is not null)
     {
-        <div class="thumbs-bar">
-            @for (int i = 0; i < veiculo.Fotos.Count; i++)
+        <div class="fs-overlay" @onclick="FecharFullscreen">
+            <button class="fs-fechar" @onclick="FecharFullscreen" @onclick:stopPropagation="true">✕</button>
+            @if (veiculo.Fotos.Count > 1)
             {
-                var idx = i;
-                <div class="@(i == fotoAtiva ? "thumb ativo" : "thumb")"
-                     @onclick="() => fotoAtiva = idx">
-                    <img src="@veiculo.Fotos[i]" alt="Miniatura @(i+1)" />
-                </div>
+                <button class="fs-arr left" @onclick:stopPropagation="true" @onclick="FsAnterior">‹</button>
+                <button class="fs-arr right" @onclick:stopPropagation="true" @onclick="FsProxima">›</button>
             }
+            <img src="@veiculo.Fotos[fotoFullscreenIdx.Value]" class="fs-img" @onclick:stopPropagation="true" alt="Foto ampliada" />
         </div>
     }
 
@@ -317,6 +343,22 @@ else
     {
         if (veiculo?.Fotos.Count > 0)
             fotoAtiva = (fotoAtiva - 1 + veiculo.Fotos.Count) % veiculo.Fotos.Count;
+    }
+
+    private int? fotoFullscreenIdx;
+
+    private void AbrirFullscreen(int idx) => fotoFullscreenIdx = idx;
+    private void FecharFullscreen() => fotoFullscreenIdx = null;
+
+    private void FsProxima()
+    {
+        if (fotoFullscreenIdx is null || veiculo?.Fotos.Count is null or 0) return;
+        fotoFullscreenIdx = (fotoFullscreenIdx.Value + 1) % veiculo.Fotos.Count;
+    }
+    private void FsAnterior()
+    {
+        if (fotoFullscreenIdx is null || veiculo?.Fotos.Count is null or 0) return;
+        fotoFullscreenIdx = (fotoFullscreenIdx.Value - 1 + veiculo.Fotos.Count) % veiculo.Fotos.Count;
     }
 
     private async Task AbrirModalEdicao()
@@ -575,6 +617,99 @@ else
 }
 
 <style>
+    /* === Galeria nova (foto sem esticar + carrossel parcial + fullscreen) === */
+    .galeria-wrapper {
+        max-width: 1200px; margin: 0 auto; padding: 16px;
+    }
+    .galeria-principal {
+        display: flex; align-items: center; justify-content: center;
+        gap: 12px; position: relative;
+        background: #1a1a1a; border-radius: 12px; padding: 12px;
+        min-height: 420px;
+    }
+    .galeria-foto {
+        flex: 0 1 auto;
+        max-width: 70%;
+        cursor: zoom-in;
+        position: relative;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .galeria-foto img {
+        max-width: 100%; max-height: 480px;
+        object-fit: contain;        /* Não estica */
+        border-radius: 8px;
+        display: block;
+    }
+    .galeria-zoom {
+        position: absolute; bottom: 8px; right: 8px;
+        background: rgba(0,0,0,0.5); color: #fff;
+        padding: 4px 10px; border-radius: 14px; font-size: 0.85em;
+        opacity: 0; transition: opacity 0.2s;
+    }
+    .galeria-foto:hover .galeria-zoom { opacity: 1; }
+    .galeria-vizinha {
+        flex: 0 0 auto; width: 110px; height: 200px;
+        opacity: 0.45; cursor: pointer;
+        overflow: hidden; border-radius: 8px;
+        transition: opacity 0.2s;
+    }
+    .galeria-vizinha:hover { opacity: 0.85; }
+    .galeria-vizinha img { width: 100%; height: 100%; object-fit: cover; }
+    .galeria-vizinha.esquerda { transform: translateX(20px); }
+    .galeria-vizinha.direita { transform: translateX(-20px); }
+    .galeria-arr {
+        background: rgba(255,255,255,0.85); border: 0;
+        width: 38px; height: 38px; border-radius: 50%;
+        font-size: 1.4rem; cursor: pointer;
+        position: absolute; top: 50%; transform: translateY(-50%);
+        z-index: 5;
+    }
+    .galeria-arr.left { left: 12px; }
+    .galeria-arr.right { right: 12px; }
+    .galeria-arr:hover { background: #fff; }
+    .galeria-vazia { color: #888; padding: 40px; }
+    .galeria-dots {
+        display: flex; justify-content: center; gap: 6px; margin-top: 10px;
+    }
+    .galeria-dots .dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: #ccc; cursor: pointer; transition: background 0.2s;
+    }
+    .galeria-dots .dot.ativo { background: #e02020; }
+
+    /* === Fullscreen overlay === */
+    .fs-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 9999; padding: 24px;
+    }
+    .fs-img {
+        max-width: 95vw; max-height: 95vh;
+        object-fit: contain; cursor: default;
+    }
+    .fs-fechar {
+        position: absolute; top: 20px; right: 24px;
+        background: rgba(255,255,255,0.15); color: #fff;
+        border: 0; width: 44px; height: 44px; border-radius: 50%;
+        font-size: 1.4rem; cursor: pointer;
+        z-index: 10000;
+    }
+    .fs-fechar:hover { background: rgba(255,255,255,0.3); }
+    .fs-arr {
+        position: absolute; top: 50%; transform: translateY(-50%);
+        background: rgba(255,255,255,0.15); color: #fff;
+        border: 0; width: 56px; height: 56px; border-radius: 50%;
+        font-size: 2rem; cursor: pointer; z-index: 10000;
+    }
+    .fs-arr.left { left: 24px; }
+    .fs-arr.right { right: 24px; }
+    .fs-arr:hover { background: rgba(255,255,255,0.3); }
+
+    @@media (max-width: 700px) {
+        .galeria-vizinha { display: none; }
+        .galeria-foto { max-width: 100%; }
+    }
+
     /* Seus estilos existentes (mantidos) */
     .detalhe-carousel {
         background: #1a1a1a;

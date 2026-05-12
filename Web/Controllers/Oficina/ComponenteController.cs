@@ -23,6 +23,14 @@ public class ComponenteController : ControllerBase
     // CONSULTAS
     // =========================
 
+    [HttpPatch("{id:guid}/margem")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> AjustarMargem(Guid id, [FromBody] AjustarMargemDTO dto)
+    {
+        var r = await _service.AjustarMargemAsync(id, dto.MargemLucroPct);
+        return r.IsSuccess ? NoContent() : BadRequest(r.Error);
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetTodos()
     {

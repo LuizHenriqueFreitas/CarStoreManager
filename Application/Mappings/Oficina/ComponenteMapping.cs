@@ -26,10 +26,13 @@ public static class ComponenteMapping
             CEST = entity.CEST,
             Categoria = entity.Categoria,
             Unidade = entity.Unidade,
-            Sistema = string.Empty, // Componente atual não carrega Sistema
+            Sistema = entity.Sistema?.ToString() ?? string.Empty,
             Peso = entity.Peso,
             GarantiaDias = entity.GarantiaDias,
-            Ativo = entity.Ativo
+            Ativo = entity.Ativo,
+            CustoUnitario = entity.CustoUnitario,
+            MargemLucroPct = entity.MargemLucroPct,
+            ValorVenda = entity.ValorVenda
         };
     }
 
@@ -44,8 +47,10 @@ public static class ComponenteMapping
             Nome = entity.Nome,
             MarcaFabricante = entity.MarcaFabricante,
             PartNumber = entity.PartNumber,
+            CodigoOEM = entity.CodigoOEM,
+            CodigoBarras = entity.CodigoBarras,
             Categoria = entity.Categoria,
-            Sistema = string.Empty,
+            Sistema = entity.Sistema?.ToString() ?? string.Empty,
             Ativo = entity.Ativo
         };
     }

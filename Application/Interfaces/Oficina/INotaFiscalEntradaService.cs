@@ -21,4 +21,19 @@ public interface INotaFiscalEntradaService
     Task<Result> AprovarAsync(Guid notaFiscalId);
 
     Task<Result> RejeitarAsync(Guid notaFiscalId, string motivo);
+
+    /// <summary>
+    /// Calcula sugestões automáticas de componentes que podem corresponder
+    /// a este item da NF-e. Ranqueia por score: matches em PartNumber/OEM
+    /// (alta confiança) → SKU → similaridade de Nome → NCM (baixa).
+    /// Retorna no máximo 5 candidatos com score &gt; 0.
+    /// </summary>
+    Task<Result<IEnumerable<SugestaoComponenteDTO>>> SugerirComponentesAsync(Guid itemId);
+
+    /// <summary>
+    /// Cria componente novo a partir do item de NF e já vincula. Útil quando
+    /// o admin não acha a peça no cadastro e quer registrá-la imediatamente
+    /// usando os dados que vieram do XML.
+    /// </summary>
+    Task<Result<Guid>> CriarComponenteEVincularAsync(Guid itemId, CarStoreManager.Application.DTOs.Oficina.Componente.CriarComponenteDTO componente);
 }

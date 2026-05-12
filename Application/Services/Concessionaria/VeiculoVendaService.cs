@@ -56,6 +56,18 @@ public class VeiculoVendaService : IVeiculoVendaService
             veiculos.Select(VeiculoVendaMapping.ToListaDto));
     }
 
+    public async Task<Result<IEnumerable<string>>> ListarMarcasDistintasAsync()
+    {
+        var veiculos = await _repository.GetAllAsync();
+        var marcas = veiculos
+            .Select(v => v.GetMarca())
+            .Where(m => !string.IsNullOrWhiteSpace(m))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(m => m)
+            .ToList();
+        return Result<IEnumerable<string>>.Ok(marcas);
+    }
+
     //metodo para criar novo veiculoVenda
     public async Task<Result<Guid>> AddAsync(CriarVeiculoVendaDTO dto)
     {

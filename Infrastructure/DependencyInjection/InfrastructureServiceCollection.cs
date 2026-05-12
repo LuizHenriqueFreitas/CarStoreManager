@@ -2,6 +2,8 @@ using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Application.Interfaces.Repositories;
 using CarStoreManager.Application.Interfaces.Sistema;
 using CarStoreManager.Application.Services;
+using CarStoreManager.Application.Services.Dashboards;
+using CarStoreManager.Application.Services.Concessionaria;
 using CarStoreManager.Application.Services.Oficina;
 using CarStoreManager.Application.Services.Oficina.NotaFiscal;
 using CarStoreManager.Application.Services.Sistema;
@@ -66,6 +68,15 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IPagamentoOrdemServicoRepository, PagamentoOrdemServicoRepository>();
         services.AddScoped<IPagamentoOrdemServicoService, PagamentoOrdemServicoService>();
 
+        // Requisição de peça e alertas
+        services.AddScoped<IRequisicaoPecaRepository, RequisicaoPecaRepository>();
+        services.AddScoped<IAlertaOSRepository, AlertaOSRepository>();
+        services.AddScoped<IRequisicaoPecaService, RequisicaoPecaService>();
+        services.AddScoped<IAlertaOSService, AlertaOSService>();
+
+        // NF de venda automática ao finalizar OS
+        services.AddScoped<INotaFiscalVendaOSRepository, NotaFiscalVendaOSRepository>();
+
         // =========================
         // CONCESSIONÁRIA
         // =========================
@@ -77,6 +88,10 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IArquivoStorage, ArquivoStorageService>();
         services.AddScoped<IVistoriaRepository, VistoriaRepository>();
         services.AddScoped<ITermoEntregaRepository, TermoEntregaRepository>();
+
+        // Cobrança da proposta (pagamento do veículo)
+        services.AddScoped<IPagamentoPropostaRepository, PagamentoPropostaRepository>();
+        services.AddScoped<IPagamentoPropostaService, PagamentoPropostaService>();
 
         // =========================
         // CLIENTES
@@ -95,6 +110,11 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IConfiguracaoSistemaRepository, ConfiguracaoSistemaRepository>();
         services.AddScoped<IConfiguracaoSistemaService, ConfiguracaoSistemaService>();
         services.AddScoped<IEmailService, SmtpEmailService>();
+
+        // =========================
+        // DASHBOARD (admin)
+        // =========================
+        services.AddScoped<IDashboardService, DashboardService>();
 
         return services;
     }

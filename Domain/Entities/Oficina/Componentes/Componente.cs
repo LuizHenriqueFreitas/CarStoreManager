@@ -39,6 +39,26 @@ public class Componente : Entity
     public int GarantiaDias { get; private set; }
     public bool Ativo { get; private set; } = true;
 
+    // SISTEMA do veículo a que pertence (Motor, Freios, etc) — usado para
+    // aplicar margem de lucro padrão do segmento.
+    public Domain.Enums.SistemaComponente? Sistema { get; private set; }
+
+    // PRECIFICAÇÃO
+    /// <summary>Custo unitário (média ponderada das entradas via NF-e ou valor inicial).</summary>
+    public decimal CustoUnitario { get; private set; }
+
+    /// <summary>
+    /// Margem aplicada sobre o custo, em percentual (ex: 30 = 30%).
+    /// Se null, sistema usa o padrão da config para o Sistema.
+    /// </summary>
+    public decimal? MargemLucroPct { get; private set; }
+
+    /// <summary>
+    /// Valor de venda calculado: custo * (1 + margem/100).
+    /// Calculado em Application via <c>AplicarPrecificacao</c> e armazenado.
+    /// </summary>
+    public decimal ValorVenda { get; private set; }
+
     // RELACIONAMENTOS
     public ICollection<LoteComponente> Lotes { get; private set; } = new List<LoteComponente>();
     public ICollection<ComponenteEquivalente> EquivalenciasOriginais { get; private set; } = new List<ComponenteEquivalente>();
@@ -96,6 +116,30 @@ public class Componente : Entity
     public decimal GetPeso() => Peso;
     public int GetGarantiaDias() => GarantiaDias;
     public bool GetAtivo() => Ativo;
+
+    /// <summary>
+    /// Define o custo (vindo da NF de entrada ou cadastro inicial) e recalcula
+    /// o valor de venda usando a margem fornecida (margem null = aceita o atual).
+    /// </summary>
+    public void AplicarPrecificacao(decimal custo, decimal margemPct)
+    {
+        if (custo < 0)
+            throw new ArgumentException("Custo unitário não pode ser negativo.", nameof(custo));
+        if (margemPct < 0)
+            throw new ArgumentException("Margem não pode ser negativa.", nameof(margemPct));
+
+        CustoUnitario = custo;
+        MargemLucroPct = margemPct;
+        ValorVenda = Math.Round(custo * (1m + margemPct / 100m), 2);
+    }
+
+    public void DefinirSistema(Domain.Enums.SistemaComponente? sistema) => Sistema = sistema;
+
+    /// <summary>
+    /// Sobrescreve só a margem (mantém custo). Usado pelo botão "ajustar margem".
+    /// </summary>
+    public void AjustarMargem(decimal novaMargemPct)
+        => AplicarPrecificacao(CustoUnitario, novaMargemPct);
 
     // ================================
     // SETTERS com validações

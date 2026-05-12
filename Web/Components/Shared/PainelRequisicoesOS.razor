@@ -1,0 +1,293 @@
+@namespace CarStoreManager.Web.Components.Shared
+@rendermode InteractiveServer
+
+@inject IRequisicaoPecaService RequisicaoService
+@inject IComponenteService ComponenteService
+@inject AuthenticationStateProvider AuthState
+
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Oficina.OrdemServico
+@using CarStoreManager.Application.DTOs.Oficina.Componente
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="rq-card">
+    <div class="rq-header">
+        <h3>📝 Requisições de peça</h3>
+        @if (StatusOrdem == "BuscandoPecasParaOrcamento")
+        {
+            <span class="rq-tag-status">⏸ OS pausada — aguardando admin</span>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(mensagem))
+    {
+        <div class="rq-banner @(mensagemErro ? "rq-erro" : "rq-ok")">@mensagem</div>
+    }
+
+    <AuthorizeView Roles="Admin,Mecanico" Context="ctxMec">
+        <Authorized>
+            @if (PodeRequisitar)
+            {
+                <div class="rq-novo-detail">
+                    <button class="rq-novo-toggle" @onclick="() => formRequisicaoAberto = !formRequisicaoAberto">
+                        @(formRequisicaoAberto ? "−" : "+") Não achei a peça que preciso → Requisitar ao admin
+                    </button>
+                    @if (formRequisicaoAberto)
+                    {
+                        <div class="rq-form">
+                            <label>Descrição da peça</label>
+                            <input type="text" @bind="formNovo.DescricaoPeca"
+                                   placeholder="Ex: amortecedor traseiro Civic 2018" />
+
+                            <label>Justificativa técnica</label>
+                            <textarea rows="3" @bind="formNovo.Justificativa"
+                                      placeholder="O que você encontrou no veículo, por que essa peça é necessária"></textarea>
+
+                            <div class="rq-form-row">
+                                <div>
+                                    <label>Quantidade</label>
+                                    <input type="number" min="1" @bind="formNovo.Quantidade" />
+                                </div>
+                                <button class="rq-btn-primary" @onclick="Abrir" disabled="@processando">
+                                    Enviar requisição
+                                </button>
+                            </div>
+                            <p class="rq-muted">A OS ficará em estado "Buscando peças para orçamento" até que o admin atenda.</p>
+                        </div>
+                    }
+                </div>
+            }
+        </Authorized>
+    </AuthorizeView>
+
+    @if (requisicoes is null)
+    {
+        <p class="rq-muted">Carregando...</p>
+    }
+    else if (!requisicoes.Any())
+    {
+        <p class="rq-muted rq-small">Nenhuma requisição aberta nesta OS.</p>
+    }
+    else
+    {
+        <ul class="rq-lista">
+            @foreach (var r in requisicoes)
+            {
+                <li class="rq-item rq-status-@r.Status.ToLower()">
+                    <div class="rq-item-head">
+                        <span class="rq-item-titulo">@r.DescricaoPeca <span class="rq-qtd">×@r.Quantidade</span></span>
+                        <span class="rq-tag-@r.Status.ToLower()">@StatusLabel(r.Status)</span>
+                    </div>
+                    <p class="rq-just">"@r.Justificativa"</p>
+                    <p class="rq-muted rq-small">
+                        Aberta em @r.DataCriacao.ToLocalTime().ToString("dd/MM HH:mm")
+                        @if (r.VeiculoMarcaModelo is not null)
+                        {
+                            <span> · @r.VeiculoMarcaModelo (@r.VeiculoPlaca)</span>
+                        }
+                    </p>
+
+                    @if (r.Status == "Atendida" && !string.IsNullOrEmpty(r.ObservacaoAdmin))
+                    {
+                        <p class="rq-resolucao">✓ @r.ObservacaoAdmin</p>
+                    }
+                    else if (r.Status == "Rejeitada")
+                    {
+                        <p class="rq-resolucao rq-recusa">✗ @r.ObservacaoAdmin</p>
+                    }
+
+                    <AuthorizeView Roles="Admin" Context="ctxAdm">
+                        <Authorized>
+                            @if (r.Status == "Pendente")
+                            {
+                                <div class="rq-acoes-admin">
+                                    <select @bind="atenderComponenteId" class="rq-sel">
+                                        <option value="">— Vincular componente cadastrado —</option>
+                                        @foreach (var c in componentes)
+                                        {
+                                            <option value="@c.Id">@c.Nome (@c.PartNumber)</option>
+                                        }
+                                    </select>
+                                    <input type="text" @bind="atenderObs" placeholder="Observação (opc)" class="rq-obs" />
+                                    <button class="rq-btn-ok"
+                                            @onclick="() => Atender(r.Id)"
+                                            disabled="@(string.IsNullOrEmpty(atenderComponenteId) || processando)">
+                                        ✓ Atender
+                                    </button>
+
+                                    <input type="text" @bind="rejeitarMotivo" placeholder="Motivo da rejeição" class="rq-obs" />
+                                    <button class="rq-btn-recusa"
+                                            @onclick="() => Rejeitar(r.Id)"
+                                            disabled="@(string.IsNullOrWhiteSpace(rejeitarMotivo) || processando)">
+                                        ✗ Rejeitar
+                                    </button>
+                                </div>
+                            }
+                        </Authorized>
+                    </AuthorizeView>
+                </li>
+            }
+        </ul>
+
+        <AuthorizeView Roles="Admin" Context="ctxAdm2">
+            <Authorized>
+                @if (StatusOrdem == "BuscandoPecasParaOrcamento" && requisicoes.All(r => r.Status != "Pendente"))
+                {
+                    <button class="rq-btn-primary rq-liberar" @onclick="Liberar" disabled="@processando">
+                        ▶ Liberar OS para continuar montagem do orçamento
+                    </button>
+                }
+            </Authorized>
+        </AuthorizeView>
+    }
+</div>
+
+<style>
+    .rq-card { background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:16px; margin-top:16px; }
+    .rq-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .rq-header h3 { margin:0; font-size:1.05rem; }
+    .rq-tag-status { background:#fff5d9; color:#8a6d00; padding:4px 10px; border-radius:12px; font-size:0.85em; }
+    .rq-banner { padding:10px 14px; border-radius:6px; margin-bottom:12px; font-size:0.9em; }
+    .rq-ok { background:#e6f7ed; color:#1f7a3a; border:1px solid #b6e4c2; }
+    .rq-erro { background:#fdecea; color:#a72020; border:1px solid #f5c2bd; }
+    .rq-muted { color:#888; font-size:0.85em; }
+    .rq-small { font-size:0.82em; }
+    .rq-novo-detail { background:#f8f8f8; border:1px solid #e0e0e0; border-radius:6px; padding:8px 12px; margin-bottom:14px; }
+    .rq-novo-toggle { background:none; border:0; cursor:pointer; font-weight:500; padding:4px 0; width:100%; text-align:left; color:#0a84ff; }
+    .rq-form { padding:10px 0 4px; }
+    .rq-form label { display:block; font-size:0.85em; font-weight:500; margin:10px 0 4px; }
+    .rq-form input[type="text"], .rq-form input[type="number"], .rq-form textarea {
+        width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-family:inherit;
+    }
+    .rq-form-row { display:flex; gap:12px; align-items:flex-end; margin-top:10px; }
+    .rq-form-row > div { flex:0 0 100px; }
+    .rq-form-row button { margin-left:auto; }
+    .rq-btn-primary { background:#0a84ff; color:#fff; padding:9px 18px; border-radius:6px; border:0; cursor:pointer; font-weight:500; }
+    .rq-btn-primary:disabled { background:#aaa; cursor:not-allowed; }
+    .rq-liberar { display:block; margin:14px auto 0; background:#1f7a3a; }
+    .rq-lista { list-style:none; padding:0; margin:0; }
+    .rq-item {
+        background:#fafafa; border-left:3px solid #aaa; border-radius:4px;
+        padding:10px 14px; margin-bottom:10px;
+    }
+    .rq-item.rq-status-pendente { border-left-color:#f59e0b; background:#fffbeb; }
+    .rq-item.rq-status-atendida { border-left-color:#1f7a3a; background:#f0fdf4; }
+    .rq-item.rq-status-rejeitada { border-left-color:#a72020; background:#fff5f5; opacity:0.7; }
+    .rq-item-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+    .rq-item-titulo { font-weight:500; }
+    .rq-qtd { color:#888; font-weight:400; }
+    .rq-tag-pendente { background:#fef3c7; color:#854d0e; padding:3px 10px; border-radius:12px; font-size:0.78em; }
+    .rq-tag-atendida { background:#dcfce7; color:#166534; padding:3px 10px; border-radius:12px; font-size:0.78em; }
+    .rq-tag-rejeitada { background:#fee2e2; color:#991b1b; padding:3px 10px; border-radius:12px; font-size:0.78em; }
+    .rq-just { font-style:italic; color:#444; margin:6px 0; font-size:0.92em; }
+    .rq-resolucao { background:#fff; padding:6px 10px; border-radius:4px; font-size:0.88em; margin-top:8px; color:#1f7a3a; }
+    .rq-resolucao.rq-recusa { color:#a72020; }
+    .rq-acoes-admin { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; padding-top:10px; border-top:1px dashed #ddd; }
+    .rq-sel, .rq-obs { padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:0.9em; }
+    .rq-sel { min-width:200px; }
+    .rq-obs { min-width:140px; }
+    .rq-btn-ok { background:#1f7a3a; color:#fff; padding:6px 12px; border-radius:4px; border:0; cursor:pointer; }
+    .rq-btn-recusa { background:#a72020; color:#fff; padding:6px 12px; border-radius:4px; border:0; cursor:pointer; }
+    .rq-btn-ok:disabled, .rq-btn-recusa:disabled { background:#ccc; cursor:not-allowed; }
+</style>
+
+@code {
+    [Parameter] public Guid OrdemServicoId { get; set; }
+    /// <summary>Status atual da OS — usado para mostrar/esconder controles.</summary>
+    [Parameter] public string StatusOrdem { get; set; } = "";
+    /// <summary>Disparado quando uma transição muda o estado da OS, para o pai recarregar.</summary>
+    [Parameter] public EventCallback OnAlteracaoEstado { get; set; }
+
+    private List<RequisicaoPecaDTO>? requisicoes;
+    private List<ComponenteListaDTO> componentes = new();
+    private CriarRequisicaoPecaDTO formNovo = new() { Quantidade = 1 };
+    private bool formRequisicaoAberto;
+    private bool processando;
+    private string mensagem = "";
+    private bool mensagemErro;
+
+    private string atenderComponenteId = "";
+    private string atenderObs = "";
+    private string rejeitarMotivo = "";
+
+    /// <summary>
+    /// Mecânico só pode requisitar enquanto a OS está em fase de orçamento.
+    /// Em estados pós-aprovação ele usa o sistema de Alerta.
+    /// </summary>
+    private bool PodeRequisitar => StatusOrdem is "Pendente" or "EmAnalise" or "BuscandoPecasParaOrcamento";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Carregar();
+        var rc = await ComponenteService.GetAllAsync();
+        if (rc.IsSuccess) componentes = rc.Value!.ToList();
+    }
+
+    private async Task Carregar()
+    {
+        var r = await RequisicaoService.ListarPorOrdemAsync(OrdemServicoId);
+        requisicoes = r.IsSuccess ? r.Value!.ToList() : new();
+    }
+
+    private async Task Abrir()
+    {
+        if (string.IsNullOrWhiteSpace(formNovo.DescricaoPeca) ||
+            string.IsNullOrWhiteSpace(formNovo.Justificativa))
+        { Erro("Preencha descrição e justificativa."); return; }
+
+        processando = true;
+        var r = await RequisicaoService.AbrirAsync(OrdemServicoId, Guid.Empty, formNovo);
+        processando = false;
+        if (r.IsSuccess)
+        {
+            Ok("Requisição enviada ao admin. OS pausada.");
+            formNovo = new() { Quantidade = 1 };
+            formRequisicaoAberto = false;
+            await Carregar();
+            await OnAlteracaoEstado.InvokeAsync();
+        }
+        else Erro(r.Error);
+    }
+
+    private async Task Atender(Guid id)
+    {
+        if (!Guid.TryParse(atenderComponenteId, out var compId)) return;
+        processando = true;
+        var r = await RequisicaoService.AtenderAsync(id, Guid.Empty,
+            new AtenderRequisicaoDTO { ComponenteId = compId, Observacao = atenderObs });
+        processando = false;
+        if (r.IsSuccess) { Ok("Requisição atendida."); atenderComponenteId = ""; atenderObs = ""; await Carregar(); }
+        else Erro(r.Error);
+    }
+
+    private async Task Rejeitar(Guid id)
+    {
+        if (string.IsNullOrWhiteSpace(rejeitarMotivo)) return;
+        processando = true;
+        var r = await RequisicaoService.RejeitarAsync(id, Guid.Empty,
+            new RejeitarRequisicaoDTO { Motivo = rejeitarMotivo });
+        processando = false;
+        if (r.IsSuccess) { Ok("Requisição rejeitada."); rejeitarMotivo = ""; await Carregar(); }
+        else Erro(r.Error);
+    }
+
+    private async Task Liberar()
+    {
+        processando = true;
+        var r = await RequisicaoService.LiberarOrdemAsync(OrdemServicoId);
+        processando = false;
+        if (r.IsSuccess) { Ok("OS liberada."); await Carregar(); await OnAlteracaoEstado.InvokeAsync(); }
+        else Erro(r.Error);
+    }
+
+    private void Ok(string? msg) { mensagem = msg ?? ""; mensagemErro = false; }
+    private void Erro(string? msg) { mensagem = msg ?? "Erro"; mensagemErro = true; }
+
+    private static string StatusLabel(string s) => s switch
+    {
+        "Pendente" => "⏳ Pendente",
+        "Atendida" => "✓ Atendida",
+        "Rejeitada" => "✗ Rejeitada",
+        _ => s
+    };
+}

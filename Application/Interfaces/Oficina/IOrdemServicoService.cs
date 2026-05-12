@@ -31,5 +31,12 @@ public interface IOrdemServicoService : IService<
     Task<Result> RegistrarAprovacaoDoClienteAsync(Guid ordemId);
     Task<Result> IniciarAsync(Guid ordemId);
     Task<Result> FinalizarAsync(Guid ordemId);
+
+    /// <summary>
+    /// Recepção marca a OS como entregue ao cliente (após cobrança).
+    /// Falha se a OS ainda não estiver totalmente paga.
+    /// </summary>
+    Task<Result> EntregarAsync(Guid ordemId);
+
     Task<Result> CancelarAsync(Guid ordemId);
 }

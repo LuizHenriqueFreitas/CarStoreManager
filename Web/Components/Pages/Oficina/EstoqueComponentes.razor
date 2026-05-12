@@ -49,9 +49,9 @@
             }
         </div>
         <input class="busca-input"
-               placeholder="Buscar componente..."
-               @bind="termoBusca"
-               @bind:event="oninput" />
+               placeholder="Buscar por nome, SKU, OEM, PartNumber, marca, categoria..."
+               value="@termoBusca"
+               @oninput="OnBuscaChanged" />
     </div>
 
     @if (carregando)
@@ -460,10 +460,33 @@
             _ => componentes.Where(c => c.Sistema == filtroAtivo).ToList()
         };
 
-        componentesFiltrados = string.IsNullOrWhiteSpace(termoBusca)
-            ? base_
-            : base_.Where(c => c.Nome.Contains(
-                termoBusca, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (string.IsNullOrWhiteSpace(termoBusca))
+        {
+            componentesFiltrados = base_;
+            return;
+        }
+
+        var termo = termoBusca.Trim();
+        componentesFiltrados = base_.Where(c =>
+            Match(c.Nome, termo)
+            || Match(c.SKUInterno, termo)
+            || Match(c.PartNumber, termo)
+            || Match(c.CodigoOEM, termo)
+            || Match(c.MarcaFabricante, termo)
+            || Match(c.Categoria, termo)
+            || Match(c.Sistema, termo)
+            || Match(c.CodigoBarras, termo)
+        ).ToList();
+
+        static bool Match(string? campo, string termo)
+            => !string.IsNullOrEmpty(campo)
+               && campo.Contains(termo, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void OnBuscaChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        termoBusca = e.Value?.ToString() ?? "";
+        AplicarFiltro();
     }
 
     private void AbrirModalNovo()

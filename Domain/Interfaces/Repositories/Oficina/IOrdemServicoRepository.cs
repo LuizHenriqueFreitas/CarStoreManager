@@ -24,4 +24,11 @@ public interface IOrdemServicoRepository : IRepository<OrdemServico>
     /// detecção de mudanças quando o pai já está tracked.
     /// </summary>
     Task AdicionarItemAsync(ItemOrdemServico item);
+
+    /// <summary>
+    /// Mesmo padrão do AdicionarItemAsync — explicitamente registra um novo
+    /// item de checklist no DbSet para evitar o bug de concorrência onde o
+    /// change tracker erra a inferência ao salvar via Update no pai.
+    /// </summary>
+    Task AdicionarItemChecklistAsync(ChecklistOrdemServico item);
 }

@@ -5,9 +5,15 @@
 
 @rendermode Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer
 @inject IOrdemServicoService OrdemService
+@inject IClienteService ClienteService
+@inject IMecanicoService MecanicoService
+@inject IVeiculoClienteService VeiculoClienteService
 @inject NavigationManager Nav
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Oficina.OrdemServico
+@using CarStoreManager.Application.DTOs.Oficina.Mecanico
+@using CarStoreManager.Application.DTOs.Oficina.VeiculoCliente
+@using CarStoreManager.Application.DTOs.Shared.Cliente
 
 <div class="recepcao-page">
     <div class="page-header">
@@ -29,11 +35,59 @@
             <span class="metrica-label">Em andamento</span>
             <span class="metrica-valor andamento">@emAndamento</span>
         </div>
+        <div class="metrica-card destaque-pronta">
+            <span class="metrica-label">⚠ Aguardando cobrança</span>
+            <span class="metrica-valor pronta">@prontasParaCobrar.Count</span>
+        </div>
         <div class="metrica-card">
-            <span class="metrica-label">Finalizadas (mês)</span>
-            <span class="metrica-valor finalizadas">@finalizadasMes</span>
+            <span class="metrica-label">Entregues (mês)</span>
+            <span class="metrica-valor finalizadas">@entreguesMes</span>
         </div>
     </div>
+
+    @if (prontasParaCobrar.Any())
+    {
+        <div class="secao">
+            <div class="secao-header">
+                <h2 class="secao-titulo">🔔 Prontas para cobrança e entrega</h2>
+                <span class="muted">Mecânico concluiu o serviço — receba o pagamento e marque como entregue</span>
+            </div>
+            <div class="ordens-lista">
+                @foreach (var os in prontasParaCobrar)
+                {
+                    <div class="os-card pronta-card" @onclick="() => AbrirDetalhe(os.Id)">
+                        <div class="os-cabecalho">
+                            <span class="os-numero">@os.NumeroPublico</span>
+                            <span class="os-status status-pronta">Aguardando cobrança</span>
+                        </div>
+                        <div class="os-corpo">
+                            <div class="os-coluna">
+                                <span class="rotulo">Cliente</span>
+                                <span class="dado-principal">@NomeCliente(os.ClienteId)</span>
+                                <span class="dado-sub">@CpfCliente(os.ClienteId)</span>
+                            </div>
+                            <div class="os-coluna">
+                                <span class="rotulo">Veículo</span>
+                                <span class="dado-principal">@DescricaoVeiculo(os.VeiculoClienteId)</span>
+                                <span class="dado-sub">@AnoVeiculo(os.VeiculoClienteId)</span>
+                            </div>
+                            <div class="os-coluna">
+                                <span class="rotulo">Mecânico</span>
+                                <span class="dado-principal">@NomeMecanico(os.MecanicoId)</span>
+                                <span class="dado-sub">@os.Tipo</span>
+                            </div>
+                            <div class="os-coluna alinhado-direita">
+                                <span class="rotulo">Total a cobrar</span>
+                                <span class="dado-principal valor">
+                                    @os.ValorTotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
 
     <div class="secao">
         <div class="secao-header">
@@ -57,15 +111,43 @@
                 @foreach (var os in recentes)
                 {
                     <div class="os-card" @onclick="() => AbrirDetalhe(os.Id)">
-                        <div class="os-numero">@os.NumeroPublico</div>
-                        <div class="os-info">
-                            <span class="os-tipo">@os.Tipo</span>
-                            <span class="os-prazo">Prazo: @os.PrazoEstimado.ToString("dd/MM/yyyy")</span>
+                        <div class="os-cabecalho">
+                            <span class="os-numero">@os.NumeroPublico</span>
+                            <span class="os-status @StatusClass(os.Status)">@StatusLabel(os.Status)</span>
                         </div>
-                        <div class="os-valor">
-                            @os.ValorTotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
+
+                        <div class="os-corpo">
+                            <div class="os-coluna">
+                                <span class="rotulo">Cliente</span>
+                                <span class="dado-principal">@NomeCliente(os.ClienteId)</span>
+                                <span class="dado-sub">@CpfCliente(os.ClienteId)</span>
+                            </div>
+
+                            <div class="os-coluna">
+                                <span class="rotulo">Veículo</span>
+                                <span class="dado-principal">@DescricaoVeiculo(os.VeiculoClienteId)</span>
+                                <span class="dado-sub">@AnoVeiculo(os.VeiculoClienteId)</span>
+                            </div>
+
+                            <div class="os-coluna">
+                                <span class="rotulo">Mecânico</span>
+                                <span class="dado-principal">@NomeMecanico(os.MecanicoId)</span>
+                                <span class="dado-sub">@EspecialidadeDoMecanico(os.MecanicoId)</span>
+                            </div>
+
+                            <div class="os-coluna">
+                                <span class="rotulo">Serviço</span>
+                                <span class="dado-principal">@os.Tipo</span>
+                                <span class="dado-sub">Prazo: @os.PrazoEstimado.ToString("dd/MM/yyyy")</span>
+                            </div>
+
+                            <div class="os-coluna alinhado-direita">
+                                <span class="rotulo">Valor</span>
+                                <span class="dado-principal valor">
+                                    @os.ValorTotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
+                                </span>
+                            </div>
                         </div>
-                        <span class="os-status @StatusClass(os.Status)">@os.Status</span>
                     </div>
                 }
             </div>
@@ -76,24 +158,54 @@
 @code {
     private List<OrdemServicoListaDTO> todas = new();
     private List<OrdemServicoListaDTO> recentes = new();
+    private List<OrdemServicoListaDTO> prontasParaCobrar = new();
+    private Dictionary<Guid, ClienteListaDTO> mapaClientes = new();
+    private Dictionary<Guid, MecanicoListaDTO> mapaMecanicos = new();
+    private Dictionary<Guid, VeiculoClienteListaDTO> mapaVeiculos = new();
     private int pendentes;
     private int emAndamento;
-    private int finalizadasMes;
+    private int entreguesMes;
     private bool carregando = true;
 
     protected override async Task OnInitializedAsync()
     {
-        var resultado = await OrdemService.GetAllAsync();
+        var tarefaOrdens = OrdemService.GetAllAsync();
+        var tarefaClientes = ClienteService.GetAllAsync();
+        var tarefaMecanicos = MecanicoService.GetAllAsync();
+        var tarefaVeiculos = VeiculoClienteService.GetAllAsync();
+
+        await Task.WhenAll(tarefaOrdens, tarefaClientes, tarefaMecanicos, tarefaVeiculos);
+
+        var resultado = tarefaOrdens.Result;
         todas = resultado.IsSuccess ? resultado.Value?.ToList() ?? new() : new();
+
+        var rc = tarefaClientes.Result;
+        if (rc.IsSuccess && rc.Value is not null)
+            mapaClientes = rc.Value.ToDictionary(c => c.Id);
+
+        var rm = tarefaMecanicos.Result;
+        if (rm.IsSuccess && rm.Value is not null)
+            mapaMecanicos = rm.Value.ToDictionary(m => m.Id);
+
+        var rv = tarefaVeiculos.Result;
+        if (rv.IsSuccess && rv.Value is not null)
+            mapaVeiculos = rv.Value.ToDictionary(v => v.Id);
 
         pendentes = todas.Count(o => o.Status == "Pendente");
         emAndamento = todas.Count(o => o.Status == "EmAndamento");
 
         var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-        finalizadasMes = todas.Count(o => o.Status == "Finalizada"
+        entreguesMes = todas.Count(o => o.Status == "Entregue"
             && o.PrazoEstimado >= inicioMes);
 
+        // Finalizadas = mecânico concluiu, falta cobrança/entrega pela recepção
+        prontasParaCobrar = todas
+            .Where(o => o.Status == "Finalizada")
+            .OrderBy(o => o.PrazoEstimado)
+            .ToList();
+
         recentes = todas
+            .Where(o => o.Status != "Finalizada") // já estão em destaque acima
             .OrderByDescending(o => o.PrazoEstimado)
             .Take(8)
             .ToList();
@@ -103,19 +215,51 @@
 
     private void AbrirDetalhe(Guid id) => Nav.NavigateTo($"/oficina/os/{id}");
 
+    private string NomeCliente(Guid id)
+        => mapaClientes.TryGetValue(id, out var c) ? c.Nome : "Cliente não encontrado";
+
+    private string CpfCliente(Guid id)
+        => mapaClientes.TryGetValue(id, out var c) ? $"CPF {c.Cpf}" : "";
+
+    private string DescricaoVeiculo(Guid id)
+        => mapaVeiculos.TryGetValue(id, out var v) ? $"{v.Marca} {v.Modelo}" : "Veículo não encontrado";
+
+    private string AnoVeiculo(Guid id)
+        => mapaVeiculos.TryGetValue(id, out var v) ? $"{v.Cor} · {v.Ano}" : "";
+
+    private string NomeMecanico(Guid id)
+    {
+        if (id == Guid.Empty) return "Não atribuído";
+        return mapaMecanicos.TryGetValue(id, out var m) ? m.Nome : "Mecânico não encontrado";
+    }
+
+    private string EspecialidadeDoMecanico(Guid id)
+        => mapaMecanicos.TryGetValue(id, out var m) ? m.Especialidade : "";
+
     private string StatusClass(string status) => status switch
     {
-        "Pendente"    => "status-pendente",
-        "EmAndamento" => "status-andamento",
-        "Finalizada"  => "status-finalizada",
-        "Cancelada"   => "status-cancelada",
-        _             => "status-pendente"
+        "Pendente"                    => "status-pendente",
+        "EmAndamento"                 => "status-andamento",
+        "Finalizada"                  => "status-pronta",
+        "Entregue"                    => "status-finalizada",
+        "Cancelada"                   => "status-cancelada",
+        "Pausada"                     => "status-pausada",
+        "BuscandoPecasParaOrcamento"  => "status-pausada",
+        _                             => "status-pendente"
+    };
+
+    private string StatusLabel(string status) => status switch
+    {
+        "EmAndamento"                 => "Em andamento",
+        "BuscandoPecasParaOrcamento"  => "Buscando peças",
+        "Finalizada"                  => "Aguardando cobrança",
+        _                             => status
     };
 }
 
 <style>
     .recepcao-page {
-        max-width: 1000px;
+        max-width: 1100px;
         margin: 0 auto;
         padding: 32px 24px;
     }
@@ -145,10 +289,16 @@
 
     .metricas-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 12px;
         margin-bottom: 28px;
     }
+
+    .metrica-card.destaque-pronta {
+        background: #fff7ed;
+        border: 0.5px solid #fdba74;
+    }
+    .metrica-valor.pronta { color: #ea580c; }
 
     .metrica-card {
         background: #f4f4f4;
@@ -188,22 +338,31 @@
     .ordens-lista {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 10px;
     }
 
     .os-card {
         background: #fff;
         border: 0.5px solid #e0e0e0;
-        border-radius: 10px;
-        padding: 14px 18px;
-        display: flex;
-        align-items: center;
-        gap: 16px;
+        border-radius: 12px;
+        padding: 16px 18px;
         cursor: pointer;
-        transition: border-color 0.2s;
+        transition: border-color 0.2s, box-shadow 0.2s;
     }
 
-    .os-card:hover { border-color: #2563eb; }
+    .os-card:hover {
+        border-color: #2563eb;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+    }
+
+    .os-cabecalho {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+        border-bottom: 0.5px solid #f0f0f0;
+    }
 
     .os-numero {
         font-family: monospace;
@@ -213,26 +372,55 @@
         background: #eff6ff;
         padding: 4px 10px;
         border-radius: 6px;
-        flex-shrink: 0;
-        min-width: 90px;
-        text-align: center;
     }
 
-    .os-info {
+    .os-corpo {
+        display: grid;
+        grid-template-columns: 1.4fr 1.4fr 1.2fr 1.2fr 0.9fr;
+        gap: 14px;
+    }
+
+    .os-coluna {
         display: flex;
         flex-direction: column;
-        gap: 2px;
-        flex: 1;
+        gap: 3px;
+        min-width: 0;
     }
 
-    .os-tipo { font-size: 14px; font-weight: 500; }
-    .os-prazo { font-size: 12px; color: #888; }
+    .os-coluna.alinhado-direita {
+        align-items: flex-end;
+        text-align: right;
+    }
 
-    .os-valor {
-        font-size: 15px;
+    .rotulo {
+        font-size: 10px;
+        color: #999;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+
+    .dado-principal {
+        font-size: 13px;
         font-weight: 500;
         color: #1a1a1a;
-        flex-shrink: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .dado-principal.valor {
+        font-size: 15px;
+        color: #16a34a;
+        font-weight: 600;
+    }
+
+    .dado-sub {
+        font-size: 11px;
+        color: #888;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .os-status {
@@ -245,13 +433,31 @@
 
     .status-pendente   { background: #fef9c3; color: #854d0e; }
     .status-andamento  { background: #eff6ff; color: #1d4ed8; }
+    .status-pronta     { background: #fff7ed; color: #c2410c; font-weight: 600; }
     .status-finalizada { background: #dcfce7; color: #166534; }
     .status-cancelada  { background: #fff5f5; color: #e02020; }
+    .status-pausada    { background: #f3e8ff; color: #6b21a8; }
+
+    .pronta-card {
+        border-color: #fdba74 !important;
+        background: linear-gradient(to right, #fff7ed 0%, #ffffff 30%);
+    }
+    .pronta-card:hover {
+        border-color: #ea580c !important;
+        box-shadow: 0 2px 8px rgba(234, 88, 12, 0.15);
+    }
+
+    .muted { color: #888; font-size: 12px; }
 
     .loading, .vazio {
         text-align: center;
         padding: 60px;
         color: #888;
         font-size: 14px;
+    }
+
+    @@media (max-width: 900px) {
+        .os-corpo { grid-template-columns: 1fr 1fr; }
+        .os-coluna.alinhado-direita { align-items: flex-start; text-align: left; }
     }
 </style>

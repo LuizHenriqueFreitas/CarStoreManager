@@ -30,6 +30,7 @@
             ✓ Termo já assinado em @termo.DataAssinatura?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
             por @termo.AssinaturaNomeCliente.
         </div>
+        @RenderResumoPagamento(termo)
         <h2>Conteúdo do termo</h2>
         <pre class="termo-texto">@termo.TextoTermo</pre>
     }
@@ -39,6 +40,8 @@
         {
             <div class="banner @(mensagemErro ? "banner-erro" : "banner-ok")">@mensagem</div>
         }
+
+        @RenderResumoPagamento(termo)
 
         <h2>Leia atentamente</h2>
         <pre class="termo-texto">@termo.TextoTermo</pre>
@@ -97,6 +100,25 @@
         border-radius:8px; border:0; font-weight:600; cursor:pointer; font-size:1em;
     }
     .btn-assinar:disabled { background:#aaa; cursor:not-allowed; }
+
+    .pag-resumo-publico {
+        background: #f0fdf4;
+        border: 1px solid #86efac;
+        border-radius: 8px;
+        padding: 14px 18px;
+        margin-bottom: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .pag-resumo-publico .info { display:flex; flex-direction:column; gap:4px; }
+    .pag-resumo-publico .titulo { font-weight:600; color:#166534; font-size:1em; }
+    .pag-resumo-publico .detalhe { font-size:0.85em; color:#15803d; }
+    .pag-resumo-publico .valor-grande {
+        font-size: 1.4em; font-weight:600; color:#166534;
+    }
 </style>
 
 @code {
@@ -118,6 +140,28 @@
         else erro = r.Error;
         carregando = false;
     }
+
+    private RenderFragment RenderResumoPagamento(TermoEntregaDTO t) => builder =>
+    {
+        if (t.ValorVeiculo <= 0) return;
+        var ci = new System.Globalization.CultureInfo("pt-BR");
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "pag-resumo-publico");
+
+        builder.OpenElement(2, "div");
+        builder.AddAttribute(3, "class", "info");
+        builder.AddMarkupContent(4, "<span class='titulo'>✓ Pagamento do veículo confirmado</span>");
+        builder.AddMarkupContent(5, $"<span class='detalhe'>Valor recebido pela loja antes da entrega.</span>");
+        builder.CloseElement();
+
+        builder.OpenElement(6, "div");
+        builder.AddAttribute(7, "class", "valor-grande");
+        builder.AddContent(8, t.ValorPago.ToString("C", ci));
+        builder.CloseElement();
+
+        builder.CloseElement();
+    };
 
     private async Task Assinar()
     {

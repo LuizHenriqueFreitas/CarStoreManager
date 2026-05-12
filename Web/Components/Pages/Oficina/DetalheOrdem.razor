@@ -53,7 +53,11 @@ else
                 }
                 @if (PodeFinalizar)
                 {
-                    <button class="btn-acao verde" @onclick="FinalizarOS">Finalizar</button>
+                    <button class="btn-acao verde" @onclick="FinalizarOS">Finalizar serviço</button>
+                }
+                @if (PodeEntregar)
+                {
+                    <button class="btn-acao verde" @onclick="EntregarOS">💰 Cobrar e entregar</button>
                 }
                 @if (PodeCancelar)
                 {
@@ -284,8 +288,10 @@ else
                     <input type="number" min="1" class="campo-input" @bind="pecaQuantidade" />
                 </div>
                 <div class="form-campo">
-                    <label class="campo-label">Valor unitário (R$) *</label>
-                    <input type="number" step="0.01" class="campo-input" @bind="pecaValorUnitario" />
+                    <label class="campo-label">Valor unitário</label>
+                    <div class="info-auto">
+                        💡 O valor é carregado automaticamente do cadastro do componente.
+                    </div>
                 </div>
             </div>
 
@@ -307,6 +313,12 @@ else
 @if (os is not null)
 {
     <div style="max-width:1100px; margin:0 auto; padding: 0 24px 24px;">
+        <PainelRequisicoesOS OrdemServicoId="@Id"
+                             StatusOrdem="@os.Status"
+                             OnAlteracaoEstado="CarregarOS" />
+        <PainelAlertasOS OrdemServicoId="@Id"
+                         StatusOrdem="@os.Status"
+                         OnAlteracaoEstado="CarregarOS" />
         <PainelPagamentoOS OrdemServicoId="@Id" />
     </div>
 }
@@ -331,7 +343,6 @@ else
     private List<ComponenteListaDTO> componentesDisponiveis = new();
     private Guid pecaComponenteId;
     private int pecaQuantidade = 1;
-    private decimal pecaValorUnitario;
     private string pecaOrigem = "Estoque";
     private string? erroPeca;
     private bool salvandoPeca = false;
@@ -414,13 +425,20 @@ else
     private bool PodeFinalizar =>
         os?.Status == "EmAndamento" && (ehAdmin || ehMecanico);
 
+    // Recepção é quem cobra e entrega — mecânico não tem acesso a essa etapa.
+    private bool PodeEntregar =>
+        os?.Status == "Finalizada" && (ehAdmin || ehRecepcionista);
+
     private bool PodeCancelar =>
         os is not null
-        && os.Status != "Finalizada" && os.Status != "Cancelada"
+        && os.Status != "Finalizada" && os.Status != "Entregue" && os.Status != "Cancelada"
         && (ehAdmin || ehRecepcionista);
 
     private bool OsAberta =>
-        os is not null && os.Status != "Finalizada" && os.Status != "Cancelada";
+        os is not null
+        && os.Status != "Finalizada"
+        && os.Status != "Entregue"
+        && os.Status != "Cancelada";
 
     private bool PodeEditarChecklist => OsAberta;
     private bool PodeEditarItens     => OsAberta && (ehAdmin || ehMecanico || ehRecepcionista);
@@ -443,7 +461,10 @@ else
         => await TratarResultado(await OrdemService.IniciarAsync(Id), "Serviço iniciado.");
 
     private async Task FinalizarOS()
-        => await TratarResultado(await OrdemService.FinalizarAsync(Id), "OS finalizada.");
+        => await TratarResultado(await OrdemService.FinalizarAsync(Id), "Serviço finalizado. OS aguardando cobrança/entrega na recepção.");
+
+    private async Task EntregarOS()
+        => await TratarResultado(await OrdemService.EntregarAsync(Id), "OS entregue ao cliente.");
 
     private async Task CancelarOS()
         => await TratarResultado(await OrdemService.CancelarAsync(Id), "OS cancelada.");
@@ -460,7 +481,6 @@ else
         }
         pecaComponenteId = Guid.Empty;
         pecaQuantidade = 1;
-        pecaValorUnitario = 0;
         pecaOrigem = "Estoque";
         erroPeca = null;
         modalPecaVisivel = true;
@@ -470,7 +490,8 @@ else
     {
         if (pecaComponenteId == Guid.Empty) { erroPeca = "Selecione um componente."; return; }
         if (pecaQuantidade < 1)             { erroPeca = "Quantidade inválida.";   return; }
-        if (pecaValorUnitario <= 0)         { erroPeca = "Valor unitário inválido."; return; }
+
+        var statusAntes = os?.Status;
 
         salvandoPeca = true;
         var r = await OrdemService.AdicionarItemAsync(new AdicionarItemOrdemServicoDTO
@@ -478,7 +499,7 @@ else
             OrdemServicoId = Id,
             ComponenteId = pecaComponenteId,
             Quantidade = pecaQuantidade,
-            ValorUnitario = pecaValorUnitario,
+            ValorUnitario = 0, // ignorado pelo service — valor vem sempre do componente
             Origem = pecaOrigem
         });
         salvandoPeca = false;
@@ -487,7 +508,11 @@ else
         {
             modalPecaVisivel = false;
             await CarregarOS();
-            await MostrarMensagem("Peça adicionada.", false);
+            // Se a OS estava EmAndamento, o service pausa automaticamente e cria alerta.
+            var avisoExtra = statusAntes == "EmAndamento"
+                ? " OS pausada — recepção será notificada para o cliente reaprovar."
+                : "";
+            await MostrarMensagem("Peça adicionada." + avisoExtra, false);
         }
         else
         {

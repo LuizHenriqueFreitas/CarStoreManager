@@ -150,8 +150,16 @@
     private bool processando;
     private string mensagem = "";
     private bool mensagemErro;
+    private Guid usuarioLogadoId;
 
-    protected override async Task OnInitializedAsync() => await Carregar();
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var idClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (idClaim is not null) Guid.TryParse(idClaim.Value, out usuarioLogadoId);
+
+        await Carregar();
+    }
 
     private async Task Carregar()
     {
@@ -162,8 +170,15 @@
 
     private async Task Registrar()
     {
+        if (usuarioLogadoId == Guid.Empty)
+        {
+            mensagem = "Sessão inválida — refaça login para registrar pagamentos.";
+            mensagemErro = true;
+            return;
+        }
+
         processando = true;
-        var r = await PagamentoService.RegistrarPagamentoAsync(OrdemServicoId, Guid.Empty, novo);
+        var r = await PagamentoService.RegistrarPagamentoAsync(OrdemServicoId, usuarioLogadoId, novo);
         processando = false;
         if (r.IsSuccess)
         {

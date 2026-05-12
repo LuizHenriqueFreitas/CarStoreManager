@@ -31,6 +31,13 @@ public class VeiculoVendaController : ControllerBase
         return resultado.IsSuccess ? Ok(resultado.Value) : BadRequest(resultado.Error);
     }
 
+    [HttpGet("marcas")]
+    public async Task<IActionResult> ListarMarcas()
+    {
+        var r = await _service.ListarMarcasDistintasAsync();
+        return r.IsSuccess ? Ok(r.Value) : BadRequest(r.Error);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetPorId(Guid id)
     {

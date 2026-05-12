@@ -16,6 +16,7 @@ public class NotaFiscalEntradaService : INotaFiscalEntradaService
     private readonly IEstoqueRepository _estoqueRepo;
     private readonly ILoteComponenteRepository _lotesRepo;
     private readonly IOrdemServicoRepository _ordensRepo;
+    private readonly Domain.Interfaces.Repositories.Sistema.IConfiguracaoSistemaRepository _configRepo;
 
     public NotaFiscalEntradaService(
         INotaFiscalRepository notasRepo,
@@ -23,7 +24,8 @@ public class NotaFiscalEntradaService : INotaFiscalEntradaService
         IComponenteRepository componentesRepo,
         IEstoqueRepository estoqueRepo,
         ILoteComponenteRepository lotesRepo,
-        IOrdemServicoRepository ordensRepo)
+        IOrdemServicoRepository ordensRepo,
+        Domain.Interfaces.Repositories.Sistema.IConfiguracaoSistemaRepository configRepo)
     {
         _notasRepo = notasRepo;
         _fornecedoresRepo = fornecedoresRepo;
@@ -31,6 +33,7 @@ public class NotaFiscalEntradaService : INotaFiscalEntradaService
         _estoqueRepo = estoqueRepo;
         _lotesRepo = lotesRepo;
         _ordensRepo = ordensRepo;
+        _configRepo = configRepo;
     }
 
     public async Task<Result<NotaFiscalDTO>> ImportarXmlAsync(string xml)
@@ -203,6 +206,17 @@ public class NotaFiscalEntradaService : INotaFiscalEntradaService
                     estoque.Adicionar(item.Quantidade);
                     _estoqueRepo.Update(estoque);
                 }
+
+                // 3) atualiza CustoUnitario do componente com o valor da NF
+                // e recalcula ValorVenda mantendo a margem atual.
+                var componente = await _componentesRepo.GetByIdAsync(componenteId);
+                if (componente is not null)
+                {
+                    var margem = componente.MargemLucroPct
+                        ?? (await _configRepo.ObterAsync()).ObterMargemParaSistema(componente.Sistema);
+                    componente.AplicarPrecificacao(item.ValorUnitario, margem);
+                    _componentesRepo.Update(componente);
+                }
             }
 
             await _notasRepo.SaveChangesAsync();
@@ -277,6 +291,149 @@ public class NotaFiscalEntradaService : INotaFiscalEntradaService
         return todos.FirstOrDefault(c =>
             string.Equals(c.PartNumber, codigoFornecedor, StringComparison.OrdinalIgnoreCase)
             || string.Equals(c.CodigoOEM, codigoFornecedor, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public async Task<Result<IEnumerable<SugestaoComponenteDTO>>> SugerirComponentesAsync(Guid itemId)
+    {
+        var item = await _notasRepo.ObterItemAsync(itemId);
+        if (item is null) return Result<IEnumerable<SugestaoComponenteDTO>>.Fail("Item não encontrado.");
+
+        var todos = (await _componentesRepo.GetAllAsync()).Where(c => c.Ativo).ToList();
+        if (todos.Count == 0)
+            return Result<IEnumerable<SugestaoComponenteDTO>>.Ok(Enumerable.Empty<SugestaoComponenteDTO>());
+
+        var cProd = (item.CodigoProdutoFornecedor ?? "").Trim();
+        var xProd = (item.DescricaoProdutoFornecedor ?? "").Trim();
+        var ncm = (item.Ncm ?? "").Trim();
+
+        var sugestoes = new List<SugestaoComponenteDTO>();
+
+        foreach (var c in todos)
+        {
+            int score = 0;
+            var motivos = new List<string>();
+
+            // 1. Match exato em PartNumber → confiança máxima
+            if (!string.IsNullOrEmpty(cProd) && !string.IsNullOrEmpty(c.PartNumber)
+                && string.Equals(cProd, c.PartNumber, StringComparison.OrdinalIgnoreCase))
+            { score += 100; motivos.Add("PartNumber idêntico ao cProd"); }
+
+            // 2. Match exato em CodigoOEM
+            if (!string.IsNullOrEmpty(cProd) && !string.IsNullOrEmpty(c.CodigoOEM)
+                && string.Equals(cProd, c.CodigoOEM, StringComparison.OrdinalIgnoreCase))
+            { score += 95; motivos.Add("OEM idêntico ao cProd"); }
+
+            // 3. Match exato em SKU
+            if (!string.IsNullOrEmpty(cProd) && !string.IsNullOrEmpty(c.SKUInterno)
+                && string.Equals(cProd, c.SKUInterno, StringComparison.OrdinalIgnoreCase))
+            { score += 80; motivos.Add("SKU idêntico"); }
+
+            // 4. cProd aparece como substring em PartNumber/OEM (ou vice-versa)
+            if (score == 0 && !string.IsNullOrEmpty(cProd))
+            {
+                if (!string.IsNullOrEmpty(c.PartNumber)
+                    && (c.PartNumber.Contains(cProd, StringComparison.OrdinalIgnoreCase)
+                        || cProd.Contains(c.PartNumber, StringComparison.OrdinalIgnoreCase)))
+                { score += 70; motivos.Add("PartNumber parcial"); }
+                else if (!string.IsNullOrEmpty(c.CodigoOEM)
+                    && (c.CodigoOEM.Contains(cProd, StringComparison.OrdinalIgnoreCase)
+                        || cProd.Contains(c.CodigoOEM, StringComparison.OrdinalIgnoreCase)))
+                { score += 65; motivos.Add("OEM parcial"); }
+            }
+
+            // 5. Tokens da descrição (xProd) presentes no Nome do componente
+            if (score < 80 && !string.IsNullOrEmpty(xProd) && !string.IsNullOrEmpty(c.Nome))
+            {
+                var tokens = xProd.Split(new[] { ' ', '-', '/', ',' },
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Where(t => t.Length >= 3)
+                    .ToList();
+                if (tokens.Count > 0)
+                {
+                    var nomeUp = c.Nome.ToUpperInvariant();
+                    var hits = tokens.Count(t => nomeUp.Contains(t.ToUpperInvariant()));
+                    if (hits > 0)
+                    {
+                        // até 60 pontos baseado em proporção de tokens encontrados
+                        var ganho = (int)(60 * ((double)hits / tokens.Count));
+                        score += ganho;
+                        motivos.Add($"{hits}/{tokens.Count} palavras da descrição no nome");
+                    }
+                }
+            }
+
+            // 6. NCM igual — sinal fraco mas indica mesma classe fiscal
+            if (!string.IsNullOrEmpty(ncm) && !string.IsNullOrEmpty(c.NCM)
+                && string.Equals(ncm, c.NCM, StringComparison.OrdinalIgnoreCase))
+            { score += 20; motivos.Add("Mesmo NCM"); }
+
+            if (score > 0)
+            {
+                sugestoes.Add(new SugestaoComponenteDTO
+                {
+                    ComponenteId = c.Id,
+                    Nome = c.Nome,
+                    SKUInterno = c.SKUInterno,
+                    PartNumber = c.PartNumber,
+                    CodigoOEM = c.CodigoOEM,
+                    MarcaFabricante = c.MarcaFabricante,
+                    Score = Math.Min(100, score),
+                    Motivo = string.Join(" + ", motivos)
+                });
+            }
+        }
+
+        var top = sugestoes
+            .OrderByDescending(s => s.Score)
+            .Take(5)
+            .ToList();
+
+        return Result<IEnumerable<SugestaoComponenteDTO>>.Ok(top);
+    }
+
+    public async Task<Result<Guid>> CriarComponenteEVincularAsync(
+        Guid itemId, CarStoreManager.Application.DTOs.Oficina.Componente.CriarComponenteDTO componenteDto)
+    {
+        var item = await _notasRepo.ObterItemAsync(itemId);
+        if (item is null) return Result<Guid>.Fail("Item não encontrado.");
+
+        if (item.NotaFiscal.Status != Domain.Enums.StatusNotaFiscal.ImportadaAguardandoAprovacao)
+            return Result<Guid>.Fail("Itens só podem ser alterados enquanto a nota está pendente.");
+
+        try
+        {
+            // Pré-popula campos faltantes do DTO com info do XML — admin pode
+            // ter deixado em branco confiando no preenchimento automático.
+            if (string.IsNullOrWhiteSpace(componenteDto.Nome))
+                componenteDto.Nome = item.DescricaoProdutoFornecedor;
+            if (string.IsNullOrWhiteSpace(componenteDto.PartNumber))
+                componenteDto.PartNumber = item.CodigoProdutoFornecedor;
+            if (string.IsNullOrWhiteSpace(componenteDto.NCM))
+                componenteDto.NCM = item.Ncm;
+            if (string.IsNullOrWhiteSpace(componenteDto.Unidade))
+                componenteDto.Unidade = item.Unidade;
+            if (componenteDto.CustoUnitario == 0)
+                componenteDto.CustoUnitario = item.ValorUnitario;
+
+            var componente = Application.Mappings.Oficina.ComponenteMapping.FromCriarDto(componenteDto);
+            if (!string.IsNullOrWhiteSpace(componenteDto.Sistema)
+                && Enum.TryParse<Domain.Enums.SistemaComponente>(componenteDto.Sistema, true, out var s))
+                componente.DefinirSistema(s);
+
+            // Aplica precificação automática (custo da NF + margem do sistema)
+            var cfg = await _configRepo.ObterAsync();
+            var margem = componenteDto.MargemLucroPct
+                ?? cfg.ObterMargemParaSistema(componente.Sistema);
+            componente.AplicarPrecificacao(componenteDto.CustoUnitario, margem);
+
+            await _componentesRepo.AddAsync(componente);
+            // Já vincula o item à peça recém-criada
+            item.VincularComponente(componente.Id);
+
+            await _notasRepo.SaveChangesAsync();
+            return Result<Guid>.Ok(componente.Id);
+        }
+        catch (Exception ex) { return Result<Guid>.Fail(ex.Message); }
     }
 
     private async Task ConciliarItensAguardandoAsync(Guid componenteId)

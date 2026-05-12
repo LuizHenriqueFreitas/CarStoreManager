@@ -4,6 +4,7 @@ using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Application.Mappings.Oficina;
 using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Enums;
+using CarStoreManager.Domain.Interfaces.Repositories.Oficina;
 using CarStoreManager.Domain.Repositories;
 
 namespace CarStoreManager.Application.Services;
@@ -22,14 +23,27 @@ public class OrdemServicoService : IOrdemServicoService
     private readonly IComponenteRepository _componenteRepository;
     private readonly IMecanicoService _mecanicoService;
 
+    private readonly Domain.Interfaces.Repositories.Oficina.INotaFiscalVendaOSRepository? _notaVendaRepo;
+    private readonly IClienteRepository? _clienteRepo;
+    private readonly IPagamentoOrdemServicoRepository? _pagamentoRepo;
+    private readonly IAlertaOSRepository? _alertaRepo;
+
     public OrdemServicoService(
         IOrdemServicoRepository repository,
         IComponenteRepository componenteRepository,
-        IMecanicoService mecanicoService)
+        IMecanicoService mecanicoService,
+        Domain.Interfaces.Repositories.Oficina.INotaFiscalVendaOSRepository? notaVendaRepo = null,
+        IClienteRepository? clienteRepo = null,
+        IPagamentoOrdemServicoRepository? pagamentoRepo = null,
+        IAlertaOSRepository? alertaRepo = null)
     {
         _repository = repository;
         _componenteRepository = componenteRepository;
         _mecanicoService = mecanicoService;
+        _notaVendaRepo = notaVendaRepo;
+        _clienteRepo = clienteRepo;
+        _pagamentoRepo = pagamentoRepo;
+        _alertaRepo = alertaRepo;
     }
 
     /*
@@ -116,9 +130,12 @@ public class OrdemServicoService : IOrdemServicoService
     }
 
     /*
-        metodo para adicionar novos itens na ordemServico,
-        falha caso os componente ou a ordem seja vazio,
-        caso não tenha estoque suficiente do componente retorna um aviso
+        metodo para adicionar novos itens na ordemServico.
+        Regras:
+        - O valor unitário SEMPRE vem do ValorVenda do componente (custo × margem).
+          O mecânico nunca digita preço; o DTO.ValorUnitario é ignorado.
+        - Se a OS já está EmAndamento, adicionar item caracteriza aumento de escopo:
+          emite AlertaOS automaticamente, pausa a OS e exige reaprovação do cliente.
     */
     public async Task<Result> AdicionarItemAsync(AdicionarItemOrdemServicoDTO dto)
     {
@@ -133,20 +150,47 @@ public class OrdemServicoService : IOrdemServicoService
 
         try
         {
+            // Valor unitário SEMPRE vem do componente — mecânico não tem autonomia
+            // pra precificar peças (ver memory: política da oficina).
+            var valorUnit = componente.ValorVenda;
+
             var item = new ItemOrdemServico(
                 dto.ComponenteId,
                 dto.OrdemServicoId,
                 dto.Quantidade,
-                dto.ValorUnitario,
+                valorUnit,
                 origem
             );
 
+            // Se a OS já está em andamento, isso é aumento de escopo — pausa e alerta
+            // o cliente. O alerta precisa ser criado ANTES de Pausar(), porque Pausar()
+            // só funciona em EmAndamento (a entidade muda o status).
+            var precisaAlertar = ordem.Status == StatusOrdemServico.EmAndamento;
+
             ordem.AdicionarItem(item);
+
+            if (precisaAlertar)
+            {
+                var descricao =
+                    $"Novo componente adicionado durante o serviço: {componente.Nome} " +
+                    $"({dto.Quantidade}× R$ {valorUnit:N2} = R$ {(valorUnit * dto.Quantidade):N2}). " +
+                    $"Novo valor total da OS: R$ {ordem.GetValorTotal():N2}. " +
+                    "OS pausada — aguardando reaprovação do cliente.";
+
+                ordem.Pausar();
+
+                if (_alertaRepo is not null)
+                {
+                    var alerta = new AlertaOS(ordem.Id, ordem.GetMecacnicoId(), descricao);
+                    await _alertaRepo.AddAsync(alerta);
+                }
+            }
 
             // Registra o item explicitamente no DbSet — evita o caso em que o
             // change tracker não detecta o Add via collection com OwnedTypes
             // e tenta UPDATE numa linha inexistente.
             await _repository.AdicionarItemAsync(item);
+            _repository.Update(ordem);
             await _repository.SaveChangesAsync();
 
             return Result.Ok();
@@ -232,12 +276,18 @@ public class OrdemServicoService : IOrdemServicoService
         if (ordem is null)
             return Result.Fail("OS não encontrada");
 
-        ordem.AdicionarItemChecklist(dto.Descricao);
+        try
+        {
+            ordem.AdicionarItemChecklist(dto.Descricao);
 
-        _repository.Update(ordem);
-        await _repository.SaveChangesAsync();
-
-        return Result.Ok();
+            // Mesmo padrão de AdicionarItemAsync — registra explicitamente para
+            // o EF tratar como Add no DbSet ao invés de tentar Update no pai.
+            var itemNovo = ordem.Checklist[^1];
+            await _repository.AdicionarItemChecklistAsync(itemNovo);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
     }
 
     /*
@@ -311,8 +361,110 @@ public class OrdemServicoService : IOrdemServicoService
     public Task<Result> IniciarAsync(Guid ordemId)
         => MutarOrdem(ordemId, o => o.Iniciar());
 
-    public Task<Result> FinalizarAsync(Guid ordemId)
-        => MutarOrdem(ordemId, o => o.Finalizar());
+    /// <summary>
+    /// Mecânico declara que terminou o serviço técnico. NÃO exige pagamento —
+    /// a OS vai para Finalizada e fica aguardando a recepção cobrar e entregar
+    /// (EntregarAsync). Gera NF de venda automaticamente nesse momento.
+    /// </summary>
+    public async Task<Result> FinalizarAsync(Guid ordemId)
+    {
+        var ordem = await _repository.GetByIdAsync(ordemId);
+        if (ordem is null) return Result.Fail("Ordem de serviço não encontrada");
+
+        try
+        {
+            ordem.Finalizar();
+            _repository.Update(ordem);
+
+            // Gera NF de venda automaticamente ao finalizar (registro interno).
+            if (_notaVendaRepo is not null && _clienteRepo is not null)
+            {
+                var jaTem = await _notaVendaRepo.ObterPorOrdemAsync(ordemId);
+                if (jaTem is null)
+                    await GerarNotaVendaAsync(ordem);
+            }
+
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+    }
+
+    /// <summary>
+    /// Recepção cobrou e entrega a OS ao cliente. Bloqueia se ainda houver
+    /// saldo a pagar. Estado terminal feliz: StatusOrdemServico.Entregue.
+    /// </summary>
+    public async Task<Result> EntregarAsync(Guid ordemId)
+    {
+        var ordem = await _repository.GetByIdAsync(ordemId);
+        if (ordem is null) return Result.Fail("Ordem de serviço não encontrada");
+
+        if (_pagamentoRepo is not null)
+        {
+            var pagamentos = await _pagamentoRepo.ObterPorOrdemAsync(ordemId);
+            var pago = pagamentos.Sum(p => p.Valor.GetValorDinheiro());
+            var total = ordem.GetValorTotal();
+            if (pago < total)
+            {
+                var restante = total - pago;
+                return Result.Fail(
+                    $"Pagamento pendente: faltam R$ {restante:N2} de R$ {total:N2}. " +
+                    "Receba o pagamento antes de entregar o veículo ao cliente.");
+            }
+        }
+
+        try
+        {
+            ordem.Entregar();
+            _repository.Update(ordem);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+    }
+
+    private async Task GerarNotaVendaAsync(Domain.Entities.Oficina.OrdemServico ordem)
+    {
+        if (_notaVendaRepo is null || _clienteRepo is null) return;
+
+        var ano = DateTime.UtcNow.Year;
+        var sequencia = (await _notaVendaRepo.ContarPorAnoAsync(ano)) + 1;
+        var numero = $"NFV-{ano}-{sequencia:D5}";
+
+        var cliente = await _clienteRepo.GetByIdAsync(ordem.GetClienteId());
+        var clienteSnap = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Id = ordem.GetClienteId(),
+            Nome = cliente?.GetNome() ?? "(cliente removido)",
+            Cpf = cliente?.GetCpf() ?? "",
+            Email = cliente?.GetEmail() ?? "",
+            Telefone = cliente?.GetTelefone() ?? ""
+        });
+
+        var itensSnap = System.Text.Json.JsonSerializer.Serialize(
+            ordem.Itens.Select(i => new
+            {
+                ComponenteId = i.ComponenteId,
+                Quantidade = i.Quantidade,
+                ValorUnitario = i.ValorUnitario.GetValorDinheiro(),
+                ValorTotal = i.ValorTotal.GetValorDinheiro(),
+                Origem = i.Origem.ToString()
+            }));
+
+        var valorPecas = ordem.Itens.Sum(i => i.ValorTotal.GetValorDinheiro());
+        var valorServico = ordem.GetCustoServico();
+
+        var nota = new Domain.Entities.Oficina.NotaFiscalVendaOS(
+            ordemServicoId: ordem.Id,
+            clienteId: ordem.GetClienteId(),
+            numero: numero,
+            valorServico: valorServico,
+            valorPecas: valorPecas,
+            itensJson: itensSnap,
+            clienteSnapshotJson: clienteSnap);
+
+        await _notaVendaRepo.AddAsync(nota);
+    }
 
     public Task<Result> CancelarAsync(Guid ordemId)
         => MutarOrdem(ordemId, o => o.Cancelar());

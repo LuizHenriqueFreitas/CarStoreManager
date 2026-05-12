@@ -17,12 +17,14 @@ namespace CarStoreManager.Web.Components.Shared.Auth;
 */
 public class JwtAuthStateProvider : AuthenticationStateProvider
 {
-    private readonly ProtectedLocalStorage _storage;
+    // Usa SessionStorage (não LocalStorage) para que fechar a janela/aba descarte
+    // automaticamente o token — refresh mantém, fechamento desloga.
+    private readonly ProtectedSessionStorage _storage;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ClaimsPrincipal _anonimo = new(new ClaimsIdentity());
 
     public JwtAuthStateProvider(
-        ProtectedLocalStorage storage,
+        ProtectedSessionStorage storage,
         IHttpContextAccessor httpContextAccessor)
     {
         _storage = storage;

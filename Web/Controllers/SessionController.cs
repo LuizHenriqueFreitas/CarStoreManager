@@ -39,13 +39,14 @@ public class SessionController : ControllerBase
         var identity = new ClaimsIdentity(jwt.Claims, CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
 
+        // Cookie de sessão (sem ExpiresUtc) — browser descarta ao fechar a janela.
+        // Combinado com ProtectedSessionStorage do JWT, isso garante logout no fechamento.
         await HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             principal,
             new AuthenticationProperties
             {
-                IsPersistent = true,
-                ExpiresUtc = resultado.Value.Expiracao
+                IsPersistent = false
             });
 
         return Ok(new

@@ -38,4 +38,9 @@ public class ComponenteDTO
 
     // Status
     public bool Ativo { get; set; }
+
+    // Precificação
+    public decimal CustoUnitario { get; set; }
+    public decimal? MargemLucroPct { get; set; }
+    public decimal ValorVenda { get; set; }
 }

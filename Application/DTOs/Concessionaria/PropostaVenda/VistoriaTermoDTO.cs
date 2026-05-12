@@ -29,6 +29,11 @@ public class TermoEntregaDTO
     public string? AssinaturaNomeCliente { get; set; }
     public string? AssinaturaCpfCliente { get; set; }
     public string? AssinaturaIp { get; set; }
+
+    /// <summary>Valor final do veículo (ValorFinal da proposta).</summary>
+    public decimal ValorVeiculo { get; set; }
+    /// <summary>Soma dos pagamentos registrados para a proposta.</summary>
+    public decimal ValorPago { get; set; }
 }
 
 public class CriarOuEditarTermoDTO

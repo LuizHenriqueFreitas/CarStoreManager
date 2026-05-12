@@ -62,6 +62,73 @@
             </p>
         </div>
 
+        <div class="form-card">
+            <h2 class="secao-titulo">Modo de pagamento *</h2>
+            <p class="dica">
+                Escolha como o cliente vai pagar. Esta decisão fica vinculada à proposta;
+                se for financiamento, os dados são enviados à financiadora ao registrar.
+            </p>
+            <div class="modo-radios">
+                @foreach (var opt in ModosPagamento)
+                {
+                    var v = opt.valor;
+                    <label class="modo-radio @(modoPagamento == v ? "ativo" : "")">
+                        <input type="radio" name="modoPag"
+                               checked="@(modoPagamento == v)"
+                               @onchange='() => modoPagamento = v' />
+                        <span class="modo-icone">@opt.icone</span>
+                        <span class="modo-nome">@opt.label</span>
+                    </label>
+                }
+            </div>
+
+            @if (modoPagamento == "Financiamento")
+            {
+                <div class="financ-bloco">
+                    <h3>Detalhes do financiamento</h3>
+                    <div class="form-grid">
+                        <div class="form-campo">
+                            <label class="campo-label">Entrada (R$)</label>
+                            <input type="number" step="0.01" min="0" max="@ValorFinalCalculado"
+                                   class="campo-input"
+                                   @bind="entrada" @bind:event="oninput" />
+                        </div>
+                        <div class="form-campo">
+                            <label class="campo-label">Valor a financiar (R$)</label>
+                            <input type="text" class="campo-input destaque" readonly
+                                   value="@FormatBRL(ValorFinanciar)" />
+                        </div>
+                        <div class="form-campo">
+                            <label class="campo-label">&nbsp;</label>
+                            <label class="solicitar-check">
+                                <input type="checkbox" @bind="solicitarFinanciadoraAgora" />
+                                Solicitar simulação à financiadora ao criar
+                            </label>
+                        </div>
+                    </div>
+                    @if (solicitarFinanciadoraAgora)
+                    {
+                        <p class="dica">
+                            Dados do cliente, veículo, entrada e valor a financiar serão enviados
+                            por e-mail à financiadora configurada nas
+                            <a href="/admin/configuracoes" target="_blank">configurações do sistema</a>.
+                        </p>
+                    }
+                </div>
+            }
+            else if (modoPagamento != "NaoDefinido")
+            {
+                <div class="form-grid">
+                    <div class="form-campo">
+                        <label class="campo-label">Entrada/sinal (R$, opcional)</label>
+                        <input type="number" step="0.01" min="0" max="@ValorFinalCalculado"
+                               class="campo-input"
+                               @bind="entrada" @bind:event="oninput" />
+                    </div>
+                </div>
+            }
+        </div>
+
         @if (!string.IsNullOrEmpty(erro))
         {
             <div class="erro-banner">@erro</div>
@@ -94,6 +161,22 @@
     private bool salvando = false;
     private bool sucesso = false;
     private string? erro;
+
+    private string modoPagamento = "NaoDefinido";
+    private decimal entrada;
+    private bool solicitarFinanciadoraAgora = true;
+    private decimal ValorFinanciar => Math.Max(0m, ValorFinalCalculado - entrada);
+
+    private static readonly (string valor, string label, string icone)[] ModosPagamento =
+    {
+        ("Dinheiro", "Dinheiro", "💵"),
+        ("Pix", "Pix", "⚡"),
+        ("CartaoDebito", "Débito", "💳"),
+        ("CartaoCredito", "Crédito", "💳"),
+        ("Financiamento", "Financiamento", "🏦"),
+        ("Boleto", "Boleto", "📄"),
+        ("Transferencia", "Transferência", "🔁"),
+    };
 
     private decimal ValorFinalCalculado
     {
@@ -160,6 +243,16 @@
             erro = "Desconto deve estar entre 0 e 100.";
             return;
         }
+        if (modoPagamento == "NaoDefinido")
+        {
+            erro = "Selecione o modo de pagamento.";
+            return;
+        }
+        if (entrada < 0 || entrada > ValorFinalCalculado)
+        {
+            erro = "Entrada deve estar entre 0 e o valor final.";
+            return;
+        }
 
         salvando = true;
         erro = null;
@@ -167,17 +260,53 @@
 
         try
         {
+            // Cria a proposta (vem como Criada, modo NaoDefinido).
             var resultado = await PropostaVendaService.AddAsync(form);
-            if (resultado.IsSuccess)
+            if (!resultado.IsSuccess) { erro = resultado.Error; return; }
+
+            var propostaId = resultado.Value;
+
+            // Define modo de pagamento escolhido na criação.
+            var rModo = await PropostaVendaService.DefinirModoPagamentoAsync(propostaId, modoPagamento);
+            if (!rModo.IsSuccess)
             {
-                sucesso = true;
-                await Task.Delay(900);
-                Navigation.NavigateTo("/concessionaria/propostas");
+                erro = $"Proposta criada, mas falha ao definir modo: {rModo.Error}";
+                return;
             }
-            else
+
+            // Define entrada (mesmo se 0, mantém consistência).
+            if (entrada > 0)
             {
-                erro = resultado.Error;
+                var rEnt = await PropostaVendaService.DefinirEntradaAsync(new DefinirEntradaDTO
+                {
+                    PropostaId = propostaId, ValorEntrada = entrada
+                });
+                if (!rEnt.IsSuccess)
+                {
+                    erro = $"Proposta criada, mas falha ao definir entrada: {rEnt.Error}";
+                    return;
+                }
             }
+
+            // Se financiamento + opt-in, dispara solicitação à financiadora.
+            if (modoPagamento == "Financiamento" && solicitarFinanciadoraAgora)
+            {
+                var rFin = await PropostaVendaService.SolicitarFinanciamentoAsync(propostaId);
+                if (!rFin.IsSuccess)
+                {
+                    // Não bloqueia a navegação — proposta foi criada com sucesso.
+                    // Admin pode reenviar do detalhe.
+                    erro = $"Proposta criada com financiamento mas houve falha no envio à financiadora: {rFin.Error}. Você pode reenviar do detalhe.";
+                    sucesso = true;
+                    await Task.Delay(2500);
+                    Navigation.NavigateTo($"/concessionaria/proposta/{propostaId}");
+                    return;
+                }
+            }
+
+            sucesso = true;
+            await Task.Delay(700);
+            Navigation.NavigateTo($"/concessionaria/proposta/{propostaId}");
         }
         catch (Exception ex)
         {
@@ -287,4 +416,40 @@
     }
     .btn-salvar:hover:not(:disabled) { background: #c01818; }
     .btn-salvar:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* === Modo de pagamento === */
+    .modo-radios {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 8px;
+        margin: 12px 0;
+    }
+    .modo-radio {
+        display: flex; flex-direction: column; align-items: center;
+        gap: 6px; padding: 12px 6px;
+        border: 1px solid #ccc; border-radius: 8px;
+        cursor: pointer; transition: all 0.15s;
+        background: #fff;
+    }
+    .modo-radio:hover { border-color: #0a84ff; background: #f5faff; }
+    .modo-radio.ativo {
+        border-color: #0a84ff; background: #e0f2fe;
+        box-shadow: 0 0 0 2px rgba(10,132,255,0.2);
+    }
+    .modo-radio input[type="radio"] { display: none; }
+    .modo-icone { font-size: 1.4rem; }
+    .modo-nome { font-size: 0.88em; font-weight: 500; color: #333; }
+
+    .financ-bloco {
+        background: #f8fafc; border: 1px solid #cbd5e1;
+        border-radius: 8px; padding: 14px 16px; margin-top: 14px;
+    }
+    .financ-bloco h3 {
+        font-size: 0.95rem; margin: 0 0 12px;
+        color: #1f4d8c;
+    }
+    .solicitar-check {
+        display: flex; gap: 8px; align-items: center;
+        font-size: 0.9em; padding: 8px 0; cursor: pointer;
+    }
 </style>

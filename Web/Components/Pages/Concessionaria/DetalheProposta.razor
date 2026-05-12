@@ -11,6 +11,7 @@
 @using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
 @using CarStoreManager.Application.DTOs.Shared.Cliente
+@using CarStoreManager.Web.Components.Shared
 
 <div class="prop-page">
     <div class="page-header">
@@ -101,27 +102,11 @@
 
         <section class="card">
             <h2>Modo de pagamento</h2>
-            @if (PodeEditar)
-            {
-                <select @bind="modoPagamentoEscolhido">
-                    <option value="NaoDefinido">— Selecione —</option>
-                    <option value="Dinheiro">Dinheiro</option>
-                    <option value="Pix">Pix</option>
-                    <option value="CartaoDebito">Cartão de débito</option>
-                    <option value="CartaoCredito">Cartão de crédito</option>
-                    <option value="Financiamento">Financiamento</option>
-                    <option value="Boleto">Boleto</option>
-                    <option value="Transferencia">Transferência</option>
-                </select>
-                <button class="btn-sec" @onclick="DefinirModoPagamento">Salvar modo</button>
-                <p class="muted small">
-                    Cartão de crédito raramente cobre o valor total de um veículo (limite). Comum apenas para entrada.
-                </p>
-            }
-            else
-            {
-                <p><b>@ModoPagamentoLabel(proposta.ModoPagamento)</b></p>
-            }
+            <p><b>@ModoPagamentoLabel(proposta.ModoPagamento)</b></p>
+            <p class="muted small">
+                O modo de pagamento é definido na criação da proposta e não pode ser alterado depois.
+                Se for necessário trocar, cancele esta proposta e crie uma nova.
+            </p>
         </section>
 
         @if (proposta.ModoPagamento == "Financiamento" || proposta.ParcelasFinanciamento.HasValue)
@@ -224,6 +209,12 @@
                     </ul>
                 }
             </section>
+        }
+
+        @if (proposta.Status is "Aprovada" or "AguardandoVistoria" or "VistoriaConcluida"
+            or "AguardandoAssinaturaTermo" or "Concluida")
+        {
+            <PainelPagamentoProposta PropostaId="proposta.Id" />
         }
 
         @if (proposta.Status is "VistoriaConcluida" or "AguardandoAssinaturaTermo" or "Concluida")
@@ -373,7 +364,6 @@
     private bool processando;
     private string mensagem = "";
     private bool mensagemErro;
-    private string modoPagamentoEscolhido = "NaoDefinido";
     private decimal novaEntrada;
     private string motivo = "";
     private RegistrarRespostaFinanciadoraDTO financ = new();
@@ -398,8 +388,7 @@
         if (r.IsSuccess)
         {
             proposta = r.Value;
-            modoPagamentoEscolhido = proposta!.ModoPagamento;
-            novaEntrada = proposta.Entrada;
+            novaEntrada = proposta!.Entrada;
 
             var rc = await ClienteService.GetByIdAsync(proposta.ClienteId);
             if (rc.IsSuccess) cliente = rc.Value;
@@ -477,15 +466,6 @@
         "Assinado" => "Assinado",
         _ => s
     };
-
-    private async Task DefinirModoPagamento()
-    {
-        processando = true;
-        var r = await PropostaService.DefinirModoPagamentoAsync(Id, modoPagamentoEscolhido);
-        processando = false;
-        if (r.IsSuccess) { MostrarOk("Modo de pagamento atualizado."); await Carregar(); }
-        else MostrarErro(r.Error);
-    }
 
     private async Task AtualizarEntrada()
     {

@@ -22,6 +22,7 @@ public class PropostaVendaService : IPropostaVendaService
     private readonly IEmailService _emailService;
     private readonly IVistoriaRepository _vistoriaRepository;
     private readonly ITermoEntregaRepository _termoRepository;
+    private readonly IPagamentoPropostaRepository? _pagamentoRepository;
 
     public PropostaVendaService(
         IPropostaVendaRepository repository,
@@ -30,7 +31,8 @@ public class PropostaVendaService : IPropostaVendaService
         IConfiguracaoSistemaRepository configRepository,
         IEmailService emailService,
         IVistoriaRepository vistoriaRepository,
-        ITermoEntregaRepository termoRepository)
+        ITermoEntregaRepository termoRepository,
+        IPagamentoPropostaRepository? pagamentoRepository = null)
     {
         _repository = repository;
         _veiculoRepository = veiculoRepository;
@@ -39,6 +41,7 @@ public class PropostaVendaService : IPropostaVendaService
         _emailService = emailService;
         _vistoriaRepository = vistoriaRepository;
         _termoRepository = termoRepository;
+        _pagamentoRepository = pagamentoRepository;
     }
 
     public async Task<Result<PropostaVendaDTO>> GetByIdAsync(Guid id)
@@ -54,24 +57,52 @@ public class PropostaVendaService : IPropostaVendaService
     {
         var propostas = (await _repository.GetAllAsync()).ToList();
         await ExpirarLoteSeNecessarioAsync(propostas);
-        return Result<IEnumerable<PropostaVendaListaDTO>>.Ok(
-            propostas.Select(PropostaVendaMapping.ToListaDto));
+        var dtos = await EnriquecerListaAsync(propostas);
+        return Result<IEnumerable<PropostaVendaListaDTO>>.Ok(dtos);
     }
 
     public async Task<Result<IEnumerable<PropostaVendaListaDTO>>> ObterPorVendedorAsync(Guid vendedorId)
     {
         var propostas = (await _repository.ObterPorVendedorAsync(vendedorId)).ToList();
         await ExpirarLoteSeNecessarioAsync(propostas);
-        return Result<IEnumerable<PropostaVendaListaDTO>>.Ok(
-            propostas.Select(PropostaVendaMapping.ToListaDto));
+        var dtos = await EnriquecerListaAsync(propostas);
+        return Result<IEnumerable<PropostaVendaListaDTO>>.Ok(dtos);
     }
 
     public async Task<Result<IEnumerable<PropostaVendaListaDTO>>> ObterPorClienteAsync(Guid clienteId)
     {
         var propostas = (await _repository.ObterPorClienteAsync(clienteId)).ToList();
         await ExpirarLoteSeNecessarioAsync(propostas);
-        return Result<IEnumerable<PropostaVendaListaDTO>>.Ok(
-            propostas.Select(PropostaVendaMapping.ToListaDto));
+        var dtos = await EnriquecerListaAsync(propostas);
+        return Result<IEnumerable<PropostaVendaListaDTO>>.Ok(dtos);
+    }
+
+    /// <summary>
+    /// Para cada proposta: anexa nome do cliente e marca/modelo do veículo.
+    /// Best-effort: falhas em lookups individuais ficam com strings vazias.
+    /// </summary>
+    private async Task<List<PropostaVendaListaDTO>> EnriquecerListaAsync(IEnumerable<PropostaVenda> propostas)
+    {
+        var dtos = new List<PropostaVendaListaDTO>();
+        foreach (var p in propostas)
+        {
+            var dto = PropostaVendaMapping.ToListaDto(p);
+            try
+            {
+                var cli = await _clienteRepository.GetByIdAsync(p.GetClienteId());
+                if (cli is not null) dto.ClienteNome = cli.GetNome();
+
+                var veic = await _veiculoRepository.GetByIdAsync(p.GetVeiculoId());
+                if (veic is not null)
+                {
+                    dto.VeiculoMarca = veic.GetMarca();
+                    dto.VeiculoModelo = veic.GetModelo();
+                }
+            }
+            catch { /* best-effort */ }
+            dtos.Add(dto);
+        }
+        return dtos;
     }
 
     public async Task<Result<Guid>> AddAsync(CriarPropostaVendaDTO dto)
@@ -335,9 +366,12 @@ public class PropostaVendaService : IPropostaVendaService
     public async Task<Result<TermoEntregaDTO>> ObterTermoAsync(Guid propostaId)
     {
         var termo = await _termoRepository.ObterPorPropostaAsync(propostaId);
-        return termo is null
-            ? Result<TermoEntregaDTO>.Fail("Termo não criado para esta proposta.")
-            : Result<TermoEntregaDTO>.Ok(MapTermo(termo));
+        if (termo is null)
+            return Result<TermoEntregaDTO>.Fail("Termo não criado para esta proposta.");
+
+        var dto = MapTermo(termo);
+        await EnriquecerComValoresAsync(dto);
+        return Result<TermoEntregaDTO>.Ok(dto);
     }
 
     public async Task<Result> EnviarTermoParaAssinaturaAsync(Guid propostaId)
@@ -347,6 +381,21 @@ public class PropostaVendaService : IPropostaVendaService
 
         var termo = await _termoRepository.ObterPorPropostaAsync(propostaId);
         if (termo is null) return Result.Fail("Crie o termo antes de enviá-lo para assinatura.");
+
+        // Bloqueia o envio se o veículo ainda não estiver totalmente pago.
+        if (_pagamentoRepository is not null)
+        {
+            var pagamentos = await _pagamentoRepository.ObterPorPropostaAsync(propostaId);
+            var pago = pagamentos.Sum(p => p.Valor.GetValorDinheiro());
+            var total = proposta.GetValorFinal();
+            if (pago < total)
+            {
+                var restante = total - pago;
+                return Result.Fail(
+                    $"Cobrança pendente: faltam R$ {restante:N2} de R$ {total:N2}. " +
+                    "Registre o pagamento completo antes de enviar o termo para assinatura.");
+            }
+        }
 
         try
         {
@@ -366,9 +415,33 @@ public class PropostaVendaService : IPropostaVendaService
             return Result<TermoEntregaDTO>.Fail("Token inválido.");
 
         var termo = await _termoRepository.ObterPorTokenAsync(token);
-        return termo is null
-            ? Result<TermoEntregaDTO>.Fail("Termo não encontrado ou link inválido.")
-            : Result<TermoEntregaDTO>.Ok(MapTermo(termo));
+        if (termo is null)
+            return Result<TermoEntregaDTO>.Fail("Termo não encontrado ou link inválido.");
+
+        var dto = MapTermo(termo);
+        await EnriquecerComValoresAsync(dto);
+        return Result<TermoEntregaDTO>.Ok(dto);
+    }
+
+    /// <summary>
+    /// Anexa ValorVeiculo (proposta.ValorFinal) e ValorPago (soma dos pagamentos)
+    /// ao DTO do termo — usado tanto pela tela do admin quanto pela página pública.
+    /// </summary>
+    private async Task EnriquecerComValoresAsync(TermoEntregaDTO dto)
+    {
+        try
+        {
+            var proposta = await _repository.GetByIdAsync(dto.PropostaVendaId);
+            if (proposta is null) return;
+            dto.ValorVeiculo = proposta.GetValorFinal();
+
+            if (_pagamentoRepository is not null)
+            {
+                var pagamentos = await _pagamentoRepository.ObterPorPropostaAsync(dto.PropostaVendaId);
+                dto.ValorPago = pagamentos.Sum(p => p.Valor.GetValorDinheiro());
+            }
+        }
+        catch { /* best-effort */ }
     }
 
     public async Task<Result> AssinarTermoAsync(string token, AssinarTermoDTO dto, string ipOrigem)

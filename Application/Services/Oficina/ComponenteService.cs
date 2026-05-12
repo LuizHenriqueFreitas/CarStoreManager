@@ -19,10 +19,14 @@ namespace CarStoreManager.Application.Services;
 public class ComponenteService : IComponenteService
 {
     private readonly IComponenteRepository _repository;
+    private readonly Domain.Interfaces.Repositories.Sistema.IConfiguracaoSistemaRepository _configRepo;
 
-    public ComponenteService(IComponenteRepository repository)
+    public ComponenteService(
+        IComponenteRepository repository,
+        Domain.Interfaces.Repositories.Sistema.IConfiguracaoSistemaRepository configRepo)
     {
         _repository = repository;
+        _configRepo = configRepo;
     }
 
     /* ======================
@@ -78,6 +82,28 @@ public class ComponenteService : IComponenteService
         try
         {
             var componente = ComponenteMapping.FromCriarDto(dto);
+
+            // Sistema (enum) — opcional no DTO via string
+            Domain.Enums.SistemaComponente? sistema = null;
+            if (!string.IsNullOrWhiteSpace(dto.Sistema)
+                && Enum.TryParse<Domain.Enums.SistemaComponente>(dto.Sistema, ignoreCase: true, out var s))
+                sistema = s;
+            componente.DefinirSistema(sistema);
+
+            // Aplica precificação automática: usa margem do DTO se vier;
+            // senão pega o padrão configurado para o Sistema (ou global).
+            decimal margem;
+            if (dto.MargemLucroPct.HasValue)
+            {
+                margem = dto.MargemLucroPct.Value;
+            }
+            else
+            {
+                var cfg = await _configRepo.ObterAsync();
+                margem = cfg.ObterMargemParaSistema(sistema);
+            }
+            componente.AplicarPrecificacao(dto.CustoUnitario, margem);
+
             await _repository.AddAsync(componente);
             await _repository.SaveChangesAsync();
             return Result<Guid>.Ok(componente.Id);
@@ -86,6 +112,24 @@ public class ComponenteService : IComponenteService
         {
             return Result<Guid>.Fail($"Erro ao criar componente: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Sobrescreve a margem individual do componente (recalcula ValorVenda
+    /// mantendo o custo atual). Endpoint admin "ajustar margem".
+    /// </summary>
+    public async Task<Result> AjustarMargemAsync(Guid id, decimal novaMargemPct)
+    {
+        var c = await _repository.GetByIdAsync(id);
+        if (c is null) return Result.Fail("Componente não encontrado");
+        try
+        {
+            c.AjustarMargem(novaMargemPct);
+            _repository.Update(c);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
     }
 
     /*

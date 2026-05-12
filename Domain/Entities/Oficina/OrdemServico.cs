@@ -32,6 +32,12 @@ public class OrdemServico : Entity
 
     public StatusOrdemServico Status { get; private set; }
 
+    /// <summary>
+    /// Status anterior preservado para suportar retornos de pausas
+    /// (BuscandoPecasParaOrcamento volta para Pendente/EmAnalise; Pausada volta para EmAndamento).
+    /// </summary>
+    public StatusOrdemServico? StatusAnterior { get; private set; }
+
     public List<ItemOrdemServico> Itens { get; private set; } = new();
     public List<ChecklistOrdemServico> Checklist { get; private set; } = new();
 
@@ -189,8 +195,10 @@ public class OrdemServico : Entity
     //metodo que adiciona um item necessario para ordem de servico
     public void AdicionarItem(ItemOrdemServico item)
     {
-        if (Status == StatusOrdemServico.Finalizada || Status == StatusOrdemServico.Cancelada)
-            throw new InvalidOperationException("Não é possível alterar itens em OS finalizada/cancelada");
+        if (Status is StatusOrdemServico.Finalizada
+                   or StatusOrdemServico.Entregue
+                   or StatusOrdemServico.Cancelada)
+            throw new InvalidOperationException("Não é possível alterar itens em OS finalizada/entregue/cancelada");
 
         Itens.Add(item);
         RecalcularTotal();
@@ -295,9 +303,9 @@ public class OrdemServico : Entity
     }
 
     /*
-        metodo que finaliza uma OS
-        a regra é que só pode ser finalizada 
-        caso o estado anterior seja "EmAndamento"
+        metodo que finaliza uma OS — significa apenas que o mecânico terminou
+        o trabalho técnico. A cobrança e a entrega ao cliente são responsabilidade
+        da recepção (ver Entregar()). Só é possível finalizar a partir de EmAndamento.
     */
     public void Finalizar()
     {
@@ -305,10 +313,80 @@ public class OrdemServico : Entity
         Status = StatusOrdemServico.Finalizada;
     }
 
+    /*
+        Recepcionista marca a OS como entregue ao cliente — terminal feliz.
+        A regra de "tem que estar totalmente paga" é validada no service
+        (a entidade não conhece pagamentos). Só é possível entregar a partir de Finalizada.
+    */
+    public void Entregar()
+    {
+        ValidarStatus(StatusOrdemServico.Finalizada);
+        Status = StatusOrdemServico.Entregue;
+    }
+
     //metodo para cancelar uma OS - pode ser cancelada a qualquer momento
     public void Cancelar()
     {
         Status = StatusOrdemServico.Cancelada;
+    }
+
+    /// <summary>
+    /// Mecânico abriu requisição de peça inexistente — pausa o orçamento até
+    /// admin atender. Permitido apenas em Pendente ou EmAnalise (o orçamento
+    /// ainda está sendo montado).
+    /// </summary>
+    public void MarcarComoBuscandoPecas()
+    {
+        if (Status is StatusOrdemServico.Finalizada or StatusOrdemServico.Cancelada
+            or StatusOrdemServico.BuscandoPecasParaOrcamento)
+            return;
+        if (Status is not (StatusOrdemServico.Pendente or StatusOrdemServico.EmAnalise))
+            throw new InvalidOperationException(
+                $"Só é possível requisitar peças durante a montagem do orçamento (atual: {Status}).");
+
+        StatusAnterior = Status;
+        Status = StatusOrdemServico.BuscandoPecasParaOrcamento;
+    }
+
+    /// <summary>
+    /// Admin atendeu todas as requisições — devolve a OS ao status anterior
+    /// (Pendente ou EmAnalise) para o orçamento prosseguir.
+    /// </summary>
+    public void RetomarAposBuscaDePecas()
+    {
+        if (Status != StatusOrdemServico.BuscandoPecasParaOrcamento)
+            throw new InvalidOperationException(
+                $"OS não está em busca de peças (atual: {Status}).");
+        Status = StatusAnterior ?? StatusOrdemServico.Pendente;
+        StatusAnterior = null;
+    }
+
+    /// <summary>
+    /// Mecânico emite alerta durante a execução — pausa para o cliente decidir
+    /// sobre escopo aumentado. Permitido apenas em EmAndamento.
+    /// </summary>
+    public void Pausar()
+    {
+        if (Status != StatusOrdemServico.EmAndamento)
+            throw new InvalidOperationException(
+                $"Só é possível pausar OS em andamento (atual: {Status}).");
+
+        StatusAnterior = Status;
+        Status = StatusOrdemServico.Pausada;
+    }
+
+    /// <summary>
+    /// Cliente decidiu (aprovou ou recusou novo orçamento) — OS volta para
+    /// EmAndamento independentemente da decisão. A diferença é se o admin
+    /// adicionou novos itens/custos antes de retomar.
+    /// </summary>
+    public void Retomar()
+    {
+        if (Status != StatusOrdemServico.Pausada)
+            throw new InvalidOperationException(
+                $"Só é possível retomar OS pausada (atual: {Status}).");
+        Status = StatusAnterior ?? StatusOrdemServico.EmAndamento;
+        StatusAnterior = null;
     }
 
     /*
@@ -318,8 +396,8 @@ public class OrdemServico : Entity
     */
     public void AtualizarStatus(StatusOrdemServico novoStatus)
     {
-        if (Status == StatusOrdemServico.Finalizada)
-            throw new InvalidOperationException("Ordem já finalizada");
+        if (Status == StatusOrdemServico.Entregue)
+            throw new InvalidOperationException("Ordem já entregue");
 
         if (Status == StatusOrdemServico.Cancelada)
             throw new InvalidOperationException("Ordem cancelada não pode ser alterada");

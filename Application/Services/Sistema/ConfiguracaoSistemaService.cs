@@ -65,6 +65,37 @@ public class ConfiguracaoSistemaService : IConfiguracaoSistemaService
         return await _emailService.EnviarAsync(emailDestino, assunto, corpo, isHtml: true);
     }
 
+    public async Task<Result<MargensDTO>> ObterMargensAsync()
+    {
+        var cfg = await _repo.ObterAsync();
+        Dictionary<string, decimal> margens;
+        try
+        {
+            margens = System.Text.Json.JsonSerializer
+                .Deserialize<Dictionary<string, decimal>>(cfg.MargensPorSistemaJson)
+                ?? new();
+        }
+        catch { margens = new(); }
+
+        return Result<MargensDTO>.Ok(new MargensDTO
+        {
+            MargensPorSistema = margens,
+            MargemPadraoGlobalPct = cfg.MargemPadraoGlobalPct
+        });
+    }
+
+    public async Task<Result> AtualizarMargensAsync(MargensDTO dto)
+    {
+        var cfg = await _repo.ObterAsync();
+        try
+        {
+            cfg.AtualizarMargens(dto.MargensPorSistema, dto.MargemPadraoGlobalPct);
+            await _repo.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (ArgumentException ex) { return Result.Fail(ex.Message); }
+    }
+
     private static ConfiguracaoSistemaDTO MapToDto(ConfiguracaoSistema cfg) => new()
     {
         NomeFinanciadora = cfg.NomeFinanciadora,

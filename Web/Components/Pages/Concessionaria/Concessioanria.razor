@@ -3,59 +3,146 @@
 
 @namespace CarStoreManager.Web.Components.Pages
 
+@rendermode InteractiveServer
+
 @inject IVeiculoVendaService VeiculoService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IAuthService AuthService
 @inject NavigationManager Nav
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
 @using CarStoreManager.Application.Interfaces
-@using CarStoreManager.Application.Services
 @using CarStoreManager.Web.Components.Shared
 @using CarStoreManager.Web.Components.Concessionaria
-@using CarStoreManager.Web.Imports
 @using Microsoft.AspNetCore.Components.Authorization
 
-@using Microsoft.AspNetCore.Components.Web
+<div class="conc-layout">
+    <aside class="conc-sidebar">
+        <h2 class="sb-titulo">Filtros</h2>
 
-<div class="estoque-hero">
-    <div class="estoque-hero-inner">
-        <h1 class="estoque-titulo">Estoque de veículos</h1>
-        <p class="estoque-sub">@veiculosFiltrados.Count veículos encontrados</p>
+        <section class="sb-secao">
+            <h3>Disponibilidade</h3>
+            <label class="sb-opcao">
+                <input type="radio" name="disp" checked="@(filtroDisp == "Todos")"
+                       @onchange='() => SetDisp("Todos")' />
+                Todos
+            </label>
+            <label class="sb-opcao">
+                <input type="radio" name="disp" checked="@(filtroDisp == "Disponivel")"
+                       @onchange='() => SetDisp("Disponivel")' />
+                Disponíveis
+            </label>
+            <label class="sb-opcao">
+                <input type="radio" name="disp" checked="@(filtroDisp == "Vendido")"
+                       @onchange='() => SetDisp("Vendido")' />
+                Vendidos
+            </label>
+        </section>
 
-        <div class="filtros">
-            <button class="@FiltroClass("Todos")" @onclick='() => FiltrarPor("Todos")'>Todos</button>
-            <button class="@FiltroClass("Disponivel")" @onclick='() => FiltrarPor("Disponivel")'>Disponíveis</button>
-            <button class="@FiltroClass("Vendido")" @onclick='() => FiltrarPor("Vendido")'>Vendidos</button>
-            <button class="@FiltroClass("Flex")" @onclick='() => FiltrarPor("Flex")'>Flex</button>
-            <button class="@FiltroClass("Eletrico")" @onclick='() => FiltrarPor("Eletrico")'>Elétrico</button>
-            <button class="@FiltroClass("Automatico")" @onclick='() => FiltrarPor("Automatico")'>Automático</button>
-        </div>
-    </div>
-</div>
+        <section class="sb-secao">
+            <h3>Marca</h3>
+            <select class="sb-select" @bind="filtroMarca" @bind:after="AplicarFiltro">
+                <option value="">Todas</option>
+                @foreach (var m in marcasDisponiveis)
+                {
+                    <option value="@m">@m</option>
+                }
+            </select>
+        </section>
 
-<div class="estoque-content">
-    <div class="estoque-bar">
-        <span class="estoque-count">Mostrando @veiculosFiltrados.Count veículos</span>
-        <button class="btn-novo" @onclick="AbrirModalCadastro">+ Cadastrar veículo</button>
-    </div>
+        <section class="sb-secao">
+            <h3>Ano</h3>
+            <div class="sb-row">
+                <input type="number" class="sb-input" placeholder="De" min="1900" max="2100"
+                       @bind="filtroAnoMin" @bind:after="AplicarFiltro" />
+                <span class="sb-sep">—</span>
+                <input type="number" class="sb-input" placeholder="Até" min="1900" max="2100"
+                       @bind="filtroAnoMax" @bind:after="AplicarFiltro" />
+            </div>
+        </section>
 
-    @if (carregando)
-    {
-        <div class="loading">Carregando veículos...</div>
-    }
-    else if (!veiculosFiltrados.Any())
-    {
-        <div class="vazio">Nenhum veículo encontrado.</div>
-    }
-    else
-    {
-        <div class="estoque-grid">
-            @foreach (var v in veiculosFiltrados)
+        <section class="sb-secao">
+            <h3>Motorização</h3>
+            <input type="text" class="sb-input" placeholder="Ex: 1.0, 2.0, V8..."
+                   @bind="filtroMotor" @bind:after="AplicarFiltro" />
+        </section>
+
+        <section class="sb-secao">
+            <h3>Combustível</h3>
+            @foreach (var combo in combustiveisDisponiveis)
             {
-                <VeiculoCard Veiculo="v" OnClick="() => AbrirDetalhe(v.Id)" />
+                <label class="sb-opcao">
+                    <input type="checkbox"
+                           checked="@filtroCombustiveis.Contains(combo)"
+                           @onchange="@(e => ToggleCombustivel(combo, (bool)e.Value!))" />
+                    @combo
+                </label>
             }
-        </div>
-    }
+        </section>
+
+        <section class="sb-secao">
+            <h3>Terminação da placa</h3>
+            <input type="text" class="sb-input" placeholder="Ex: 1, 23, X"
+                   maxlength="3" @bind="filtroTermPlaca" @bind:after="AplicarFiltro" />
+            <p class="sb-dica">Filtra por como a placa termina (último caractere/dígitos).</p>
+        </section>
+
+        <section class="sb-secao">
+            <h3>IPVA</h3>
+            <label class="sb-opcao">
+                <input type="checkbox" @bind="filtroIpvaAtualPago" @bind:after="AplicarFiltro" />
+                Apenas com IPVA @AnoAtual pago
+            </label>
+        </section>
+
+        <section class="sb-secao">
+            <h3>Acessórios</h3>
+            @foreach (var acc in acessoriosDisponiveis)
+            {
+                <label class="sb-opcao">
+                    <input type="checkbox"
+                           checked="@filtroAcessoriosTem.Contains(acc)"
+                           @onchange="@(e => ToggleAcessorioTem(acc, (bool)e.Value!))" />
+                    Tem @acc
+                </label>
+                <label class="sb-opcao sb-opcao-not">
+                    <input type="checkbox"
+                           checked="@filtroAcessoriosNao.Contains(acc)"
+                           @onchange="@(e => ToggleAcessorioNao(acc, (bool)e.Value!))" />
+                    Não tem @acc
+                </label>
+            }
+        </section>
+
+        <button class="sb-limpar" @onclick="LimparFiltros">Limpar todos os filtros</button>
+    </aside>
+
+    <main class="conc-main">
+        <header class="conc-header">
+            <div>
+                <h1>Estoque de veículos</h1>
+                <p class="conc-sub">@veiculosFiltrados.Count de @veiculos.Count veículos</p>
+            </div>
+            <button class="btn-novo" @onclick="AbrirModalCadastro">+ Cadastrar veículo</button>
+        </header>
+
+        @if (carregando)
+        {
+            <p class="loading">Carregando veículos...</p>
+        }
+        else if (!veiculosFiltrados.Any())
+        {
+            <p class="vazio">Nenhum veículo com esses filtros.</p>
+        }
+        else
+        {
+            <div class="estoque-grid">
+                @foreach (var v in veiculosFiltrados)
+                {
+                    <VeiculoCard Veiculo="v" OnClick="() => AbrirDetalhe(v.Id)" />
+                }
+            </div>
+        }
+    </main>
 </div>
 
 <ConfirmacaoSenhaModal
@@ -67,173 +154,225 @@
     OnCancelar="() => modalCadastroVisivel = false"
     @ref="modalCadastroRef" />
 
+<style>
+    .conc-layout {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        gap: 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+    .conc-sidebar {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        padding: 18px 16px;
+        position: sticky;
+        top: 70px;
+        align-self: start;
+        max-height: calc(100vh - 90px);
+        overflow-y: auto;
+    }
+    .sb-titulo { margin: 0 0 14px; font-size: 1.05rem; }
+    .sb-secao { margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #f0f0f0; }
+    .sb-secao:last-of-type { border-bottom: 0; }
+    .sb-secao h3 { font-size: 0.85em; margin: 0 0 8px; color: #444; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+    .sb-opcao { display: flex; gap: 8px; align-items: center; padding: 4px 0; font-size: 0.92em; cursor: pointer; }
+    .sb-opcao input { cursor: pointer; }
+    .sb-opcao-not { color: #888; font-size: 0.85em; }
+    .sb-select, .sb-input {
+        width: 100%; padding: 7px 9px; border: 1px solid #ccc;
+        border-radius: 4px; font-size: 0.9em;
+    }
+    .sb-row { display: flex; align-items: center; gap: 6px; }
+    .sb-row .sb-input { flex: 1; }
+    .sb-sep { color: #888; }
+    .sb-dica { font-size: 0.78em; color: #888; margin: 4px 0 0; }
+    .sb-limpar {
+        width: 100%; background: #f5f5f5; border: 1px solid #ccc;
+        border-radius: 6px; padding: 8px; cursor: pointer; font-size: 0.9em; margin-top: 4px;
+    }
+    .sb-limpar:hover { background: #eaeaea; }
+
+    .conc-main { min-width: 0; }
+    .conc-header {
+        display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;
+    }
+    .conc-header h1 { margin: 0; font-size: 1.6rem; }
+    .conc-sub { margin: 4px 0 0; color: #666; font-size: 0.9em; }
+    .btn-novo {
+        background: #e02020; color: #fff; padding: 10px 18px;
+        border-radius: 6px; border: 0; cursor: pointer; font-weight: 500;
+    }
+    .btn-novo:hover { background: #c01818; }
+    .estoque-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+    }
+    .loading, .vazio { text-align: center; padding: 60px; color: #888; }
+
+    @@media (max-width: 900px) {
+        .conc-layout { grid-template-columns: 1fr; }
+        .conc-sidebar { position: static; max-height: none; }
+    }
+</style>
+
 @code {
     private List<VeiculoVendaListaDTO> veiculos = new();
     private List<VeiculoVendaListaDTO> veiculosFiltrados = new();
-    private string filtroAtivo = "Todos";
-    private bool carregando = true;
-    private bool modalCadastroVisivel = false;
-    private ConfirmacaoSenhaModal? modalCadastroRef;
+    private List<string> marcasDisponiveis = new();
+    private List<string> combustiveisDisponiveis = new();
+    private List<string> acessoriosDisponiveis = new();
 
+    // === Filtros ===
+    private string filtroDisp = "Disponivel";
+    private string filtroMarca = "";
+    private int? filtroAnoMin;
+    private int? filtroAnoMax;
+    private string filtroMotor = "";
+    private HashSet<string> filtroCombustiveis = new(StringComparer.OrdinalIgnoreCase);
+    private string filtroTermPlaca = "";
+    private bool filtroIpvaAtualPago;
+    private HashSet<string> filtroAcessoriosTem = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> filtroAcessoriosNao = new(StringComparer.OrdinalIgnoreCase);
+
+    private bool carregando = true;
+    private bool modalCadastroVisivel;
+    private ConfirmacaoSenhaModal? modalCadastroRef;
     private Guid UsuarioAtualId;
+
+    private int AnoAtual => DateTime.Now.Year;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var claim = authState.User.FindFirst(
-            System.Security.Claims.ClaimTypes.NameIdentifier);
+        var claim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (claim is not null) UsuarioAtualId = Guid.Parse(claim.Value);
 
-    if (claim is not null)
-        UsuarioAtualId = Guid.Parse(claim.Value);
-    try
+        try
+        {
+            var resultado = await VeiculoService.GetAllAsync();
+            veiculos = resultado.IsSuccess ? resultado.Value?.ToList() ?? new() : new();
+
+            // Extrai metadados para alimentar dropdowns/checkboxes
+            marcasDisponiveis = veiculos
+                .Select(v => v.Marca)
+                .Where(m => !string.IsNullOrWhiteSpace(m))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(m => m)
+                .ToList();
+            combustiveisDisponiveis = veiculos
+                .Select(v => v.Combustivel)
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .Distinct()
+                .OrderBy(c => c)
+                .ToList();
+            acessoriosDisponiveis = veiculos
+                .SelectMany(v => v.Acessorios ?? new())
+                .Where(a => !string.IsNullOrWhiteSpace(a))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(a => a)
+                .ToList();
+
+            AplicarFiltro();
+        }
+        catch
+        {
+            veiculos = new();
+        }
+        finally { carregando = false; }
+    }
+
+    private void SetDisp(string v) { filtroDisp = v; AplicarFiltro(); }
+
+    private void ToggleCombustivel(string c, bool selecionado)
     {
-        var resultado = await VeiculoService.GetAllAsync();
-        veiculos = resultado.IsSuccess
-            ? resultado.Value?.ToList() ?? new()
-            : new();
+        if (selecionado) filtroCombustiveis.Add(c);
+        else filtroCombustiveis.Remove(c);
         AplicarFiltro();
     }
-    catch
-    {
-        veiculos = new();
-    }
-    finally
-    {
-        carregando = false;
-    }
-}
 
-    private void FiltrarPor(string filtro)
+    private void ToggleAcessorioTem(string a, bool s)
     {
-        filtroAtivo = filtro;
+        if (s) { filtroAcessoriosTem.Add(a); filtroAcessoriosNao.Remove(a); }
+        else filtroAcessoriosTem.Remove(a);
+        AplicarFiltro();
+    }
+
+    private void ToggleAcessorioNao(string a, bool s)
+    {
+        if (s) { filtroAcessoriosNao.Add(a); filtroAcessoriosTem.Remove(a); }
+        else filtroAcessoriosNao.Remove(a);
+        AplicarFiltro();
+    }
+
+    private void LimparFiltros()
+    {
+        filtroDisp = "Todos";
+        filtroMarca = "";
+        filtroAnoMin = filtroAnoMax = null;
+        filtroMotor = "";
+        filtroCombustiveis.Clear();
+        filtroTermPlaca = "";
+        filtroIpvaAtualPago = false;
+        filtroAcessoriosTem.Clear();
+        filtroAcessoriosNao.Clear();
         AplicarFiltro();
     }
 
     private void AplicarFiltro()
     {
-        veiculosFiltrados = filtroAtivo switch
+        var q = veiculos.AsEnumerable();
+
+        if (filtroDisp != "Todos")
+            q = q.Where(v => v.Disponibilidade == filtroDisp);
+
+        if (!string.IsNullOrWhiteSpace(filtroMarca))
+            q = q.Where(v => string.Equals(v.Marca, filtroMarca, StringComparison.OrdinalIgnoreCase));
+
+        if (filtroAnoMin.HasValue)
+            q = q.Where(v => v.Ano >= filtroAnoMin.Value);
+        if (filtroAnoMax.HasValue)
+            q = q.Where(v => v.Ano <= filtroAnoMax.Value);
+
+        if (!string.IsNullOrWhiteSpace(filtroMotor))
+            q = q.Where(v => !string.IsNullOrWhiteSpace(v.Motorizacao)
+                && v.Motorizacao.Contains(filtroMotor.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        if (filtroCombustiveis.Any())
+            q = q.Where(v => filtroCombustiveis.Contains(v.Combustivel));
+
+        if (!string.IsNullOrWhiteSpace(filtroTermPlaca))
         {
-            "Disponivel" => veiculos.Where(v => v.Disponibilidade == "Disponivel").ToList(),
-            "Vendido"    => veiculos.Where(v => v.Disponibilidade == "Vendido").ToList(),
-            "Flex"       => veiculos.Where(v => v.Combustivel == "Flex").ToList(),
-            "Eletrico"   => veiculos.Where(v => v.Combustivel == "Eletrico").ToList(),
-            "Automatico" => veiculos.Where(v => v.Combustivel == "Automatico").ToList(),
-            _            => veiculos.ToList()
-        };
+            var t = filtroTermPlaca.Trim().ToUpperInvariant();
+            q = q.Where(v => !string.IsNullOrEmpty(v.Placa)
+                && v.Placa.ToUpperInvariant().EndsWith(t));
+        }
+
+        if (filtroIpvaAtualPago)
+            q = q.Where(v => v.AnoUltimoIpvaPago == AnoAtual);
+
+        if (filtroAcessoriosTem.Any())
+            q = q.Where(v => filtroAcessoriosTem.All(req =>
+                v.Acessorios?.Any(a => string.Equals(a, req, StringComparison.OrdinalIgnoreCase)) == true));
+        if (filtroAcessoriosNao.Any())
+            q = q.Where(v => filtroAcessoriosNao.All(req =>
+                v.Acessorios?.Any(a => string.Equals(a, req, StringComparison.OrdinalIgnoreCase)) != true));
+
+        veiculosFiltrados = q.ToList();
     }
 
-    private string FiltroClass(string filtro) =>
-        filtro == filtroAtivo ? "filtro-pill filtro-ativo" : "filtro-pill";
-
-    private void AbrirDetalhe(Guid id) =>
-        Nav.NavigateTo($"/concessionaria/veiculo/{id}");
+    private void AbrirDetalhe(Guid id) => Nav.NavigateTo($"/concessionaria/veiculo/{id}");
 
     private void AbrirModalCadastro() => modalCadastroVisivel = true;
 
     private async Task ConfirmarCadastro(string senha)
     {
-        var ok = await VerificarSenha(senha);
+        var ok = (await AuthService.VerificarSenhaAsync(UsuarioAtualId, senha)).IsSuccess;
         if (!ok) { modalCadastroRef?.MostrarErro(); return; }
         modalCadastroVisivel = false;
         Nav.NavigateTo("/concessionaria/veiculo/novo");
     }
-
-    private async Task<bool> VerificarSenha(string senha)
-    {
-        var resultado = await AuthService.VerificarSenhaAsync(UsuarioAtualId, senha);
-        return resultado.IsSuccess;
-    }
 }
-
-<style>
-    .estoque-hero {
-        background: #1a1a1a;
-        padding: 24px 0 0;
-    }
-
-    .estoque-hero-inner {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 24px;
-    }
-
-    .estoque-titulo {
-        color: #fff;
-        font-size: 22px;
-        font-weight: 500;
-        margin-bottom: 4px;
-    }
-
-    .estoque-sub {
-        color: #888;
-        font-size: 13px;
-        margin-bottom: 16px;
-    }
-
-    .filtros {
-        display: flex;
-        gap: 8px;
-        padding-bottom: 16px;
-        flex-wrap: wrap;
-    }
-
-    .filtro-pill {
-        background: #2a2a2a;
-        border: 0.5px solid #444;
-        border-radius: 20px;
-        color: #ccc;
-        font-size: 12px;
-        padding: 5px 14px;
-        cursor: pointer;
-        transition: all 0.15s;
-    }
-
-    .filtro-pill:hover { background: #333; color: #fff; }
-
-    .filtro-ativo {
-        background: #e02020 !important;
-        border-color: #e02020 !important;
-        color: #fff !important;
-    }
-
-    .estoque-content {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 20px 24px;
-    }
-
-    .estoque-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16px;
-    }
-
-    .estoque-count { font-size: 13px; color: #666; }
-
-    .btn-novo {
-        background: #e02020;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        padding: 8px 16px;
-        font-size: 13px;
-        cursor: pointer;
-        font-weight: 500;
-    }
-
-    .btn-novo:hover { background: #c01818; }
-
-    .estoque-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-        gap: 16px;
-    }
-
-    .loading, .vazio {
-        text-align: center;
-        padding: 60px;
-        color: #888;
-        font-size: 14px;
-    }
-</style>

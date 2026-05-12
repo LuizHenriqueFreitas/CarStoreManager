@@ -1,4 +1,5 @@
 @page "/login"
+@layout CarStoreManager.Web.Layout.LoginLayout
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -29,6 +30,7 @@
                        type="email"
                        placeholder="seu@email.com"
                        @bind="email"
+                       @bind:event="oninput"
                        @onkeydown="TeclaPressionada" />
             </div>
 
@@ -38,6 +40,7 @@
                        type="password"
                        placeholder="••••••••"
                        @bind="senha"
+                       @bind:event="oninput"
                        @onkeydown="TeclaPressionada" />
             </div>
 
@@ -102,7 +105,8 @@
             var token = loginResp.GetProperty("token").GetString()!;
             var role = loginResp.GetProperty("role").GetString();
 
-            // Salva token também no ProtectedLocalStorage (UI/AuthorizeView).
+            // Salva token no ProtectedSessionStorage (UI/AuthorizeView).
+            // Session storage é descartado ao fechar a janela → logout automático.
             await AuthProvider.LoginAsync(token);
 
             // forceLoad faz o navegador anexar o cookie em todos os requests subsequentes.

@@ -17,4 +17,7 @@ public interface IVeiculoVendaService : IService<
     Task<Result> AdicionarFotoAsync(Guid id, string url);
     Task<Result> ReordenarFotosAsync(Guid id, List<Guid> fotos);
     Task<Result> RemoverFotoAsync(Guid id, Guid fotoId);
+
+    /// <summary>Lista marcas distintas (já normalizadas) para alimentar dropdowns de filtro.</summary>
+    Task<Result<IEnumerable<string>>> ListarMarcasDistintasAsync();
 }

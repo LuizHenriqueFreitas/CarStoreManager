@@ -3,77 +3,196 @@
 
 @namespace CarStoreManager.Web.Components.Pages
 
+@rendermode InteractiveServer
+
 @inject IPropostaVendaService PropostaService
 @inject NavigationManager Nav
+@using System.Globalization
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda
 
-@using Microsoft.AspNetCore.Components.Web
-
-<div class="propostas-page">
-    <div class="page-header">
+<div class="prop-page">
+    <div class="prop-header">
         <div>
-            <h1 class="page-titulo">Propostas de venda</h1>
-            <p class="page-sub">@propostas.Count propostas no total</p>
+            <h1>Propostas de venda</h1>
+            <p class="muted">@propostas.Count proposta(s) no total · @propostasPrecisamAtencao.Count precisam de atenção</p>
         </div>
+        <input type="text" class="busca-prop" placeholder="Buscar por cliente, veículo ou nº..."
+               value="@busca" @oninput="OnBuscaChanged" />
     </div>
 
-    <div class="filtros-status">
-        @foreach (var status in todoStatus)
+    @if (propostasPrecisamAtencao.Any())
+    {
+        <div class="atencao-banner">
+            <strong>⚠ @propostasPrecisamAtencao.Count proposta(s) aguardando ação:</strong>
+            @foreach (var p in propostasPrecisamAtencao.Take(3))
+            {
+                <button class="atencao-link" @onclick="() => AbrirDetalhe(p.Id)">
+                    #@p.Id.ToString()[..6].ToUpper() · @StatusLabelCurto(p.Status)
+                </button>
+            }
+            @if (propostasPrecisamAtencao.Count > 3)
+            {
+                <span class="muted">+@(propostasPrecisamAtencao.Count - 3) mais</span>
+            }
+        </div>
+    }
+
+    <div class="filtros-row">
+        @foreach (var s in todoStatus)
         {
-            <button class="@FiltroClass(status.valor)"
-                    @onclick="() => FiltrarPor(status.valor)">
-                @status.label
-                <span class="filtro-count">
-                    @propostas.Count(p => status.valor == "Todos" || p.Status == status.valor)
-                </span>
+            var count = propostas.Count(p => s.valor == "Todos" || p.Status == s.valor);
+            <button class="@FiltroClass(s.valor)" @onclick="() => FiltrarPor(s.valor)">
+                @s.label
+                <span class="filtro-count">@count</span>
             </button>
         }
     </div>
 
     @if (carregando)
     {
-        <div class="loading">Carregando propostas...</div>
+        <p class="loading">Carregando...</p>
     }
     else if (!propostasFiltradas.Any())
     {
-        <div class="vazio">Nenhuma proposta encontrada.</div>
+        <p class="vazio">Nenhuma proposta com esses filtros.</p>
     }
     else
     {
-        <div class="propostas-lista">
-            @foreach (var p in propostasFiltradas)
-            {
-                <div class="proposta-card" @onclick="() => AbrirDetalhe(p.Id)">
-                    <div class="proposta-info">
-                        <span class="proposta-id">#@p.Id.ToString()[..8].ToUpper()</span>
-                        <span class="proposta-data">
-                            @p.DataCriacao.ToString("dd/MM/yyyy")
-                        </span>
-                    </div>
-                    <div class="proposta-valor">
-                        @p.ValorFinal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
-                    </div>
-                    <span class="status-badge @StatusClass(p.Status)">@p.Status</span>
-                </div>
-            }
-        </div>
+        <table class="prop-table">
+            <thead>
+                <tr>
+                    <th>Nº</th>
+                    <th>Cliente</th>
+                    <th>Veículo</th>
+                    <th>Modo pag.</th>
+                    <th>Valor</th>
+                    <th>Criada em</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in propostasFiltradas)
+                {
+                    <tr class="prop-row @(PrecisaAtencao(p) ? "destaque" : "")"
+                        @onclick="() => AbrirDetalhe(p.Id)">
+                        <td><code>#@p.Id.ToString()[..6].ToUpper()</code></td>
+                        <td>@(string.IsNullOrEmpty(p.ClienteNome) ? "—" : p.ClienteNome)</td>
+                        <td>@p.VeiculoMarca @p.VeiculoModelo</td>
+                        <td><span class="modo-pill">@ModoLabel(p.ModoPagamento)</span></td>
+                        <td class="num">@p.ValorFinal.ToString("C", new CultureInfo("pt-BR"))</td>
+                        <td>
+                            <div>@p.DataCriacao.ToLocalTime().ToString("dd/MM/yyyy")</div>
+                            @{ var info = DiasInfo(p); }
+                            @if (!string.IsNullOrEmpty(info))
+                            {
+                                <small class="muted">@info</small>
+                            }
+                        </td>
+                        <td><span class="badge @StatusClass(p.Status)">@StatusLabel(p.Status)</span></td>
+                        <td>
+                            @if (PrecisaAtencao(p))
+                            {
+                                <span class="atencao-pulse" title="Precisa de ação">●</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     }
 </div>
+
+<style>
+    .prop-page { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .prop-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; gap: 16px; }
+    .prop-header h1 { margin: 0; font-size: 1.6rem; }
+    .muted { color: #888; font-size: 0.9em; margin: 4px 0 0; }
+    .busca-prop {
+        padding: 9px 12px; border: 1px solid #ccc; border-radius: 6px;
+        font-size: 0.95em; min-width: 280px;
+    }
+    .atencao-banner {
+        background: #fff7ed; border: 1px solid #fdba74;
+        padding: 12px 16px; border-radius: 8px; margin-bottom: 16px;
+        display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    }
+    .atencao-banner strong { color: #9a3412; }
+    .atencao-link {
+        background: #fff; border: 1px solid #fdba74; padding: 4px 10px;
+        border-radius: 14px; cursor: pointer; font-size: 0.85em; color: #9a3412;
+    }
+    .atencao-link:hover { background: #ffedd5; }
+    .filtros-row { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+    .filtro-status {
+        background: #f4f4f4; border: 1px solid #e0e0e0; border-radius: 18px;
+        padding: 6px 12px; font-size: 0.85em; cursor: pointer; color: #555;
+        display: flex; gap: 6px; align-items: center;
+    }
+    .filtro-status:hover { background: #e8e8e8; }
+    .filtro-status.ativo { background: #1a1a1a; border-color: #1a1a1a; color: #fff; }
+    .filtro-count { background: rgba(0,0,0,0.1); padding: 1px 7px; border-radius: 10px; font-size: 0.78em; }
+    .filtro-status.ativo .filtro-count { background: rgba(255,255,255,0.2); color: #fff; }
+    .prop-table {
+        width: 100%; border-collapse: collapse; background: #fff;
+        border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden;
+    }
+    .prop-table th, .prop-table td { padding: 11px 14px; text-align: left; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    .prop-table th { background: #fafafa; font-size: 0.82em; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.3px; }
+    .prop-table td.num { text-align: right; font-weight: 500; }
+    .prop-row { cursor: pointer; transition: background 0.1s; }
+    .prop-row:hover { background: #f5faff; }
+    .prop-row.destaque { background: #fffbeb; }
+    .prop-row.destaque:hover { background: #fef3c7; }
+    .modo-pill {
+        background: #eef2ff; color: #4338ca; padding: 3px 9px;
+        border-radius: 10px; font-size: 0.78em; font-weight: 500;
+    }
+    .badge {
+        font-size: 0.78em; padding: 4px 10px; border-radius: 12px; font-weight: 500;
+    }
+    .status-criada { background: #e0f2fe; color: #075985; }
+    .status-aprovada { background: #dcfce7; color: #166534; }
+    .status-rejeitada { background: #fff5f5; color: #a72020; }
+    .status-cancelada { background: #fef9c3; color: #854d0e; }
+    .status-expirada { background: #f3f4f6; color: #6b7280; }
+    .status-aguardando { background: #fff5d9; color: #8a6d00; }
+    .status-financ { background: #ede9fe; color: #5b21b6; }
+    .status-vistoria { background: #cffafe; color: #0e7490; }
+    .status-termo { background: #fef3c7; color: #854d0e; }
+    .status-concluida { background: #d1fae5; color: #065f46; }
+    .atencao-pulse {
+        color: #f59e0b; font-size: 1.4em; animation: pulse 1.5s ease-in-out infinite;
+    }
+    @@keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+    .loading, .vazio { text-align: center; padding: 60px; color: #888; }
+</style>
 
 @code {
     private List<PropostaVendaListaDTO> propostas = new();
     private List<PropostaVendaListaDTO> propostasFiltradas = new();
     private string filtroAtivo = "Todos";
+    private string busca = "";
     private bool carregando = true;
+
+    private List<PropostaVendaListaDTO> propostasPrecisamAtencao =>
+        propostas.Where(PrecisaAtencao).ToList();
 
     private readonly List<(string valor, string label)> todoStatus = new()
     {
         ("Todos", "Todas"),
         ("Criada", "Ativas"),
-        ("AguardandoFinanciadora", "Aguard. financ."),
-        ("PropostaFinanciadoraRecebida", "Resp. financ."),
+        ("AguardandoFinanciadora", "Aguardando financiadora"),
+        ("PropostaFinanciadoraRecebida", "Resposta recebida"),
         ("Aprovada", "Aprovadas"),
+        ("AguardandoVistoria", "Aguardando vistoria"),
+        ("VistoriaConcluida", "Vistoria concluída"),
+        ("AguardandoAssinaturaTermo", "Aguardando assinatura"),
+        ("Concluida", "Concluídas"),
         ("Rejeitada", "Rejeitadas"),
         ("Cancelada", "Canceladas"),
         ("Expirada", "Expiradas")
@@ -87,6 +206,12 @@
         carregando = false;
     }
 
+    private void OnBuscaChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        busca = e.Value?.ToString() ?? "";
+        AplicarFiltro();
+    }
+
     private void FiltrarPor(string status)
     {
         filtroAtivo = status;
@@ -95,133 +220,92 @@
 
     private void AplicarFiltro()
     {
-        propostasFiltradas = filtroAtivo == "Todos"
-            ? propostas.ToList()
-            : propostas.Where(p => p.Status == filtroAtivo).ToList();
+        var q = filtroAtivo == "Todos" ? propostas.AsEnumerable() : propostas.Where(p => p.Status == filtroAtivo);
+
+        if (!string.IsNullOrWhiteSpace(busca))
+        {
+            var termo = busca.Trim();
+            q = q.Where(p =>
+                p.Id.ToString().StartsWith(termo, StringComparison.OrdinalIgnoreCase)
+                || (p.ClienteNome?.Contains(termo, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (p.VeiculoMarca?.Contains(termo, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (p.VeiculoModelo?.Contains(termo, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        propostasFiltradas = q.ToList();
     }
 
-    private void AbrirDetalhe(Guid id) =>
-        Nav.NavigateTo($"/concessionaria/proposta/{id}");
+    private void AbrirDetalhe(Guid id) => Nav.NavigateTo($"/concessionaria/proposta/{id}");
 
     private string FiltroClass(string status) =>
         status == filtroAtivo ? "filtro-status ativo" : "filtro-status";
 
-    private string StatusClass(string status) => status switch
+    /// <summary>
+    /// Marca propostas que requerem ação ativa do usuário (para destaque visual).
+    /// </summary>
+    private static bool PrecisaAtencao(PropostaVendaListaDTO p) => p.Status switch
     {
-        "Aprovada"  => "status-aprovada",
+        "PropostaFinanciadoraRecebida" => true, // financiadora respondeu — esperar cliente decidir
+        "Aprovada" => true,                      // pronta pra iniciar vistoria
+        "VistoriaConcluida" => true,             // pronta pra redigir/enviar termo
+        _ => false
+    };
+
+    /// <summary>Texto auxiliar de validade — só pra estados pré-aprovação.</summary>
+    private static string DiasInfo(PropostaVendaListaDTO p)
+    {
+        if (p.Status is "Criada" or "AguardandoFinanciadora" or "PropostaFinanciadoraRecebida")
+            return p.DiasRestantes > 0 ? $"expira em {p.DiasRestantes}d" : "vencida";
+        return "";
+    }
+
+    private static string StatusClass(string status) => status switch
+    {
+        "Aprovada" => "status-aprovada",
         "Rejeitada" => "status-rejeitada",
         "Cancelada" => "status-cancelada",
-        "Expirada"  => "status-expirada",
+        "Expirada" => "status-expirada",
         "AguardandoFinanciadora" => "status-aguardando",
         "PropostaFinanciadoraRecebida" => "status-financ",
-        _           => "status-criada"
+        "AguardandoVistoria" or "VistoriaConcluida" => "status-vistoria",
+        "AguardandoAssinaturaTermo" => "status-termo",
+        "Concluida" => "status-concluida",
+        _ => "status-criada"
+    };
+
+    private static string StatusLabel(string s) => s switch
+    {
+        "Criada" => "Ativa",
+        "AguardandoFinanciadora" => "Aguardando financiadora",
+        "PropostaFinanciadoraRecebida" => "Resposta financiadora",
+        "Aprovada" => "Aprovada (pré-vistoria)",
+        "AguardandoVistoria" => "Aguardando vistoria",
+        "VistoriaConcluida" => "Vistoria OK",
+        "AguardandoAssinaturaTermo" => "Aguard. assinatura",
+        "Concluida" => "Concluída",
+        "Rejeitada" => "Rejeitada",
+        "Cancelada" => "Cancelada",
+        "Expirada" => "Expirada",
+        _ => s
+    };
+
+    private static string StatusLabelCurto(string s) => s switch
+    {
+        "PropostaFinanciadoraRecebida" => "decidir financ.",
+        "Aprovada" => "iniciar vistoria",
+        "VistoriaConcluida" => "redigir termo",
+        _ => s
+    };
+
+    private static string ModoLabel(string m) => m switch
+    {
+        "Dinheiro" => "💵 Dinheiro",
+        "Pix" => "⚡ Pix",
+        "CartaoDebito" => "💳 Débito",
+        "CartaoCredito" => "💳 Crédito",
+        "Financiamento" => "🏦 Financ.",
+        "Boleto" => "📄 Boleto",
+        "Transferencia" => "🔁 TED/DOC",
+        _ => "—"
     };
 }
-
-<style>
-    .propostas-page {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 32px 24px;
-    }
-
-    .page-header { margin-bottom: 20px; }
-    .page-titulo { font-size: 24px; font-weight: 500; margin-bottom: 4px; }
-    .page-sub { font-size: 14px; color: #888; }
-
-    .filtros-status {
-        display: flex;
-        gap: 6px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-    }
-
-    .filtro-status {
-        background: #f4f4f4;
-        border: 0.5px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 6px 14px;
-        font-size: 13px;
-        color: #555;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .filtro-status.ativo {
-        background: #1a1a1a;
-        border-color: #1a1a1a;
-        color: #fff;
-    }
-
-    .filtro-count {
-        background: rgba(255,255,255,0.2);
-        border-radius: 10px;
-        padding: 1px 6px;
-        font-size: 11px;
-    }
-
-    .filtro-status:not(.ativo) .filtro-count {
-        background: #e0e0e0;
-        color: #666;
-    }
-
-    .propostas-lista {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .proposta-card {
-        background: #fff;
-        border: 0.5px solid #e0e0e0;
-        border-radius: 10px;
-        padding: 14px 18px;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        cursor: pointer;
-        transition: border-color 0.2s;
-    }
-
-    .proposta-card:hover { border-color: #e02020; }
-
-    .proposta-info {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        flex: 1;
-    }
-
-    .proposta-id { font-size: 14px; font-weight: 500; font-family: monospace; }
-    .proposta-data { font-size: 12px; color: #888; }
-
-    .proposta-valor {
-        font-size: 16px;
-        font-weight: 500;
-        color: #e02020;
-    }
-
-    .status-badge {
-        font-size: 11px;
-        padding: 3px 10px;
-        border-radius: 20px;
-        font-weight: 500;
-    }
-
-    .status-criada    { background: #e0f2fe; color: #075985; }
-    .status-aprovada  { background: #dcfce7; color: #166534; }
-    .status-rejeitada { background: #fff5f5; color: #e02020; }
-    .status-cancelada { background: #fef9c3; color: #854d0e; }
-    .status-expirada  { background: #f3f4f6; color: #6b7280; }
-    .status-aguardando{ background: #fff5d9; color: #8a6d00; }
-    .status-financ    { background: #ede9fe; color: #5b21b6; }
-
-    .loading, .vazio {
-        text-align: center;
-        padding: 60px;
-        color: #888;
-        font-size: 14px;
-    }
-</style>

@@ -12,6 +12,7 @@
 @using CarStoreManager.Application.DTOs.Auth
 @using CarStoreManager.Application.DTOs.Concessionaria.Vendedor
 @using CarStoreManager.Application.DTOs.Oficina.Mecanico
+@using CarStoreManager.Domain.Enums
 @using CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 
@@ -213,11 +214,10 @@
                     <div class="form-campo span-2">
                         <label class="campo-label">Especialidade *</label>
                         <select class="campo-input" @bind="novoUsuario.Especialidade">
-                            <option value="Motor">Motor</option>
-                            <option value="Eletrica">Elétrica</option>
-                            <option value="Funilaria">Funilaria</option>
-                            <option value="Suspensao">Suspensão</option>
-                            <option value="Freios">Freios</option>
+                            @foreach (var esp in Enum.GetValues<EspecialidadeMecanico>())
+                            {
+                                <option value="@esp">@LabelEspecialidade(esp)</option>
+                            }
                         </select>
                     </div>
                 }
@@ -376,9 +376,24 @@
     {
         Role = "Vendedor",
         Nivel = "Junior",
-        Especialidade = "Motor",
+        Especialidade = nameof(EspecialidadeMecanico.Motor),
         DataContratacao = DateTime.Today,
         Salario = 0
+    };
+
+    private static string LabelEspecialidade(EspecialidadeMecanico esp) => esp switch
+    {
+        EspecialidadeMecanico.Mecanica       => "Mecânica geral",
+        EspecialidadeMecanico.Funilaria      => "Funilaria",
+        EspecialidadeMecanico.Eletrica       => "Elétrica",
+        EspecialidadeMecanico.Pintura        => "Pintura",
+        EspecialidadeMecanico.Interior       => "Interior",
+        EspecialidadeMecanico.Motor          => "Motor",
+        EspecialidadeMecanico.Suspensao      => "Suspensão",
+        EspecialidadeMecanico.Freios         => "Freios",
+        EspecialidadeMecanico.Transmissao    => "Transmissão",
+        EspecialidadeMecanico.ArCondicionado => "Ar-condicionado",
+        _ => esp.ToString()
     };
 }
 

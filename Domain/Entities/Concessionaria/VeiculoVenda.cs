@@ -116,8 +116,22 @@ public class VeiculoVenda : Entity
     {
         if (string.IsNullOrWhiteSpace(marca))
             throw new ArgumentException("Marca inválida");
-        Marca = marca.Trim();
+        Marca = NormalizarMarca(marca);
     }
+
+    /// <summary>
+    /// Normaliza marca para evitar duplicatas no dropdown: trim, colapsa
+    /// espaços, e Title Case via cultura invariante. "VOLKSWAGEN", "volkswagen"
+    /// e "VolksWagen" viram todos "Volkswagen".
+    /// </summary>
+    private static string NormalizarMarca(string raw)
+    {
+        var trim = raw.Trim();
+        var unico = System.Text.RegularExpressions.Regex.Replace(trim, @"\s+", " ");
+        var ti = System.Globalization.CultureInfo.InvariantCulture.TextInfo;
+        return ti.ToTitleCase(unico.ToLowerInvariant());
+    }
+
     public void AlterarModelo(string modelo)
     {
         if (string.IsNullOrWhiteSpace(modelo))

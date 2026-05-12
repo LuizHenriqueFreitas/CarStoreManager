@@ -35,17 +35,20 @@ public class NotaFiscalEntradaServiceTest
     private readonly Mock<IEstoqueRepository> _estoqueRepo = new();
     private readonly Mock<ILoteComponenteRepository> _lotesRepo = new();
     private readonly Mock<IOrdemServicoRepository> _ordensRepo = new();
+    private readonly Mock<CarStoreManager.Domain.Interfaces.Repositories.Sistema.IConfiguracaoSistemaRepository> _configRepo = new();
     private readonly NotaFiscalEntradaService _service;
 
     public NotaFiscalEntradaServiceTest()
     {
+        _configRepo.Setup(r => r.ObterAsync()).ReturnsAsync(new CarStoreManager.Domain.Entities.Sistema.ConfiguracaoSistema(true));
         _service = new NotaFiscalEntradaService(
             _notasRepo.Object,
             _fornecedoresRepo.Object,
             _componentesRepo.Object,
             _estoqueRepo.Object,
             _lotesRepo.Object,
-            _ordensRepo.Object);
+            _ordensRepo.Object,
+            _configRepo.Object);
 
         _componentesRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Componente>());
         _ordensRepo.Setup(r => r.ObterComItensAguardandoAsync(It.IsAny<Guid>()))

@@ -1,0 +1,206 @@
+@namespace CarStoreManager.Web.Components.Shared
+@rendermode InteractiveServer
+
+@inject INotaFiscalEntradaService NfService
+
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Oficina.NotaFiscal
+@using CarStoreManager.Application.DTOs.Oficina.Componente
+
+<div class="seletor-comp">
+    @if (jaVinculado)
+    {
+        <div class="vinculado">
+            <span>✓ <b>@NomeAtual</b> (@PartNumberAtual)</span>
+            @if (Editavel)
+            {
+                <button class="btn-trocar" @onclick="@(() => { mostrarOpcoes = true; jaVinculado = false; })">trocar</button>
+            }
+        </div>
+    }
+    else
+    {
+        @if (sugestoes is null)
+        {
+            <span class="muted">Buscando sugestões...</span>
+        }
+        else if (sugestoes.Any())
+        {
+            var top = sugestoes.First();
+            <div class="sugestao-top">
+                <span class="score-tag @ScoreClass(top.Score)">@top.Score</span>
+                <button class="btn-aceitar" @onclick="() => Vincular(top.ComponenteId)" disabled="@processando">
+                    ✓ <b>@top.Nome</b> <small>(@top.PartNumber)</small>
+                </button>
+                <details class="motivo">
+                    <summary>?</summary>
+                    <span class="motivo-txt">@top.Motivo</span>
+                </details>
+            </div>
+
+            @if (sugestoes.Count > 1 || mostrarOpcoes)
+            {
+                <button class="btn-outras" @onclick="() => mostrarOpcoes = !mostrarOpcoes">
+                    @(mostrarOpcoes ? "− ocultar opções" : $"+ ver outras {sugestoes.Count - 1} sugestões / buscar")
+                </button>
+            }
+        }
+        else
+        {
+            <p class="sem-sugestoes">Sem sugestões automáticas.</p>
+            <button class="btn-outras" @onclick="() => mostrarOpcoes = !mostrarOpcoes">
+                @(mostrarOpcoes ? "− ocultar busca" : "+ buscar manualmente")
+            </button>
+        }
+
+        @if (mostrarOpcoes)
+        {
+            <div class="opcoes">
+                @* Outras sugestões (top 2-5) *@
+                @if (sugestoes is not null && sugestoes.Count > 1)
+                {
+                    <div class="outras-sug">
+                        @foreach (var s in sugestoes.Skip(1))
+                        {
+                            <button class="opt-sug" @onclick="() => Vincular(s.ComponenteId)" disabled="@processando">
+                                <span class="score-tag-mini @ScoreClass(s.Score)">@s.Score</span>
+                                @s.Nome <small>(@s.PartNumber)</small>
+                            </button>
+                        }
+                    </div>
+                }
+
+                <input type="text" class="busca-comp" placeholder="Buscar por nome, SKU, OEM, PartNumber..."
+                       value="@filtro" @oninput="OnFiltroChanged" />
+                <div class="lista-busca">
+                    @foreach (var c in ComponentesFiltrados.Take(8))
+                    {
+                        <button class="opt-busca" @onclick="() => Vincular(c.Id)" disabled="@processando">
+                            <b>@c.Nome</b> <small>SKU @c.SKUInterno · PN @c.PartNumber</small>
+                        </button>
+                    }
+                    @if (!ComponentesFiltrados.Any() && !string.IsNullOrWhiteSpace(filtro))
+                    {
+                        <p class="muted">Nenhum componente encontrado para "@filtro".</p>
+                    }
+                </div>
+
+                <button class="btn-criar" @onclick="() => OnCriarNovo.InvokeAsync(ItemId)">
+                    + Cadastrar nova peça com os dados do XML
+                </button>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .seletor-comp { display: flex; flex-direction: column; gap: 4px; min-width: 280px; }
+    .muted { color: #888; font-size: 0.85em; }
+    .vinculado {
+        display: flex; gap: 8px; align-items: center;
+        background: #dcfce7; padding: 6px 10px; border-radius: 4px;
+        color: #166534; font-size: 0.92em;
+    }
+    .btn-trocar {
+        background: none; border: 0; color: #0a84ff; cursor: pointer; font-size: 0.85em; text-decoration: underline;
+    }
+    .sugestao-top { display: flex; align-items: center; gap: 6px; }
+    .score-tag {
+        padding: 2px 7px; border-radius: 10px; font-size: 0.75em; font-weight: 600;
+        min-width: 28px; text-align: center;
+    }
+    .score-tag-mini { padding: 1px 5px; font-size: 0.7em; border-radius: 8px; }
+    .score-alto { background: #16a34a; color: #fff; }
+    .score-medio { background: #f59e0b; color: #fff; }
+    .score-baixo { background: #94a3b8; color: #fff; }
+    .btn-aceitar {
+        flex: 1; text-align: left; padding: 6px 10px; border: 1px solid #16a34a;
+        background: #f0fdf4; color: #166534; border-radius: 4px; cursor: pointer; font-size: 0.9em;
+    }
+    .btn-aceitar:hover { background: #dcfce7; }
+    .btn-aceitar:disabled { opacity: 0.6; cursor: not-allowed; }
+    .motivo summary { cursor: pointer; color: #888; font-size: 0.85em; padding: 2px 5px; }
+    .motivo-txt { font-size: 0.78em; color: #555; }
+    .btn-outras {
+        background: none; border: 0; color: #0a84ff; cursor: pointer; font-size: 0.82em;
+        padding: 4px 0; text-align: left;
+    }
+    .sem-sugestoes { color: #888; font-size: 0.85em; margin: 0; padding: 4px 0; }
+    .opcoes {
+        background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 4px;
+        padding: 8px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .outras-sug { display: flex; flex-direction: column; gap: 3px; }
+    .opt-sug, .opt-busca {
+        text-align: left; padding: 5px 8px; background: #fff;
+        border: 1px solid #ddd; border-radius: 3px; cursor: pointer; font-size: 0.85em;
+    }
+    .opt-sug:hover, .opt-busca:hover { background: #eef6ff; border-color: #0a84ff; }
+    .busca-comp { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.88em; }
+    .lista-busca { display: flex; flex-direction: column; gap: 3px; max-height: 200px; overflow-y: auto; }
+    .btn-criar {
+        background: #0a84ff; color: #fff; padding: 7px 10px; border: 0;
+        border-radius: 4px; cursor: pointer; font-size: 0.85em; font-weight: 500;
+        margin-top: 4px;
+    }
+    .btn-criar:hover { background: #066ccc; }
+</style>
+
+@code {
+    [Parameter] public Guid ItemId { get; set; }
+    [Parameter] public Guid? ComponenteIdAtual { get; set; }
+    [Parameter] public string NomeAtual { get; set; } = "";
+    [Parameter] public string PartNumberAtual { get; set; } = "";
+    [Parameter] public bool Editavel { get; set; } = true;
+    [Parameter] public List<ComponenteListaDTO> Componentes { get; set; } = new();
+    [Parameter] public EventCallback<Guid> OnVincular { get; set; }
+    /// <summary>Pai abre modal de cadastro recebendo o ItemId.</summary>
+    [Parameter] public EventCallback<Guid> OnCriarNovo { get; set; }
+
+    private List<SugestaoComponenteDTO>? sugestoes;
+    private bool jaVinculado;
+    private bool mostrarOpcoes;
+    private bool processando;
+    private string filtro = "";
+
+    private List<ComponenteListaDTO> ComponentesFiltrados =>
+        string.IsNullOrWhiteSpace(filtro)
+            ? Componentes
+            : Componentes.Where(c =>
+                Match(c.Nome) || Match(c.SKUInterno) || Match(c.PartNumber)
+                || Match(c.CodigoOEM) || Match(c.Categoria)).ToList();
+
+    private bool Match(string? campo) =>
+        !string.IsNullOrEmpty(campo) && campo.Contains(filtro, StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        jaVinculado = ComponenteIdAtual.HasValue;
+        if (!jaVinculado && sugestoes is null)
+            await CarregarSugestoes();
+    }
+
+    private async Task CarregarSugestoes()
+    {
+        var r = await NfService.SugerirComponentesAsync(ItemId);
+        sugestoes = r.IsSuccess ? r.Value!.ToList() : new();
+    }
+
+    private async Task Vincular(Guid id)
+    {
+        processando = true;
+        await OnVincular.InvokeAsync(id);
+        processando = false;
+        // Pai recarrega → ComponenteIdAtual passa a ter valor → OnParametersSetAsync atualiza UI
+    }
+
+    private void OnFiltroChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+        => filtro = e.Value?.ToString() ?? "";
+
+    private static string ScoreClass(int score) => score switch
+    {
+        >= 80 => "score-alto",
+        >= 50 => "score-medio",
+        _     => "score-baixo"
+    };
+}

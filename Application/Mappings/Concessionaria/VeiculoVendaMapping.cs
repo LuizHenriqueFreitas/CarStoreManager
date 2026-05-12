@@ -43,8 +43,18 @@ public static class VeiculoVendaMapping
             Marca = entity.GetMarca(),
             Modelo = entity.GetModelo(),
             Ano = entity.GetAno(),
+            Quilometragem = entity.Quilometragem.GetQuilometragem(),
+            Motorizacao = entity.GetMotorizacao(),
             Combustivel = entity.Combustivel.ToString(),
             Disponibilidade = entity.Disponibilidade.ToString(),
+            Placa = entity.Placa.ToString(),
+            AnoUltimoIpvaPago = entity.AnoUltimoIpvaPago,
+            // Acessorios é [Flags] enum — extrai cada flag setada como string
+            Acessorios = Enum.GetValues<CarStoreManager.Domain.Enums.AcessoriosVeiculo>()
+                .Where(a => a != CarStoreManager.Domain.Enums.AcessoriosVeiculo.Nenhum
+                            && entity.Acessorios.HasFlag(a))
+                .Select(a => a.ToString())
+                .ToList(),
             Valor = entity.GetValor(),
             FotoPrincipal = entity.Fotos
                 .OrderBy(f => f.Ordem)

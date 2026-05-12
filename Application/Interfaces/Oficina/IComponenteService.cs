@@ -20,4 +20,7 @@ public interface IComponenteService : IService<
     // EQUIVALÊNCIA — busca componentes que servem como substituto.
     // Critérios: mesmo CodigoOEM (cross-brand) OU registrados como ComponenteEquivalente.
     Task<Result<List<ComponenteListaDTO>>> ObterEquivalentesAsync(Guid componenteId);
+
+    // PRECIFICAÇÃO — sobrescreve margem individual e recalcula valor de venda.
+    Task<Result> AjustarMargemAsync(Guid id, decimal novaMargemPct);
 }

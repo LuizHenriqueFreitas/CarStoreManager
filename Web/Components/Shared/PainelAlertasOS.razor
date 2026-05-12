@@ -1,0 +1,217 @@
+@namespace CarStoreManager.Web.Components.Shared
+@rendermode InteractiveServer
+
+@inject IAlertaOSService AlertaService
+@inject AuthenticationStateProvider AuthState
+
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Oficina.OrdemServico
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="al-card">
+    <div class="al-header">
+        <h3>🚨 Alertas do mecânico</h3>
+        @if (StatusOrdem == "Pausada")
+        {
+            <span class="al-tag-status">⏸ OS pausada — aguardando decisão do cliente</span>
+        }
+    </div>
+
+    @if (!string.IsNullOrEmpty(mensagem))
+    {
+        <div class="al-banner @(mensagemErro ? "al-erro" : "al-ok")">@mensagem</div>
+    }
+
+    <AuthorizeView Roles="Admin,Mecanico" Context="ctxMec">
+        <Authorized>
+            @if (StatusOrdem == "EmAndamento")
+            {
+                <div class="al-novo-detail">
+                    <button class="al-novo-toggle" @onclick="() => formAberto = !formAberto">
+                        @(formAberto ? "−" : "+") Encontrei avaria/problema novo → Emitir alerta para a recepção
+                    </button>
+                    @if (formAberto)
+                    {
+                        <div class="al-form">
+                            <label>Descreva o problema/avaria encontrado</label>
+                            <textarea rows="3" @bind="novoDescricao"
+                                      placeholder="O que você encontrou? Por que precisa de novo orçamento?"></textarea>
+                            <button class="al-btn-primary" @onclick="Emitir" disabled="@processando">
+                                🚨 Emitir alerta (pausa a OS)
+                            </button>
+                            <p class="al-muted">A OS será pausada até o cliente decidir (via recepção) se aprova ou recusa o novo escopo.</p>
+                        </div>
+                    }
+                </div>
+            }
+        </Authorized>
+    </AuthorizeView>
+
+    @if (alertas is null)
+    {
+        <p class="al-muted">Carregando...</p>
+    }
+    else if (!alertas.Any())
+    {
+        <p class="al-muted al-small">Nenhum alerta nesta OS.</p>
+    }
+    else
+    {
+        <ul class="al-lista">
+            @foreach (var a in alertas)
+            {
+                <li class="al-item al-status-@a.Status.ToLower()">
+                    <div class="al-item-head">
+                        <span class="al-tag-@a.Status.ToLower()">@StatusLabel(a.Status)</span>
+                        <span class="al-muted al-small">@a.DataCriacao.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                    </div>
+                    <p class="al-desc">@a.Descricao</p>
+
+                    @if (a.Status == "ClienteAprovou")
+                    {
+                        <p class="al-decisao al-ap">✓ Cliente aprovou novo escopo
+                            @if (!string.IsNullOrEmpty(a.ObservacaoCliente))
+                            { <span> — "@a.ObservacaoCliente"</span> }
+                        </p>
+                    }
+                    else if (a.Status == "ClienteRecusou")
+                    {
+                        <p class="al-decisao al-rec">✗ Cliente decidiu manter o escopo original
+                            @if (!string.IsNullOrEmpty(a.ObservacaoCliente))
+                            { <span> — "@a.ObservacaoCliente"</span> }
+                        </p>
+                    }
+
+                    <AuthorizeView Roles="Admin,Recepcionista" Context="ctxRec">
+                        <Authorized>
+                            @if (a.Status == "Pendente")
+                            {
+                                <div class="al-acoes-rec">
+                                    <input type="text" @bind="obsCliente"
+                                           placeholder="O que o cliente disse (opc)" class="al-obs" />
+                                    <button class="al-btn-ok" @onclick="() => Resolver(a.Id, true)" disabled="@processando">
+                                        ✓ Cliente APROVOU novo orçamento
+                                    </button>
+                                    <button class="al-btn-recusa" @onclick="() => Resolver(a.Id, false)" disabled="@processando">
+                                        ↩ Cliente decidiu manter o original
+                                    </button>
+                                </div>
+                                <p class="al-muted al-small">Em ambos os casos a OS retorna para Em Andamento.
+                                    Se aprovou, ajuste itens/custos da OS antes ou após resolver.</p>
+                            }
+                        </Authorized>
+                    </AuthorizeView>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+<style>
+    .al-card { background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:16px; margin-top:16px; }
+    .al-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .al-header h3 { margin:0; font-size:1.05rem; }
+    .al-tag-status { background:#fee2e2; color:#991b1b; padding:4px 10px; border-radius:12px; font-size:0.85em; }
+    .al-banner { padding:10px 14px; border-radius:6px; margin-bottom:12px; font-size:0.9em; }
+    .al-ok { background:#e6f7ed; color:#1f7a3a; border:1px solid #b6e4c2; }
+    .al-erro { background:#fdecea; color:#a72020; border:1px solid #f5c2bd; }
+    .al-muted { color:#888; font-size:0.85em; }
+    .al-small { font-size:0.82em; }
+    .al-novo-detail { background:#fff5f5; border:1px solid #fca5a5; border-radius:6px; padding:8px 12px; margin-bottom:14px; }
+    .al-novo-toggle { background:none; border:0; cursor:pointer; font-weight:500; padding:4px 0; color:#a72020; width:100%; text-align:left; }
+    .al-form { padding:10px 0 4px; }
+    .al-form label { display:block; font-size:0.85em; font-weight:500; margin:10px 0 4px; }
+    .al-form textarea { width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-family:inherit; }
+    .al-btn-primary { background:#a72020; color:#fff; padding:9px 18px; border-radius:6px; border:0; cursor:pointer; font-weight:500; margin-top:10px; }
+    .al-btn-primary:disabled { background:#aaa; cursor:not-allowed; }
+    .al-lista { list-style:none; padding:0; margin:0; }
+    .al-item {
+        background:#fafafa; border-left:3px solid #aaa; border-radius:4px;
+        padding:10px 14px; margin-bottom:10px;
+    }
+    .al-item.al-status-pendente { border-left-color:#a72020; background:#fff5f5; }
+    .al-item.al-status-clienteaprovou { border-left-color:#1f7a3a; background:#f0fdf4; }
+    .al-item.al-status-clienterecusou { border-left-color:#854d0e; background:#fef9c3; opacity:0.85; }
+    .al-item-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+    .al-tag-pendente { background:#fee2e2; color:#991b1b; padding:3px 10px; border-radius:12px; font-size:0.78em; }
+    .al-tag-clienteaprovou { background:#dcfce7; color:#166534; padding:3px 10px; border-radius:12px; font-size:0.78em; }
+    .al-tag-clienterecusou { background:#fef3c7; color:#854d0e; padding:3px 10px; border-radius:12px; font-size:0.78em; }
+    .al-desc { margin:8px 0; }
+    .al-decisao { padding:6px 10px; background:#fff; border-radius:4px; font-size:0.88em; margin-top:8px; }
+    .al-decisao.al-ap { color:#1f7a3a; }
+    .al-decisao.al-rec { color:#854d0e; }
+    .al-acoes-rec { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; padding-top:10px; border-top:1px dashed #ddd; }
+    .al-obs { padding:6px 10px; border:1px solid #ccc; border-radius:4px; flex:1; min-width:160px; }
+    .al-btn-ok { background:#1f7a3a; color:#fff; padding:6px 14px; border-radius:4px; border:0; cursor:pointer; }
+    .al-btn-recusa { background:#854d0e; color:#fff; padding:6px 14px; border-radius:4px; border:0; cursor:pointer; }
+    .al-btn-ok:disabled, .al-btn-recusa:disabled { background:#ccc; cursor:not-allowed; }
+</style>
+
+@code {
+    [Parameter] public Guid OrdemServicoId { get; set; }
+    [Parameter] public string StatusOrdem { get; set; } = "";
+    [Parameter] public EventCallback OnAlteracaoEstado { get; set; }
+
+    private List<AlertaOSDTO>? alertas;
+    private string novoDescricao = "";
+    private string obsCliente = "";
+    private bool formAberto;
+    private bool processando;
+    private string mensagem = "";
+    private bool mensagemErro;
+
+    protected override async Task OnInitializedAsync() => await Carregar();
+
+    private async Task Carregar()
+    {
+        var r = await AlertaService.ListarPorOrdemAsync(OrdemServicoId);
+        alertas = r.IsSuccess ? r.Value!.ToList() : new();
+    }
+
+    private async Task Emitir()
+    {
+        if (string.IsNullOrWhiteSpace(novoDescricao))
+        { Erro("Descreva o problema encontrado."); return; }
+
+        processando = true;
+        var r = await AlertaService.EmitirAsync(OrdemServicoId, Guid.Empty,
+            new CriarAlertaOSDTO { Descricao = novoDescricao });
+        processando = false;
+        if (r.IsSuccess)
+        {
+            Ok("Alerta enviado à recepção. OS pausada.");
+            novoDescricao = "";
+            formAberto = false;
+            await Carregar();
+            await OnAlteracaoEstado.InvokeAsync();
+        }
+        else Erro(r.Error);
+    }
+
+    private async Task Resolver(Guid alertaId, bool aprovou)
+    {
+        processando = true;
+        var r = await AlertaService.ResolverAsync(alertaId, Guid.Empty,
+            new ResolverAlertaDTO { Aprovou = aprovou, ObservacaoCliente = obsCliente });
+        processando = false;
+        if (r.IsSuccess)
+        {
+            Ok(aprovou ? "Aprovação registrada — OS retomada." : "Recusa registrada — OS retomada com escopo original.");
+            obsCliente = "";
+            await Carregar();
+            await OnAlteracaoEstado.InvokeAsync();
+        }
+        else Erro(r.Error);
+    }
+
+    private void Ok(string? msg) { mensagem = msg ?? ""; mensagemErro = false; }
+    private void Erro(string? msg) { mensagem = msg ?? "Erro"; mensagemErro = true; }
+
+    private static string StatusLabel(string s) => s switch
+    {
+        "Pendente" => "⏳ Aguardando cliente",
+        "ClienteAprovou" => "✓ Aprovado",
+        "ClienteRecusou" => "↩ Recusado",
+        _ => s
+    };
+}

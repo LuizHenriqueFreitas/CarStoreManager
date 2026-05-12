@@ -32,6 +32,9 @@ public class AppDbContext : DbContext
     public DbSet<Componente> Componentes { get; set; }
     public DbSet<EstoqueComponente> EstoqueComponentes { get; set; }
     public DbSet<PagamentoOrdemServico> PagamentosOrdemServico { get; set; }
+    public DbSet<RequisicaoPecaOS> RequisicoesPeca { get; set; }
+    public DbSet<AlertaOS> AlertasOS { get; set; }
+    public DbSet<NotaFiscalVendaOS> NotasFiscaisVendaOS { get; set; }
     public DbSet<Fornecedor> Fornecedores { get; set; }
     public DbSet<NotaFiscal> NotasFiscais { get; set; }
     public DbSet<ItemNotaFiscal> ItensNotaFiscal { get; set; }
@@ -45,6 +48,7 @@ public class AppDbContext : DbContext
     public DbSet<PropostaVenda> PropostasVenda { get; set; }
     public DbSet<Vistoria> Vistorias { get; set; }
     public DbSet<TermoEntrega> TermosEntrega { get; set; }
+    public DbSet<PagamentoProposta> PagamentosProposta { get; set; }
 
     // =========================
     // SISTEMA
@@ -232,6 +236,17 @@ public class AppDbContext : DbContext
             .WithOne(e => e.ComponenteEquivalenteRelacionado)
             .HasForeignKey(e => e.ComponenteEquivalenteId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // =========================
+        // REQUISIÇÃO DE PEÇA / ALERTA OS
+        // =========================
+        modelBuilder.Entity<RequisicaoPecaOS>().HasKey(r => r.Id);
+        modelBuilder.Entity<RequisicaoPecaOS>().HasIndex(r => r.OrdemServicoId);
+        modelBuilder.Entity<RequisicaoPecaOS>().HasIndex(r => r.Status);
+
+        modelBuilder.Entity<AlertaOS>().HasKey(a => a.Id);
+        modelBuilder.Entity<AlertaOS>().HasIndex(a => a.OrdemServicoId);
+        modelBuilder.Entity<AlertaOS>().HasIndex(a => a.Status);
 
         // =========================
         // PAGAMENTO ORDEM SERVICO
@@ -424,8 +439,42 @@ public class AppDbContext : DbContext
             .HasIndex(t => t.TokenAssinatura);
 
         // =========================
+        // PAGAMENTO PROPOSTA (cobrança do veículo)
+        // =========================
+        modelBuilder.Entity<PagamentoProposta>().HasKey(p => p.Id);
+        modelBuilder.Entity<PagamentoProposta>()
+            .HasIndex(p => p.PropostaVendaId);
+        modelBuilder.Entity<PagamentoProposta>()
+            .OwnsOne(p => p.Valor, vo =>
+                vo.Property("Valor").HasColumnName("Valor").HasPrecision(18, 2));
+
+        // =========================
         // CONFIGURAÇÃO SISTEMA (singleton)
         // =========================
         modelBuilder.Entity<ConfiguracaoSistema>().HasKey(c => c.Id);
+        modelBuilder.Entity<ConfiguracaoSistema>()
+            .Property(c => c.MargemPadraoGlobalPct).HasPrecision(7, 4);
+
+        // === Precificação de componentes ===
+        modelBuilder.Entity<Componente>()
+            .Property(c => c.CustoUnitario).HasPrecision(18, 4);
+        modelBuilder.Entity<Componente>()
+            .Property(c => c.MargemLucroPct).HasPrecision(7, 4);
+        modelBuilder.Entity<Componente>()
+            .Property(c => c.ValorVenda).HasPrecision(18, 2);
+
+        // === NF de venda da OS ===
+        modelBuilder.Entity<NotaFiscalVendaOS>().HasKey(n => n.Id);
+        modelBuilder.Entity<NotaFiscalVendaOS>().HasIndex(n => n.OrdemServicoId).IsUnique();
+        modelBuilder.Entity<NotaFiscalVendaOS>().HasIndex(n => n.Numero).IsUnique();
+        modelBuilder.Entity<NotaFiscalVendaOS>()
+            .OwnsOne(n => n.ValorServico, vo =>
+                vo.Property("Valor").HasColumnName("ValorServico").HasPrecision(18, 2));
+        modelBuilder.Entity<NotaFiscalVendaOS>()
+            .OwnsOne(n => n.ValorPecas, vo =>
+                vo.Property("Valor").HasColumnName("ValorPecas").HasPrecision(18, 2));
+        modelBuilder.Entity<NotaFiscalVendaOS>()
+            .OwnsOne(n => n.ValorTotal, vo =>
+                vo.Property("Valor").HasColumnName("ValorTotal").HasPrecision(18, 2));
     }
 }

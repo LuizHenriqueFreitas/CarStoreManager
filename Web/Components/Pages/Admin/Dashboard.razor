@@ -11,11 +11,17 @@
 @inject IMecanicoService MecanicoService
 @inject IVendedorService VendedorService
 @inject IEstoqueService EstoqueService
+@inject IDashboardService DashboardService
+@inject IJSRuntime JS
 @inject NavigationManager Nav
+@implements IAsyncDisposable
 @using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Admin
 @using CarStoreManager.Application.DTOs.Oficina.OrdemServico
 @using CarStoreManager.Application.DTOs.Oficina.Componente
 @using System.Globalization
+@using System.Text.Json
+@using Microsoft.JSInterop
 
 <div class="dash-page">
     <div class="dash-header">
@@ -64,6 +70,59 @@
             <span class="metrica-valor alerta">@pecasEstoqueBaixo</span>
         </div>
     </div>
+
+    @if (metricas is not null)
+    {
+        <h2 class="grupo-titulo">Resumo financeiro do mês</h2>
+        <div class="metricas-grid">
+            <div class="metrica-card">
+                <span class="metrica-label">Receitas do mês</span>
+                <span class="metrica-valor sucesso">@FormatBRL(metricas.TotalReceitasMes)</span>
+                <span class="metrica-sub muted">
+                    Serviços @FormatBRL(metricas.ReceitaServicosMesAtual) ·
+                    Vendas @FormatBRL(metricas.ReceitaVendasMesAtual)
+                </span>
+            </div>
+            <div class="metrica-card">
+                <span class="metrica-label">Despesas do mês</span>
+                <span class="metrica-valor alerta">@FormatBRL(metricas.TotalDespesasMes)</span>
+                <span class="metrica-sub muted">
+                    Salários @FormatBRL(metricas.TotalSalariosMensal) ·
+                    Peças @FormatBRL(metricas.GastoPecasMesAtual)
+                </span>
+            </div>
+            <div class="metrica-card destaque-lucro">
+                <span class="metrica-label">Lucro líquido (mês)</span>
+                <span class="metrica-valor @(metricas.LucroLiquidoMes >= 0 ? "sucesso" : "alerta")">
+                    @FormatBRL(metricas.LucroLiquidoMes)
+                </span>
+                <span class="metrica-sub muted">Receitas − Despesas</span>
+            </div>
+            <div class="metrica-card">
+                <span class="metrica-label">Capital em estoque (veículos)</span>
+                <span class="metrica-valor info">@FormatBRL(metricas.CapitalEstoqueVeiculos)</span>
+                <span class="metrica-sub muted">Veículos disponíveis para venda</span>
+            </div>
+        </div>
+
+        <div class="grafico-row">
+            <div class="grafico-card grafico-largo">
+                <h3 class="grafico-titulo">Receitas e despesas — últimos 6 meses</h3>
+                <div class="grafico-area"><canvas id="chartFaturamento6m"></canvas></div>
+            </div>
+        </div>
+
+        <div class="grafico-row">
+            <div class="grafico-card">
+                <h3 class="grafico-titulo">Composição do mês</h3>
+                <div class="grafico-area"><canvas id="chartReceitaDespesa"></canvas></div>
+            </div>
+            <div class="grafico-card">
+                <h3 class="grafico-titulo">Ordens de serviço por status</h3>
+                <div class="grafico-area"><canvas id="chartOSStatus"></canvas></div>
+            </div>
+        </div>
+    }
 
     <h2 class="grupo-titulo">Pessoas</h2>
     <div class="metricas-grid">
@@ -215,6 +274,7 @@
 
     private List<OrdemServicoListaDTO> osRecentes = new();
     private List<EstoqueComponenteDTO> estoquesCriticos = new();
+    private DashboardMetricasDTO? metricas;
 
     protected override async Task OnInitializedAsync()
     {
@@ -258,6 +318,128 @@
             estoquesCriticos = baixos.Value.Take(6).ToList();
             pecasEstoqueBaixo = baixos.Value.Count();
         }
+
+        var rMetricas = await DashboardService.ObterMetricasAsync();
+        if (rMetricas.IsSuccess) metricas = rMetricas.Value;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (metricas is null) return;
+        await RenderizarGraficos();
+    }
+
+    private async Task RenderizarGraficos()
+    {
+        if (metricas is null) return;
+
+        // === Linha: faturamento 6 meses ===
+        var labels6m = metricas.SerieReceitaServicos.Select(s => s.MesLabel).ToArray();
+        var datasets6m = new object[]
+        {
+            new {
+                label = "Serviços",
+                data = metricas.SerieReceitaServicos.Select(s => s.Valor).ToArray(),
+                borderColor = "#16a34a",
+                backgroundColor = "rgba(22, 163, 74, 0.1)",
+                tension = 0.3,
+                fill = true
+            },
+            new {
+                label = "Vendas",
+                data = metricas.SerieReceitaVendas.Select(s => s.Valor).ToArray(),
+                borderColor = "#2563eb",
+                backgroundColor = "rgba(37, 99, 235, 0.1)",
+                tension = 0.3,
+                fill = true
+            },
+            new {
+                label = "Gastos com peças",
+                data = metricas.SerieGastoPecas.Select(s => s.Valor).ToArray(),
+                borderColor = "#e02020",
+                backgroundColor = "rgba(224, 32, 32, 0.1)",
+                tension = 0.3,
+                fill = false
+            }
+        };
+
+        await JS.InvokeVoidAsync("carstoreChart.render",
+            "chartFaturamento6m", "line", labels6m, datasets6m,
+            new {
+                responsive = true,
+                maintainAspectRatio = false,
+                plugins = new { legend = new { position = "bottom" } },
+                scales = new {
+                    y = new {
+                        beginAtZero = true,
+                        ticks = new { callback = "" } // tratamento simples no front
+                    }
+                }
+            });
+
+        // === Pizza: composição mês corrente ===
+        var labelsComp = new[] { "Receita serviços", "Receita vendas", "Salários", "Gasto peças" };
+        var dadosComp = new[] {
+            metricas.ReceitaServicosMesAtual,
+            metricas.ReceitaVendasMesAtual,
+            metricas.TotalSalariosMensal,
+            metricas.GastoPecasMesAtual
+        };
+        var datasetComp = new object[]
+        {
+            new {
+                data = dadosComp,
+                backgroundColor = new[] { "#16a34a", "#2563eb", "#ea580c", "#e02020" }
+            }
+        };
+
+        await JS.InvokeVoidAsync("carstoreChart.render",
+            "chartReceitaDespesa", "doughnut", labelsComp, datasetComp,
+            new {
+                responsive = true,
+                maintainAspectRatio = false,
+                plugins = new { legend = new { position = "bottom" } }
+            });
+
+        // === Donut: OS por status ===
+        var corStatus = new Dictionary<string, string>
+        {
+            ["Pendente"]      = "#eab308",
+            ["EmAndamento"]   = "#2563eb",
+            ["Finalizada"]    = "#16a34a",
+            ["Concluida"]     = "#16a34a",
+            ["Cancelada"]     = "#ef4444",
+            ["Pausada"]       = "#a855f7",
+            ["BuscandoPecasParaOrcamento"] = "#a855f7"
+        };
+
+        var labelsOS = metricas.OrdensServicoPorStatus.Keys.ToArray();
+        var dadosOS = metricas.OrdensServicoPorStatus.Values.ToArray();
+        var coresOS = labelsOS.Select(l => corStatus.TryGetValue(l, out var c) ? c : "#888888").ToArray();
+
+        var datasetOS = new object[]
+        {
+            new { data = dadosOS, backgroundColor = coresOS }
+        };
+
+        await JS.InvokeVoidAsync("carstoreChart.render",
+            "chartOSStatus", "doughnut", labelsOS, datasetOS,
+            new {
+                responsive = true,
+                maintainAspectRatio = false,
+                plugins = new { legend = new { position = "bottom" } }
+            });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("carstoreChart.destroy", "chartFaturamento6m");
+            await JS.InvokeVoidAsync("carstoreChart.destroy", "chartReceitaDespesa");
+            await JS.InvokeVoidAsync("carstoreChart.destroy", "chartOSStatus");
+        }
+        catch { /* circuito já fechado */ }
     }
 
     private static string FormatBRL(decimal v)
@@ -436,8 +618,41 @@
     .modulo-sub    { font-size: 12px; color: #888; }
     .modulo-seta   { margin-left: auto; color: #ccc; font-size: 16px; }
 
+    .metrica-sub {
+        font-size: 11px;
+        line-height: 1.4;
+    }
+    .metrica-card.destaque-lucro { background: #f0fdf4; border: 0.5px solid #86efac; }
+
+    .grafico-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin: 16px 0;
+    }
+    .grafico-card {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 16px 18px;
+        display: flex;
+        flex-direction: column;
+    }
+    .grafico-card.grafico-largo { grid-column: 1 / -1; }
+    .grafico-titulo {
+        font-size: 13px;
+        font-weight: 600;
+        color: #444;
+        margin-bottom: 10px;
+    }
+    .grafico-area {
+        position: relative;
+        height: 280px;
+    }
+
     @@media (max-width: 800px) {
         .metricas-grid { grid-template-columns: repeat(2, 1fr); }
         .duas-colunas  { grid-template-columns: 1fr; }
+        .grafico-row   { grid-template-columns: 1fr; }
     }
 </style>
