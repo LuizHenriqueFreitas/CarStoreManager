@@ -42,6 +42,38 @@
                 <input class="campo-input" @bind="novoCliente.Email" placeholder="cliente@email.com" />
             </div>
         </div>
+
+        <h3 class="subsecao-titulo">Endereço residencial</h3>
+        <div class="form-grid">
+            <div class="form-campo">
+                <label class="campo-label">CEP *</label>
+                <input class="campo-input" @bind="novoCliente.Endereco.Cep" placeholder="00000-000" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">UF *</label>
+                <input class="campo-input" @bind="novoCliente.Endereco.Uf" placeholder="SP" maxlength="2" />
+            </div>
+            <div class="form-campo span-2">
+                <label class="campo-label">Logradouro *</label>
+                <input class="campo-input" @bind="novoCliente.Endereco.Logradouro" placeholder="Rua, Avenida, etc." />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Número *</label>
+                <input class="campo-input" @bind="novoCliente.Endereco.Numero" placeholder="123" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Complemento</label>
+                <input class="campo-input" @bind="novoCliente.Endereco.Complemento" placeholder="Apto, bloco..." />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Bairro *</label>
+                <input class="campo-input" @bind="novoCliente.Endereco.Bairro" placeholder="Bairro" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Cidade *</label>
+                <input class="campo-input" @bind="novoCliente.Endereco.Cidade" placeholder="Cidade" />
+            </div>
+        </div>
         <div class="cliente-acoes">
             <button type="button" class="btn-buscar" @onclick="AbrirBusca">
                 Buscar Cliente
@@ -180,6 +212,18 @@
             return;
         }
 
+        var end = novoCliente.Endereco;
+        if (string.IsNullOrWhiteSpace(end.Cep)
+            || string.IsNullOrWhiteSpace(end.Uf)
+            || string.IsNullOrWhiteSpace(end.Logradouro)
+            || string.IsNullOrWhiteSpace(end.Numero)
+            || string.IsNullOrWhiteSpace(end.Bairro)
+            || string.IsNullOrWhiteSpace(end.Cidade))
+        {
+            mensagemErro = "Preencha os campos obrigatórios do endereço (CEP, UF, Logradouro, Número, Bairro, Cidade).";
+            return;
+        }
+
         cadastrando = true;
         try
         {
@@ -273,6 +317,7 @@
 <style>
     .form-card { background: #fff; border: 0.5px solid #e0e0e0; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
     .secao-titulo { font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 16px; border-bottom: 0.5px solid #eee; padding-bottom: 10px; }
+    .subsecao-titulo { font-size: 13px; font-weight: 500; color: #444; margin: 18px 0 10px; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .span-2 { grid-column: span 2; }
     .campo-label { font-size: 12px; color: #555; font-weight: 500; }

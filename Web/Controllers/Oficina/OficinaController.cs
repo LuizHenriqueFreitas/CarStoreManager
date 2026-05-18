@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CarStoreManager.Web.Controllers;
 
-[Authorize(Roles = "Admin,Mecanico")]
+[Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
 public class OficinaController : Controller
 {
     public IActionResult Index()

@@ -1,5 +1,5 @@
 @page "/dashboard"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,GerenteVendas")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -14,6 +14,7 @@
 @inject IDashboardService DashboardService
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
 @implements IAsyncDisposable
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Admin
@@ -32,9 +33,18 @@
     </div>
 
     <div class="dash-abas">
-        <button class="@AbaClass("geral")" @onclick='() => SetAba("geral")'>Geral</button>
-        <button class="@AbaClass("oficina")" @onclick='() => SetAba("oficina")'>Oficina</button>
-        <button class="@AbaClass("concessionaria")" @onclick='() => SetAba("concessionaria")'>Concessionária</button>
+        @if (PodeVerOficina && PodeVerConcessionaria)
+        {
+            <button class="@AbaClass("geral")" @onclick='() => SetAba("geral")'>Geral</button>
+        }
+        @if (PodeVerOficina)
+        {
+            <button class="@AbaClass("oficina")" @onclick='() => SetAba("oficina")'>Oficina</button>
+        }
+        @if (PodeVerConcessionaria)
+        {
+            <button class="@AbaClass("concessionaria")" @onclick='() => SetAba("concessionaria")'>Concessionária</button>
+        }
     </div>
 
     @* ===================== ABA GERAL ===================== *@
@@ -287,39 +297,45 @@
 
     <h2 class="grupo-titulo">Relatórios</h2>
     <div class="relatorios-grid">
-        <a class="rel-card" href="/api/relatorio/veiculos-venda" target="_blank">
-            <div class="rel-icone">📄</div>
-            <div>
-                <div class="rel-nome">Veículos à venda</div>
-                <div class="rel-desc">CSV — todos os anúncios</div>
-            </div>
-        </a>
-        <a class="rel-card" href="/api/relatorio/ordens-servico" target="_blank">
-            <div class="rel-icone">🔧</div>
-            <div>
-                <div class="rel-nome">Ordens de serviço</div>
-                <div class="rel-desc">CSV — histórico completo</div>
-            </div>
-        </a>
-        <a class="rel-card" href="/api/relatorio/propostas-venda" target="_blank">
-            <div class="rel-icone">💼</div>
-            <div>
-                <div class="rel-nome">Propostas de venda</div>
-                <div class="rel-desc">CSV — todas as propostas</div>
-            </div>
-        </a>
+        @if (PodeVerConcessionaria)
+        {
+            <a class="rel-card" href="/api/relatorio/veiculos-venda" target="_blank">
+                <div class="rel-icone">📄</div>
+                <div>
+                    <div class="rel-nome">Veículos à venda</div>
+                    <div class="rel-desc">CSV — todos os anúncios</div>
+                </div>
+            </a>
+            <a class="rel-card" href="/api/relatorio/propostas-venda" target="_blank">
+                <div class="rel-icone">💼</div>
+                <div>
+                    <div class="rel-nome">Propostas de venda</div>
+                    <div class="rel-desc">CSV — todas as propostas</div>
+                </div>
+            </a>
+        }
+        @if (PodeVerOficina)
+        {
+            <a class="rel-card" href="/api/relatorio/ordens-servico" target="_blank">
+                <div class="rel-icone">🔧</div>
+                <div>
+                    <div class="rel-nome">Ordens de serviço</div>
+                    <div class="rel-desc">CSV — histórico completo</div>
+                </div>
+            </a>
+            <a class="rel-card" href="/api/relatorio/mecanicos" target="_blank">
+                <div class="rel-icone">🛠</div>
+                <div>
+                    <div class="rel-nome">Mecânicos</div>
+                    <div class="rel-desc">CSV — equipe da oficina</div>
+                </div>
+            </a>
+        }
         <a class="rel-card" href="/api/relatorio/clientes" target="_blank">
             <div class="rel-icone">👤</div>
             <div>
                 <div class="rel-nome">Clientes</div>
                 <div class="rel-desc">CSV — base de clientes</div>
-            </div>
-        </a>
-        <a class="rel-card" href="/api/relatorio/mecanicos" target="_blank">
-            <div class="rel-icone">🛠</div>
-            <div>
-                <div class="rel-nome">Mecânicos</div>
-                <div class="rel-desc">CSV — equipe da oficina</div>
             </div>
         </a>
     </div>
@@ -363,6 +379,12 @@
 
 @code {
     private string abaAtiva = "geral";
+    private string roleUsuario = string.Empty;
+
+    // ChefeOficina e GerenteVendas veem apenas a aba/relatórios do seu setor.
+    // Admin enxerga tudo.
+    private bool PodeVerOficina         => roleUsuario is "Admin" or "ChefeOficina";
+    private bool PodeVerConcessionaria  => roleUsuario is "Admin" or "GerenteVendas";
 
     private int veiculosDisponiveis;
     private int veiculosVendidos;
@@ -395,6 +417,17 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Detecta a role do usuário para decidir quais abas/relatórios mostrar.
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        roleUsuario = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
+
+        // Aba padrão por perfil: ChefeOficina cai na aba Oficina,
+        // GerenteVendas cai na aba Concessionária. Admin segue em "geral".
+        if (!PodeVerOficina && PodeVerConcessionaria)
+            abaAtiva = "concessionaria";
+        else if (PodeVerOficina && !PodeVerConcessionaria)
+            abaAtiva = "oficina";
+
         var todosVeiculos = await VeiculoService.GetAllAsync();
         if (todosVeiculos.IsSuccess && todosVeiculos.Value is not null)
         {

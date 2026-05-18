@@ -1,5 +1,5 @@
 @page "/oficina"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Mecanico,Recepcionista")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -249,7 +249,7 @@
 
     .os-valor {
         font-size: 15px;
-        font-weight: 500;
+        font-weight: 700;
         color: #1a1a1a;
         flex-shrink: 0;
     }

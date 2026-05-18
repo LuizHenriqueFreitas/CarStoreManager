@@ -17,7 +17,8 @@ public static class ClienteMapping
             Nome = entity.Nome,
             Cpf = entity.GetCpf(),
             Telefone = entity.GetTelefone(),
-            Email = entity.GetEmail()
+            Email = entity.GetEmail(),
+            Endereco = ToEnderecoDto(entity.Endereco)
         };
     }
 
@@ -30,6 +31,7 @@ public static class ClienteMapping
         {
             Id = entity.Id,
             Nome = entity.Nome,
+            Cpf = entity.GetCpf(),
             Telefone = entity.GetTelefone(),
             Email = entity.GetEmail()
         };
@@ -42,9 +44,10 @@ public static class ClienteMapping
     {
         return new Cliente(
             dto.Nome,
-            dto.Cpf,
+            dto.Email,
             dto.Telefone,
-            dto.Email
+            dto.Cpf,
+            ToEnderecoEntity(dto.Endereco)
         );
     }
 
@@ -55,8 +58,45 @@ public static class ClienteMapping
     {
         entity.AtualizarClienteDados(
             dto.Nome,
-            dto.Telefone,
-            dto.Email
+            dto.Email,
+            dto.Telefone
+        );
+        entity.AtualizarClienteEndereco(ToEnderecoEntity(dto.Endereco));
+    }
+
+    // =========================
+    // ENDERECO
+    // =========================
+    public static EnderecoDTO ToEnderecoDto(Endereco endereco)
+    {
+        if (endereco is null)
+            return new EnderecoDTO();
+
+        return new EnderecoDTO
+        {
+            Logradouro = endereco.Logradouro,
+            Numero = endereco.Numero,
+            Complemento = endereco.Complemento,
+            Bairro = endereco.Bairro,
+            Cidade = endereco.Cidade,
+            Uf = endereco.Uf,
+            Cep = endereco.Cep
+        };
+    }
+
+    public static Endereco ToEnderecoEntity(EnderecoDTO dto)
+    {
+        if (dto is null)
+            throw new ArgumentException("Endereço é obrigatório");
+
+        return new Endereco(
+            dto.Logradouro,
+            dto.Numero,
+            dto.Complemento,
+            dto.Bairro,
+            dto.Cidade,
+            dto.Uf,
+            dto.Cep
         );
     }
 }

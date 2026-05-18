@@ -177,13 +177,26 @@ public class OrdemServicoTest
     }
 
     [Fact]
-    public void AtualizarStatus_OrdemFinalizada_LancaInvalidOperationException()
+    public void AtualizarStatus_OrdemEntregue_LancaInvalidOperationException()
     {
+        // Regra atual: o estado terminal é "Entregue" (não Finalizada — o mecânico
+        // pode finalizar o serviço técnico mas a recepção ainda precisa entregar).
+        var ordem = CriarOrdemServicoValida();
+        ordem.GetType().GetProperty(nameof(ordem.Status))!.SetValue(ordem, StatusOrdemServico.Entregue);
+
+        Action act = () => ordem.AtualizarStatus(StatusOrdemServico.EmAndamento);
+        act.Should().Throw<InvalidOperationException>().WithMessage("*entregue*");
+    }
+
+    [Fact]
+    public void AtualizarStatus_OrdemFinalizada_PermiteMudarParaEntregue()
+    {
+        // Finalizada ainda permite transição para Entregue (fluxo recepcionista).
         var ordem = CriarOrdemServicoValida();
         ordem.GetType().GetProperty(nameof(ordem.Status))!.SetValue(ordem, StatusOrdemServico.Finalizada);
 
-        Action act = () => ordem.AtualizarStatus(StatusOrdemServico.EmAndamento);
-        act.Should().Throw<InvalidOperationException>().WithMessage("*finalizada*");
+        ordem.AtualizarStatus(StatusOrdemServico.Entregue);
+        ordem.Status.Should().Be(StatusOrdemServico.Entregue);
     }
 
     [Fact]

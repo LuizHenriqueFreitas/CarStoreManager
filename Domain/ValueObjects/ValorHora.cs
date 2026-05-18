@@ -62,7 +62,7 @@ public class ValorHora
         return new Dinheiro(Valor.GetValorDinheiro() * horas);
     }
 
-    //formata saida do valor hora em string
+    //formata saida do valor hora em string (delegado ao VO Dinheiro, sempre pt-BR)
     public override string ToString()
-        => $"{Valor:F2}";
+        => Valor.ToString();
 }

@@ -7,7 +7,7 @@ namespace CarStoreManager.Web.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Mecanico,Recepcionista")]
+[Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
 public class ComponenteController : ControllerBase
 {
     private readonly IComponenteService _service;
@@ -24,7 +24,7 @@ public class ComponenteController : ControllerBase
     // =========================
 
     [HttpPatch("{id:guid}/margem")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> AjustarMargem(Guid id, [FromBody] AjustarMargemDTO dto)
     {
         var r = await _service.AjustarMargemAsync(id, dto.MargemLucroPct);
@@ -57,7 +57,7 @@ public class ComponenteController : ControllerBase
     }
 
     [HttpGet("estoque-baixo")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> GetEstoqueBaixo()
     {
         var resultado = await _service.ObterComEstoqueBaixoAsync();
@@ -83,7 +83,7 @@ public class ComponenteController : ControllerBase
     // =========================
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> Criar([FromBody] CriarComponenteDTO dto)
     {
         var resultado = await _service.AddAsync(dto);
@@ -93,7 +93,7 @@ public class ComponenteController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarComponenteDTO dto)
     {
         dto.Id = id;
@@ -102,7 +102,7 @@ public class ComponenteController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> Remover(Guid id)
     {
         var resultado = await _service.RemoveAsync(id);
@@ -114,7 +114,7 @@ public class ComponenteController : ControllerBase
     // =========================
 
     [HttpPatch("{id:guid}/estoque/entrada")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> EntradaEstoque(Guid id, [FromBody] MovimentacaoEstoqueDTO dto)
     {
         var resultado = await _estoqueService.EntradaAsync(id, dto.Quantidade);
@@ -122,7 +122,7 @@ public class ComponenteController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/estoque/saida")]
-    [Authorize(Roles = "Admin,Mecanico")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
     public async Task<IActionResult> SaidaEstoque(Guid id, [FromBody] MovimentacaoEstoqueDTO dto)
     {
         var resultado = await _estoqueService.SaidaAsync(id, dto.Quantidade);

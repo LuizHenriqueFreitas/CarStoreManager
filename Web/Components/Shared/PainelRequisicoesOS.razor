@@ -24,7 +24,7 @@
         <div class="rq-banner @(mensagemErro ? "rq-erro" : "rq-ok")">@mensagem</div>
     }
 
-    <AuthorizeView Roles="Admin,Mecanico" Context="ctxMec">
+    <AuthorizeView Roles="Admin,ChefeOficina,Mecanico" Context="ctxMec">
         <Authorized>
             @if (PodeRequisitar)
             {
@@ -96,7 +96,7 @@
                         <p class="rq-resolucao rq-recusa">✗ @r.ObservacaoAdmin</p>
                     }
 
-                    <AuthorizeView Roles="Admin" Context="ctxAdm">
+                    <AuthorizeView Roles="Admin,ChefeOficina" Context="ctxAdm">
                         <Authorized>
                             @if (r.Status == "Pendente")
                             {
@@ -152,7 +152,7 @@
             }
         </ul>
 
-        <AuthorizeView Roles="Admin" Context="ctxAdm2">
+        <AuthorizeView Roles="Admin,ChefeOficina" Context="ctxAdm2">
             <Authorized>
                 @if (StatusOrdem == "BuscandoPecasParaOrcamento" && requisicoes.All(r => r.Status != "Pendente"))
                 {

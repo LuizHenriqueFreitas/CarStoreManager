@@ -185,9 +185,9 @@ public class Dinheiro : IEquatable<Dinheiro>
     // UTILIDADES
     // =========================
 
-    //formata saida com R$
+    //formata saida com R$ — sempre pt-BR (vírgula decimal)
     public override string ToString()
-        => $"R$ {Valor:N2}";
+        => $"R$ {Valor.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))}";
 
     /*
         verifica que o valor inseriodo não é vazio, 

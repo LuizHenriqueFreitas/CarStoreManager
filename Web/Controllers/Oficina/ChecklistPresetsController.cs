@@ -14,7 +14,7 @@ public class ChecklistPresetsController : ControllerBase
     public ChecklistPresetsController(IChecklistPresetService service) => _service = service;
 
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> Listar()
     {
         var r = await _service.GetAllAsync();
@@ -42,7 +42,7 @@ public class ChecklistPresetsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> Criar([FromBody] SalvarChecklistPresetDTO dto)
     {
         var r = await _service.AddAsync(dto);
@@ -50,7 +50,7 @@ public class ChecklistPresetsController : ControllerBase
     }
 
     [HttpPut]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> Atualizar([FromBody] SalvarChecklistPresetDTO dto)
     {
         var r = await _service.UpdateAsync(dto);
@@ -58,7 +58,7 @@ public class ChecklistPresetsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> Remover(Guid id)
     {
         var r = await _service.RemoveAsync(id);

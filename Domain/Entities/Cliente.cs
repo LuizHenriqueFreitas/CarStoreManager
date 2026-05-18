@@ -22,15 +22,17 @@ public class Cliente : Entity
     public Email Email { get; private set; } = null!;
     public Telefone Telefone { get; private set; } = null!;
     public Cpf Cpf { get; private set; } = null!;
+    public Endereco Endereco { get; private set; } = null!;
 
     protected Cliente() { }
 
-    public Cliente(string nome, string email, string telefone, string cpf)
+    public Cliente(string nome, string email, string telefone, string cpf, Endereco endereco)
     {
         AtualizarClienteNome(nome);
         Email = new Email(email);
         Telefone = new Telefone(telefone);
         Cpf = new Cpf(cpf);
+        Endereco = endereco ?? throw new ArgumentNullException(nameof(endereco), "Endereço é obrigatório");
     }
 
     //metodos getters de cada atributo
@@ -38,6 +40,7 @@ public class Cliente : Entity
     public string GetEmail() => Email.GetEmail();
     public string GetTelefone() => Telefone.ToString();
     public string GetCpf() => Cpf.ToString();
+    public string GetEndereco() => Endereco.ToString();
 
     /*
         Abaixo metodos setters para atualizar
@@ -72,5 +75,10 @@ public class Cliente : Entity
         AtualizarClienteNome(nome);
         AtualizarClienteTelefone(telefone);
         AtualizarClienteEmail(email);
+    }
+
+    public void AtualizarClienteEndereco(Endereco endereco)
+    {
+        Endereco = endereco ?? throw new ArgumentNullException(nameof(endereco), "Endereço é obrigatório");
     }
 }

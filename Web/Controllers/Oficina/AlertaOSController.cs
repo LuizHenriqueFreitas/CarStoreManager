@@ -15,7 +15,7 @@ public class AlertaOSController : ControllerBase
 
     /// <summary>Mecânico emite alerta numa OS EmAndamento.</summary>
     [HttpPost("/api/ordemservico/{ordemId:guid}/alertas")]
-    [Authorize(Roles = "Admin,Mecanico")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
     public async Task<IActionResult> Emitir(Guid ordemId, [FromBody] CriarAlertaOSDTO dto)
     {
         var mecanicoId = ObterUsuarioId();
@@ -32,7 +32,7 @@ public class AlertaOSController : ControllerBase
 
     /// <summary>Fila da recepção com alertas pendentes do sistema.</summary>
     [HttpGet("/api/alertas-os/pendentes")]
-    [Authorize(Roles = "Admin,Recepcionista")]
+    [Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
     public async Task<IActionResult> ListarPendentes()
     {
         var r = await _service.ListarPendentesAsync();
@@ -40,7 +40,7 @@ public class AlertaOSController : ControllerBase
     }
 
     [HttpPost("/api/alertas-os/{id:guid}/resolver")]
-    [Authorize(Roles = "Admin,Recepcionista")]
+    [Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
     public async Task<IActionResult> Resolver(Guid id, [FromBody] ResolverAlertaDTO dto)
     {
         var resolvidoPor = ObterUsuarioId();

@@ -1,24 +1,18 @@
 using System.Net;
-using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
-using Xunit;
 using FluentAssertions;
 using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs.Auth;
 using CarStoreManager.Application.Interfaces;
+using CarStoreManager.Tests.Integratrion.Helpers;
 using CarStoreManager.Web;
-using Microsoft.Extensions.Options;
-using System.Text.Encodings.Web;
-using Microsoft.Extensions.Logging;
 
 namespace CarStoreManager.Tests.Web.Controllers
 {
@@ -39,9 +33,7 @@ namespace CarStoreManager.Tests.Web.Controllers
                     services.AddScoped(_ => _authServiceMock.Object);
 
                     // Configura autenticação de teste para simular roles
-                    services.AddAuthentication(defaultScheme: "Test")
-                        .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
-                            "Test", options => { });
+                    services.AddTestAuth();
                 });
             });
         }
@@ -180,30 +172,3 @@ namespace CarStoreManager.Tests.Web.Controllers
     }
 }
 
-// Handler de autenticação de teste que converte o token em claims
-internal class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
-{
-    public TestAuthHandler(
-        IOptionsMonitor<AuthenticationSchemeOptions> options,
-        ILoggerFactory logger,
-        UrlEncoder encoder,
-        ISystemClock clock) : base(options, logger, encoder, clock) { }
-
-    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
-    {
-        var authHeader = Request.Headers.Authorization.ToString();
-        if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Test "))
-            return Task.FromResult(AuthenticateResult.Fail("Missing or invalid header"));
-
-        var role = authHeader["Test ".Length..];
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.Name, "TestUser"),
-            new Claim(ClaimTypes.Role, role)
-        };
-        var identity = new ClaimsIdentity(claims, "Test");
-        var principal = new ClaimsPrincipal(identity);
-        var ticket = new AuthenticationTicket(principal, "Test");
-        return Task.FromResult(AuthenticateResult.Success(ticket));
-    }
-}

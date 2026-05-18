@@ -140,7 +140,13 @@ namespace CarStoreManager.Tests.Unidade.Services
                 Nome = "Carlos",
                 Email = "carlos@email.com",
                 Telefone = "11999999999",
-                Cpf = "52998224725" // CPF válido
+                Cpf = "52998224725", // CPF válido
+                Endereco = new EnderecoDTO
+                {
+                    Logradouro = "Rua das Flores", Numero = "100",
+                    Bairro = "Centro", Cidade = "São Paulo",
+                    Uf = "SP", Cep = "01001000"
+                }
             };
             _repoMock.Setup(r => r.CpfExisteAsync(dto.Cpf)).ReturnsAsync(false);
             _repoMock.Setup(r => r.AddAsync(It.IsAny<Cliente>())).Returns(Task.CompletedTask);
@@ -186,7 +192,13 @@ namespace CarStoreManager.Tests.Unidade.Services
                 Id = cliente.Id,
                 Nome = "Nome Atualizado",
                 Email = "novo@email.com",
-                Telefone = "11912345678"
+                Telefone = "11912345678",
+                Endereco = new EnderecoDTO
+                {
+                    Logradouro = "Rua Nova", Numero = "200",
+                    Bairro = "Bairro Novo", Cidade = "São Paulo",
+                    Uf = "SP", Cep = "01001000"
+                }
             };
 
             var result = await _service.UpdateAsync(dto);
@@ -240,12 +252,14 @@ namespace CarStoreManager.Tests.Unidade.Services
 
         private static Cliente CriarClienteValido(string nome = "Cliente Teste")
         {
-            // O construtor de Cliente espera (nome, email, telefone, cpf)
+            // O construtor de Cliente espera (nome, email, telefone, cpf, endereco)
             var cliente = new Cliente(
                 nome,
                 "cliente@teste.com",
                 "11999999999",
-                "52998224725" // CPF válido
+                "52998224725", // CPF válido
+                new CarStoreManager.Domain.ValueObjects.Endereco(
+                    "Rua das Flores", "100", null, "Centro", "São Paulo", "SP", "01001000")
             );
             typeof(Cliente).BaseType?.GetProperty("Id")?.SetValue(cliente, Guid.NewGuid());
             return cliente;

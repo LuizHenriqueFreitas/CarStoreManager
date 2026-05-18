@@ -12,7 +12,7 @@ namespace CarStoreManager.Web.Controllers;
 */
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin")]
+[Authorize]
 public class RelatorioController : ControllerBase
 {
     private readonly IVeiculoVendaService _veiculoService;
@@ -35,7 +35,9 @@ public class RelatorioController : ControllerBase
         _mecanicoService = mecanicoService;
     }
 
+    // ===== ÁREA: CONCESSIONÁRIA =====
     [HttpGet("veiculos-venda")]
+    [Authorize(Roles = "Admin,GerenteVendas")]
     public async Task<IActionResult> VeiculosVenda()
     {
         var r = await _veiculoService.GetAllAsync();
@@ -48,7 +50,9 @@ public class RelatorioController : ControllerBase
         return Csv(sb, "veiculos-venda");
     }
 
+    // ===== ÁREA: OFICINA =====
     [HttpGet("ordens-servico")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> OrdensServico()
     {
         var r = await _ordemService.GetAllAsync();
@@ -61,7 +65,9 @@ public class RelatorioController : ControllerBase
         return Csv(sb, "ordens-servico");
     }
 
+    // ===== ÁREA: CONCESSIONÁRIA =====
     [HttpGet("propostas-venda")]
+    [Authorize(Roles = "Admin,GerenteVendas")]
     public async Task<IActionResult> PropostasVenda()
     {
         var r = await _propostaService.GetAllAsync();
@@ -74,7 +80,10 @@ public class RelatorioController : ControllerBase
         return Csv(sb, "propostas-venda");
     }
 
+    // Clientes são compartilhados entre as duas áreas (cliente compra carro e
+    // também faz manutenção). Liberado para os dois gestores.
     [HttpGet("clientes")]
+    [Authorize(Roles = "Admin,ChefeOficina,GerenteVendas")]
     public async Task<IActionResult> Clientes()
     {
         var r = await _clienteService.GetAllAsync();
@@ -87,7 +96,9 @@ public class RelatorioController : ControllerBase
         return Csv(sb, "clientes");
     }
 
+    // ===== ÁREA: OFICINA =====
     [HttpGet("mecanicos")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> Mecanicos()
     {
         var r = await _mecanicoService.GetAllAsync();

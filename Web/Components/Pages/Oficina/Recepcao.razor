@@ -1,5 +1,5 @@
 @page "/recepcao"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Recepcionista")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -411,8 +411,8 @@
 
     .dado-principal.valor {
         font-size: 15px;
-        color: #16a34a;
-        font-weight: 600;
+        color: #1a1a1a;
+        font-weight: 700;
     }
 
     .dado-sub {

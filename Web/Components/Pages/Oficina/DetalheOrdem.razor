@@ -1,5 +1,5 @@
 @page "/oficina/os/{Id:guid}"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Mecanico,Recepcionista")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -834,7 +834,7 @@ else
     .info-item { display: flex; flex-direction: column; gap: 2px; }
     .info-label { font-size: 11px; color: #888; }
     .info-val { font-size: 14px; font-weight: 500; }
-    .info-val.destaque { color: #2563eb; font-size: 16px; }
+    .info-val.destaque { color: #1a1a1a; font-size: 16px; font-weight: 700; }
     .prazo-vencido { color: #e02020; }
 
     .add-item-row {
@@ -936,7 +936,7 @@ else
 
     .item-qtd  { font-weight: 600; color: #888; min-width: 28px; }
     .item-nome { flex: 1; }
-    .item-valor { font-weight: 500; color: #1a1a1a; }
+    .item-valor { font-weight: 700; color: #1a1a1a; }
 
     .origem-tag {
         font-size: 11px;

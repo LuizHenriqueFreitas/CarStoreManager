@@ -7,7 +7,7 @@ namespace CarStoreManager.Web.Controllers;
 
 [ApiController]
 [Route("api/nota-fiscal")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,ChefeOficina")]
 public class NotaFiscalEntradaController : ControllerBase
 {
     private readonly INotaFiscalEntradaService _service;

@@ -19,6 +19,10 @@
 
         if (user.IsInRole("Admin"))
             Nav.NavigateTo("/dashboard");
+        else if (user.IsInRole("GerenteVendas"))
+            Nav.NavigateTo("/concessionaria");
+        else if (user.IsInRole("ChefeOficina"))
+            Nav.NavigateTo("/oficina");
         else if (user.IsInRole("Vendedor"))
             Nav.NavigateTo("/concessionaria");
         else if (user.IsInRole("Mecanico"))

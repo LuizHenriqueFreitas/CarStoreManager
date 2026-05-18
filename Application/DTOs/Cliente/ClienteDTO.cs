@@ -11,4 +11,6 @@ public class ClienteDTO
     public string Telefone { get; set; } = string.Empty;
 
     public string Email { get; set; } = string.Empty;
+
+    public EnderecoDTO Endereco { get; set; } = new();
 }

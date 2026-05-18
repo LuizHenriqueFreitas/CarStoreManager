@@ -96,7 +96,7 @@ public class AuthService : IAuthService
             return Result<Guid>.Fail("Email já cadastrado");
 
         if (!Enum.TryParse<RoleUsuario>(dto.Role, true, out var role))
-            return Result<Guid>.Fail("Role inválido. Use 'Vendedor', 'Mecanico' ou 'Admin'");
+            return Result<Guid>.Fail("Role inválido. Use 'Vendedor', 'Mecanico', 'Recepcionista', 'ChefeOficina', 'GerenteVendas' ou 'Admin'");
 
         try
         {
@@ -106,6 +106,8 @@ public class AuthService : IAuthService
                 RoleUsuario.Mecanico => CriarMecanico(dto),
                 RoleUsuario.Admin => CriarAdmin(dto),
                 RoleUsuario.Recepcionista => CriarRecepcionista(dto),
+                RoleUsuario.ChefeOficina => CriarChefeOficina(dto),
+                RoleUsuario.GerenteVendas => CriarGerenteVendas(dto),
                 _ => throw new ArgumentException("Role inválido")
             };
 
@@ -191,6 +193,38 @@ public class AuthService : IAuthService
             throw new ArgumentException("Data de contratação obrigatória para recepcionista");
 
         return new Recepcionista(
+            dto.Nome,
+            dto.Email,
+            dto.Telefone,
+            dto.Senha,
+            nivel,
+            dto.DataContratacao.Value);
+    }
+
+    private static ChefeOficina CriarChefeOficina(CriarUsuarioDTO dto)
+    {
+        if (!Enum.TryParse<NivelFuncionario>(dto.Nivel, true, out var nivel))
+            throw new ArgumentException("Nível inválido");
+        if (dto.DataContratacao is null)
+            throw new ArgumentException("Data de contratação obrigatória para chefe de oficina");
+
+        return new ChefeOficina(
+            dto.Nome,
+            dto.Email,
+            dto.Telefone,
+            dto.Senha,
+            nivel,
+            dto.DataContratacao.Value);
+    }
+
+    private static GerenteVendas CriarGerenteVendas(CriarUsuarioDTO dto)
+    {
+        if (!Enum.TryParse<NivelFuncionario>(dto.Nivel, true, out var nivel))
+            throw new ArgumentException("Nível inválido");
+        if (dto.DataContratacao is null)
+            throw new ArgumentException("Data de contratação obrigatória para gerente de vendas");
+
+        return new GerenteVendas(
             dto.Nome,
             dto.Email,
             dto.Telefone,

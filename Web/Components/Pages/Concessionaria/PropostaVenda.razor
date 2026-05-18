@@ -1,5 +1,5 @@
 @page "/concessionaria/proposta/nova/{VeiculoId:guid}"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Vendedor")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
 @rendermode InteractiveServer
 @inject IPropostaVendaService PropostaVendaService
 @inject IVeiculoVendaService VeiculoVendaService
@@ -169,10 +169,7 @@
 
     private static readonly (string valor, string label, string icone)[] ModosPagamento =
     {
-        ("Dinheiro", "Dinheiro", "💵"),
         ("Pix", "Pix", "⚡"),
-        ("CartaoDebito", "Débito", "💳"),
-        ("CartaoCredito", "Crédito", "💳"),
         ("Financiamento", "Financiamento", "🏦"),
         ("Boleto", "Boleto", "📄"),
         ("Transferencia", "Transferência", "🔁"),
@@ -362,10 +359,10 @@
     }
     .campo-input:focus { border-color: #e02020; }
     .campo-input.destaque {
-        background: #fff5f5;
-        border-color: #fca5a5;
-        font-weight: 600;
-        color: #c01818;
+        background: #fafafa;
+        border-color: #d0d0d0;
+        font-weight: 700;
+        color: #1a1a1a;
     }
     .dica { font-size: 12px; color: #888; margin-top: 8px; }
 

@@ -11,7 +11,7 @@
     <a href="/" class="navbar-logo">AUTOSTORE</a>
 
     <div class="navbar-links">
-        <AuthorizeView Roles="Admin,Vendedor">
+        <AuthorizeView Roles="Admin,GerenteVendas,Vendedor">
             <NavLink href="/concessionaria" class="nav-link" ActiveClass="nav-link-active">
                 Concessionária
             </NavLink>
@@ -20,31 +20,37 @@
             </NavLink>
         </AuthorizeView>
 
-        <AuthorizeView Roles="Admin,Mecanico,Recepcionista">
+        <AuthorizeView Roles="Admin,ChefeOficina,Mecanico,Recepcionista">
             <NavLink href="/oficina" class="nav-link" ActiveClass="nav-link-active">
                 Oficina
             </NavLink>
         </AuthorizeView>
 
-        <AuthorizeView Roles="Admin,Recepcionista">
+        <AuthorizeView Roles="Admin,ChefeOficina,Recepcionista">
             <NavLink href="/recepcao" class="nav-link" ActiveClass="nav-link-active">
                 Recepção
             </NavLink>
         </AuthorizeView>
 
-        <AuthorizeView Roles="Admin,Mecanico">
+        <AuthorizeView Roles="Admin,ChefeOficina,Mecanico">
             <NavLink href="/oficina/componentes" class="nav-link" ActiveClass="nav-link-active">
                 Estoque
             </NavLink>
         </AuthorizeView>
 
-        <AuthorizeView Roles="Admin">
+        <AuthorizeView Roles="Admin,ChefeOficina" Context="ctxNfe">
             <NavLink href="/oficina/notas-fiscais" class="nav-link" ActiveClass="nav-link-active">
                 NF-e
             </NavLink>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin,ChefeOficina,GerenteVendas" Context="ctxDash">
             <NavLink href="/dashboard" class="nav-link" ActiveClass="nav-link-active">
                 Dashboard
             </NavLink>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin" Context="ctxAdmin">
             <NavLink href="/admin/usuarios" class="nav-link" ActiveClass="nav-link-active">
                 Usuários
             </NavLink>

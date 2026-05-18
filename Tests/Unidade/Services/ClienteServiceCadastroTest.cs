@@ -35,7 +35,13 @@ public class ClienteServiceCadastroTest
             Nome = "João Silva",
             Cpf = CpfValido,
             Telefone = "11987654321",
-            Email = "joao@email.com"
+            Email = "joao@email.com",
+            Endereco = new EnderecoDTO
+            {
+                Logradouro = "Rua A", Numero = "1",
+                Bairro = "Centro", Cidade = "São Paulo",
+                Uf = "SP", Cep = "01001000"
+            }
         };
 
         var result = await _service.AddAsync(dto);
@@ -55,7 +61,14 @@ public class ClienteServiceCadastroTest
             Nome = "João",
             Cpf = "00000000000",          // todos iguais → inválido
             Telefone = "11987654321",
-            Email = "joao@x.com"
+            Email = "joao@x.com",
+            // Endereço válido para que a validação chegue até o CPF.
+            Endereco = new EnderecoDTO
+            {
+                Logradouro = "Rua A", Numero = "1",
+                Bairro = "Centro", Cidade = "São Paulo",
+                Uf = "SP", Cep = "01001000"
+            }
         };
 
         var result = await _service.AddAsync(dto);

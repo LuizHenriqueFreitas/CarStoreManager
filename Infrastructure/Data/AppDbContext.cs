@@ -70,7 +70,9 @@ public class AppDbContext : DbContext
             .HasValue<Admin>("Admin")
             .HasValue<Vendedor>("Vendedor")
             .HasValue<Mecanico>("Mecanico")
-            .HasValue<Recepcionista>("Recepcionista");
+            .HasValue<Recepcionista>("Recepcionista")
+            .HasValue<ChefeOficina>("ChefeOficina")
+            .HasValue<GerenteVendas>("GerenteVendas");
 
         modelBuilder.Entity<Usuario>().HasKey(u => u.Id);
 
@@ -113,6 +115,20 @@ public class AppDbContext : DbContext
                 d.Property("DataContratacao").HasColumnName("DataContratacao");
             });
 
+        modelBuilder.Entity<ChefeOficina>()
+            .OwnsOne(c => c.DadosFuncionario, d =>
+            {
+                d.Property("Nivel").HasColumnName("Nivel");
+                d.Property("DataContratacao").HasColumnName("DataContratacao");
+            });
+
+        modelBuilder.Entity<GerenteVendas>()
+            .OwnsOne(g => g.DadosFuncionario, d =>
+            {
+                d.Property("Nivel").HasColumnName("Nivel");
+                d.Property("DataContratacao").HasColumnName("DataContratacao");
+            });
+
         modelBuilder.Entity<Mecanico>()
             .Property(m => m.TrabalhosAtivos)
             .HasConversion(
@@ -144,6 +160,18 @@ public class AppDbContext : DbContext
                 cpf.Property("Numero")
                     .HasColumnName("CPF")
                     .IsRequired());
+
+        modelBuilder.Entity<Cliente>()
+            .OwnsOne(c => c.Endereco, e =>
+            {
+                e.Property(x => x.Logradouro).HasColumnName("EnderecoLogradouro").IsRequired();
+                e.Property(x => x.Numero).HasColumnName("EnderecoNumero").IsRequired();
+                e.Property(x => x.Complemento).HasColumnName("EnderecoComplemento");
+                e.Property(x => x.Bairro).HasColumnName("EnderecoBairro").IsRequired();
+                e.Property(x => x.Cidade).HasColumnName("EnderecoCidade").IsRequired();
+                e.Property(x => x.Uf).HasColumnName("EnderecoUf").HasMaxLength(2).IsRequired();
+                e.Property(x => x.Cep).HasColumnName("EnderecoCep").HasMaxLength(8).IsRequired();
+            });
 
         // =========================
         // VEICULO CLIENTE

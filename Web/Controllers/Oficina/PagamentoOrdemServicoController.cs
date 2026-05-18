@@ -7,7 +7,7 @@ namespace CarStoreManager.Web.Controllers;
 
 [ApiController]
 [Route("api/ordemservico/{ordemId:guid}/pagamentos")]
-[Authorize(Roles = "Admin,Recepcionista")]
+[Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
 public class PagamentoOrdemServicoController : ControllerBase
 {
     private readonly IPagamentoOrdemServicoService _service;
@@ -30,7 +30,7 @@ public class PagamentoOrdemServicoController : ControllerBase
     }
 
     [HttpDelete("/api/pagamento/{pagamentoId:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> Estornar(Guid pagamentoId)
     {
         var r = await _service.EstornarPagamentoAsync(pagamentoId);

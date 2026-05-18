@@ -7,7 +7,7 @@ namespace CarStoreManager.Web.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Mecanico,Recepcionista")]
+[Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
 public class OrdemServicoController : ControllerBase
 {
     private readonly IOrdemServicoService _service;
@@ -48,7 +48,7 @@ public class OrdemServicoController : ControllerBase
     // =========================
 
     [HttpPost]
-    [Authorize(Roles = "Admin,Recepcionista")]
+    [Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
     public async Task<IActionResult> Criar([FromBody] CriarOrdemServicoDTO dto)
     {
         var resultado = await _service.AddAsync(dto);
@@ -62,7 +62,7 @@ public class OrdemServicoController : ControllerBase
     // =========================
 
     [HttpPost("{id:guid}/itens")]
-    [Authorize(Roles = "Admin,Mecanico,Recepcionista")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
     public async Task<IActionResult> AdicionarItem(Guid id, [FromBody] AdicionarItemOrdemServicoDTO dto)
     {
         dto.OrdemServicoId = id;
@@ -71,7 +71,7 @@ public class OrdemServicoController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/itens/{itemId:guid}")]
-    [Authorize(Roles = "Admin,Mecanico,Recepcionista")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
     public async Task<IActionResult> RemoverItem(Guid id, Guid itemId)
     {
         var resultado = await _service.RemoverItemAsync(id, itemId);
@@ -79,7 +79,7 @@ public class OrdemServicoController : ControllerBase
     }
 
     [HttpPut("{id:guid}/itens")]
-    [Authorize(Roles = "Admin,Mecanico,Recepcionista")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
     public async Task<IActionResult> AtualizarItem(Guid id, [FromBody] AtualizarItemOrdemServicoDTO dto)
     {
         dto.OrdemServicoId = id;
@@ -93,7 +93,7 @@ public class OrdemServicoController : ControllerBase
 
     // recepcionista termina o orçamento e envia para o mecânico revisar
     [HttpPatch("{id:guid}/enviar-revisao")]
-    [Authorize(Roles = "Admin,Recepcionista")]
+    [Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
     public async Task<IActionResult> EnviarRevisao(Guid id)
     {
         var r = await _service.EnviarParaRevisaoAsync(id);
@@ -102,7 +102,7 @@ public class OrdemServicoController : ControllerBase
 
     // mecânico aprova o orçamento → vai para AguardandoCliente
     [HttpPatch("{id:guid}/aprovar-mecanico")]
-    [Authorize(Roles = "Admin,Mecanico")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
     public async Task<IActionResult> AprovarMecanico(Guid id)
     {
         var r = await _service.AprovarPeloMecanicoAsync(id);
@@ -111,7 +111,7 @@ public class OrdemServicoController : ControllerBase
 
     // mecânico devolve o orçamento pra recepcionista ajustar (volta a Pendente)
     [HttpPatch("{id:guid}/devolver")]
-    [Authorize(Roles = "Admin,Mecanico")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
     public async Task<IActionResult> Devolver(Guid id)
     {
         var r = await _service.DevolverParaAjustesAsync(id);
@@ -120,7 +120,7 @@ public class OrdemServicoController : ControllerBase
 
     // recepcionista marca que o cliente aprovou → Aprovada
     [HttpPatch("{id:guid}/cliente-aprovou")]
-    [Authorize(Roles = "Admin,Recepcionista")]
+    [Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
     public async Task<IActionResult> ClienteAprovou(Guid id)
     {
         var r = await _service.RegistrarAprovacaoDoClienteAsync(id);
@@ -129,7 +129,7 @@ public class OrdemServicoController : ControllerBase
 
     // mecânico inicia o serviço (a OS deve estar Aprovada)
     [HttpPatch("{id:guid}/iniciar")]
-    [Authorize(Roles = "Admin,Mecanico")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
     public async Task<IActionResult> Iniciar(Guid id)
     {
         var r = await _service.IniciarAsync(id);
@@ -138,7 +138,7 @@ public class OrdemServicoController : ControllerBase
 
     // mecânico finaliza o serviço técnico
     [HttpPatch("{id:guid}/finalizar")]
-    [Authorize(Roles = "Admin,Mecanico")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
     public async Task<IActionResult> Finalizar(Guid id)
     {
         var r = await _service.FinalizarAsync(id);
@@ -147,7 +147,7 @@ public class OrdemServicoController : ControllerBase
 
     // recepção marca como entregue ao cliente (após cobrar)
     [HttpPatch("{id:guid}/entregar")]
-    [Authorize(Roles = "Admin,Recepcionista")]
+    [Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
     public async Task<IActionResult> Entregar(Guid id)
     {
         var r = await _service.EntregarAsync(id);
@@ -155,7 +155,7 @@ public class OrdemServicoController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/cancelar")]
-    [Authorize(Roles = "Admin,Recepcionista")]
+    [Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
     public async Task<IActionResult> Cancelar(Guid id)
     {
         var r = await _service.CancelarAsync(id);
@@ -167,7 +167,7 @@ public class OrdemServicoController : ControllerBase
     // =========================
 
     [HttpPost("{id:guid}/checklist")]
-    [Authorize(Roles = "Admin,Mecanico,Recepcionista")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
     public async Task<IActionResult> AdicionarItemChecklist(Guid id, [FromBody] AdicionarChecklistItemDTO dto)
     {
         dto.OrdemServicoId = id;
@@ -176,7 +176,7 @@ public class OrdemServicoController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/checklist/{itemId:guid}/status")]
-    [Authorize(Roles = "Admin,Mecanico")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
     public async Task<IActionResult> AtualizarStatusChecklist(
         Guid id, Guid itemId, [FromBody] AtualizarStatusChecklistDTO dto)
     {
@@ -187,7 +187,7 @@ public class OrdemServicoController : ControllerBase
     }
 
     [HttpPut("{id:guid}/checklist/{itemId:guid}")]
-    [Authorize(Roles = "Admin,Mecanico")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
     public async Task<IActionResult> AtualizarDescricaoChecklist(
         Guid id, Guid itemId, [FromBody] AtualizarDescricaoChecklistDTO dto)
     {
@@ -196,7 +196,7 @@ public class OrdemServicoController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/checklist/{itemId:guid}")]
-    [Authorize(Roles = "Admin,Mecanico")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
     public async Task<IActionResult> RemoverItemChecklist(Guid id, Guid itemId)
     {
         var resultado = await _service.RemoverItemChecklistAsync(id, itemId);
@@ -208,7 +208,7 @@ public class OrdemServicoController : ControllerBase
     // =========================
 
     [HttpPatch("{id:guid}/recalcular")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> Recalcular(Guid id)
     {
         var resultado = await _service.RecalcularValoresAsync(id);

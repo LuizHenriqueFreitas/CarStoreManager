@@ -106,7 +106,8 @@ public class ClienteRepositoryPesquisarTest : IDisposable
         {
             // Alterna entre CPFs válidos — repetir CPF não funcionaria por causa de unicidade implícita?
             // Aqui só persiste sem unicidade enforced, então tudo bem.
-            var c = new Cliente($"ClienteX {i:D2}", $"c{i}@x.com", "11900000000", cpfs[i % 3]);
+            var c = new Cliente($"ClienteX {i:D2}", $"c{i}@x.com", "11900000000", cpfs[i % 3],
+                new CarStoreManager.Domain.ValueObjects.Endereco("Rua A", "1", null, "Centro", "São Paulo", "SP", "01001000"));
             await _repo.AddAsync(c);
         }
         await _repo.SaveChangesAsync();
@@ -119,7 +120,8 @@ public class ClienteRepositoryPesquisarTest : IDisposable
     private async Task SalvarCliente(string nome, string cpf)
     {
         var c = new Cliente(nome, $"{nome.Replace(" ", "").ToLower()}@x.com",
-            "11900000000", cpf);
+            "11900000000", cpf,
+            new CarStoreManager.Domain.ValueObjects.Endereco("Rua A", "1", null, "Centro", "São Paulo", "SP", "01001000"));
         await _repo.AddAsync(c);
         await _repo.SaveChangesAsync();
     }

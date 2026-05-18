@@ -7,7 +7,7 @@ namespace CarStoreManager.Web.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Mecanico")]
+[Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
 public class VeiculoClienteController : ControllerBase
 {
     private readonly IVeiculoClienteService _service;
@@ -39,7 +39,7 @@ public class VeiculoClienteController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin,Mecanico")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
     public async Task<IActionResult> Criar([FromBody] CriarVeiculoClienteDTO dto)
     {
         var resultado = await _service.AddAsync(dto);
@@ -49,7 +49,7 @@ public class VeiculoClienteController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin,Mecanico")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarVeiculoClienteDTO dto)
     {
         dto.Id = id;
@@ -58,7 +58,7 @@ public class VeiculoClienteController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> Remover(Guid id)
     {
         var resultado = await _service.RemoveAsync(id);

@@ -79,14 +79,7 @@ public class ClienteService : IClienteService
         {
             var clientes = await _repository.PesquisarAsync(termo);
 
-            var dtos = clientes.Select(c => new ClienteListaDTO
-            {
-                Id = c.Id,
-                Nome = c.Nome,
-                Cpf = c.GetCpf(), 
-                Telefone = c.GetTelefone(),
-                Email = c.GetEmail()
-            }).ToList();
+            var dtos = clientes.Select(ClienteMapping.ToListaDto).ToList();
 
             return Result<List<ClienteListaDTO>>.Ok(dtos);
         }
@@ -95,7 +88,7 @@ public class ClienteService : IClienteService
             return Result<List<ClienteListaDTO>>.Fail($"Erro na pesquisa: {ex.Message}");
         }
     }
-    
+
     /*
         metodo para criar novo cliente
         bloqueia criar outro cliente
@@ -108,12 +101,7 @@ public class ClienteService : IClienteService
 
         try
         {
-            var cliente = new Cliente(
-                dto.Nome,
-                dto.Email,
-                dto.Telefone,
-                dto.Cpf
-            );
+            var cliente = ClienteMapping.ToEntity(dto);
 
             await _repository.AddAsync(cliente);
             await _repository.SaveChangesAsync();
@@ -128,7 +116,7 @@ public class ClienteService : IClienteService
 
     /*
         metodo que atualiza cliente ja existente
-        faz busca por id e caso cliente seja vazio 
+        faz busca por id e caso cliente seja vazio
         ele retona o aviso que nao foi encontrado
     */
     public async Task<Result> UpdateAsync(AtualizarClienteDTO dto)
@@ -140,11 +128,7 @@ public class ClienteService : IClienteService
 
         try
         {
-            cliente.AtualizarClienteDados(
-                dto.Nome,
-                dto.Email,
-                dto.Telefone
-            );
+            ClienteMapping.UpdateEntity(cliente, dto);
 
             _repository.Update(cliente);
             await _repository.SaveChangesAsync();

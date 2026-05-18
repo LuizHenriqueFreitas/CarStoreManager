@@ -9,7 +9,7 @@
 @using CarStoreManager.Application.DTOs.Oficina.OrdemServico.Pagamento
 @using Microsoft.AspNetCore.Components.Authorization
 
-<AuthorizeView Roles="Admin,Recepcionista">
+<AuthorizeView Roles="Admin,ChefeOficina,Recepcionista">
     <Authorized>
         <div class="pag-card">
             <h3>💰 Pagamento</h3>
@@ -79,7 +79,7 @@
                         <thead>
                             <tr>
                                 <th>Data</th><th>Modo</th><th>Valor</th><th>Ref.</th>
-                                <AuthorizeView Roles="Admin" Context="adminCol"><Authorized><th></th></Authorized></AuthorizeView>
+                                <AuthorizeView Roles="Admin,ChefeOficina" Context="adminCol"><Authorized><th></th></Authorized></AuthorizeView>
                             </tr>
                         </thead>
                         <tbody>
@@ -90,7 +90,7 @@
                                     <td>@ModoLabel(p.ModoPagamento)</td>
                                     <td>@FmtBRL(p.Valor)</td>
                                     <td><small>@(p.ReferenciaExterna ?? "—")</small></td>
-                                    <AuthorizeView Roles="Admin" Context="adminAcao">
+                                    <AuthorizeView Roles="Admin,ChefeOficina" Context="adminAcao">
                                         <Authorized>
                                             <td>
                                                 <button class="btn-estorno" @onclick="() => Estornar(p.Id)">↩</button>
@@ -118,10 +118,10 @@
     .pag-resumo > div { display:flex; flex-direction:column; gap:4px; }
     .muted { color:#888; font-size:0.85em; }
     .small { font-size:0.85em; }
-    .val { font-weight:600; font-size:1.05em; }
-    .val.total { color:#333; }
-    .val.pago { color:#1f7a3a; }
-    .val.restante { color:#a72020; }
+    .val { font-weight:700; font-size:1.05em; color:#1a1a1a; }
+    .val.total { color:#1a1a1a; }
+    .val.pago { color:#1a1a1a; }
+    .val.restante { color:#1a1a1a; }
     .tag { padding:3px 10px; border-radius:12px; font-size:0.8em; font-weight:500; align-self:flex-start; }
     .tag-pago { background:#dcfce7; color:#166534; }
     .tag-parcial { background:#fef3c7; color:#854d0e; }

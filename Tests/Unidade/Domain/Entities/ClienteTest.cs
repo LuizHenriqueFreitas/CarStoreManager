@@ -1,5 +1,6 @@
 using CarStoreManager.Domain.Entities;
 using CarStoreManager.Domain.Exceptions;
+using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Tests.Unidade.Domain.Entidades;
 
@@ -18,6 +19,10 @@ namespace CarStoreManager.Tests.Unidade.Domain.Entidades;
 
 public class ClienteTest
 {
+    // endereço válido reaproveitado pelos testes (não é o foco aqui).
+    private static Endereco EnderecoValido() =>
+        new("Rua das Flores", "100", "Apto 1", "Centro", "São Paulo", "SP", "01001000");
+
     //teste verifica criação de cliente valido
     [Fact]
     public void Deve_Criar_Cliente_Valido()
@@ -27,7 +32,8 @@ public class ClienteTest
             "Pedro Silveira",
             "pedro@email.com",
             "11 98556-7124",
-            "529.982.247-25"
+            "529.982.247-25",
+            EnderecoValido()
         );
         // validação
         Assert.Equal("Pedro Silveira", user.GetNome());
@@ -41,12 +47,13 @@ public class ClienteTest
     public void Deve_Bloquear_Cliente_Nome_Invalido()
     {
         // validação
-        Assert.Throws<ArgumentException>(() => 
+        Assert.Throws<ArgumentException>(() =>
             new Cliente(
             "   ",
             "pedro@email.com",
             "11 98556-7124",
-            "529.982.247-25"
+            "529.982.247-25",
+            EnderecoValido()
         ));
     }
 
@@ -60,12 +67,13 @@ public class ClienteTest
     public void Deve_Bloquear_Cliente_Email_Invalido(string email)
     {
         // validação
-        Assert.Throws<ArgumentException>(() => 
+        Assert.Throws<ArgumentException>(() =>
             new Cliente(
             "Pedro Silveira",
             email,
             "11 98556-7124",
-            "529.982.247-25"
+            "529.982.247-25",
+            EnderecoValido()
         ));
     }
 
@@ -78,12 +86,13 @@ public class ClienteTest
     public void Deve_Bloquear_Cliente_Telefone_Invalido(string numero)
     {
         // validação
-        Assert.Throws<ArgumentException>(() => 
+        Assert.Throws<ArgumentException>(() =>
             new Cliente(
             "Pedro Silveira",
             "pedro@email.com",
             numero,
-            "529.982.247-25"
+            "529.982.247-25",
+            EnderecoValido()
         ));
     }
 
@@ -98,12 +107,13 @@ public class ClienteTest
     public void Deve_Bloquear_Cliente_Cpf_Invalido(string cpf)
     {
         // validação
-        Assert.Throws<CpfInvalidoException>(() => 
+        Assert.Throws<CpfInvalidoException>(() =>
             new Cliente(
             "Pedro Silveira",
             "pedro@email.com",
             "11 98556-7124",
-            cpf
+            cpf,
+            EnderecoValido()
         ));
     }
 
@@ -121,7 +131,8 @@ public class ClienteTest
             "Pedro Silveira",
             "pedro@email.com",
             "11 98556-7124",
-            "529.982.247-25"
+            "529.982.247-25",
+            EnderecoValido()
         );
         // aplicação
         user.AtualizarClienteDados("Pedro Silva", "silva@email.com", "34282657799");

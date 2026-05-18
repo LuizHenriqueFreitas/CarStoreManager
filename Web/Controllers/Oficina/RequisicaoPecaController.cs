@@ -15,7 +15,7 @@ public class RequisicaoPecaController : ControllerBase
 
     /// <summary>Mecânico abre requisição em uma OS específica.</summary>
     [HttpPost("/api/ordemservico/{ordemId:guid}/requisicoes")]
-    [Authorize(Roles = "Admin,Mecanico")]
+    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
     public async Task<IActionResult> Abrir(Guid ordemId, [FromBody] CriarRequisicaoPecaDTO dto)
     {
         var mecanicoId = ObterUsuarioId();
@@ -33,7 +33,7 @@ public class RequisicaoPecaController : ControllerBase
 
     /// <summary>Fila do admin com todas as pendentes do sistema.</summary>
     [HttpGet("/api/requisicoes-peca/pendentes")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> ListarPendentes()
     {
         var r = await _service.ListarPendentesAsync();
@@ -41,7 +41,7 @@ public class RequisicaoPecaController : ControllerBase
     }
 
     [HttpPost("/api/requisicoes-peca/{id:guid}/atender")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> Atender(Guid id, [FromBody] AtenderRequisicaoDTO dto)
     {
         var resolvidaPor = ObterUsuarioId();
@@ -50,7 +50,7 @@ public class RequisicaoPecaController : ControllerBase
     }
 
     [HttpPost("/api/requisicoes-peca/{id:guid}/rejeitar")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> Rejeitar(Guid id, [FromBody] RejeitarRequisicaoDTO dto)
     {
         var resolvidaPor = ObterUsuarioId();
@@ -59,7 +59,7 @@ public class RequisicaoPecaController : ControllerBase
     }
 
     [HttpPost("/api/ordemservico/{ordemId:guid}/liberar-pos-requisicao")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
     public async Task<IActionResult> LiberarOrdem(Guid ordemId)
     {
         var r = await _service.LiberarOrdemAsync(ordemId);

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CarStoreManager.Web.Controllers;
 
 [ApiController]
-[Authorize(Roles = "Admin,Recepcionista")]
+[Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
 public class NotaFiscalVendaOSController : ControllerBase
 {
     private readonly INotaFiscalVendaOSRepository _repo;

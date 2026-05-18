@@ -37,6 +37,12 @@
         <button class="@AbaClass("Recepcionista")" @onclick='() => abaAtiva = "Recepcionista"'>
             Recepcionistas (@recepcionistas.Count)
         </button>
+        <button class="@AbaClass("ChefeOficina")" @onclick='() => abaAtiva = "ChefeOficina"'>
+            Chefe de oficina (@chefesOficina.Count)
+        </button>
+        <button class="@AbaClass("GerenteVendas")" @onclick='() => abaAtiva = "GerenteVendas"'>
+            Gerente de vendas (@gerentesVendas.Count)
+        </button>
         <button class="@AbaClass("Admin")" @onclick='() => abaAtiva = "Admin"'>
             Administradores (@admins.Count)
         </button>
@@ -118,6 +124,54 @@
             }
         </div>
     }
+    else if (abaAtiva == "ChefeOficina")
+    {
+        <div class="usuarios-lista">
+            @foreach (var c in chefesOficina)
+            {
+                <div class="usuario-card">
+                    <div class="usuario-avatar chefe-oficina">@c.Nome[0].ToString().ToUpper()</div>
+                    <div class="usuario-info">
+                        <span class="usuario-nome">@c.Nome</span>
+                        <span class="usuario-detalhe">@c.Telefone · @c.Email</span>
+                    </div>
+                    <span class="usuario-role chefe-oficina-badge">Chefe de oficina</span>
+                    <button class="btn-desativar"
+                            @onclick="() => ConfirmarDesativar(c.Id, c.Nome)">
+                        Desativar
+                    </button>
+                </div>
+            }
+            @if (!chefesOficina.Any())
+            {
+                <div class="vazio-aba">Nenhum chefe de oficina cadastrado.</div>
+            }
+        </div>
+    }
+    else if (abaAtiva == "GerenteVendas")
+    {
+        <div class="usuarios-lista">
+            @foreach (var g in gerentesVendas)
+            {
+                <div class="usuario-card">
+                    <div class="usuario-avatar gerente-vendas">@g.Nome[0].ToString().ToUpper()</div>
+                    <div class="usuario-info">
+                        <span class="usuario-nome">@g.Nome</span>
+                        <span class="usuario-detalhe">@g.Telefone · @g.Email</span>
+                    </div>
+                    <span class="usuario-role gerente-vendas-badge">Gerente de vendas</span>
+                    <button class="btn-desativar"
+                            @onclick="() => ConfirmarDesativar(g.Id, g.Nome)">
+                        Desativar
+                    </button>
+                </div>
+            }
+            @if (!gerentesVendas.Any())
+            {
+                <div class="vazio-aba">Nenhum gerente de vendas cadastrado.</div>
+            }
+        </div>
+    }
     else
     {
         <div class="usuarios-lista">
@@ -168,6 +222,8 @@
                         <option value="Vendedor">Vendedor</option>
                         <option value="Mecanico">Mecânico</option>
                         <option value="Recepcionista">Recepcionista</option>
+                        <option value="ChefeOficina">Chefe de oficina</option>
+                        <option value="GerenteVendas">Gerente de vendas</option>
                         <option value="Admin">Administrador</option>
                     </select>
                 </div>
@@ -254,6 +310,8 @@
     private List<VendedorListaDTO> vendedores = new();
     private List<MecanicoListaDTO> mecanicos = new();
     private List<UsuarioDTO> recepcionistas = new();
+    private List<UsuarioDTO> chefesOficina = new();
+    private List<UsuarioDTO> gerentesVendas = new();
     private List<UsuarioDTO> admins = new();
     private string abaAtiva = "Vendedor";
     private bool carregando = true;
@@ -290,6 +348,12 @@
 
         var rRec = await AuthService.ListarUsuariosAsync("Recepcionista");
         recepcionistas = rRec.IsSuccess ? rRec.Value?.ToList() ?? new() : new();
+
+        var rCh = await AuthService.ListarUsuariosAsync("ChefeOficina");
+        chefesOficina = rCh.IsSuccess ? rCh.Value?.ToList() ?? new() : new();
+
+        var rGer = await AuthService.ListarUsuariosAsync("GerenteVendas");
+        gerentesVendas = rGer.IsSuccess ? rGer.Value?.ToList() ?? new() : new();
 
         var rAdm = await AuthService.ListarUsuariosAsync("Admin");
         admins = rAdm.IsSuccess ? rAdm.Value?.ToList() ?? new() : new();
@@ -485,10 +549,12 @@
         flex-shrink: 0;
     }
 
-    .usuario-avatar.vendedor      { background: #fff0f0; color: #e02020; }
-    .usuario-avatar.mecanico      { background: #f0f4ff; color: #3b5bdb; }
-    .usuario-avatar.recepcionista { background: #fff7ed; color: #ea580c; }
-    .usuario-avatar.admin         { background: #f0fdf4; color: #16a34a; }
+    .usuario-avatar.vendedor       { background: #fff0f0; color: #e02020; }
+    .usuario-avatar.mecanico       { background: #f0f4ff; color: #3b5bdb; }
+    .usuario-avatar.recepcionista  { background: #fff7ed; color: #ea580c; }
+    .usuario-avatar.chefe-oficina  { background: #ede9fe; color: #6d28d9; }
+    .usuario-avatar.gerente-vendas { background: #fef3c7; color: #92400e; }
+    .usuario-avatar.admin          { background: #f0fdf4; color: #16a34a; }
 
     .usuario-info {
         display: flex;
@@ -507,10 +573,12 @@
         font-weight: 500;
     }
 
-    .vendedor-badge      { background: #fff0f0; color: #c01818; }
-    .mecanico-badge      { background: #f0f4ff; color: #3b5bdb; }
-    .recepcionista-badge { background: #fff7ed; color: #ea580c; }
-    .admin-badge         { background: #f0fdf4; color: #16a34a; }
+    .vendedor-badge       { background: #fff0f0; color: #c01818; }
+    .mecanico-badge       { background: #f0f4ff; color: #3b5bdb; }
+    .recepcionista-badge  { background: #fff7ed; color: #ea580c; }
+    .chefe-oficina-badge  { background: #ede9fe; color: #6d28d9; }
+    .gerente-vendas-badge { background: #fef3c7; color: #92400e; }
+    .admin-badge          { background: #f0fdf4; color: #16a34a; }
 
     .self-tag {
         font-size: 11px;

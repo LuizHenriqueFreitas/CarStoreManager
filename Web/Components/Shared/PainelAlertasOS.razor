@@ -22,7 +22,7 @@
         <div class="al-banner @(mensagemErro ? "al-erro" : "al-ok")">@mensagem</div>
     }
 
-    <AuthorizeView Roles="Admin,Mecanico" Context="ctxMec">
+    <AuthorizeView Roles="Admin,ChefeOficina,Mecanico" Context="ctxMec">
         <Authorized>
             @if (StatusOrdem == "EmAndamento")
             {
@@ -82,7 +82,7 @@
                         </p>
                     }
 
-                    <AuthorizeView Roles="Admin,Recepcionista" Context="ctxRec">
+                    <AuthorizeView Roles="Admin,ChefeOficina,Recepcionista" Context="ctxRec">
                         <Authorized>
                             @if (a.Status == "Pendente")
                             {

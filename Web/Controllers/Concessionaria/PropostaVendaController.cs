@@ -7,7 +7,7 @@ namespace CarStoreManager.Web.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Vendedor")]
+[Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
 public class PropostaVendaController : ControllerBase
 {
     private readonly IPropostaVendaService _service;
@@ -145,7 +145,7 @@ public class PropostaVendaController : ControllerBase
     // ============================================================
 
     [HttpPut("{id:guid}/termo")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,GerenteVendas")]
     public async Task<IActionResult> CriarOuEditarTermo(Guid id, [FromBody] CriarOuEditarTermoDTO dto)
     {
         var adminId = ObterUsuarioId();
@@ -161,7 +161,7 @@ public class PropostaVendaController : ControllerBase
     }
 
     [HttpPost("{id:guid}/termo/enviar-assinatura")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,GerenteVendas")]
     public async Task<IActionResult> EnviarTermoParaAssinatura(Guid id)
     {
         var r = await _service.EnviarTermoParaAssinaturaAsync(id);

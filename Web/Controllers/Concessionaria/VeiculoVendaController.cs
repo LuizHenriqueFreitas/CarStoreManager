@@ -7,7 +7,7 @@ namespace CarStoreManager.Web.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Vendedor")]
+[Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
 public class VeiculoVendaController : ControllerBase
 {
     private readonly IVeiculoVendaService _service;
@@ -46,7 +46,7 @@ public class VeiculoVendaController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,GerenteVendas")]
     public async Task<IActionResult> Criar([FromBody] CriarVeiculoVendaDTO dto)
     {
         var resultado = await _service.AddAsync(dto);
@@ -56,7 +56,7 @@ public class VeiculoVendaController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin,Vendedor")]
+    [Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
     public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarVeiculoVendaDTO dto)
     {
         dto.Id = id;
@@ -65,7 +65,7 @@ public class VeiculoVendaController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,GerenteVendas")]
     public async Task<IActionResult> Remover(Guid id)
     {
         var resultado = await _service.RemoveAsync(id);
@@ -73,7 +73,7 @@ public class VeiculoVendaController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/vendido")]
-    [Authorize(Roles = "Admin,Vendedor")]
+    [Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
     public async Task<IActionResult> MarcarComoVendido(Guid id)
     {
         var resultado = await _service.MarcarComoVendidoAsync(id);
@@ -81,7 +81,7 @@ public class VeiculoVendaController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/disponivel")]
-    [Authorize(Roles = "Admin,Vendedor")]
+    [Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
     public async Task<IActionResult> MarcarComoDisponivel(Guid id)
     {
         var resultado = await _service.MarcarComoDisponivelAsync(id);
@@ -89,7 +89,7 @@ public class VeiculoVendaController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/liberar-venda")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,GerenteVendas")]
     public async Task<IActionResult> LiberarParaVenda(Guid id)
     {
         var resultado = await _service.LiberarParaVendaAsync(id);
@@ -97,7 +97,7 @@ public class VeiculoVendaController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/voltar-preparacao")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,GerenteVendas")]
     public async Task<IActionResult> VoltarParaPreparacao(Guid id)
     {
         var resultado = await _service.VoltarParaPreparacaoAsync(id);
@@ -105,7 +105,7 @@ public class VeiculoVendaController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/quilometragem")]
-    [Authorize(Roles = "Admin,Vendedor")]
+    [Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
     public async Task<IActionResult> AtualizarQuilometragem(Guid id, [FromBody] int km)
     {
         var resultado = await _service.AtualizarQuilometragemAsync(id, km);
@@ -113,7 +113,7 @@ public class VeiculoVendaController : ControllerBase
     }
 
     [HttpPost("{id:guid}/fotos")]
-    [Authorize(Roles = "Admin,Vendedor")]
+    [Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
     public async Task<IActionResult> AdicionarFoto(Guid id, [FromBody] AdicionarFotoDTO dto)
     {
         var resultado = await _service.AdicionarFotoAsync(id, dto.Url);
@@ -121,7 +121,7 @@ public class VeiculoVendaController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/fotos/{fotoId:guid}")]
-    [Authorize(Roles = "Admin,Vendedor")]
+    [Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
     public async Task<IActionResult> RemoverFoto(Guid id, Guid fotoId)
     {
         var resultado = await _service.RemoverFotoAsync(id, fotoId);
