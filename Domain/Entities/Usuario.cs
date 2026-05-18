@@ -31,7 +31,6 @@ public class Usuario : Entity
     public Email Email { get; private set; } = null!;
     public Telefone Telefone { get; private set; } = null!;
     public Senha Senha { get; private set; } = null!;
-    public Dinheiro Salario { get; private set; } = null!;
     public RoleUsuario Role { get; private set; }
     public bool Ativo { get; private set; }
     public DateTime DataCriacao { get; private set; }
@@ -49,7 +48,6 @@ public class Usuario : Entity
         string email,
         string telefone,
         string senha,
-        decimal salario,
         RoleUsuario role)
     {
         if (string.IsNullOrWhiteSpace(nome))
@@ -59,7 +57,6 @@ public class Usuario : Entity
         Email = new Email(email);
         Telefone = new Telefone(telefone);
         Senha = new Senha(senha);
-        Salario = new Dinheiro(salario);
 
         Role = role;
         Ativo = true;
@@ -75,7 +72,6 @@ public class Usuario : Entity
     public string GetTelefone() => Telefone.ToString();
     public string GetSenhaHash() => Senha.GetSenhaHash();
     public Senha GetSenha() => Senha;
-    public decimal GetSalario() => Salario.GetValorDinheiro();
     public string GetRole() => Role.ToString();
     public bool GetAtivo() => Ativo;
     public DateTime GetDataCriacao() => DataCriacao;
@@ -101,10 +97,6 @@ public class Usuario : Entity
 
     public void AtualizarSenha(string novaSenha)
         => Senha.AtualizarSenha(novaSenha);
-
-    //metodo para atualizar o salario do funcionario
-    public void AtualizarSalario(decimal novoSalario)
-        => Salario.SetValorDinheiro(new Dinheiro(novoSalario));
 
     //talvez esse codigo nao seja acessado, mas ja foi implementado caso necessite
     public void AtualizarRole(string novaSenha)

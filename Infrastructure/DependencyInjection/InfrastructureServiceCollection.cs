@@ -1,4 +1,5 @@
 using CarStoreManager.Application.Interfaces;
+using CarStoreManager.Application.Interfaces.Oficina;
 using CarStoreManager.Application.Interfaces.Repositories;
 using CarStoreManager.Application.Interfaces.Sistema;
 using CarStoreManager.Application.Services;
@@ -58,6 +59,10 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IMecanicoRepository, MecanicoRepository>();
         services.AddScoped<IVeiculoClienteRepository, VeiculoClienteRepository>();
 
+        // Checklist presets (admin gerencia em Configurações)
+        services.AddScoped<IChecklistPresetRepository, ChecklistPresetRepository>();
+        services.AddScoped<IChecklistPresetService, ChecklistPresetService>();
+
         // NF-e (entrada)
         services.AddScoped<IFornecedorRepository, FornecedorRepository>();
         services.AddScoped<INotaFiscalRepository, NotaFiscalRepository>();
@@ -109,6 +114,8 @@ public static class InfrastructureServiceCollection
         // =========================
         services.AddScoped<IConfiguracaoSistemaRepository, ConfiguracaoSistemaRepository>();
         services.AddScoped<IConfiguracaoSistemaService, ConfiguracaoSistemaService>();
+        services.AddScoped<IDespesaRepository, DespesaRepository>();
+        services.AddScoped<IDespesaService, DespesaService>();
         services.AddScoped<IEmailService, SmtpEmailService>();
 
         // =========================

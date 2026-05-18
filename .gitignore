@@ -12,6 +12,7 @@ Properties/
 
 # VS Code
 .vscode/
+.claude/
 
 # Logs
 *.log

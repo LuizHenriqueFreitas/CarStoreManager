@@ -31,7 +31,8 @@ public static class VeiculoVendaMapping
             Fotos = entity.Fotos
                 .OrderBy(f => f.Ordem)
                 .Select(f => f.Url)
-                .ToList()
+                .ToList(),
+            TextoTermoPreliminar = entity.TextoTermoPreliminar
         };
     }
 
@@ -64,7 +65,7 @@ public static class VeiculoVendaMapping
 
     public static VeiculoVenda ToEntity(CriarVeiculoVendaDTO dto)
     {
-        return new VeiculoVenda(
+        var entity = new VeiculoVenda(
             dto.Marca,
             dto.Modelo,
             dto.Cor,
@@ -79,6 +80,11 @@ public static class VeiculoVendaMapping
             ConverterAcessorios(dto.Acessorios),
             dto.AnoUltimoIpvaPago
         );
+
+        if (!string.IsNullOrWhiteSpace(dto.TextoTermoPreliminar))
+            entity.AtualizarTextoTermoPreliminar(dto.TextoTermoPreliminar);
+
+        return entity;
     }
 
     public static void UpdateEntity(VeiculoVenda entity, AtualizarVeiculoVendaDTO dto)
@@ -87,6 +93,9 @@ public static class VeiculoVendaMapping
             new Dinheiro(dto.Valor),
             ConverterEnum<DisponibilidadeVeiculo>(dto.Disponibilidade, "Disponibilidade")
         );
+
+        if (dto.TextoTermoPreliminar is not null)
+            entity.AtualizarTextoTermoPreliminar(dto.TextoTermoPreliminar);
     }
 
     // =========================

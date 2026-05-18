@@ -387,7 +387,7 @@ namespace CarStoreManager.Tests.Unidade.Services
         public async Task AtualizarStatusChecklistAsync_StatusInvalido_RetornaFalha()
         {
             var ordem = CriarOrdemValida();
-            ordem.GerarChecklistAutomatico(); // adiciona item automático
+            ordem.GerarChecklistAPartirDoPreset(new[] { "Item teste 1", "Item teste 2" }); // adiciona item automático
             var item = ordem.Checklist.First();
             _ordemRepoMock.Setup(r => r.GetByIdAsync(ordem.Id)).ReturnsAsync(ordem);
 
@@ -408,7 +408,7 @@ namespace CarStoreManager.Tests.Unidade.Services
         public async Task AtualizarStatusChecklistAsync_IniciarItem_Sucesso()
         {
             var ordem = CriarOrdemValida();
-            ordem.GerarChecklistAutomatico();
+            ordem.GerarChecklistAPartirDoPreset(new[] { "Item teste 1", "Item teste 2" });
             var item = ordem.Checklist.First();
             _ordemRepoMock.Setup(r => r.GetByIdAsync(ordem.Id)).ReturnsAsync(ordem);
             _ordemRepoMock.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
@@ -431,7 +431,7 @@ namespace CarStoreManager.Tests.Unidade.Services
         public async Task AtualizarStatusChecklistAsync_ConcluirItem_Sucesso()
         {
             var ordem = CriarOrdemValida();
-            ordem.GerarChecklistAutomatico();
+            ordem.GerarChecklistAPartirDoPreset(new[] { "Item teste 1", "Item teste 2" });
             var item = ordem.Checklist.First();
             item.IniciarItem(); // vai para EmAndamento
             _ordemRepoMock.Setup(r => r.GetByIdAsync(ordem.Id)).ReturnsAsync(ordem);

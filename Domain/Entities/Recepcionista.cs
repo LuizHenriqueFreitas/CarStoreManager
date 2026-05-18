@@ -19,10 +19,9 @@ public class Recepcionista : Usuario
         string email,
         string telefone,
         string senhaHash,
-        decimal salario,
         NivelFuncionario nivel,
         DateTime dataContratacao)
-        : base(nome, email, telefone, senhaHash, salario, RoleUsuario.Recepcionista)
+        : base(nome, email, telefone, senhaHash, RoleUsuario.Recepcionista)
     {
         DadosFuncionario = new DadosFuncionario(nivel, dataContratacao);
     }

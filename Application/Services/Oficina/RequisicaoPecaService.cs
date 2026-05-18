@@ -74,10 +74,34 @@ public class RequisicaoPecaService : IRequisicaoPecaService
         var componente = await _componentesRepo.GetByIdAsync(dto.ComponenteId);
         if (componente is null) return Result.Fail("Componente vinculado não existe.");
 
+        var ordem = await _ordensRepo.GetByIdAsync(req.OrdemServicoId);
+        if (ordem is null) return Result.Fail("OS associada à requisição não encontrada.");
+
         try
         {
             req.Atender(resolvidaPor, dto.ComponenteId, dto.Observacao);
+
+            // Cria automaticamente o item na OS com Origem=Encomenda. O mecânico
+            // não precisa mais adicionar manualmente — atender a requisição já
+            // amarra a peça à OS, marcada como AguardandoChegada.
+            var quantidade = dto.Quantidade ?? req.Quantidade;
+            var valorUnit = dto.ValorUnitario ?? componente.ValorVenda;
+
+            if (quantidade <= 0) quantidade = 1;
+            if (valorUnit < 0) valorUnit = 0;
+
+            var item = new ItemOrdemServico(
+                componente.Id,
+                ordem.Id,
+                quantidade,
+                valorUnit,
+                OrigemItemOrdemServico.Encomenda);
+
+            ordem.AdicionarItem(item);
+
             _requisicoesRepo.Update(req);
+            _ordensRepo.Update(ordem);
+            await _ordensRepo.AdicionarItemAsync(item);
             await _requisicoesRepo.SaveChangesAsync();
             return Result.Ok();
         }

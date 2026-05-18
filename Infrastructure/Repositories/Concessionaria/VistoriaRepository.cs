@@ -20,6 +20,12 @@ public class VistoriaRepository : IVistoriaRepository
             .OrderByDescending(v => v.DataRealizada)
             .ToListAsync();
 
+    public async Task<Vistoria?> ObterPendentePorPropostaAsync(Guid propostaId)
+        => await _context.Vistorias
+            .Where(v => v.PropostaVendaId == propostaId && !v.Concluida)
+            .OrderByDescending(v => v.DataRealizada)
+            .FirstOrDefaultAsync();
+
     public async Task AddAsync(Vistoria entity) => await _context.Vistorias.AddAsync(entity);
     public void Update(Vistoria entity) => _context.Vistorias.Update(entity);
     public void Remove(Vistoria entity) => _context.Vistorias.Remove(entity);

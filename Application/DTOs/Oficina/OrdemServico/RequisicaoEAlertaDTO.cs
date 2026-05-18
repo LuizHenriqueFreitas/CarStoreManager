@@ -32,6 +32,18 @@ public class AtenderRequisicaoDTO
 {
     public Guid ComponenteId { get; set; }
     public string? Observacao { get; set; }
+
+    /// <summary>
+    /// Quantidade que o admin está alocando para a OS. Default = quantidade
+    /// originalmente pedida na requisição.
+    /// </summary>
+    public int? Quantidade { get; set; }
+
+    /// <summary>
+    /// Valor unitário a registrar no item da OS. Default = ValorVenda do
+    /// componente; admin pode sobrescrever se necessário.
+    /// </summary>
+    public decimal? ValorUnitario { get; set; }
 }
 
 public class RejeitarRequisicaoDTO

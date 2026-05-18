@@ -15,4 +15,10 @@ public class CriarVeiculoVendaDTO
     public decimal Valor { get; set; }
     public List<string> Acessorios { get; set; } = new();
     public int? AnoUltimoIpvaPago { get; set; }
+
+    /// <summary>
+    /// Texto preliminar do termo de entrega — preenchido pelo admin no
+    /// cadastro. Vira a base do termo quando a proposta for gerada.
+    /// </summary>
+    public string TextoTermoPreliminar { get; set; } = "";
 }

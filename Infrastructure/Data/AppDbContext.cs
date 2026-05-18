@@ -29,6 +29,8 @@ public class AppDbContext : DbContext
     public DbSet<OrdemServico> OrdensServico { get; set; }
     public DbSet<ItemOrdemServico> ItensOrdemServico { get; set; }
     public DbSet<ChecklistOrdemServico> ChecklistItens { get; set; }
+    public DbSet<ChecklistPreset> ChecklistPresets { get; set; }
+    public DbSet<ChecklistPresetItem> ChecklistPresetItens { get; set; }
     public DbSet<Componente> Componentes { get; set; }
     public DbSet<EstoqueComponente> EstoqueComponentes { get; set; }
     public DbSet<PagamentoOrdemServico> PagamentosOrdemServico { get; set; }
@@ -54,6 +56,7 @@ public class AppDbContext : DbContext
     // SISTEMA
     // =========================
     public DbSet<ConfiguracaoSistema> ConfiguracoesSistema { get; set; }
+    public DbSet<Despesa> Despesas { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -87,12 +90,6 @@ public class AppDbContext : DbContext
             .OwnsOne(u => u.Senha, s =>
                 s.Property("Hash")
                     .HasColumnName("SenhaHash")
-                    .IsRequired());
-
-        modelBuilder.Entity<Usuario>()
-            .OwnsOne(d => d.Salario, s =>
-                s.Property("Valor")
-                    .HasColumnName("Salario")
                     .IsRequired());
 
         modelBuilder.Entity<Vendedor>()
@@ -214,6 +211,20 @@ public class AppDbContext : DbContext
         // =========================
         modelBuilder.Entity<ChecklistOrdemServico>().HasKey(c => c.Id);
         modelBuilder.Entity<ChecklistOrdemServico>().Property(c => c.Titulo).IsRequired(false);
+
+        // =========================
+        // CHECKLIST PRESET (editável pelo admin)
+        // =========================
+        modelBuilder.Entity<ChecklistPreset>().HasKey(p => p.Id);
+        modelBuilder.Entity<ChecklistPreset>().Property(p => p.Nome).IsRequired();
+        modelBuilder.Entity<ChecklistPreset>()
+            .HasMany(p => p.Itens)
+            .WithOne()
+            .HasForeignKey(i => i.ChecklistPresetId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ChecklistPresetItem>().HasKey(i => i.Id);
+        modelBuilder.Entity<ChecklistPresetItem>().Property(i => i.Descricao).IsRequired();
 
         // =========================
         // COMPONENTE
@@ -454,6 +465,21 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ConfiguracaoSistema>().HasKey(c => c.Id);
         modelBuilder.Entity<ConfiguracaoSistema>()
             .Property(c => c.MargemPadraoGlobalPct).HasPrecision(7, 4);
+        modelBuilder.Entity<ConfiguracaoSistema>()
+            .Property(c => c.PercentualEntradaMinima).HasPrecision(5, 2);
+
+        // =========================
+        // DESPESA (planilha mensal do admin)
+        // =========================
+        modelBuilder.Entity<Despesa>().HasKey(d => d.Id);
+        modelBuilder.Entity<Despesa>().Property(d => d.Nome).IsRequired();
+        modelBuilder.Entity<Despesa>()
+            .Property(d => d.Setor)
+            .HasConversion<string>()
+            .HasDefaultValue(CarStoreManager.Domain.Enums.SetorDespesa.Geral);
+        modelBuilder.Entity<Despesa>()
+            .OwnsOne(d => d.Valor, vo =>
+                vo.Property("Valor").HasColumnName("Valor").HasPrecision(18, 2));
 
         // === Precificação de componentes ===
         modelBuilder.Entity<Componente>()

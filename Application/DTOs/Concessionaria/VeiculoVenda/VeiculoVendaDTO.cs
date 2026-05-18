@@ -18,4 +18,5 @@ public class VeiculoVendaDTO
     public int? AnoUltimoIpvaPago { get; set; }
     public List<string> Acessorios { get; set; } = new();
     public List<string> Fotos { get; set; } = new();
+    public string TextoTermoPreliminar { get; set; } = "";
 }

@@ -92,6 +92,9 @@ namespace CarStoreManager.Tests.Integration.Repositories
         {
             var disponivel1 = await SalvarVeiculo("Disp1", "M1", "Cor", "1.0", 2020, 1000, "AAA1111",
                 TipoCambio.Manual, TipoCombustivel.Gasolina, 30000.00m, AcessoriosVeiculo.Nenhum);
+            // Novo veículo nasce em preparação — admin libera para venda.
+            disponivel1.LiberarParaVenda();
+
             var vendido = await SalvarVeiculo("Vendido", "M2", "Cor", "1.0", 2019, 5000, "BBB2222",
                 TipoCambio.Manual, TipoCombustivel.Gasolina, 25000.00m, AcessoriosVeiculo.Nenhum);
             vendido.MarcarComoVendido();

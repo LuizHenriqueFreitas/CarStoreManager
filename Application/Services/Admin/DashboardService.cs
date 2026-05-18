@@ -4,6 +4,7 @@ using CarStoreManager.Application.DTOs.Admin;
 using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Interfaces.Repositories.Oficina;
+using CarStoreManager.Domain.Interfaces.Repositories.Sistema;
 using CarStoreManager.Domain.Repositories;
 
 namespace CarStoreManager.Application.Services.Dashboards;
@@ -17,20 +18,20 @@ public class DashboardService : IDashboardService
 {
     private const int JANELA_MESES = 6;
 
-    private readonly IUsuarioRepository _usuarios;
+    private readonly IDespesaRepository _despesas;
     private readonly INotaFiscalRepository _notasEntrada;
     private readonly IOrdemServicoRepository _ordens;
     private readonly IPropostaVendaRepository _propostas;
     private readonly IVeiculoVendaRepository _veiculos;
 
     public DashboardService(
-        IUsuarioRepository usuarios,
+        IDespesaRepository despesas,
         INotaFiscalRepository notasEntrada,
         IOrdemServicoRepository ordens,
         IPropostaVendaRepository propostas,
         IVeiculoVendaRepository veiculos)
     {
-        _usuarios = usuarios;
+        _despesas = despesas;
         _notasEntrada = notasEntrada;
         _ordens = ordens;
         _propostas = propostas;
@@ -45,9 +46,18 @@ public class DashboardService : IDashboardService
 
         var dto = new DashboardMetricasDTO();
 
-        // === Salários (constante mensal) ===
-        var todosUsuarios = (await _usuarios.GetAllAsync()).Where(u => u.Ativo).ToList();
-        dto.TotalSalariosMensal = todosUsuarios.Sum(u => u.GetSalario());
+        // === Despesas fixas mensais cadastradas pelo admin (luz, água, aluguel, salários, etc.) ===
+        var despesasAtivas = (await _despesas.GetAtivasAsync()).ToList();
+        dto.TotalDespesasFixasMensal = despesasAtivas.Sum(d => d.GetValor());
+        dto.TotalDespesasGeralMensal = despesasAtivas
+            .Where(d => d.Setor == SetorDespesa.Geral)
+            .Sum(d => d.GetValor());
+        dto.TotalDespesasOficinaMensal = despesasAtivas
+            .Where(d => d.Setor == SetorDespesa.Oficina)
+            .Sum(d => d.GetValor());
+        dto.TotalDespesasConcessionariaMensal = despesasAtivas
+            .Where(d => d.Setor == SetorDespesa.Concessionaria)
+            .Sum(d => d.GetValor());
 
         // === Gastos com peças (NotaFiscal entrada aprovada) ===
         var todasNotas = (await _notasEntrada.GetAllAsync())

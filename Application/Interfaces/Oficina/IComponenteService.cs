@@ -13,6 +13,12 @@ public interface IComponenteService : IService<
     Task<Result<IEnumerable<ComponenteDTO>>> ObterComEstoqueBaixoAsync();
     Task<Result<IEnumerable<ComponenteDTO>>> ObterPorSistemaAsync(string sistema);
 
+    /// <summary>
+    /// Busca componentes por substring em Nome/SKU/PartNumber/OEM/CodigoBarras.
+    /// Usado pelo autocomplete na criação e edição de OS.
+    /// </summary>
+    Task<Result<IEnumerable<ComponenteBuscaDTO>>> BuscarAsync(string termo, int limite = 20);
+
     // ESTOQUE (REGRA DE NEGÓCIO)
     Task<Result> EntradaEstoqueAsync(Guid componenteId, int quantidade);
     Task<Result> SaidaEstoqueAsync(Guid componenteId, int quantidade);

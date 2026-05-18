@@ -35,6 +35,16 @@ public class ConfiguracaoSistema : Entity
     /// <summary>Margem fallback quando o sistema do componente não está mapeado.</summary>
     public decimal MargemPadraoGlobalPct { get; private set; } = 30m;
 
+    // === Modo operante da oficina — entrada mínima opcional ===
+    /// <summary>
+    /// Quando true, a OS só pode sair de <c>Pendente/Aprovada</c> para <c>EmAndamento</c>
+    /// após o cliente pagar pelo menos <c>PercentualEntradaMinima%</c> do valor total.
+    /// </summary>
+    public bool ExigirEntradaMinima { get; private set; } = false;
+
+    /// <summary>Percentual mínimo de entrada exigido (0–100). Ignorado se <see cref="ExigirEntradaMinima"/> for false.</summary>
+    public decimal PercentualEntradaMinima { get; private set; } = 0m;
+
     public DateTime? DataUltimaAtualizacao { get; private set; }
 
     protected ConfiguracaoSistema() { }
@@ -105,6 +115,27 @@ public class ConfiguracaoSistema : Entity
 
         MargensPorSistemaJson = System.Text.Json.JsonSerializer.Serialize(sane);
         MargemPadraoGlobalPct = padraoGlobal;
+        DataUltimaAtualizacao = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Configura o modo operante de entrada mínima para abertura de OS.
+    /// Quando <paramref name="exigir"/> é false, o percentual é zerado.
+    /// </summary>
+    public void ConfigurarEntradaMinima(bool exigir, decimal percentual)
+    {
+        if (exigir)
+        {
+            if (percentual < 0 || percentual > 100)
+                throw new ArgumentException("Percentual de entrada mínima deve estar entre 0 e 100.", nameof(percentual));
+            PercentualEntradaMinima = decimal.Round(percentual, 2, MidpointRounding.AwayFromZero);
+        }
+        else
+        {
+            PercentualEntradaMinima = 0m;
+        }
+
+        ExigirEntradaMinima = exigir;
         DataUltimaAtualizacao = DateTime.UtcNow;
     }
 

@@ -29,6 +29,37 @@ public class ComponenteRepository : IComponenteRepository
     public Task<IEnumerable<Componente>> ObterPorSistemaAsync(SistemaComponente sistema)
         => Task.FromResult<IEnumerable<Componente>>(Array.Empty<Componente>());
 
+    public async Task<IEnumerable<Componente>> BuscarAsync(string termo, int limite = 20)
+    {
+        if (limite <= 0) limite = 20;
+        if (limite > 100) limite = 100;
+
+        if (string.IsNullOrWhiteSpace(termo))
+        {
+            return await _context.Componentes
+                .Where(c => c.Ativo)
+                .OrderBy(c => c.Nome)
+                .Take(limite)
+                .ToListAsync();
+        }
+
+        var t = termo.Trim().ToLower();
+
+        // EF.Functions.Like é traduzido para LIKE no SQLite com COLLATE NOCASE
+        // nas colunas string padrão. Usamos comparações via ToLower() para
+        // garantir case-insensitive em todos os providers.
+        return await _context.Componentes
+            .Where(c => c.Ativo &&
+                       (c.Nome.ToLower().Contains(t) ||
+                        c.SKUInterno.ToLower().Contains(t) ||
+                        c.PartNumber.ToLower().Contains(t) ||
+                        c.CodigoOEM.ToLower().Contains(t) ||
+                        c.CodigoBarras.ToLower().Contains(t)))
+            .OrderBy(c => c.Nome)
+            .Take(limite)
+            .ToListAsync();
+    }
+
     public async Task AddAsync(Componente componente)
         => await _context.Componentes.AddAsync(componente);
 

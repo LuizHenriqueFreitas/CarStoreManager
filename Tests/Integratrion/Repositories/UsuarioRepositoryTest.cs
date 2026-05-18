@@ -197,8 +197,7 @@ return new Admin(
 "Admin Teste",
 email,
 "00000000000",
-"Admin@123",
-3000
+"Admin@123"
 );
 }
 }

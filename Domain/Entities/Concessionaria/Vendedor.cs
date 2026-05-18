@@ -25,10 +25,9 @@ public class Vendedor : Usuario
         string email,
         string telefone,
         string senhaHash,
-        decimal salario,
         NivelFuncionario nivel,
         DateTime dataContratacao)
-        : base(nome, email, telefone, senhaHash, salario, RoleUsuario.Vendedor)
+        : base(nome, email, telefone, senhaHash, RoleUsuario.Vendedor)
     {
         DadosFuncionario = new DadosFuncionario(nivel, dataContratacao);
     }

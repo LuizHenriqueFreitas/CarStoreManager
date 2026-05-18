@@ -2,10 +2,12 @@
 @using CarStoreManager.Application.DTOs.Oficina.OrdemServico
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Oficina.Componente
+@using System.Timers
+@implements IDisposable
 @inject IComponenteService ComponenteService
 
 <div class="form-card">
-    <h2 class="secao-titulo">Itens da Ordem (peças/serviços)</h2>
+    <h2 class="secao-titulo">Itens da Ordem (peças)</h2>
 
     @if (itens.Any())
     {
@@ -13,6 +15,7 @@
             <thead>
                 <tr>
                     <th>Componente</th>
+                    <th>Origem</th>
                     <th>Qtd</th>
                     <th>Valor Unit.</th>
                     <th>Total</th>
@@ -24,6 +27,9 @@
                 {
                     <tr>
                         <td>@item.NomeComponente</td>
+                        <td>
+                            <span class="badge-origem badge-@item.Origem.ToLower()">@LabelOrigem(item.Origem)</span>
+                        </td>
                         <td>@item.Quantidade</td>
                         <td>R$ @item.ValorUnitario.ToString("N2")</td>
                         <td>R$ @((item.Quantidade * item.ValorUnitario).ToString("N2"))</td>
@@ -34,18 +40,98 @@
         </table>
     }
 
-    <div class="adicionar-item">
-        <select class="campo-input" @bind="componenteSelecionadoId">
-            <option value="">Selecione um componente...</option>
-            @foreach (var comp in componentesDisponiveis)
+    <div class="adicionar-bloco">
+        <div class="origem-seletor">
+            <label class="radio-line">
+                <input type="radio" name="origem-item" value="Estoque"
+                       checked="@(origemSelecionada == "Estoque")"
+                       @onchange='() => { origemSelecionada = "Estoque"; LimparBusca(); }' />
+                <span>Pegar do estoque</span>
+            </label>
+            <label class="radio-line">
+                <input type="radio" name="origem-item" value="Cliente"
+                       checked="@(origemSelecionada == "Cliente")"
+                       @onchange='() => { origemSelecionada = "Cliente"; LimparBusca(); }' />
+                <span>Fornecido pelo cliente</span>
+            </label>
+        </div>
+
+        <div class="busca-wrapper">
+            <input type="text"
+                   class="campo-input busca-input"
+                   placeholder="Buscar por nome, OEM, partnumber, SKU ou código de barras..."
+                   value="@termoBusca"
+                   @oninput="OnTermoChanged"
+                   @onfocus="OnBuscaFocus" />
+
+            @if (mostrarResultados && resultadosBusca.Any())
             {
-                <option value="@comp.Id">@comp.Nome (@comp.PartNumber)</option>
+                <div class="dropdown-resultados">
+                    @foreach (var r in resultadosBusca)
+                    {
+                        <div class="resultado-item" @onclick="() => SelecionarComponente(r)">
+                            <div class="resultado-titulo">@r.Nome</div>
+                            <div class="resultado-meta">
+                                <span>@r.MarcaFabricante</span>
+                                @if (!string.IsNullOrWhiteSpace(r.PartNumber))
+                                {
+                                    <span>· P/N @r.PartNumber</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(r.CodigoOEM))
+                                {
+                                    <span>· OEM @r.CodigoOEM</span>
+                                }
+                            </div>
+                            <div class="resultado-meta-direita">
+                                <span>R$ @r.ValorVenda.ToString("N2")</span>
+                                <span class="estoque-tag @(r.QuantidadeEmEstoque > 0 ? "ok" : "vazio")">
+                                    @r.QuantidadeEmEstoque em estoque
+                                </span>
+                            </div>
+                        </div>
+                    }
+                </div>
             }
-        </select>
-        <input type="number" class="campo-input qtd" @bind="quantidade" placeholder="Qtd" min="1" />
-        <input type="number" step="0.01" class="campo-input valor" @bind="valorUnitario" placeholder="Valor Unit." />
-        <button class="btn-adicionar-item" @onclick="AdicionarItem" disabled="@(componenteSelecionadoId == Guid.Empty || quantidade < 1)">+</button>
+            else if (mostrarResultados && !string.IsNullOrWhiteSpace(termoBusca) && !buscando)
+            {
+                <div class="dropdown-resultados">
+                    <div class="resultado-vazio">Nenhum componente encontrado para "@termoBusca"</div>
+                </div>
+            }
+        </div>
+
+        @if (componenteSelecionado is not null)
+        {
+            <div class="selecionado-box">
+                <div class="selecionado-info">
+                    <strong>@componenteSelecionado.Nome</strong>
+                    <span class="muted">
+                        @componenteSelecionado.MarcaFabricante
+                        @if (!string.IsNullOrWhiteSpace(componenteSelecionado.PartNumber))
+                        {
+                            <text> · P/N @componenteSelecionado.PartNumber</text>
+                        }
+                    </span>
+                </div>
+                <div class="selecionado-campos">
+                    <input type="number" class="campo-input qtd" @bind="quantidade" placeholder="Qtd" min="1" />
+                    <input type="number" step="0.01" class="campo-input valor" @bind="valorUnitario" placeholder="Valor Unit." />
+                    <button class="btn-adicionar-item" @onclick="AdicionarItem"
+                            disabled="@(quantidade < 1 || valorUnitario <= 0)">
+                        + Adicionar
+                    </button>
+                    <button class="btn-cancelar-sel" @onclick="LimparSelecao">Cancelar</button>
+                </div>
+                @if (origemSelecionada == "Estoque" && componenteSelecionado.QuantidadeEmEstoque < quantidade)
+                {
+                    <div class="aviso-estoque">
+                        ⚠ Apenas @componenteSelecionado.QuantidadeEmEstoque em estoque — pedido excede o disponível
+                    </div>
+                }
+            </div>
+        }
     </div>
+
     @if (!string.IsNullOrEmpty(mensagemErroItem))
     {
         <div class="erro-banner">@mensagemErroItem</div>
@@ -56,80 +142,151 @@
     [Parameter] public List<ItemOrdemServicoDTO> Itens { get; set; } = new();
     [Parameter] public EventCallback<List<ItemOrdemServicoDTO>> ItensChanged { get; set; }
 
-    private List<ComponenteListaDTO> componentesDisponiveis = new();
-    private Guid componenteSelecionadoId;
+    private string termoBusca = "";
+    private bool mostrarResultados;
+    private bool buscando;
+    private List<ComponenteBuscaDTO> resultadosBusca = new();
+    private ComponenteBuscaDTO? componenteSelecionado;
+    private string origemSelecionada = "Estoque";
     private int quantidade = 1;
     private decimal valorUnitario;
     private string? mensagemErroItem;
+    private Timer? debounceTimer;
 
     private List<ItemOrdemServicoTemp> itens = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        await CarregarComponentes();
-        // Se houver itens iniciais (edição), popular a lista temp
         foreach (var i in Itens)
-            itens.Add(new ItemOrdemServicoTemp { ComponenteId = i.ComponenteId, Quantidade = i.Quantidade, ValorUnitario = i.ValorUnitario });
+        {
+            itens.Add(new ItemOrdemServicoTemp
+            {
+                ComponenteId = i.ComponenteId,
+                NomeComponente = "",
+                Quantidade = i.Quantidade,
+                ValorUnitario = i.ValorUnitario,
+                Origem = string.IsNullOrEmpty(i.Origem) ? "Estoque" : i.Origem
+            });
+        }
     }
 
-    private async Task CarregarComponentes()
+    private void OnBuscaFocus()
     {
-        var result = await ComponenteService.GetAllAsync();
-        if (result.IsSuccess && result.Value != null)
-            componentesDisponiveis = result.Value.ToList();
+        mostrarResultados = true;
+        if (resultadosBusca.Count == 0 && string.IsNullOrWhiteSpace(termoBusca))
+        {
+            _ = ExecutarBuscaAsync(); // lista inicial vazia carrega top 20
+        }
     }
 
-    private void AdicionarItem()
+    private void OnTermoChanged(ChangeEventArgs e)
     {
-        var componente = componentesDisponiveis.FirstOrDefault(c => c.Id == componenteSelecionadoId);
-        if (componente == null)
-        {
-            mensagemErroItem = "Componente não encontrado.";
-            return;
-        }
+        termoBusca = e.Value?.ToString() ?? "";
+        mostrarResultados = true;
 
-        // Componente não tem mais valor de referência fixo (estoque por lote);
-        // valor unitário precisa vir do operador.
-        if (valorUnitario <= 0)
-        {
-            mensagemErroItem = "Informe o valor unitário do item.";
-            return;
-        }
-        var valor = valorUnitario;
+        debounceTimer?.Stop();
+        debounceTimer?.Dispose();
+        debounceTimer = new Timer(220) { AutoReset = false };
+        debounceTimer.Elapsed += async (_, _) => await InvokeAsync(ExecutarBuscaAsync);
+        debounceTimer.Start();
+    }
 
-        itens.Add(new ItemOrdemServicoTemp
-        {
-            ComponenteId = componente.Id,
-            NomeComponente = componente.Nome,
-            Quantidade = quantidade,
-            ValorUnitario = valor
-        });
+    private async Task ExecutarBuscaAsync()
+    {
+        buscando = true;
+        var r = await ComponenteService.BuscarAsync(termoBusca, 20);
+        if (r.IsSuccess)
+            resultadosBusca = r.Value!.ToList();
+        buscando = false;
+        StateHasChanged();
+    }
 
-        // Dispara alteração para o pai
-        Itens = itens.Select(i => new ItemOrdemServicoDTO
-        {
-            ComponenteId = i.ComponenteId,
-            Quantidade = i.Quantidade,
-            ValorUnitario = i.ValorUnitario
-        }).ToList();
-        ItensChanged.InvokeAsync(Itens);
+    private void SelecionarComponente(ComponenteBuscaDTO c)
+    {
+        componenteSelecionado = c;
+        valorUnitario = c.ValorVenda;
+        mostrarResultados = false;
+        termoBusca = "";
+        resultadosBusca.Clear();
+    }
 
-        componenteSelecionadoId = Guid.Empty;
+    private void LimparSelecao()
+    {
+        componenteSelecionado = null;
         quantidade = 1;
         valorUnitario = 0;
         mensagemErroItem = null;
     }
 
+    private void LimparBusca()
+    {
+        LimparSelecao();
+        termoBusca = "";
+        resultadosBusca.Clear();
+        mostrarResultados = false;
+    }
+
+    private void AdicionarItem()
+    {
+        if (componenteSelecionado is null)
+        {
+            mensagemErroItem = "Selecione um componente primeiro.";
+            return;
+        }
+        if (valorUnitario <= 0)
+        {
+            mensagemErroItem = "Informe o valor unitário.";
+            return;
+        }
+        if (quantidade < 1)
+        {
+            mensagemErroItem = "Quantidade inválida.";
+            return;
+        }
+
+        itens.Add(new ItemOrdemServicoTemp
+        {
+            ComponenteId = componenteSelecionado.Id,
+            NomeComponente = componenteSelecionado.Nome,
+            Quantidade = quantidade,
+            ValorUnitario = valorUnitario,
+            Origem = origemSelecionada
+        });
+
+        SincronizarPai();
+        LimparSelecao();
+    }
+
     private void RemoverItem(ItemOrdemServicoTemp item)
     {
         itens.Remove(item);
+        SincronizarPai();
+    }
+
+    private void SincronizarPai()
+    {
         Itens = itens.Select(i => new ItemOrdemServicoDTO
         {
             ComponenteId = i.ComponenteId,
             Quantidade = i.Quantidade,
-            ValorUnitario = i.ValorUnitario
+            ValorUnitario = i.ValorUnitario,
+            Origem = i.Origem
         }).ToList();
         ItensChanged.InvokeAsync(Itens);
+    }
+
+    private static string LabelOrigem(string origem) => origem switch
+    {
+        "Estoque" => "Estoque",
+        "Cliente" => "Cliente",
+        "Encomenda" => "Encomenda",
+        _ => origem
+    };
+
+    public void Dispose()
+    {
+        debounceTimer?.Stop();
+        debounceTimer?.Dispose();
     }
 
     private class ItemOrdemServicoTemp
@@ -138,6 +295,7 @@
         public string NomeComponente { get; set; } = "";
         public int Quantidade { get; set; }
         public decimal ValorUnitario { get; set; }
+        public string Origem { get; set; } = "Estoque";
     }
 }
 
@@ -145,11 +303,58 @@
     .tabela-itens { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
     .tabela-itens th, .tabela-itens td { text-align: left; padding: 8px 6px; border-bottom: 0.5px solid #eee; font-size: 13px; }
     .btn-remover-pequeno { background: none; border: none; color: #e02020; font-size: 16px; cursor: pointer; }
-    .adicionar-item { display: flex; gap: 8px; align-items: center; }
+
+    .badge-origem { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+    .badge-estoque { background: #dff5e1; color: #1f7a3a; }
+    .badge-cliente { background: #fff5d9; color: #8a6d00; }
+    .badge-encomenda { background: #e0e7ff; color: #3730a3; }
+
+    .adicionar-bloco { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+    .origem-seletor { display: flex; gap: 16px; padding: 6px 0; }
+    .radio-line { display: flex; align-items: center; gap: 6px; font-size: 0.9em; cursor: pointer; }
+
+    .busca-wrapper { position: relative; }
+    .busca-input { width: 100%; padding: 9px 12px; }
+    .dropdown-resultados {
+        position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+        background: #fff; border: 1px solid #ccc; border-top: 0;
+        max-height: 320px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .resultado-item {
+        padding: 10px 12px; cursor: pointer; display: grid;
+        grid-template-columns: 1fr auto; gap: 4px 12px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .resultado-item:hover { background: #f7fafc; }
+    .resultado-titulo { font-weight: 500; grid-column: 1; }
+    .resultado-meta { font-size: 0.82em; color: #777; grid-column: 1; }
+    .resultado-meta-direita {
+        grid-column: 2; grid-row: 1 / 3; text-align: right;
+        display: flex; flex-direction: column; gap: 4px; align-items: flex-end;
+    }
+    .resultado-meta-direita span:first-child { font-weight: 500; color: #333; }
+    .estoque-tag { padding: 2px 8px; border-radius: 10px; font-size: 0.75em; }
+    .estoque-tag.ok { background: #dff5e1; color: #1f7a3a; }
+    .estoque-tag.vazio { background: #fdecea; color: #a72020; }
+    .resultado-vazio { padding: 14px; text-align: center; color: #888; font-size: 0.9em; }
+
+    .selecionado-box {
+        background: #f7fafc; border: 1px solid #d0d7de; border-radius: 8px;
+        padding: 12px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .selecionado-info { display: flex; flex-direction: column; gap: 2px; }
+    .muted { color: #888; font-size: 0.85em; }
+    .selecionado-campos { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
     .campo-input { border: 0.5px solid #ccc; border-radius: 8px; padding: 9px 12px; font-size: 14px; outline: none; }
-    .qtd { width: 60px; }
-    .valor { width: 110px; }
-    .btn-adicionar-item { background: #e02020; color: #fff; border: none; border-radius: 8px; padding: 9px 16px; font-size: 18px; cursor: pointer; }
+    .qtd { width: 70px; }
+    .valor { width: 120px; }
+    .btn-adicionar-item {
+        background: #0a84ff; color: #fff; border: none; border-radius: 8px;
+        padding: 9px 16px; font-size: 14px; cursor: pointer;
+    }
     .btn-adicionar-item:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-cancelar-sel { background: #eee; border: 0; border-radius: 8px; padding: 9px 14px; cursor: pointer; }
+    .aviso-estoque { font-size: 0.85em; color: #8a6d00; background: #fff5d9; padding: 6px 10px; border-radius: 6px; }
     .erro-banner { background: #fff5f5; border: 0.5px solid #fca5a5; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #e02020; margin-top: 8px; }
 </style>

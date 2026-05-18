@@ -269,21 +269,21 @@ public class OrdemServicoTest
     // ==================== CHECKLIST ====================
 
     [Fact]
-    public void GerarChecklistAutomatico_TipoManutencao_AdicionaItensAutomaticos()
+    public void GerarChecklistAPartirDoPreset_ListaDeDescricoes_AdicionaItensAutomaticos()
     {
-        var ordem = CriarOrdemServicoValida(tipo: TipoServico.Manutencao); // supondo que Manual tenha templates
-        ordem.GerarChecklistAutomatico();
-        ordem.Checklist.Should().NotBeEmpty();
+        var ordem = CriarOrdemServicoValida(tipo: TipoServico.Manutencao);
+        ordem.GerarChecklistAPartirDoPreset(new[] { "Verificar óleo", "Verificar pneus" });
+        ordem.Checklist.Should().HaveCount(2);
         ordem.Checklist.All(c => c.Origem == OrigemChecklistItem.Automatico).Should().BeTrue();
     }
 
     [Fact]
-    public void GerarChecklistAutomatico_ChamadoDuasVezes_NaoDuplica()
+    public void GerarChecklistAPartirDoPreset_ChamadoDuasVezes_NaoDuplica()
     {
         var ordem = CriarOrdemServicoValida(tipo: TipoServico.Manutencao);
-        ordem.GerarChecklistAutomatico();
+        ordem.GerarChecklistAPartirDoPreset(new[] { "Item 1", "Item 2" });
         var count = ordem.Checklist.Count;
-        ordem.GerarChecklistAutomatico();
+        ordem.GerarChecklistAPartirDoPreset(new[] { "Item 3" });
         ordem.Checklist.Should().HaveCount(count);
     }
 

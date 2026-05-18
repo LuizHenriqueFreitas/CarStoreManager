@@ -20,13 +20,16 @@ public class ComponenteService : IComponenteService
 {
     private readonly IComponenteRepository _repository;
     private readonly Domain.Interfaces.Repositories.Sistema.IConfiguracaoSistemaRepository _configRepo;
+    private readonly IEstoqueRepository? _estoqueRepo;
 
     public ComponenteService(
         IComponenteRepository repository,
-        Domain.Interfaces.Repositories.Sistema.IConfiguracaoSistemaRepository configRepo)
+        Domain.Interfaces.Repositories.Sistema.IConfiguracaoSistemaRepository configRepo,
+        IEstoqueRepository? estoqueRepo = null)
     {
         _repository = repository;
         _configRepo = configRepo;
+        _estoqueRepo = estoqueRepo;
     }
 
     /* ======================
@@ -76,6 +79,40 @@ public class ComponenteService : IComponenteService
     public Task<Result<IEnumerable<ComponenteDTO>>> ObterPorSistemaAsync(string sistema)
         => Task.FromResult(Result<IEnumerable<ComponenteDTO>>.Fail(
             "ObterPorSistemaAsync ainda não implementado — Componente precisa do campo Sistema."));
+
+    public async Task<Result<IEnumerable<ComponenteBuscaDTO>>> BuscarAsync(string termo, int limite = 20)
+    {
+        var componentes = (await _repository.BuscarAsync(termo, limite)).ToList();
+
+        // Faz lookup do estoque atual para cada componente — assim o autocomplete
+        // já mostra "X em estoque" e o frontend pode decidir se mostra warning
+        // quando o operador tenta vender mais do que existe.
+        var resultado = new List<ComponenteBuscaDTO>(componentes.Count);
+        foreach (var c in componentes)
+        {
+            int qtd = 0;
+            if (_estoqueRepo is not null)
+            {
+                var est = await _estoqueRepo.ObterPorComponenteAsync(c.Id);
+                qtd = est?.QuantidadeAtual ?? 0;
+            }
+
+            resultado.Add(new ComponenteBuscaDTO
+            {
+                Id = c.Id,
+                Nome = c.Nome,
+                SKUInterno = c.SKUInterno,
+                PartNumber = c.PartNumber,
+                CodigoOEM = c.CodigoOEM,
+                MarcaFabricante = c.MarcaFabricante,
+                Categoria = c.Categoria,
+                ValorVenda = c.ValorVenda,
+                QuantidadeEmEstoque = qtd
+            });
+        }
+
+        return Result<IEnumerable<ComponenteBuscaDTO>>.Ok(resultado);
+    }
 
     public async Task<Result<Guid>> AddAsync(CriarComponenteDTO dto)
     {

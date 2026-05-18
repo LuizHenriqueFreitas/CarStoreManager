@@ -101,7 +101,6 @@ public class AuthServiceTests
             "v@v.com", 
             "11999999999", 
             "Senha1",
-            3000,
             NivelFuncionario.Pleno,
             DateTime.UtcNow
         );
@@ -125,7 +124,6 @@ public class AuthServiceTests
             "v@v.com", 
             "11999999999", 
             "Senha1", 
-            3000,
             NivelFuncionario.Pleno, 
             DateTime.UtcNow
         );
@@ -150,7 +148,6 @@ public class AuthServiceTests
             "ana@v.com", 
             "11999999999", 
             "Senha1", 
-            3000,
             NivelFuncionario.Junior, 
             DateTime.UtcNow
         );
@@ -298,7 +295,6 @@ public class AuthServiceTests
             "x@x.com", 
             "11999999999", 
             "Senha1", 
-            3000,
             NivelFuncionario.Junior,
             DateTime.UtcNow
         );
@@ -338,7 +334,6 @@ public class AuthServiceTests
             "v@v.com", 
             "11999999999", 
             "Senha1", 
-            3000,
             NivelFuncionario.Senior, 
             DateTime.UtcNow
         );
@@ -371,7 +366,6 @@ public class AuthServiceTests
             "joao@email.com", 
             "11988888888", 
             "Senha1",
-            3000,
             NivelFuncionario.Junior, 
             DateTime.UtcNow
         );
@@ -415,7 +409,6 @@ public class AuthServiceTests
             "antigo@email.com", 
             "11912345678", 
             "Senha1", 
-            3000,
             NivelFuncionario.Junior, 
             DateTime.UtcNow
         );
@@ -451,7 +444,6 @@ public class AuthServiceTests
             "x@x.com", 
             "11999999999", 
             "Senha1", 
-            3000,
             NivelFuncionario.Junior, 
             DateTime.UtcNow
         );
@@ -475,7 +467,6 @@ public class AuthServiceTests
             "x@x.com", 
             "11999999999", 
             "Senha1", 
-            3000,
             NivelFuncionario.Junior, 
             DateTime.UtcNow
         );
@@ -518,7 +509,6 @@ public class AuthServiceTests
             "x@x.com", 
             "11999999999", 
             "Senha1", 
-            3000,
             NivelFuncionario.Junior, 
             DateTime.UtcNow
         );

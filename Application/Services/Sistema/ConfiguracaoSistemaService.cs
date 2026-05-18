@@ -44,6 +44,8 @@ public class ConfiguracaoSistemaService : IConfiguracaoSistemaService
                 emailRemetente: dto.EmailRemetente,
                 nomeRemetente: dto.NomeRemetente);
 
+            cfg.ConfigurarEntradaMinima(dto.ExigirEntradaMinima, dto.PercentualEntradaMinima);
+
             await _repo.SaveChangesAsync();
             return Result.Ok();
         }
@@ -109,6 +111,8 @@ public class ConfiguracaoSistemaService : IConfiguracaoSistemaService
         NomeRemetente = cfg.NomeRemetente,
         DataUltimaAtualizacao = cfg.DataUltimaAtualizacao,
         SmtpConfigurado = cfg.SmtpConfigurado(),
-        FinanciadoraConfigurada = cfg.FinanciadoraConfigurada()
+        FinanciadoraConfigurada = cfg.FinanciadoraConfigurada(),
+        ExigirEntradaMinima = cfg.ExigirEntradaMinima,
+        PercentualEntradaMinima = cfg.PercentualEntradaMinima
     };
 }

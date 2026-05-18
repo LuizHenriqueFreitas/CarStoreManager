@@ -30,13 +30,25 @@ public interface IPropostaVendaService : IService<
     Task<Result> CancelarAsync(Guid propostaId, string motivo);
 
     // === Vistoria ===
-    Task<Result> IniciarVistoriaAsync(Guid propostaId);
+    /// <summary>
+    /// Inicia a vistoria do veículo — cria a entidade Vistoria preliminar
+    /// (Concluida=false) e devolve o Id dela para que a UI possa anexar fotos
+    /// antes de registrar o resultado.
+    /// </summary>
+    Task<Result<Guid>> IniciarVistoriaAsync(Guid propostaId, Guid vistoriadorId);
     Task<Result<VistoriaDTO>> RegistrarVistoriaAsync(Guid propostaId, Guid vistoriadorId, RegistrarVistoriaDTO dto);
     Task<Result<IEnumerable<VistoriaDTO>>> ListarVistoriasAsync(Guid propostaId);
 
     // === Termo de entrega ===
     Task<Result<TermoEntregaDTO>> CriarOuEditarTermoAsync(Guid propostaId, Guid adminId, CriarOuEditarTermoDTO dto);
     Task<Result<TermoEntregaDTO>> ObterTermoAsync(Guid propostaId);
+
+    /// <summary>
+    /// Retorna o texto preliminar do termo cadastrado no veículo associado à
+    /// proposta — usado pela UI para pré-popular o editor quando o termo
+    /// ainda não foi criado pra essa proposta.
+    /// </summary>
+    Task<Result<string>> ObterRascunhoInicialTermoAsync(Guid propostaId);
     Task<Result> EnviarTermoParaAssinaturaAsync(Guid propostaId);
     Task<Result<TermoEntregaDTO>> ObterTermoPorTokenAsync(string token);
     Task<Result> AssinarTermoAsync(string token, AssinarTermoDTO dto, string ipOrigem);

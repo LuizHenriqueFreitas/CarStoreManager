@@ -66,7 +66,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
         public async Task GetByIdAsync_TipoVendedor_NaoRetornaMecanico()
         {
             // Salva um Vendedor (não Mecanico) e garante que OfType<Mecanico> filtra
-            var vendedor = new Vendedor("Vend", "vend@email.com", "11922222222", "Senha1", 2000, NivelFuncionario.Pleno, DateTime.UtcNow.AddDays(4));
+            var vendedor = new Vendedor("Vend", "vend@email.com", "11922222222", "Senha1", NivelFuncionario.Pleno, DateTime.UtcNow.AddDays(4));
             _context.Usuarios.Add(vendedor);
             await _context.SaveChangesAsync();
 
@@ -89,7 +89,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
             var m1 = await SalvarMecanico("M1", "m1@email.com", "11911111111", EspecialidadeMecanico.Funilaria);
             var m2 = await SalvarMecanico("M2", "m2@email.com", "11922222222", EspecialidadeMecanico.Mecanica);
             // Adiciona um vendedor para garantir que não aparece
-            var vendedor = new Vendedor("Vend", "vend@email.com", "11933333333", "Senha123", 2000, NivelFuncionario.Junior, DateTime.Now.AddDays(1));
+            var vendedor = new Vendedor("Vend", "vend@email.com", "11933333333", "Senha123", NivelFuncionario.Junior, DateTime.Now.AddDays(1));
             _context.Usuarios.Add(vendedor);
             await _context.SaveChangesAsync();
 
@@ -172,7 +172,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
         [Fact]
         public async Task AddAsync_MecanicoValido_PersisteCorretamente()
         {
-            var mecanico = new Mecanico("Carlos", "carlos@email.com", "11977777777", "Senha123", 2000,
+            var mecanico = new Mecanico("Carlos", "carlos@email.com", "11977777777", "Senha123",
                 EspecialidadeMecanico.Eletrica, NivelFuncionario.Junior, DateTime.Now.AddDays(1));
             await _repository.AddAsync(mecanico);
             await _repository.SaveChangesAsync();
@@ -223,7 +223,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
             EspecialidadeMecanico especialidade,
             NivelFuncionario nivel = NivelFuncionario.Junior)
         {
-            var mecanico = new Mecanico(nome, email, telefone, "Senha123", 3000, especialidade, nivel, DateTime.Now.AddDays(1));
+            var mecanico = new Mecanico(nome, email, telefone, "Senha123", especialidade, nivel, DateTime.Now.AddDays(1));
             await _repository.AddAsync(mecanico);
             await _repository.SaveChangesAsync();
             return mecanico;

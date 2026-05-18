@@ -105,11 +105,13 @@ public class ChecklistOrdemServicoTests
     }
 
     [Fact]
-    public void AtualizarDescricao_ItemAutomatico_LancaInvalidOperationException()
+    public void AtualizarDescricao_ItemAutomatico_PermiteEdicao()
     {
+        // Mecânico tem controle total sobre o checklist da OS — pode editar
+        // tanto itens manuais quanto os vindos do preset.
         var item = CriarItem(origem: OrigemChecklistItem.Automatico);
-        Action act = () => item.AtualizarDescricao("Nova descrição");
-        act.Should().Throw<InvalidOperationException>().WithMessage("*automáticos*");
+        item.AtualizarDescricao("Nova descrição");
+        item.Descricao.Should().Be("Nova descrição");
     }
 
     [Theory]

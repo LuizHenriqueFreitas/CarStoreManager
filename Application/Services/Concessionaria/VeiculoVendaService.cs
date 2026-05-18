@@ -154,6 +154,44 @@ public class VeiculoVendaService : IVeiculoVendaService
         }
     }
 
+    /// <summary>
+    /// Tira o veículo da fase de preparação e o disponibiliza para venda.
+    /// Falha se o veículo não estiver em <c>EmPreparacao</c>.
+    /// </summary>
+    public async Task<Result> LiberarParaVendaAsync(Guid id)
+    {
+        var veiculo = await _repository.GetByIdAsync(id);
+        if (veiculo is null) return Result.Fail("Veículo não encontrado");
+
+        try
+        {
+            veiculo.LiberarParaVenda();
+            _repository.Update(veiculo);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+    }
+
+    /// <summary>
+    /// Volta o veículo para preparação (precisa de retoque, doc adicional, etc).
+    /// Falha se o veículo não estiver em <c>Disponivel</c>.
+    /// </summary>
+    public async Task<Result> VoltarParaPreparacaoAsync(Guid id)
+    {
+        var veiculo = await _repository.GetByIdAsync(id);
+        if (veiculo is null) return Result.Fail("Veículo não encontrado");
+
+        try
+        {
+            veiculo.VoltarParaPreparacao();
+            _repository.Update(veiculo);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+    }
+
     /*
         metodo que atualiza a quilometragem do veiculoVenda
         falha caso o veiculo seja vazio

@@ -13,6 +13,8 @@ public interface IVeiculoVendaService : IService<
     Task<Result<IEnumerable<VeiculoVendaListaDTO>>> ObterDisponiveisAsync();
     Task<Result> MarcarComoVendidoAsync(Guid id);
     Task<Result> MarcarComoDisponivelAsync(Guid id);
+    Task<Result> LiberarParaVendaAsync(Guid id);
+    Task<Result> VoltarParaPreparacaoAsync(Guid id);
     Task<Result> AtualizarQuilometragemAsync(Guid id, int km);
     Task<Result> AdicionarFotoAsync(Guid id, string url);
     Task<Result> ReordenarFotosAsync(Guid id, List<Guid> fotos);

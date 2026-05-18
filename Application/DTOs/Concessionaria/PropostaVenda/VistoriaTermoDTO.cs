@@ -8,6 +8,8 @@ public class VistoriaDTO
     public DateTime DataRealizada { get; set; }
     public string Observacoes { get; set; } = "";
     public bool Aprovado { get; set; }
+    public bool Concluida { get; set; }
+    public DateTime? DataConclusao { get; set; }
 }
 
 public class RegistrarVistoriaDTO

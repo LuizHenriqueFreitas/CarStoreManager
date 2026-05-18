@@ -164,7 +164,6 @@ namespace CarStoreManager.Tests.Unidade.Services
                 "vendedor@teste.com",
                 "11999999999",
                 "Senha123",
-                3000,
                 NivelFuncionario.Junior,
                 DateTime.Now.AddDays(1)
             );

@@ -6,7 +6,6 @@ public class CriarUsuarioDTO
     public string Email { get; set; } = null!;
     public string Telefone { get; set; } = null!;
     public string Senha { get; set; } = null!;
-    public decimal Salario { get; set; }
     public string Role { get; set; } = null!; // "Vendedor", "Mecanico" ou "Admin"
 
     // campos extras para Mecanico

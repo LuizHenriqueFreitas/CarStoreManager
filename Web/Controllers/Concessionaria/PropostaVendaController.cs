@@ -120,8 +120,9 @@ public class PropostaVendaController : ControllerBase
     [HttpPost("{id:guid}/iniciar-vistoria")]
     public async Task<IActionResult> IniciarVistoria(Guid id)
     {
-        var r = await _service.IniciarVistoriaAsync(id);
-        return r.IsSuccess ? NoContent() : BadRequest(r.Error);
+        var vistoriadorId = ObterUsuarioId();
+        var r = await _service.IniciarVistoriaAsync(id, vistoriadorId);
+        return r.IsSuccess ? Ok(new { vistoriaId = r.Value }) : BadRequest(r.Error);
     }
 
     [HttpPost("{id:guid}/vistoria")]

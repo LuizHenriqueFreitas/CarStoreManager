@@ -49,7 +49,6 @@ public static class MecanicoMapping
             dto.Email,
             dto.Telefone,
             dto.Senha,
-            dto.Salario,
             ConverterEnum<EspecialidadeMecanico>(dto.Especialidade, "Especialidade"),
             ConverterEnum<NivelFuncionario>(dto.Nivel, "Nivel"),
             dto.DataContratacao

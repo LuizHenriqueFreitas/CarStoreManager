@@ -119,6 +119,7 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await context.Database.MigrateAsync();
     await SeedAdminAsync(context);
+    await SeedChecklistPresetsAsync(context);
 }
 
 async Task SeedAdminAsync(AppDbContext context)
@@ -130,14 +131,62 @@ async Task SeedAdminAsync(AppDbContext context)
         "Administrador",
         "admin@teste.com",
         "11215126548",
-        "12345A",
-        6000
+        "12345A"
     );
 
     context.Usuarios.Add(admin);
     await context.SaveChangesAsync();
 
     Console.WriteLine("Admin criado — email: admin@teste.com / senha: 12345A");
+}
+
+// Popula presets iniciais somente quando o BD ainda não tem nenhum — admin
+// pode editar/renomear/excluir tudo via tela de Configurações depois.
+async Task SeedChecklistPresetsAsync(AppDbContext context)
+{
+    if (context.ChecklistPresets.Any()) return;
+
+    var presets = new[]
+    {
+        ("Manutenção padrão", new[]
+        {
+            "Verificar nível de óleo do motor",
+            "Verificar fluido de freio",
+            "Verificar fluido de arrefecimento",
+            "Inspecionar filtro de ar",
+            "Verificar correia dentada",
+            "Inspecionar sistema de freios",
+            "Testar bateria"
+        }),
+        ("Revisão completa", new[]
+        {
+            "Trocar óleo e filtro",
+            "Verificar pressão dos pneus",
+            "Inspecionar sistema de suspensão",
+            "Verificar alinhamento e balanceamento",
+            "Testar todos os itens elétricos",
+            "Verificar lâmpadas e faróis"
+        }),
+        ("Carro elétrico", new[]
+        {
+            "Verificar estado e fixação da bateria de alta tensão",
+            "Inspecionar cabeamento de alta voltagem",
+            "Testar sistema de carregamento",
+            "Verificar sistema de arrefecimento da bateria",
+            "Atualizar firmware se aplicável",
+            "Inspecionar sistema regenerativo de freios"
+        })
+    };
+
+    foreach (var (nome, itens) in presets)
+    {
+        var preset = new CarStoreManager.Domain.Entities.Oficina.ChecklistPreset(nome);
+        preset.SubstituirItens(itens);
+        context.ChecklistPresets.Add(preset);
+    }
+
+    await context.SaveChangesAsync();
+    Console.WriteLine($"{presets.Length} preset(s) de checklist iniciais criados.");
 }
 
 // =========================

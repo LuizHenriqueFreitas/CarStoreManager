@@ -27,11 +27,10 @@ public class Mecanico : Usuario
         string email,
         string telefone,
         string senhaHash,
-        decimal salario,
         EspecialidadeMecanico especialidade,
         NivelFuncionario nivel,
         DateTime dataContratacao)
-        : base(nome, email, telefone, senhaHash, salario, RoleUsuario.Mecanico)
+        : base(nome, email, telefone, senhaHash, RoleUsuario.Mecanico)
     {
         Especialidade = especialidade;
         DadosFuncionario = new DadosFuncionario(nivel, dataContratacao);

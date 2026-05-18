@@ -153,12 +153,11 @@ public class AuthService : IAuthService
             throw new ArgumentException("Data de contratação obrigatória para vendedor");
 
         return new Vendedor(
-            dto.Nome, 
-            dto.Email, 
-            dto.Telefone, 
+            dto.Nome,
+            dto.Email,
+            dto.Telefone,
             dto.Senha,
-            dto.Salario,
-            nivel, 
+            nivel,
             dto.DataContratacao.Value);
     }
 
@@ -175,13 +174,12 @@ public class AuthService : IAuthService
             throw new ArgumentException("Data de contratação obrigatória para mecânico");
 
         return new Mecanico(
-            dto.Nome, 
-            dto.Email, 
-            dto.Telefone, 
+            dto.Nome,
+            dto.Email,
+            dto.Telefone,
             dto.Senha,
-            dto.Salario,
-            especialidade, 
-            nivel, 
+            especialidade,
+            nivel,
             dto.DataContratacao!.Value);
     }
 
@@ -197,7 +195,6 @@ public class AuthService : IAuthService
             dto.Email,
             dto.Telefone,
             dto.Senha,
-            dto.Salario,
             nivel,
             dto.DataContratacao.Value);
     }
@@ -213,8 +210,7 @@ public class AuthService : IAuthService
             dto.Nome,
             dto.Email,
             dto.Telefone,
-            dto.Senha,
-            dto.Salario
+            dto.Senha
         );
     }
 

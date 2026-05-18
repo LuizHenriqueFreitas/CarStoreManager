@@ -76,15 +76,12 @@ public class ChecklistOrdemServico : Entity
     }
 
     /*
-        metodo para atualizar descricao de item
-        necessario que a origem do item nao seja "Automatico"
-        e que a nova descrição não seja vazia
+        Mecânico pode alterar a descrição de qualquer item do checklist da OS
+        — tanto os vindos do preset (Automatico) quanto os adicionados na hora
+        (Manual). Snapshot da OS é dele.
     */
     public void AtualizarDescricao(string novaDescricao)
     {
-        if (Origem == OrigemChecklistItem.Automatico)
-            throw new InvalidOperationException("Itens automáticos não podem ser editados");
-
         if (string.IsNullOrWhiteSpace(novaDescricao))
             throw new ArgumentException("Descrição inválida");
 

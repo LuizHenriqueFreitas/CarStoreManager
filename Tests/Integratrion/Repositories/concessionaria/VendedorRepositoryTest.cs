@@ -65,7 +65,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
         public async Task GetByIdAsync_TipoDiferente_NaoRetornaOutroTipo()
         {
             // Cria um Mecanico (não vendedor) para garantir que OfType filtra
-            var mecanico = new Domain.Entities.Oficina.Mecanico("Mec", "mec@email.com", "11922222222", "Senha123", 3000, EspecialidadeMecanico.Mecanica, NivelFuncionario.Junior, DateTime.Now.AddDays(1));
+            var mecanico = new Domain.Entities.Oficina.Mecanico("Mec", "mec@email.com", "11922222222", "Senha123", EspecialidadeMecanico.Mecanica, NivelFuncionario.Junior, DateTime.Now.AddDays(1));
             _context.Usuarios.Add(mecanico);
             await _context.SaveChangesAsync();
 
@@ -88,7 +88,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
             var v1 = await SalvarVendedor("V1", "v1@email.com", "11911111111", NivelFuncionario.Junior);
             var v2 = await SalvarVendedor("V2", "v2@email.com", "11922222222", NivelFuncionario.Senior);
             // adiciona um Mecanico para garantir que não aparece
-            var mecanico = new Domain.Entities.Oficina.Mecanico("Mec", "mec@email.com", "11933333333", "Senha123", 3000, EspecialidadeMecanico.Mecanica, NivelFuncionario.Junior, DateTime.Now.AddDays(1));
+            var mecanico = new Domain.Entities.Oficina.Mecanico("Mec", "mec@email.com", "11933333333", "Senha123", EspecialidadeMecanico.Mecanica, NivelFuncionario.Junior, DateTime.Now.AddDays(1));
             _context.Usuarios.Add(mecanico);
             await _context.SaveChangesAsync();
 
@@ -125,7 +125,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
         [Fact]
         public async Task AddAsync_VendedorValido_PersisteCorretamente()
         {
-            var vendedor = new Vendedor("Carlos", "carlos@email.com", "11977777777", "Senha123", 3000, NivelFuncionario.Junior, DateTime.Now.AddDays(1));
+            var vendedor = new Vendedor("Carlos", "carlos@email.com", "11977777777", "Senha123", NivelFuncionario.Junior, DateTime.Now.AddDays(1));
             await _repository.AddAsync(vendedor);
             await _repository.SaveChangesAsync();
 
@@ -170,7 +170,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
 
         private async Task<Vendedor> SalvarVendedor(string nome, string email, string telefone, NivelFuncionario nivel)
         {
-            var vendedor = new Vendedor(nome, email, telefone, "Senha123", 3000, nivel, DateTime.Now.AddDays(1));
+            var vendedor = new Vendedor(nome, email, telefone, "Senha123", nivel, DateTime.Now.AddDays(1));
             await _repository.AddAsync(vendedor);
             await _repository.SaveChangesAsync();
             return vendedor;

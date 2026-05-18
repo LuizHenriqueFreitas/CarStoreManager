@@ -5,11 +5,14 @@
 
 @inject IOrdemServicoService OrdemService
 @inject IMecanicoService MecanicoService
+@inject IChecklistPresetService PresetService
 @inject NavigationManager Navigation
 
 @using CarStoreManager.Application.DTOs.Oficina.OrdemServico
 @using CarStoreManager.Application.DTOs.Oficina.Mecanico
+@using CarStoreManager.Application.DTOs.Oficina.ChecklistPreset
 @using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.Interfaces.Oficina
 @using CarStoreManager.Web.Components.Shared
 
 <PageTitle>Nova Ordem de Serviço</PageTitle>
@@ -65,6 +68,16 @@
                     <label class="campo-label">Data prevista</label>
                     <input type="date" class="campo-input" @bind="form.PrazoEstimado" />
                 </div>
+                <div class="form-campo span-2">
+                    <label class="campo-label">Preset de checklist</label>
+                    <select class="campo-input" @bind="presetIdSelecionado">
+                        <option value="">Sem checklist (mecânico monta do zero)</option>
+                        @foreach (var p in presets)
+                        {
+                            <option value="@p.Id">@p.Nome (@p.QuantidadeItens itens)</option>
+                        }
+                    </select>
+                </div>
             </div>
             <ItensOrdemServicoSelector @bind-Itens="form.Itens" />
         </div>
@@ -100,6 +113,8 @@
     };
 
     private List<MecanicoListaDTO> mecanicos = new();
+    private List<ChecklistPresetLookupDTO> presets = new();
+    private string presetIdSelecionado = "";
     private bool salvando = false;
     private bool sucesso = false;
     private string? erro;
@@ -111,10 +126,14 @@
             var mecanicosResult = await MecanicoService.GetAllAsync();
             if (mecanicosResult.IsSuccess)
                 mecanicos = mecanicosResult.Value?.ToList() ?? new();
+
+            var presetsResult = await PresetService.GetLookupAtivosAsync();
+            if (presetsResult.IsSuccess)
+                presets = presetsResult.Value?.ToList() ?? new();
         }
         catch (Exception ex)
         {
-            erro = $"Erro ao carregar mecânicos: {ex.Message}";
+            erro = $"Erro ao carregar dados: {ex.Message}";
         }
     }
 
@@ -130,6 +149,9 @@
         salvando = true;
         erro = null;
         sucesso = false;
+
+        form.ChecklistPresetId = Guid.TryParse(presetIdSelecionado, out var pid) && pid != Guid.Empty
+            ? pid : (Guid?)null;
 
         try
         {

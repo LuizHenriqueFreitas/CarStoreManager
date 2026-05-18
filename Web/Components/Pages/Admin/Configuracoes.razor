@@ -6,9 +6,13 @@
 @rendermode InteractiveServer
 
 @inject IConfiguracaoSistemaService ConfigService
+@inject IDespesaService DespesaService
+@inject IChecklistPresetService PresetService
 
 @using CarStoreManager.Application.Interfaces.Sistema
+@using CarStoreManager.Application.Interfaces.Oficina
 @using CarStoreManager.Application.DTOs.Sistema
+@using CarStoreManager.Application.DTOs.Oficina.ChecklistPreset
 
 <div class="cfg-page">
     <h1 class="page-titulo">Configurações do sistema</h1>
@@ -19,99 +23,283 @@
         <div class="banner @(mensagemErro ? "banner-erro" : "banner-ok")">@mensagem</div>
     }
 
+    <div class="abas">
+        <button class="@AbaClass("geral")" @onclick='() => abaAtiva = "geral"'>Geral</button>
+        <button class="@AbaClass("despesas")" @onclick='() => abaAtiva = "despesas"'>Despesas mensais</button>
+        <button class="@AbaClass("checklists")" @onclick='() => abaAtiva = "checklists"'>Checklists</button>
+        <button class="@AbaClass("operacao")" @onclick='() => abaAtiva = "operacao"'>Modo operante</button>
+    </div>
+
     @if (carregando)
     {
         <p class="muted">Carregando...</p>
     }
     else if (config is not null)
     {
-        <div class="cfg-grid">
-            <section class="cfg-card">
-                <h2>Financiadora preferida</h2>
-                <p class="muted">Para onde os pedidos de simulação de financiamento serão enviados.</p>
+        @* ===================== ABA GERAL ===================== *@
+        @if (abaAtiva == "geral")
+        {
+            <div class="cfg-grid">
+                <section class="cfg-card">
+                    <h2>Financiadora preferida</h2>
+                    <p class="muted">Para onde os pedidos de simulação de financiamento serão enviados.</p>
 
-                <label>Nome da financiadora</label>
-                <input @bind="config.NomeFinanciadora" placeholder="ex: Banco XYZ — Financiamento Auto" />
+                    <label>Nome da financiadora</label>
+                    <input @bind="config.NomeFinanciadora" placeholder="ex: Banco XYZ — Financiamento Auto" />
 
-                <label>E-mail da financiadora</label>
-                <input @bind="config.EmailFinanciadora" type="email" placeholder="financiamento@banco.com.br" />
+                    <label>E-mail da financiadora</label>
+                    <input @bind="config.EmailFinanciadora" type="email" placeholder="financiamento@banco.com.br" />
 
-                <div class="status-line">
-                    @if (config.FinanciadoraConfigurada)
-                    {
-                        <span class="tag-ok">✓ Financiadora configurada</span>
-                    }
-                    else
-                    {
-                        <span class="tag-warn">⚠ Não configurada — propostas com financiamento ficarão bloqueadas</span>
-                    }
+                    <div class="status-line">
+                        @if (config.FinanciadoraConfigurada)
+                        {
+                            <span class="tag-ok">✓ Financiadora configurada</span>
+                        }
+                        else
+                        {
+                            <span class="tag-warn">⚠ Não configurada — propostas com financiamento ficarão bloqueadas</span>
+                        }
+                    </div>
+                </section>
+
+                <section class="cfg-card">
+                    <h2>Servidor SMTP</h2>
+                    <p class="muted">Credenciais usadas pelo sistema para enviar e-mails (financiamento, termos, notificações).</p>
+
+                    <div class="row-2">
+                        <div>
+                            <label>Host SMTP</label>
+                            <input @bind="config.SmtpHost" placeholder="smtp.gmail.com" />
+                        </div>
+                        <div>
+                            <label>Porta</label>
+                            <input @bind="config.SmtpPort" type="number" min="1" max="65535" />
+                        </div>
+                    </div>
+
+                    <label>Usuário</label>
+                    <input @bind="config.SmtpUsuario" placeholder="conta@gmail.com" />
+
+                    <label>Senha (deixe em branco para manter a atual)</label>
+                    <input @bind="config.SmtpSenha" type="password" placeholder="••••••••" />
+
+                    <label class="check-line">
+                        <input type="checkbox" @bind="config.SmtpUsarSsl" />
+                        Usar SSL/TLS (recomendado)
+                    </label>
+
+                    <div class="row-2">
+                        <div>
+                            <label>E-mail remetente (From)</label>
+                            <input @bind="config.EmailRemetente" type="email" placeholder="noreply@carstore.com.br" />
+                        </div>
+                        <div>
+                            <label>Nome remetente</label>
+                            <input @bind="config.NomeRemetente" placeholder="CarStore Concessionária" />
+                        </div>
+                    </div>
+
+                    <div class="status-line">
+                        @if (config.SmtpConfigurado)
+                        {
+                            <span class="tag-ok">✓ SMTP configurado</span>
+                        }
+                        else
+                        {
+                            <span class="tag-warn">⚠ Faltam dados — host e e-mail remetente são obrigatórios</span>
+                        }
+                    </div>
+                </section>
+            </div>
+
+            <div class="acoes">
+                <button class="btn-salvar" @onclick="Salvar" disabled="@salvando">
+                    @(salvando ? "Salvando..." : "Salvar configurações")
+                </button>
+
+                <div class="testar-bloco">
+                    <input type="email" placeholder="Enviar e-mail de teste para..."
+                           @bind="emailTeste" class="input-teste" />
+                    <button class="btn-testar" @onclick="TestarEnvio"
+                            disabled="@(string.IsNullOrWhiteSpace(emailTeste) || salvando || !config.SmtpConfigurado)">
+                        Testar envio
+                    </button>
+                </div>
+            </div>
+        }
+
+        @* ===================== ABA DESPESAS ===================== *@
+        @if (abaAtiva == "despesas")
+        {
+            <section class="cfg-card-full">
+                <h2>Planilha de despesas mensais</h2>
+                <p class="muted">
+                    Cadastre as despesas fixas mensais da oficina — luz, água, aluguel, salário de cada
+                    funcionário, etc. A soma destas linhas compõe o total de despesas exibido no dashboard.
+                </p>
+
+                <table class="tabela">
+                    <thead>
+                        <tr>
+                            <th style="width:35%">Nome</th>
+                            <th style="width:20%">Valor (R$)</th>
+                            <th style="width:20%">Setor</th>
+                            <th style="width:10%">Ativa</th>
+                            <th style="width:15%"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in despesas)
+                        {
+                            <tr>
+                                <td><input @bind="d.Nome" /></td>
+                                <td><input type="number" step="0.01" @bind="d.Valor" /></td>
+                                <td>
+                                    <select @bind="d.Setor">
+                                        <option value="Geral">Geral</option>
+                                        <option value="Oficina">Oficina</option>
+                                        <option value="Concessionaria">Concessionária</option>
+                                    </select>
+                                </td>
+                                <td><input type="checkbox" @bind="d.Ativa" /></td>
+                                <td>
+                                    <button class="btn-mini btn-salvar-mini" @onclick="() => SalvarDespesa(d)">Salvar</button>
+                                    <button class="btn-mini btn-remover" @onclick="() => RemoverDespesa(d.Id)">Excluir</button>
+                                </td>
+                            </tr>
+                        }
+                        <tr>
+                            <td><input @bind="novaDespesa.Nome" placeholder="ex: Salário João" /></td>
+                            <td><input type="number" step="0.01" @bind="novaDespesa.Valor" /></td>
+                            <td>
+                                <select @bind="novaDespesa.Setor">
+                                    <option value="Geral">Geral</option>
+                                    <option value="Oficina">Oficina</option>
+                                    <option value="Concessionaria">Concessionária</option>
+                                </select>
+                            </td>
+                            <td>—</td>
+                            <td>
+                                <button class="btn-mini btn-salvar-mini" @onclick="AdicionarDespesa">Adicionar</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="resumo">
+                    <strong>Total ativo:</strong> R$ @despesas.Where(d => d.Ativa).Sum(d => d.Valor).ToString("N2")
+                    <span class="muted" style="margin-left:18px;">
+                        Geral: R$ @despesas.Where(d => d.Ativa && d.Setor == "Geral").Sum(d => d.Valor).ToString("N2") ·
+                        Oficina: R$ @despesas.Where(d => d.Ativa && d.Setor == "Oficina").Sum(d => d.Valor).ToString("N2") ·
+                        Concessionária: R$ @despesas.Where(d => d.Ativa && d.Setor == "Concessionaria").Sum(d => d.Valor).ToString("N2")
+                    </span>
                 </div>
             </section>
+        }
 
-            <section class="cfg-card">
-                <h2>Servidor SMTP</h2>
-                <p class="muted">Credenciais usadas pelo sistema para enviar e-mails (financiamento, termos, notificações).</p>
+        @* ===================== ABA CHECKLISTS ===================== *@
+        @if (abaAtiva == "checklists")
+        {
+            <section class="cfg-card-full">
+                <h2>Presets de checklist</h2>
+                <p class="muted">
+                    Modelos de checklist usados na criação de OS. O recepcionista escolhe qual preset
+                    aplicar; os itens são copiados como snapshot e o mecânico pode adicionar/remover/editar.
+                </p>
 
-                <div class="row-2">
-                    <div>
-                        <label>Host SMTP</label>
-                        <input @bind="config.SmtpHost" placeholder="smtp.gmail.com" />
-                    </div>
-                    <div>
-                        <label>Porta</label>
-                        <input @bind="config.SmtpPort" type="number" min="1" max="65535" />
+                <div class="presets-lista">
+                    @foreach (var p in presets)
+                    {
+                        <div class="preset-card @(p.Id == presetSelecionadoId ? "preset-ativo" : "")"
+                             @onclick="() => SelecionarPreset(p.Id)">
+                            <div class="preset-nome">@p.Nome</div>
+                            <div class="preset-meta">
+                                @p.Itens.Count item(ns) · @(p.Ativo ? "ativo" : "inativo")
+                            </div>
+                        </div>
+                    }
+                    <div class="preset-card preset-novo" @onclick="NovoPreset">
+                        + Novo preset
                     </div>
                 </div>
 
-                <label>Usuário</label>
-                <input @bind="config.SmtpUsuario" placeholder="conta@gmail.com" />
+                @if (presetEditando is not null)
+                {
+                    <div class="preset-editor">
+                        <h3>@(presetEditando.Id == Guid.Empty ? "Novo preset" : "Editar preset")</h3>
 
-                <label>Senha (deixe em branco para manter a atual)</label>
-                <input @bind="config.SmtpSenha" type="password" placeholder="••••••••" />
+                        <label>Nome</label>
+                        <input @bind="presetEditando.Nome" placeholder="ex: Carro elétrico" />
 
-                <label class="check-line">
-                    <input type="checkbox" @bind="config.SmtpUsarSsl" />
-                    Usar SSL/TLS (recomendado)
+                        <label class="check-line">
+                            <input type="checkbox" @bind="presetEditando.Ativo" /> Ativo
+                        </label>
+
+                        <h4>Itens do checklist</h4>
+                        <ol class="itens-lista">
+                            @for (int i = 0; i < itensEdicao.Count; i++)
+                            {
+                                var idx = i;
+                                <li>
+                                    <input @bind="itensEdicao[idx]" />
+                                    <button class="btn-mini btn-remover" @onclick="() => itensEdicao.RemoveAt(idx)">×</button>
+                                </li>
+                            }
+                        </ol>
+                        <button class="btn-mini" @onclick='() => itensEdicao.Add("")'>+ Adicionar item</button>
+
+                        <div class="acoes">
+                            <button class="btn-salvar" @onclick="SalvarPreset">Salvar preset</button>
+                            @if (presetEditando.Id != Guid.Empty)
+                            {
+                                <button class="btn-remover" @onclick="RemoverPreset">Excluir preset</button>
+                            }
+                            <button class="btn-mini" @onclick="CancelarEdicaoPreset">Cancelar</button>
+                        </div>
+                    </div>
+                }
+            </section>
+        }
+
+        @* ===================== ABA MODO OPERANTE ===================== *@
+        @if (abaAtiva == "operacao")
+        {
+            <section class="cfg-card-full">
+                <h2>Modo operante da oficina</h2>
+                <p class="muted">
+                    Define se a oficina exige um pagamento mínimo do cliente antes de iniciar o serviço
+                    (transição da OS para "Em andamento"). Aplica-se a todas as ordens.
+                </p>
+
+                <label class="check-line big">
+                    <input type="checkbox" @bind="config.ExigirEntradaMinima" />
+                    Exigir entrada mínima para iniciar a OS
                 </label>
 
-                <div class="row-2">
-                    <div>
-                        <label>E-mail remetente (From)</label>
-                        <input @bind="config.EmailRemetente" type="email" placeholder="noreply@carstore.com.br" />
-                    </div>
-                    <div>
-                        <label>Nome remetente</label>
-                        <input @bind="config.NomeRemetente" placeholder="CarStore Concessionária" />
-                    </div>
+                <div class="entrada-bloco @(config.ExigirEntradaMinima ? "" : "disabled")">
+                    <label>Percentual mínimo (%) do valor total da OS</label>
+                    <input type="number" step="0.01" min="0" max="100"
+                           @bind="config.PercentualEntradaMinima"
+                           disabled="@(!config.ExigirEntradaMinima)" />
+                    <p class="muted">
+                        @if (config.ExigirEntradaMinima && config.PercentualEntradaMinima > 0)
+                        {
+                            <text>OS só sai de "Aprovada" para "Em andamento" depois que o cliente pagar pelo menos @config.PercentualEntradaMinima.ToString("N2")% do total.</text>
+                        }
+                        else
+                        {
+                            <text>Sem exigência — o mecânico pode iniciar o serviço logo após a aprovação do cliente.</text>
+                        }
+                    </p>
                 </div>
 
-                <div class="status-line">
-                    @if (config.SmtpConfigurado)
-                    {
-                        <span class="tag-ok">✓ SMTP configurado</span>
-                    }
-                    else
-                    {
-                        <span class="tag-warn">⚠ Faltam dados — host e e-mail remetente são obrigatórios</span>
-                    }
+                <div class="acoes">
+                    <button class="btn-salvar" @onclick="Salvar" disabled="@salvando">
+                        @(salvando ? "Salvando..." : "Salvar configurações")
+                    </button>
                 </div>
             </section>
-        </div>
-
-        <div class="acoes">
-            <button class="btn-salvar" @onclick="Salvar" disabled="@salvando">
-                @(salvando ? "Salvando..." : "Salvar configurações")
-            </button>
-
-            <div class="testar-bloco">
-                <input type="email" placeholder="Enviar e-mail de teste para..."
-                       @bind="emailTeste" class="input-teste" />
-                <button class="btn-testar" @onclick="TestarEnvio"
-                        disabled="@(string.IsNullOrWhiteSpace(emailTeste) || salvando || !config.SmtpConfigurado)">
-                    Testar envio
-                </button>
-            </div>
-        </div>
+        }
 
         @if (config.DataUltimaAtualizacao.HasValue)
         {
@@ -121,30 +309,42 @@
 </div>
 
 <style>
-    .cfg-page { padding:24px; max-width:980px; margin:0 auto; }
+    .cfg-page { padding:24px; max-width:1100px; margin:0 auto; }
     .page-titulo { margin:0; font-size:1.6rem; }
     .page-sub { margin:4px 0 24px; color:#666; }
     .banner { padding:12px 16px; border-radius:6px; margin-bottom:16px; }
     .banner-ok { background:#e6f7ed; color:#1f7a3a; border:1px solid #b6e4c2; }
     .banner-erro { background:#fdecea; color:#a72020; border:1px solid #f5c2bd; }
     .muted { color:#888; font-size:0.9em; }
+
+    .abas { display:flex; gap:4px; border-bottom:1px solid #ddd; margin-bottom:20px; }
+    .aba {
+        padding:10px 18px; background:transparent; border:0; cursor:pointer;
+        color:#555; font-size:0.95em; border-bottom:2px solid transparent;
+    }
+    .aba:hover { color:#0a84ff; }
+    .aba-ativa { color:#0a84ff; border-bottom-color:#0a84ff; font-weight:500; }
+
     .cfg-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
-    .cfg-card {
+    .cfg-card, .cfg-card-full {
         background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:20px;
     }
-    .cfg-card h2 { margin:0 0 4px; font-size:1.1rem; }
-    .cfg-card label { display:block; margin:14px 0 4px; font-size:0.9em; color:#444; font-weight:500; }
-    .cfg-card input[type="text"], .cfg-card input[type="email"],
-    .cfg-card input[type="password"], .cfg-card input[type="number"], .cfg-card input:not([type]) {
+    .cfg-card-full { margin-bottom:20px; }
+    .cfg-card h2, .cfg-card-full h2 { margin:0 0 4px; font-size:1.1rem; }
+    .cfg-card label, .cfg-card-full label {
+        display:block; margin:14px 0 4px; font-size:0.9em; color:#444; font-weight:500;
+    }
+    .cfg-card input, .cfg-card-full input:not([type="checkbox"]) {
         width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:4px; font-size:0.95em;
     }
     .row-2 { display:grid; grid-template-columns:2fr 1fr; gap:12px; }
     .check-line { display:flex; align-items:center; gap:8px; margin-top:14px; }
     .check-line input { width:auto !important; }
+    .check-line.big { font-size:1.05em; font-weight:500; }
     .status-line { margin-top:14px; padding-top:12px; border-top:1px dashed #eee; }
     .tag-ok { background:#dff5e1; color:#1f7a3a; padding:4px 10px; border-radius:12px; font-size:0.85em; }
     .tag-warn { background:#fff5d9; color:#8a6d00; padding:4px 10px; border-radius:12px; font-size:0.85em; }
-    .acoes { display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
+    .acoes { display:flex; justify-content:space-between; align-items:center; margin-top:20px; gap:12px; flex-wrap:wrap; }
     .btn-salvar {
         background:#0a84ff; color:#fff; padding:10px 24px; border-radius:6px; border:0;
         cursor:pointer; font-weight:500;
@@ -158,6 +358,42 @@
     .btn-testar:disabled { background:#ccc; cursor:not-allowed; }
     .ultima { text-align:right; margin-top:14px; }
 
+    /* Despesas */
+    .tabela { width:100%; border-collapse:collapse; margin-top:14px; }
+    .tabela th, .tabela td { padding:8px; border-bottom:1px solid #eee; text-align:left; }
+    .tabela th { background:#fafafa; font-weight:500; color:#444; font-size:0.9em; }
+    .tabela input { width:100%; padding:6px 8px; border:1px solid #ddd; border-radius:4px; }
+    .btn-mini {
+        padding:6px 10px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer;
+        font-size:0.85em; margin-right:4px;
+    }
+    .btn-salvar-mini { background:#0a84ff; color:#fff; border-color:#0a84ff; }
+    .btn-remover { background:#fdecea; color:#a72020; border-color:#f5c2bd; }
+    .resumo { margin-top:16px; padding:12px; background:#fafafa; border-radius:4px; }
+
+    /* Checklists */
+    .presets-lista { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; margin-top:14px; }
+    .preset-card {
+        background:#fafafa; border:1px solid #e0e0e0; border-radius:6px;
+        padding:14px; cursor:pointer; transition:all 0.15s;
+    }
+    .preset-card:hover { border-color:#0a84ff; background:#fff; }
+    .preset-ativo { border-color:#0a84ff; background:#eef6ff; }
+    .preset-novo { color:#0a84ff; display:flex; align-items:center; justify-content:center; font-weight:500; }
+    .preset-nome { font-weight:500; }
+    .preset-meta { font-size:0.85em; color:#888; margin-top:4px; }
+
+    .preset-editor { margin-top:20px; padding:16px; background:#fafafa; border-radius:6px; border:1px solid #e0e0e0; }
+    .preset-editor h3 { margin:0 0 12px; }
+    .preset-editor h4 { margin:14px 0 8px; }
+    .itens-lista { list-style:decimal; padding-left:20px; margin:8px 0; }
+    .itens-lista li { display:flex; gap:8px; margin-bottom:6px; align-items:center; }
+    .itens-lista li input { flex:1; padding:6px 8px; border:1px solid #ddd; border-radius:4px; }
+
+    /* Modo operante */
+    .entrada-bloco { margin-top:16px; padding:14px; background:#fafafa; border-radius:6px; }
+    .entrada-bloco.disabled { opacity:0.55; }
+
     @@media (max-width: 800px) { .cfg-grid { grid-template-columns:1fr; } }
 </style>
 
@@ -168,21 +404,42 @@
     private string mensagem = "";
     private bool mensagemErro;
     private string emailTeste = "";
+    private string abaAtiva = "geral";
+
+    // Despesas
+    private List<DespesaDTO> despesas = new();
+    private CriarDespesaDTO novaDespesa = new() { Valor = 0, Setor = "Geral" };
+
+    // Checklist presets
+    private List<ChecklistPresetDTO> presets = new();
+    private Guid? presetSelecionadoId;
+    private SalvarChecklistPresetDTO? presetEditando;
+    private List<string> itensEdicao = new();
 
     protected override async Task OnInitializedAsync()
     {
-        await Carregar();
+        await CarregarTudo();
     }
 
-    private async Task Carregar()
+    private async Task CarregarTudo()
     {
         carregando = true;
         var r = await ConfigService.ObterAsync();
         if (r.IsSuccess) config = r.Value;
         else MostrarErro(r.Error);
+
+        var rd = await DespesaService.GetAllAsync();
+        if (rd.IsSuccess) despesas = rd.Value!.ToList();
+
+        var rp = await PresetService.GetAllAsync();
+        if (rp.IsSuccess) presets = rp.Value!.ToList();
+
         carregando = false;
     }
 
+    private string AbaClass(string aba) => aba == abaAtiva ? "aba aba-ativa" : "aba";
+
+    // ===================== GERAL / MODO OPERANTE =====================
     private async Task Salvar()
     {
         if (config is null) return;
@@ -192,12 +449,9 @@
         if (r.IsSuccess)
         {
             MostrarOk("Configurações salvas.");
-            await Carregar(); // recarrega para limpar campo Senha e atualizar DataUltimaAtualizacao
+            await CarregarTudo();
         }
-        else
-        {
-            MostrarErro(r.Error);
-        }
+        else MostrarErro(r.Error);
     }
 
     private async Task TestarEnvio()
@@ -206,8 +460,109 @@
         salvando = true;
         var r = await ConfigService.TestarEnvioAsync(emailTeste);
         salvando = false;
-        if (r.IsSuccess) MostrarOk($"E-mail de teste enviado para {emailTeste}. Verifique a caixa de entrada.");
+        if (r.IsSuccess) MostrarOk($"E-mail de teste enviado para {emailTeste}.");
         else MostrarErro(r.Error);
+    }
+
+    // ===================== DESPESAS =====================
+    private async Task AdicionarDespesa()
+    {
+        if (string.IsNullOrWhiteSpace(novaDespesa.Nome)) { MostrarErro("Informe o nome da despesa."); return; }
+        var r = await DespesaService.AddAsync(novaDespesa);
+        if (r.IsSuccess)
+        {
+            MostrarOk("Despesa adicionada.");
+            novaDespesa = new CriarDespesaDTO { Valor = 0, Setor = "Geral" };
+            await RecarregarDespesas();
+        }
+        else MostrarErro(r.Error);
+    }
+
+    private async Task SalvarDespesa(DespesaDTO d)
+    {
+        var r = await DespesaService.UpdateAsync(new AtualizarDespesaDTO
+        {
+            Id = d.Id, Nome = d.Nome, Valor = d.Valor, Ativa = d.Ativa, Setor = d.Setor
+        });
+        if (r.IsSuccess) { MostrarOk("Despesa atualizada."); await RecarregarDespesas(); }
+        else MostrarErro(r.Error);
+    }
+
+    private async Task RemoverDespesa(Guid id)
+    {
+        var r = await DespesaService.RemoveAsync(id);
+        if (r.IsSuccess) { MostrarOk("Despesa removida."); await RecarregarDespesas(); }
+        else MostrarErro(r.Error);
+    }
+
+    private async Task RecarregarDespesas()
+    {
+        var rd = await DespesaService.GetAllAsync();
+        if (rd.IsSuccess) despesas = rd.Value!.ToList();
+    }
+
+    // ===================== CHECKLISTS =====================
+    private void SelecionarPreset(Guid id)
+    {
+        presetSelecionadoId = id;
+        var p = presets.FirstOrDefault(x => x.Id == id);
+        if (p is null) return;
+
+        presetEditando = new SalvarChecklistPresetDTO
+        {
+            Id = p.Id,
+            Nome = p.Nome,
+            Ativo = p.Ativo,
+            Itens = p.Itens.Select(i => i.Descricao).ToList()
+        };
+        itensEdicao = presetEditando.Itens.ToList();
+    }
+
+    private void NovoPreset()
+    {
+        presetSelecionadoId = null;
+        presetEditando = new SalvarChecklistPresetDTO { Id = Guid.Empty, Nome = "", Ativo = true, Itens = new() };
+        itensEdicao = new();
+    }
+
+    private void CancelarEdicaoPreset()
+    {
+        presetEditando = null;
+        presetSelecionadoId = null;
+        itensEdicao = new();
+    }
+
+    private async Task SalvarPreset()
+    {
+        if (presetEditando is null) return;
+        presetEditando.Itens = itensEdicao.Where(i => !string.IsNullOrWhiteSpace(i)).ToList();
+
+        if (presetEditando.Id == Guid.Empty)
+        {
+            var r = await PresetService.AddAsync(presetEditando);
+            if (r.IsSuccess) { MostrarOk("Preset criado."); await RecarregarPresets(); CancelarEdicaoPreset(); }
+            else MostrarErro(r.Error);
+        }
+        else
+        {
+            var r = await PresetService.UpdateAsync(presetEditando);
+            if (r.IsSuccess) { MostrarOk("Preset atualizado."); await RecarregarPresets(); }
+            else MostrarErro(r.Error);
+        }
+    }
+
+    private async Task RemoverPreset()
+    {
+        if (presetEditando is null || presetEditando.Id == Guid.Empty) return;
+        var r = await PresetService.RemoveAsync(presetEditando.Id);
+        if (r.IsSuccess) { MostrarOk("Preset removido."); await RecarregarPresets(); CancelarEdicaoPreset(); }
+        else MostrarErro(r.Error);
+    }
+
+    private async Task RecarregarPresets()
+    {
+        var rp = await PresetService.GetAllAsync();
+        if (rp.IsSuccess) presets = rp.Value!.ToList();
     }
 
     private void MostrarOk(string? msg) { mensagem = msg ?? ""; mensagemErro = false; }

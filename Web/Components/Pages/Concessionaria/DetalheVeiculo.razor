@@ -144,6 +144,30 @@ else
                         Gerar proposta de venda
                     </button>
                 }
+                else if (veiculo.Disponibilidade == "EmPreparacao")
+                {
+                    <div class="preparacao-aviso">
+                        ⚙ Veículo em preparação (lavagem / ajustes / documentação)
+                    </div>
+                    <AuthorizeView Roles="Admin" Context="ctxLib">
+                        <Authorized>
+                            <button class="btn-primary" @onclick="LiberarParaVenda">
+                                ✓ Liberar para venda
+                            </button>
+                        </Authorized>
+                    </AuthorizeView>
+                }
+
+                @if (veiculo.Disponibilidade == "Disponivel")
+                {
+                    <AuthorizeView Roles="Admin" Context="ctxVolta">
+                        <Authorized>
+                            <button class="btn-secondary" @onclick="VoltarParaPreparacao">
+                                ⚙ Voltar para preparação
+                            </button>
+                        </Authorized>
+                    </AuthorizeView>
+                }
 
                 <button class="btn-secondary" @onclick="AbrirModalEdicao">
                     Editar veículo
@@ -197,11 +221,22 @@ else
                     <div class="form-campo">
                         <label class="campo-label">Disponibilidade</label>
                         <select class="campo-input" @bind="formEdicao.Disponibilidade">
+                            <option value="EmPreparacao">Em preparação</option>
                             <option value="Disponivel">Disponível</option>
                             <option value="Reservado">Reservado</option>
                             <option value="Vendido">Vendido</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="form-secao">
+                    <label class="campo-label">Termo de entrega preliminar</label>
+                    <p class="secao-sub" style="font-size:.85em; color:#666; margin:4px 0 6px;">
+                        Será usado como base do termo final quando a proposta for gerada.
+                    </p>
+                    <textarea class="campo-input" rows="6"
+                              @bind="formEdicao.TextoTermoPreliminar"
+                              placeholder="Texto do termo de entrega..."></textarea>
                 </div>
 
                 <!-- SEÇÃO DE GERENCIAMENTO DE FOTOS -->
@@ -314,6 +349,11 @@ else
         if (claim is not null)
             UsuarioAtualId = Guid.Parse(claim.Value);
 
+        await CarregarVeiculo();
+    }
+
+    private async Task CarregarVeiculo()
+    {
         try
         {
             var resultado = await VeiculoService.GetByIdAsync(Id);
@@ -369,7 +409,8 @@ else
         {
             Id = veiculo!.Id,
             Valor = veiculo.Valor,
-            Disponibilidade = veiculo.Disponibilidade
+            Disponibilidade = veiculo.Disponibilidade,
+            TextoTermoPreliminar = veiculo.TextoTermoPreliminar
         };
         await RecarregarFotos();
         modalFormEdicaoVisivel = true;
@@ -439,11 +480,24 @@ else
     private void GerarProposta() =>
         Nav.NavigateTo($"/concessionaria/proposta/nova/{Id}");
 
+    private async Task LiberarParaVenda()
+    {
+        var r = await VeiculoService.LiberarParaVendaAsync(Id);
+        if (r.IsSuccess) await CarregarVeiculo();
+    }
+
+    private async Task VoltarParaPreparacao()
+    {
+        var r = await VeiculoService.VoltarParaPreparacaoAsync(Id);
+        if (r.IsSuccess) await CarregarVeiculo();
+    }
+
     private string BadgeClass => veiculo?.Disponibilidade switch
     {
-        "Disponivel" => "badge badge-disponivel",
-        "Vendido"    => "badge badge-vendido",
-        _            => "badge badge-reservado"
+        "Disponivel"   => "badge badge-disponivel",
+        "Vendido"      => "badge badge-vendido",
+        "EmPreparacao" => "badge badge-preparacao",
+        _              => "badge badge-reservado"
     };
 
     // Métodos para gerenciamento de fotos
@@ -990,6 +1044,11 @@ else
     .badge-disponivel { background: #dcfce7; color: #166534; }
     .badge-vendido { background: #f1f1f1; color: #666; }
     .badge-reservado { background: #fef9c3; color: #854d0e; }
+    .badge-preparacao { background: #e0e7ff; color: #3730a3; }
+    .preparacao-aviso {
+        background: #eef2ff; color: #3730a3; padding: 8px 12px; border-radius: 6px;
+        font-size: 0.85em; margin: 10px 0; text-align: center; border: 1px dashed #c7d2fe;
+    }
     .loading {
         text-align: center;
         padding: 80px;

@@ -30,7 +30,8 @@ public class VeiculoVendaTest
         veiculo.Cambio.Should().Be(TipoCambio.Automatico);
         veiculo.Combustivel.Should().Be(TipoCombustivel.Flex);
         veiculo.Valor.GetValorDinheiro().Should().Be(85000.00m);
-        veiculo.Disponibilidade.Should().Be(DisponibilidadeVeiculo.Disponivel);
+        // Novo veículo nasce em preparação — admin precisa liberar para venda.
+        veiculo.Disponibilidade.Should().Be(DisponibilidadeVeiculo.EmPreparacao);
         veiculo.GetAcessoriosVeiculo().Should().Be(AcessoriosVeiculo.ArCondicionado);
     }
 

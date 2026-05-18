@@ -53,6 +53,11 @@
                 @(carregando ? "Entrando..." : "Entrar")
             </button>
         </div>
+
+        <div class="login-rodape">
+            <span class="rodape-texto">É cliente? </span>
+            <a class="rodape-link" href="/consulta">Consultar ordem de serviço</a>
+        </div>
     </div>
 </div>
 
@@ -229,4 +234,20 @@
 
     .btn-entrar:hover:not(:disabled) { background: #c01818; }
     .btn-entrar:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .login-rodape {
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 0.5px solid #333;
+        text-align: center;
+        font-size: 13px;
+    }
+    .rodape-texto { color: #666; }
+    .rodape-link {
+        color: #e02020;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+    .rodape-link:hover { color: #ff4040; }
 </style>

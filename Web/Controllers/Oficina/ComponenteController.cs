@@ -7,7 +7,7 @@ namespace CarStoreManager.Web.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Mecanico")]
+[Authorize(Roles = "Admin,Mecanico,Recepcionista")]
 public class ComponenteController : ControllerBase
 {
     private readonly IComponenteService _service;
@@ -35,6 +35,17 @@ public class ComponenteController : ControllerBase
     public async Task<IActionResult> GetTodos()
     {
         var resultado = await _service.GetAllAsync();
+        return resultado.IsSuccess ? Ok(resultado.Value) : BadRequest(resultado.Error);
+    }
+
+    /// <summary>
+    /// Busca de componentes para o autocomplete na criação/edição de OS.
+    /// Termo procura em Nome, SKU, PartNumber, CodigoOEM e CodigoBarras.
+    /// </summary>
+    [HttpGet("buscar")]
+    public async Task<IActionResult> Buscar([FromQuery] string? q, [FromQuery] int limite = 20)
+    {
+        var resultado = await _service.BuscarAsync(q ?? "", limite);
         return resultado.IsSuccess ? Ok(resultado.Value) : BadRequest(resultado.Error);
     }
 

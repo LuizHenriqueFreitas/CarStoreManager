@@ -31,97 +31,242 @@
         </div>
     </div>
 
-    <h2 class="grupo-titulo">Concessionária</h2>
-    <div class="metricas-grid">
-        <div class="metrica-card">
-            <span class="metrica-label">Veículos disponíveis</span>
-            <span class="metrica-valor">@veiculosDisponiveis</span>
-        </div>
-        <div class="metrica-card">
-            <span class="metrica-label">Veículos vendidos</span>
-            <span class="metrica-valor sucesso">@veiculosVendidos</span>
-        </div>
-        <div class="metrica-card">
-            <span class="metrica-label">Estoque (R$)</span>
-            <span class="metrica-valor">@FormatBRL(valorTotalEstoqueVeiculos)</span>
-        </div>
-        <div class="metrica-card">
-            <span class="metrica-label">Propostas em aberto</span>
-            <span class="metrica-valor warn">@propostasAbertas</span>
-        </div>
+    <div class="dash-abas">
+        <button class="@AbaClass("geral")" @onclick='() => SetAba("geral")'>Geral</button>
+        <button class="@AbaClass("oficina")" @onclick='() => SetAba("oficina")'>Oficina</button>
+        <button class="@AbaClass("concessionaria")" @onclick='() => SetAba("concessionaria")'>Concessionária</button>
     </div>
 
-    <h2 class="grupo-titulo">Oficina</h2>
-    <div class="metricas-grid">
-        <div class="metrica-card">
-            <span class="metrica-label">OS pendentes</span>
-            <span class="metrica-valor warn">@osPendentes</span>
-        </div>
-        <div class="metrica-card">
-            <span class="metrica-label">OS em andamento</span>
-            <span class="metrica-valor info">@osEmAndamento</span>
-        </div>
-        <div class="metrica-card">
-            <span class="metrica-label">OS finalizadas (mês)</span>
-            <span class="metrica-valor sucesso">@osFinalizadasMes</span>
-        </div>
-        <div class="metrica-card destaque">
-            <span class="metrica-label">Peças com estoque baixo</span>
-            <span class="metrica-valor alerta">@pecasEstoqueBaixo</span>
-        </div>
-    </div>
-
-    @if (metricas is not null)
+    @* ===================== ABA GERAL ===================== *@
+    @if (abaAtiva == "geral")
     {
-        <h2 class="grupo-titulo">Resumo financeiro do mês</h2>
+        <h2 class="grupo-titulo">Resumo geral</h2>
+        @if (metricas is not null)
+        {
+            <div class="metricas-grid">
+                <div class="metrica-card">
+                    <span class="metrica-label">Receitas do mês</span>
+                    <span class="metrica-valor sucesso">@FormatBRL(metricas.TotalReceitasMes)</span>
+                    <span class="metrica-sub muted">
+                        Serviços @FormatBRL(metricas.ReceitaServicosMesAtual) ·
+                        Vendas @FormatBRL(metricas.ReceitaVendasMesAtual)
+                    </span>
+                </div>
+                <div class="metrica-card">
+                    <span class="metrica-label">Despesas do mês</span>
+                    <span class="metrica-valor alerta">@FormatBRL(metricas.TotalDespesasMes)</span>
+                    <span class="metrica-sub muted">
+                        Fixas @FormatBRL(metricas.TotalDespesasFixasMensal) ·
+                        Peças @FormatBRL(metricas.GastoPecasMesAtual)
+                    </span>
+                </div>
+                <div class="metrica-card destaque-lucro">
+                    <span class="metrica-label">Lucro líquido (mês)</span>
+                    <span class="metrica-valor @(metricas.LucroLiquidoMes >= 0 ? "sucesso" : "alerta")">
+                        @FormatBRL(metricas.LucroLiquidoMes)
+                    </span>
+                    <span class="metrica-sub muted">Receitas − Despesas</span>
+                </div>
+            </div>
+
+            <div class="capital-imobilizado-bloco">
+                <div class="capital-card">
+                    <div class="capital-titulo">💎 Capital imobilizado</div>
+                    <div class="capital-valor">@FormatBRL(metricas.CapitalEstoqueVeiculos)</div>
+                    <div class="capital-nota">
+                        Veículos disponíveis para venda — <strong>não compõe fluxo de caixa</strong>.
+                        Esse dinheiro está parado em estoque e só será realizado quando o veículo for vendido.
+                    </div>
+                </div>
+            </div>
+
+            <div class="grafico-row">
+                <div class="grafico-card grafico-largo">
+                    <h3 class="grafico-titulo">Receitas e despesas — últimos 6 meses</h3>
+                    <div class="grafico-area"><canvas id="chartFaturamento6m"></canvas></div>
+                </div>
+            </div>
+
+            <div class="grafico-row">
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Composição do mês</h3>
+                    <div class="grafico-area"><canvas id="chartReceitaDespesa"></canvas></div>
+                </div>
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Ordens de serviço por status</h3>
+                    <div class="grafico-area"><canvas id="chartOSStatus"></canvas></div>
+                </div>
+            </div>
+        }
+    }
+
+    @* ===================== ABA OFICINA ===================== *@
+    @if (abaAtiva == "oficina")
+    {
+        <h2 class="grupo-titulo">Oficina — operação</h2>
         <div class="metricas-grid">
             <div class="metrica-card">
-                <span class="metrica-label">Receitas do mês</span>
-                <span class="metrica-valor sucesso">@FormatBRL(metricas.TotalReceitasMes)</span>
-                <span class="metrica-sub muted">
-                    Serviços @FormatBRL(metricas.ReceitaServicosMesAtual) ·
-                    Vendas @FormatBRL(metricas.ReceitaVendasMesAtual)
-                </span>
+                <span class="metrica-label">OS pendentes</span>
+                <span class="metrica-valor warn">@osPendentes</span>
             </div>
             <div class="metrica-card">
-                <span class="metrica-label">Despesas do mês</span>
-                <span class="metrica-valor alerta">@FormatBRL(metricas.TotalDespesasMes)</span>
-                <span class="metrica-sub muted">
-                    Salários @FormatBRL(metricas.TotalSalariosMensal) ·
-                    Peças @FormatBRL(metricas.GastoPecasMesAtual)
-                </span>
-            </div>
-            <div class="metrica-card destaque-lucro">
-                <span class="metrica-label">Lucro líquido (mês)</span>
-                <span class="metrica-valor @(metricas.LucroLiquidoMes >= 0 ? "sucesso" : "alerta")">
-                    @FormatBRL(metricas.LucroLiquidoMes)
-                </span>
-                <span class="metrica-sub muted">Receitas − Despesas</span>
+                <span class="metrica-label">OS em andamento</span>
+                <span class="metrica-valor info">@osEmAndamento</span>
             </div>
             <div class="metrica-card">
-                <span class="metrica-label">Capital em estoque (veículos)</span>
-                <span class="metrica-valor info">@FormatBRL(metricas.CapitalEstoqueVeiculos)</span>
-                <span class="metrica-sub muted">Veículos disponíveis para venda</span>
+                <span class="metrica-label">OS finalizadas (mês)</span>
+                <span class="metrica-valor sucesso">@osFinalizadasMes</span>
+            </div>
+            <div class="metrica-card destaque">
+                <span class="metrica-label">Peças com estoque baixo</span>
+                <span class="metrica-valor alerta">@pecasEstoqueBaixo</span>
             </div>
         </div>
 
-        <div class="grafico-row">
-            <div class="grafico-card grafico-largo">
-                <h3 class="grafico-titulo">Receitas e despesas — últimos 6 meses</h3>
-                <div class="grafico-area"><canvas id="chartFaturamento6m"></canvas></div>
+        @if (metricas is not null)
+        {
+            <h2 class="grupo-titulo">Oficina — financeiro do mês</h2>
+            <div class="metricas-grid">
+                <div class="metrica-card">
+                    <span class="metrica-label">Receita de serviços</span>
+                    <span class="metrica-valor sucesso">@FormatBRL(metricas.ReceitaServicosMesAtual)</span>
+                </div>
+                <div class="metrica-card">
+                    <span class="metrica-label">Gasto com peças</span>
+                    <span class="metrica-valor alerta">@FormatBRL(metricas.GastoPecasMesAtual)</span>
+                </div>
+                <div class="metrica-card">
+                    <span class="metrica-label">Despesas da oficina</span>
+                    <span class="metrica-valor alerta">@FormatBRL(metricas.TotalDespesasOficinaMensal)</span>
+                    <span class="metrica-sub muted">Despesas com setor "Oficina"</span>
+                </div>
+                <div class="metrica-card destaque-lucro">
+                    <span class="metrica-label">Lucro operacional da oficina</span>
+                    <span class="metrica-valor @(metricas.LucroOficinaMes >= 0 ? "sucesso" : "alerta")">
+                        @FormatBRL(metricas.LucroOficinaMes)
+                    </span>
+                    <span class="metrica-sub muted">Serviços − Peças − Despesas da oficina</span>
+                </div>
+            </div>
+
+            <div class="grafico-row">
+                <div class="grafico-card grafico-largo">
+                    <h3 class="grafico-titulo">Oficina — receitas vs gastos com peças (6 meses)</h3>
+                    <div class="grafico-area"><canvas id="chartOficina6m"></canvas></div>
+                </div>
+            </div>
+
+            <div class="grafico-row">
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Ordens de serviço por status</h3>
+                    <div class="grafico-area"><canvas id="chartOSStatusOf"></canvas></div>
+                </div>
+            </div>
+        }
+
+        <div class="duas-colunas">
+            <div class="card">
+                <h3 class="card-titulo">Ordens de serviço recentes</h3>
+                @if (!osRecentes.Any())
+                {
+                    <p class="vazio">Nenhuma OS cadastrada ainda.</p>
+                }
+                else
+                {
+                    <ul class="lista-recente">
+                        @foreach (var os in osRecentes)
+                        {
+                            <li class="item-recente" @onclick='() => Nav.NavigateTo($"/oficina/os/{os.Id}")'>
+                                <span class="numero">@os.NumeroPublico</span>
+                                <span class="info">@os.Tipo</span>
+                                <span class="@StatusClass(os.Status)">@os.Status</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+
+            <div class="card">
+                <h3 class="card-titulo">Peças com estoque crítico</h3>
+                @if (!estoquesCriticos.Any())
+                {
+                    <p class="vazio">Nenhuma peça abaixo do mínimo.</p>
+                }
+                else
+                {
+                    <ul class="lista-recente">
+                        @foreach (var e in estoquesCriticos)
+                        {
+                            <li class="item-recente">
+                                <span class="info">@e.ComponenteNome</span>
+                                <span class="qtd-baixo">@e.QuantidadeAtual / @e.QuantidadeMinima</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    }
+
+    @* ===================== ABA CONCESSIONÁRIA ===================== *@
+    @if (abaAtiva == "concessionaria")
+    {
+        <h2 class="grupo-titulo">Concessionária — operação</h2>
+        <div class="metricas-grid">
+            <div class="metrica-card">
+                <span class="metrica-label">Veículos disponíveis</span>
+                <span class="metrica-valor">@veiculosDisponiveis</span>
+            </div>
+            <div class="metrica-card">
+                <span class="metrica-label">Veículos vendidos</span>
+                <span class="metrica-valor sucesso">@veiculosVendidos</span>
+            </div>
+            <div class="metrica-card">
+                <span class="metrica-label">Propostas em aberto</span>
+                <span class="metrica-valor warn">@propostasAbertas</span>
             </div>
         </div>
 
-        <div class="grafico-row">
-            <div class="grafico-card">
-                <h3 class="grafico-titulo">Composição do mês</h3>
-                <div class="grafico-area"><canvas id="chartReceitaDespesa"></canvas></div>
+        @if (metricas is not null)
+        {
+            <h2 class="grupo-titulo">Concessionária — financeiro do mês</h2>
+            <div class="metricas-grid">
+                <div class="metrica-card">
+                    <span class="metrica-label">Receita de vendas</span>
+                    <span class="metrica-valor sucesso">@FormatBRL(metricas.ReceitaVendasMesAtual)</span>
+                </div>
+                <div class="metrica-card">
+                    <span class="metrica-label">Despesas da concessionária</span>
+                    <span class="metrica-valor alerta">@FormatBRL(metricas.TotalDespesasConcessionariaMensal)</span>
+                    <span class="metrica-sub muted">Despesas com setor "Concessionária"</span>
+                </div>
+                <div class="metrica-card destaque-lucro">
+                    <span class="metrica-label">Lucro operacional da concessionária</span>
+                    <span class="metrica-valor @(metricas.LucroConcessionariaMes >= 0 ? "sucesso" : "alerta")">
+                        @FormatBRL(metricas.LucroConcessionariaMes)
+                    </span>
+                    <span class="metrica-sub muted">Vendas − Despesas da concessionária (excl. capital imobilizado)</span>
+                </div>
             </div>
-            <div class="grafico-card">
-                <h3 class="grafico-titulo">Ordens de serviço por status</h3>
-                <div class="grafico-area"><canvas id="chartOSStatus"></canvas></div>
+
+            <div class="capital-imobilizado-bloco">
+                <div class="capital-card">
+                    <div class="capital-titulo">💎 Capital imobilizado em veículos</div>
+                    <div class="capital-valor">@FormatBRL(metricas.CapitalEstoqueVeiculos)</div>
+                    <div class="capital-nota">
+                        Valor dos veículos disponíveis no pátio. <strong>Não entra no fluxo de caixa</strong> —
+                        é dinheiro investido aguardando a venda para virar receita.
+                    </div>
+                </div>
             </div>
-        </div>
+
+            <div class="grafico-row">
+                <div class="grafico-card grafico-largo">
+                    <h3 class="grafico-titulo">Receita de vendas — últimos 6 meses</h3>
+                    <div class="grafico-area"><canvas id="chartConcessionaria6m"></canvas></div>
+                </div>
+            </div>
+        }
     }
 
     <h2 class="grupo-titulo">Pessoas</h2>
@@ -137,49 +282,6 @@
         <div class="metrica-card">
             <span class="metrica-label">Vendedores</span>
             <span class="metrica-valor">@totalVendedores</span>
-        </div>
-    </div>
-
-    <div class="duas-colunas">
-        <div class="card">
-            <h3 class="card-titulo">Ordens de serviço recentes</h3>
-            @if (!osRecentes.Any())
-            {
-                <p class="vazio">Nenhuma OS cadastrada ainda.</p>
-            }
-            else
-            {
-                <ul class="lista-recente">
-                    @foreach (var os in osRecentes)
-                    {
-                        <li class="item-recente" @onclick='() => Nav.NavigateTo($"/oficina/os/{os.Id}")'>
-                            <span class="numero">@os.NumeroPublico</span>
-                            <span class="info">@os.Tipo</span>
-                            <span class="@StatusClass(os.Status)">@os.Status</span>
-                        </li>
-                    }
-                </ul>
-            }
-        </div>
-
-        <div class="card">
-            <h3 class="card-titulo">Peças com estoque crítico</h3>
-            @if (!estoquesCriticos.Any())
-            {
-                <p class="vazio">Nenhuma peça abaixo do mínimo.</p>
-            }
-            else
-            {
-                <ul class="lista-recente">
-                    @foreach (var e in estoquesCriticos)
-                    {
-                        <li class="item-recente">
-                            <span class="info">@e.ComponenteNome</span>
-                            <span class="qtd-baixo">@e.QuantidadeAtual / @e.QuantidadeMinima</span>
-                        </li>
-                    }
-                </ul>
-            }
         </div>
     </div>
 
@@ -260,6 +362,8 @@
 </div>
 
 @code {
+    private string abaAtiva = "geral";
+
     private int veiculosDisponiveis;
     private int veiculosVendidos;
     private decimal valorTotalEstoqueVeiculos;
@@ -275,6 +379,19 @@
     private List<OrdemServicoListaDTO> osRecentes = new();
     private List<EstoqueComponenteDTO> estoquesCriticos = new();
     private DashboardMetricasDTO? metricas;
+
+    private string AbaClass(string aba) => aba == abaAtiva ? "dash-aba dash-aba-ativa" : "dash-aba";
+
+    private async Task SetAba(string aba)
+    {
+        if (abaAtiva == aba) return;
+        abaAtiva = aba;
+        StateHasChanged();
+        // Re-render dos gráficos da aba que acabou de aparecer (canvases só
+        // existem no DOM depois do StateHasChanged).
+        await Task.Yield();
+        await RenderizarGraficos();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -326,82 +443,166 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (metricas is null) return;
-        await RenderizarGraficos();
+        // Renderiza apenas no primeiro render — trocas de aba chamam
+        // RenderizarGraficos() diretamente via SetAba.
+        if (firstRender) await RenderizarGraficos();
     }
 
     private async Task RenderizarGraficos()
     {
         if (metricas is null) return;
 
-        // === Linha: faturamento 6 meses ===
         var labels6m = metricas.SerieReceitaServicos.Select(s => s.MesLabel).ToArray();
-        var datasets6m = new object[]
-        {
-            new {
-                label = "Serviços",
-                data = metricas.SerieReceitaServicos.Select(s => s.Valor).ToArray(),
-                borderColor = "#16a34a",
-                backgroundColor = "rgba(22, 163, 74, 0.1)",
-                tension = 0.3,
-                fill = true
-            },
-            new {
-                label = "Vendas",
-                data = metricas.SerieReceitaVendas.Select(s => s.Valor).ToArray(),
-                borderColor = "#2563eb",
-                backgroundColor = "rgba(37, 99, 235, 0.1)",
-                tension = 0.3,
-                fill = true
-            },
-            new {
-                label = "Gastos com peças",
-                data = metricas.SerieGastoPecas.Select(s => s.Valor).ToArray(),
-                borderColor = "#e02020",
-                backgroundColor = "rgba(224, 32, 32, 0.1)",
-                tension = 0.3,
-                fill = false
-            }
+        var commonOpts = new {
+            responsive = true,
+            maintainAspectRatio = false,
+            plugins = new { legend = new { position = "bottom" } }
         };
 
-        await JS.InvokeVoidAsync("carstoreChart.render",
-            "chartFaturamento6m", "line", labels6m, datasets6m,
-            new {
-                responsive = true,
-                maintainAspectRatio = false,
-                plugins = new { legend = new { position = "bottom" } },
-                scales = new {
-                    y = new {
-                        beginAtZero = true,
-                        ticks = new { callback = "" } // tratamento simples no front
+        var qtdMeses = metricas.SerieReceitaServicos.Count;
+        // Despesas são recorrentes mensais sem histórico — replicamos o valor
+        // atual em cada mês para render como linha horizontal de referência.
+        decimal[] LinhaConstante(decimal valor) =>
+            Enumerable.Repeat(valor, qtdMeses).ToArray();
+
+        // ========== ABA GERAL ==========
+        if (abaAtiva == "geral")
+        {
+            var datasets6m = new object[]
+            {
+                new {
+                    label = "Serviços",
+                    data = metricas.SerieReceitaServicos.Select(s => s.Valor).ToArray(),
+                    borderColor = "#16a34a",
+                    backgroundColor = "rgba(22, 163, 74, 0.1)",
+                    tension = 0.3, fill = true
+                },
+                new {
+                    label = "Vendas",
+                    data = metricas.SerieReceitaVendas.Select(s => s.Valor).ToArray(),
+                    borderColor = "#2563eb",
+                    backgroundColor = "rgba(37, 99, 235, 0.1)",
+                    tension = 0.3, fill = true
+                },
+                new {
+                    label = "Gastos com peças",
+                    data = metricas.SerieGastoPecas.Select(s => s.Valor).ToArray(),
+                    borderColor = "#e02020",
+                    backgroundColor = "rgba(224, 32, 32, 0.1)",
+                    tension = 0.3, fill = false
+                },
+                new {
+                    label = "Despesas fixas (total)",
+                    data = LinhaConstante(metricas.TotalDespesasFixasMensal),
+                    borderColor = "#ea580c",
+                    backgroundColor = "rgba(234, 88, 12, 0.05)",
+                    borderDash = new[] { 6, 4 },
+                    tension = 0, fill = false
+                }
+            };
+            await JS.InvokeVoidAsync("carstoreChart.render",
+                "chartFaturamento6m", "line", labels6m, datasets6m, commonOpts);
+
+            var labelsComp = new[] {
+                "Receita serviços", "Receita vendas",
+                "Despesas Geral", "Despesas Oficina", "Despesas Concessionária",
+                "Gasto peças"
+            };
+            var dadosComp = new[] {
+                metricas.ReceitaServicosMesAtual,
+                metricas.ReceitaVendasMesAtual,
+                metricas.TotalDespesasGeralMensal,
+                metricas.TotalDespesasOficinaMensal,
+                metricas.TotalDespesasConcessionariaMensal,
+                metricas.GastoPecasMesAtual
+            };
+            var datasetComp = new object[]
+            {
+                new {
+                    data = dadosComp,
+                    backgroundColor = new[] {
+                        "#16a34a", "#2563eb",
+                        "#ea580c", "#f97316", "#fbbf24",
+                        "#e02020"
                     }
                 }
-            });
+            };
+            await JS.InvokeVoidAsync("carstoreChart.render",
+                "chartReceitaDespesa", "doughnut", labelsComp, datasetComp, commonOpts);
 
-        // === Pizza: composição mês corrente ===
-        var labelsComp = new[] { "Receita serviços", "Receita vendas", "Salários", "Gasto peças" };
-        var dadosComp = new[] {
-            metricas.ReceitaServicosMesAtual,
-            metricas.ReceitaVendasMesAtual,
-            metricas.TotalSalariosMensal,
-            metricas.GastoPecasMesAtual
-        };
-        var datasetComp = new object[]
+            var (labelsOS, dadosOS, coresOS) = MontarOSDataset();
+            await JS.InvokeVoidAsync("carstoreChart.render",
+                "chartOSStatus", "doughnut", labelsOS, new object[] {
+                    new { data = dadosOS, backgroundColor = coresOS }
+                }, commonOpts);
+        }
+
+        // ========== ABA OFICINA ==========
+        if (abaAtiva == "oficina")
         {
-            new {
-                data = dadosComp,
-                backgroundColor = new[] { "#16a34a", "#2563eb", "#ea580c", "#e02020" }
-            }
-        };
+            var datasetsOf = new object[]
+            {
+                new {
+                    label = "Receita de serviços",
+                    data = metricas.SerieReceitaServicos.Select(s => s.Valor).ToArray(),
+                    borderColor = "#16a34a",
+                    backgroundColor = "rgba(22, 163, 74, 0.1)",
+                    tension = 0.3, fill = true
+                },
+                new {
+                    label = "Gasto com peças",
+                    data = metricas.SerieGastoPecas.Select(s => s.Valor).ToArray(),
+                    borderColor = "#e02020",
+                    backgroundColor = "rgba(224, 32, 32, 0.1)",
+                    tension = 0.3, fill = false
+                },
+                new {
+                    label = "Despesas da oficina",
+                    data = LinhaConstante(metricas.TotalDespesasOficinaMensal),
+                    borderColor = "#ea580c",
+                    backgroundColor = "rgba(234, 88, 12, 0.05)",
+                    borderDash = new[] { 6, 4 },
+                    tension = 0, fill = false
+                }
+            };
+            await JS.InvokeVoidAsync("carstoreChart.render",
+                "chartOficina6m", "line", labels6m, datasetsOf, commonOpts);
 
-        await JS.InvokeVoidAsync("carstoreChart.render",
-            "chartReceitaDespesa", "doughnut", labelsComp, datasetComp,
-            new {
-                responsive = true,
-                maintainAspectRatio = false,
-                plugins = new { legend = new { position = "bottom" } }
-            });
+            var (labelsOS, dadosOS, coresOS) = MontarOSDataset();
+            await JS.InvokeVoidAsync("carstoreChart.render",
+                "chartOSStatusOf", "doughnut", labelsOS, new object[] {
+                    new { data = dadosOS, backgroundColor = coresOS }
+                }, commonOpts);
+        }
 
-        // === Donut: OS por status ===
+        // ========== ABA CONCESSIONÁRIA ==========
+        if (abaAtiva == "concessionaria")
+        {
+            var datasetsCo = new object[]
+            {
+                new {
+                    label = "Receita de vendas",
+                    data = metricas.SerieReceitaVendas.Select(s => s.Valor).ToArray(),
+                    borderColor = "#2563eb",
+                    backgroundColor = "rgba(37, 99, 235, 0.15)",
+                    tension = 0.3, fill = true
+                },
+                new {
+                    label = "Despesas da concessionária",
+                    data = LinhaConstante(metricas.TotalDespesasConcessionariaMensal),
+                    borderColor = "#ea580c",
+                    backgroundColor = "rgba(234, 88, 12, 0.05)",
+                    borderDash = new[] { 6, 4 },
+                    tension = 0, fill = false
+                }
+            };
+            await JS.InvokeVoidAsync("carstoreChart.render",
+                "chartConcessionaria6m", "line", labels6m, datasetsCo, commonOpts);
+        }
+    }
+
+    private (string[] labels, int[] dados, string[] cores) MontarOSDataset()
+    {
         var corStatus = new Dictionary<string, string>
         {
             ["Pendente"]      = "#eab308",
@@ -413,31 +614,23 @@
             ["BuscandoPecasParaOrcamento"] = "#a855f7"
         };
 
-        var labelsOS = metricas.OrdensServicoPorStatus.Keys.ToArray();
-        var dadosOS = metricas.OrdensServicoPorStatus.Values.ToArray();
-        var coresOS = labelsOS.Select(l => corStatus.TryGetValue(l, out var c) ? c : "#888888").ToArray();
-
-        var datasetOS = new object[]
-        {
-            new { data = dadosOS, backgroundColor = coresOS }
-        };
-
-        await JS.InvokeVoidAsync("carstoreChart.render",
-            "chartOSStatus", "doughnut", labelsOS, datasetOS,
-            new {
-                responsive = true,
-                maintainAspectRatio = false,
-                plugins = new { legend = new { position = "bottom" } }
-            });
+        var labels = metricas!.OrdensServicoPorStatus.Keys.ToArray();
+        var dados = metricas.OrdensServicoPorStatus.Values.ToArray();
+        var cores = labels.Select(l => corStatus.TryGetValue(l, out var c) ? c : "#888888").ToArray();
+        return (labels, dados, cores);
     }
 
     public async ValueTask DisposeAsync()
     {
         try
         {
-            await JS.InvokeVoidAsync("carstoreChart.destroy", "chartFaturamento6m");
-            await JS.InvokeVoidAsync("carstoreChart.destroy", "chartReceitaDespesa");
-            await JS.InvokeVoidAsync("carstoreChart.destroy", "chartOSStatus");
+            foreach (var id in new[] {
+                "chartFaturamento6m", "chartReceitaDespesa", "chartOSStatus",
+                "chartOficina6m", "chartOSStatusOf", "chartConcessionaria6m"
+            })
+            {
+                await JS.InvokeVoidAsync("carstoreChart.destroy", id);
+            }
         }
         catch { /* circuito já fechado */ }
     }
@@ -460,6 +653,29 @@
     .dash-header { margin-bottom: 24px; }
     .dash-titulo { font-size: 24px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px; }
     .dash-sub { font-size: 14px; color: #888; }
+
+    .dash-abas {
+        display: flex; gap: 4px; border-bottom: 1px solid #ddd;
+        margin: 0 0 24px;
+    }
+    .dash-aba {
+        padding: 10px 22px; background: transparent; border: 0; cursor: pointer;
+        color: #555; font-size: 0.95em; border-bottom: 2px solid transparent;
+        font-weight: 500;
+    }
+    .dash-aba:hover { color: #0a84ff; }
+    .dash-aba-ativa { color: #0a84ff; border-bottom-color: #0a84ff; }
+
+    .capital-imobilizado-bloco { margin: 18px 0 20px; }
+    .capital-card {
+        background: linear-gradient(135deg, #eef6ff 0%, #f7fafc 100%);
+        border: 1px solid #d0d7de; border-radius: 12px; padding: 20px 24px;
+        display: grid; grid-template-columns: auto auto 1fr; gap: 12px 24px; align-items: center;
+    }
+    .capital-titulo { font-size: 0.95em; color: #555; font-weight: 500; }
+    .capital-valor { font-size: 1.6em; font-weight: 600; color: #0a84ff; }
+    .capital-nota { font-size: 0.85em; color: #666; line-height: 1.4; }
+    .capital-nota strong { color: #a72020; }
 
     .grupo-titulo {
         font-size: 13px;

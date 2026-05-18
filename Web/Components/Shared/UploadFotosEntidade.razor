@@ -1,0 +1,269 @@
+@namespace CarStoreManager.Web.Components.Shared
+@rendermode InteractiveServer
+
+@inject IFotoService FotoService
+
+@using CarStoreManager.Application.Common
+@using CarStoreManager.Application.DTOs
+@using CarStoreManager.Application.Interfaces
+@using Microsoft.AspNetCore.Components.Forms
+
+<div class="fotos-bloco">
+    @if (!string.IsNullOrEmpty(Titulo))
+    {
+        <h3 class="fotos-titulo">@Titulo</h3>
+    }
+    @if (!string.IsNullOrEmpty(Descricao))
+    {
+        <p class="fotos-desc">@Descricao</p>
+    }
+
+    @if (fotos.Any())
+    {
+        <div class="fotos-galeria">
+            @foreach (var foto in fotos)
+            {
+                <div class="foto-card">
+                    <img src="@foto.Url" @onclick="() => AbrirFullscreen(foto)" />
+                    @if (PodeEditar)
+                    {
+                        <button class="foto-remover" @onclick="() => RemoverFoto(foto)" title="Remover">×</button>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <p class="fotos-vazio">Nenhuma foto anexada.</p>
+    }
+
+    @if (PodeEditar)
+    {
+        <div class="fotos-upload">
+            <label class="upload-btn">
+                <InputFile OnChange="OnFotosSelecionadas" multiple accept="image/jpeg,image/png" />
+                <span>📸 Selecionar fotos</span>
+            </label>
+
+            @if (arquivosSelecionados.Any())
+            {
+                <div class="upload-previews">
+                    @for (int i = 0; i < previewsNovas.Count; i++)
+                    {
+                        var idx = i;
+                        <div class="upload-preview">
+                            <img src="@previewsNovas[idx]" />
+                            <button class="upload-preview-remover" @onclick="() => RemoverSelecionado(idx)">×</button>
+                        </div>
+                    }
+                </div>
+                <div class="upload-acoes">
+                    <button class="btn-enviar" @onclick="EnviarFotos" disabled="@uploading">
+                        @(uploading ? "Enviando..." : $"Enviar {arquivosSelecionados.Count} foto(s)")
+                    </button>
+                    <button class="btn-cancelar" @onclick="CancelarSelecao" disabled="@uploading">Cancelar</button>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(mensagemErro))
+            {
+                <div class="upload-erro">@mensagemErro</div>
+            }
+        </div>
+    }
+</div>
+
+@if (fotoFullscreen is not null)
+{
+    <div class="fs-overlay" @onclick="FecharFullscreen">
+        <img src="@fotoFullscreen.Url" @onclick:stopPropagation />
+        <button class="fs-fechar" @onclick="FecharFullscreen">×</button>
+    </div>
+}
+
+<style>
+    .fotos-bloco { margin: 12px 0; }
+    .fotos-titulo { font-size: 1.05em; font-weight: 500; margin: 0 0 6px; }
+    .fotos-desc { font-size: 0.85em; color: #666; margin: 0 0 10px; }
+    .fotos-vazio { color: #999; font-size: 0.9em; font-style: italic; }
+
+    .fotos-galeria {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 10px; margin-bottom: 12px;
+    }
+    .foto-card {
+        position: relative; aspect-ratio: 4/3; overflow: hidden; border-radius: 6px;
+        border: 1px solid #e0e0e0; background: #f8f8f8;
+    }
+    .foto-card img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
+    .foto-remover {
+        position: absolute; top: 4px; right: 4px; background: rgba(160, 32, 32, 0.9);
+        color: #fff; border: 0; width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+        font-size: 14px; line-height: 1;
+    }
+
+    .fotos-upload {
+        padding: 12px; background: #fafafa; border: 1px dashed #d0d0d0;
+        border-radius: 6px; margin-top: 10px;
+    }
+    .upload-btn { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+    .upload-btn input[type="file"] { display: none; }
+    .upload-btn span {
+        padding: 8px 14px; background: #0a84ff; color: #fff;
+        border-radius: 6px; font-size: 0.9em; font-weight: 500;
+    }
+    .upload-previews {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 8px; margin-top: 12px;
+    }
+    .upload-preview { position: relative; aspect-ratio: 4/3; }
+    .upload-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+    .upload-preview-remover {
+        position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6);
+        color: #fff; border: 0; width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+    }
+    .upload-acoes { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-enviar {
+        background: #16a34a; color: #fff; border: 0; padding: 8px 16px;
+        border-radius: 6px; cursor: pointer; font-weight: 500;
+    }
+    .btn-enviar:disabled { background: #aaa; cursor: not-allowed; }
+    .btn-cancelar {
+        background: #eee; color: #333; border: 0; padding: 8px 14px;
+        border-radius: 6px; cursor: pointer;
+    }
+    .upload-erro {
+        background: #fdecea; color: #a72020; padding: 8px 12px;
+        border-radius: 4px; margin-top: 8px; font-size: 0.85em;
+    }
+
+    .fs-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999;
+        display: flex; align-items: center; justify-content: center; cursor: zoom-out;
+    }
+    .fs-overlay img { max-width: 92vw; max-height: 92vh; box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
+    .fs-fechar {
+        position: absolute; top: 20px; right: 24px; background: rgba(255,255,255,0.2);
+        color: #fff; border: 0; width: 40px; height: 40px; border-radius: 50%;
+        font-size: 24px; cursor: pointer;
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public string EntidadeTipo { get; set; } = null!;
+    [Parameter, EditorRequired] public Guid EntidadeId { get; set; }
+    [Parameter] public string Titulo { get; set; } = "";
+    [Parameter] public string Descricao { get; set; } = "";
+    [Parameter] public bool PodeEditar { get; set; } = true;
+
+    private List<FotoDto> fotos = new();
+    private List<FotoEmMemoria> arquivosSelecionados = new();
+    private List<string> previewsNovas = new();
+    private FotoDto? fotoFullscreen;
+    private bool uploading;
+    private string? mensagemErro;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await Carregar();
+    }
+
+    private async Task Carregar()
+    {
+        if (EntidadeId == Guid.Empty) return;
+        var r = await FotoService.GetFotosByEntidadeAsync(EntidadeTipo, EntidadeId);
+        if (r.IsSuccess) fotos = r.Value ?? new();
+    }
+
+    private async Task OnFotosSelecionadas(InputFileChangeEventArgs e)
+    {
+        mensagemErro = null;
+        foreach (var arquivo in e.GetMultipleFiles(20))
+        {
+            if (arquivo.Size > 5 * 1024 * 1024)
+            {
+                mensagemErro = $"\"{arquivo.Name}\" excede 5MB.";
+                continue;
+            }
+            if (arquivo.ContentType is not "image/jpeg" and not "image/png")
+            {
+                mensagemErro = $"\"{arquivo.Name}\" precisa ser JPEG ou PNG.";
+                continue;
+            }
+
+            using var ms = new MemoryStream();
+            await arquivo.OpenReadStream(5 * 1024 * 1024).CopyToAsync(ms);
+            var bytes = ms.ToArray();
+
+            arquivosSelecionados.Add(new FotoEmMemoria
+            {
+                Nome = arquivo.Name,
+                ContentType = arquivo.ContentType,
+                Conteudo = bytes
+            });
+            previewsNovas.Add($"data:{arquivo.ContentType};base64,{Convert.ToBase64String(bytes)}");
+        }
+        StateHasChanged();
+    }
+
+    private void RemoverSelecionado(int idx)
+    {
+        arquivosSelecionados.RemoveAt(idx);
+        previewsNovas.RemoveAt(idx);
+    }
+
+    private void CancelarSelecao()
+    {
+        arquivosSelecionados.Clear();
+        previewsNovas.Clear();
+        mensagemErro = null;
+    }
+
+    private async Task EnviarFotos()
+    {
+        if (!arquivosSelecionados.Any() || EntidadeId == Guid.Empty) return;
+
+        uploading = true;
+        mensagemErro = null;
+        try
+        {
+            var arquivos = arquivosSelecionados
+                .Select(f => new ArquivoUpload(
+                    f.Nome, f.Conteudo.Length, f.ContentType,
+                    () => new MemoryStream(f.Conteudo)))
+                .ToList();
+
+            var r = await FotoService.UploadFotosAsync(EntidadeTipo, EntidadeId, arquivos);
+            if (r.IsSuccess)
+            {
+                arquivosSelecionados.Clear();
+                previewsNovas.Clear();
+                await Carregar();
+            }
+            else
+            {
+                mensagemErro = r.Error ?? "Erro ao enviar fotos.";
+            }
+        }
+        catch (Exception ex) { mensagemErro = ex.Message; }
+        finally { uploading = false; StateHasChanged(); }
+    }
+
+    private async Task RemoverFoto(FotoDto foto)
+    {
+        var r = await FotoService.RemoverFotoAsync(foto.Id);
+        if (r.IsSuccess) await Carregar();
+        else mensagemErro = r.Error ?? "Erro ao remover.";
+    }
+
+    private void AbrirFullscreen(FotoDto foto) => fotoFullscreen = foto;
+    private void FecharFullscreen() => fotoFullscreen = null;
+
+    private class FotoEmMemoria
+    {
+        public string Nome { get; set; } = "";
+        public string ContentType { get; set; } = "";
+        public byte[] Conteudo { get; set; } = Array.Empty<byte>();
+    }
+}

@@ -1,5 +1,5 @@
 @page "/concessionaria/veiculo/novo"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Vendedor")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -110,6 +110,18 @@
                 </label>
             }
         </div>
+    </div>
+
+    <div class="form-card">
+        <h2 class="secao-titulo">Termo de entrega preliminar</h2>
+        <p class="secao-sub">
+            Esboce aqui o texto do termo de entrega — quando uma proposta for gerada,
+            esse texto será a base do termo final. O veículo nasce com status
+            <strong>Em preparação</strong> e só vai para venda depois que você liberar.
+        </p>
+        <textarea class="campo-input" rows="8"
+                  @bind="form.TextoTermoPreliminar"
+                  placeholder="Ex: A concessionária declara que o veículo X foi entregue em perfeitas condições mecânicas, com documentação regularizada..."></textarea>
     </div>
 
     <div class="form-card">

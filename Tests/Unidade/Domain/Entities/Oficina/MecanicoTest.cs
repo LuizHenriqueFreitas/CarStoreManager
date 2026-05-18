@@ -18,7 +18,6 @@ public class MecanicoTests
             "joao@oficina.com",
             "11988887777",
             "Senha1",
-            3000,
             EspecialidadeMecanico.Mecanica,
             NivelFuncionario.Pleno,
             data
@@ -74,7 +73,6 @@ public class MecanicoTests
             "mecanico@teste.com",
             "11999999999",
             "Senha1",
-            3000,
             EspecialidadeMecanico.Funilaria,
             NivelFuncionario.Junior,
             DateTime.UtcNow.AddDays(6)

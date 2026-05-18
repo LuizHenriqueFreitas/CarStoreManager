@@ -21,8 +21,7 @@ public class Admin : Usuario
         string nome,
         string email,
         string telefone,
-        string senha,
-        decimal salario)
-        : base(nome, email, telefone, senha, salario, RoleUsuario.Admin)
+        string senha)
+        : base(nome, email, telefone, senha, RoleUsuario.Admin)
     { }
 }

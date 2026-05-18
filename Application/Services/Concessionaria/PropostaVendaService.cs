@@ -293,19 +293,30 @@ public class PropostaVendaService : IPropostaVendaService
     // Vistoria
     // ============================================================
 
-    public async Task<Result> IniciarVistoriaAsync(Guid propostaId)
+    public async Task<Result<Guid>> IniciarVistoriaAsync(Guid propostaId, Guid vistoriadorId)
     {
         var proposta = await _repository.GetByIdAsync(propostaId);
-        if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (proposta is null) return Result<Guid>.Fail("Proposta não encontrada");
 
         try
         {
             proposta.IniciarVistoria();
+
+            // Cria a vistoria preliminar (Concluida=false) — admin pode anexar
+            // fotos antes de registrar o resultado. Se já existe uma pendente
+            // (re-início após reprovação), reusa.
+            var pendente = await _vistoriaRepository.ObterPendentePorPropostaAsync(propostaId);
+            if (pendente is null)
+            {
+                pendente = new Vistoria(propostaId, vistoriadorId);
+                await _vistoriaRepository.AddAsync(pendente);
+            }
+
             _repository.Update(proposta);
             await _repository.SaveChangesAsync();
-            return Result.Ok();
+            return Result<Guid>.Ok(pendente.Id);
         }
-        catch (Exception ex) { return Result.Fail(ex.Message); }
+        catch (Exception ex) { return Result<Guid>.Fail(ex.Message); }
     }
 
     public async Task<Result<VistoriaDTO>> RegistrarVistoriaAsync(
@@ -316,8 +327,17 @@ public class PropostaVendaService : IPropostaVendaService
 
         try
         {
-            var vistoria = new Vistoria(propostaId, vistoriadorId, dto.Observacoes, dto.Aprovado);
-            await _vistoriaRepository.AddAsync(vistoria);
+            // Reaproveita a vistoria pendente criada em IniciarVistoria; se não
+            // existe (fluxo legado/atalho), cria uma nova e conclui na hora.
+            var vistoria = await _vistoriaRepository.ObterPendentePorPropostaAsync(propostaId);
+            if (vistoria is null)
+            {
+                vistoria = new Vistoria(propostaId, vistoriadorId);
+                await _vistoriaRepository.AddAsync(vistoria);
+            }
+
+            vistoria.Registrar(dto.Observacoes, dto.Aprovado);
+            _vistoriaRepository.Update(vistoria);
 
             proposta.RegistrarResultadoVistoria(dto.Aprovado);
             _repository.Update(proposta);
@@ -372,6 +392,15 @@ public class PropostaVendaService : IPropostaVendaService
         var dto = MapTermo(termo);
         await EnriquecerComValoresAsync(dto);
         return Result<TermoEntregaDTO>.Ok(dto);
+    }
+
+    public async Task<Result<string>> ObterRascunhoInicialTermoAsync(Guid propostaId)
+    {
+        var proposta = await _repository.GetByIdAsync(propostaId);
+        if (proposta is null) return Result<string>.Fail("Proposta não encontrada.");
+
+        var veiculo = await _veiculoRepository.GetByIdAsync(proposta.VeiculoVendaId);
+        return Result<string>.Ok(veiculo?.TextoTermoPreliminar ?? "");
     }
 
     public async Task<Result> EnviarTermoParaAssinaturaAsync(Guid propostaId)
@@ -474,7 +503,9 @@ public class PropostaVendaService : IPropostaVendaService
         VistoriadorId = v.VistoriadorId,
         DataRealizada = v.DataRealizada,
         Observacoes = v.Observacoes,
-        Aprovado = v.Aprovado
+        Aprovado = v.Aprovado,
+        Concluida = v.Concluida,
+        DataConclusao = v.DataConclusao
     };
 
     private static TermoEntregaDTO MapTermo(TermoEntrega t) => new()

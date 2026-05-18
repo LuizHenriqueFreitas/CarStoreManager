@@ -46,7 +46,7 @@ public class VeiculoVendaController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin,Vendedor")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Criar([FromBody] CriarVeiculoVendaDTO dto)
     {
         var resultado = await _service.AddAsync(dto);
@@ -85,6 +85,22 @@ public class VeiculoVendaController : ControllerBase
     public async Task<IActionResult> MarcarComoDisponivel(Guid id)
     {
         var resultado = await _service.MarcarComoDisponivelAsync(id);
+        return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
+    }
+
+    [HttpPatch("{id:guid}/liberar-venda")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> LiberarParaVenda(Guid id)
+    {
+        var resultado = await _service.LiberarParaVendaAsync(id);
+        return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
+    }
+
+    [HttpPatch("{id:guid}/voltar-preparacao")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> VoltarParaPreparacao(Guid id)
+    {
+        var resultado = await _service.VoltarParaPreparacaoAsync(id);
         return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
     }
 

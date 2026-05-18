@@ -19,7 +19,6 @@ public class VendedorTests
             "ana@concessionaria.com",
             "11977776666",
             "Senha1",
-            3000,
             NivelFuncionario.Junior,
             data
         );
@@ -50,7 +49,6 @@ public class VendedorTests
             "email@teste.com", 
             "11999999999", 
             "Senha1", 
-            3000,
             NivelFuncionario.Senior, 
             data
         );
@@ -77,7 +75,6 @@ public class VendedorTests
             "vendedor@teste.com",
             "11988888888",
             "Senha1",
-            3000,
             nivel,
             DateTime.UtcNow.AddDays(5)
         );

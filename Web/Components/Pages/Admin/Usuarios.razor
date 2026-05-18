@@ -188,10 +188,6 @@
                     <label class="campo-label">Senha inicial *</label>
                     <input type="password" class="campo-input" @bind="novoUsuario.Senha" />
                 </div>
-                <div class="form-campo">
-                    <label class="campo-label">Salário (R$) *</label>
-                    <input type="number" step="0.01" class="campo-input" @bind="novoUsuario.Salario" />
-                </div>
 
                 @if (novoUsuario.Role != "Admin")
                 {
@@ -377,8 +373,7 @@
         Role = "Vendedor",
         Nivel = "Junior",
         Especialidade = nameof(EspecialidadeMecanico.Motor),
-        DataContratacao = DateTime.Today,
-        Salario = 0
+        DataContratacao = DateTime.Today
     };
 
     private static string LabelEspecialidade(EspecialidadeMecanico esp) => esp switch

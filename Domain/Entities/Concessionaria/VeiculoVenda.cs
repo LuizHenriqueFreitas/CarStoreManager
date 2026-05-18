@@ -35,6 +35,14 @@ public class VeiculoVenda : Entity
 
     public Dinheiro Valor { get; private set; } = null!;
 
+    /// <summary>
+    /// Texto preliminar do termo de entrega, redigido pelo admin no
+    /// cadastro do veículo. Quando uma proposta é gerada, o termo de
+    /// entrega da proposta começa preenchido com esse texto — basta
+    /// revisar antes de mandar pro cliente assinar.
+    /// </summary>
+    public string TextoTermoPreliminar { get; private set; } = "";
+
     public List<Foto> Fotos { get; private set; } = new();
 
     protected VeiculoVenda() { }
@@ -67,7 +75,11 @@ public class VeiculoVenda : Entity
         Cambio = cambio;
         Combustivel = combustivel;
 
-        Disponibilidade = DisponibilidadeVeiculo.Disponivel;
+        // Todo veículo novo nasce em preparação: lavagem, conserto de
+        // pequenos defeitos, regularização documental e redação do termo
+        // de entrega preliminar. Só vira "Disponivel" depois que o admin
+        // confirma que o veículo está pronto para venda.
+        Disponibilidade = DisponibilidadeVeiculo.EmPreparacao;
         Valor = new Dinheiro(valor);
         Acessorios = acessorios;
         AnoUltimoIpvaPago = anoUltimoIpvaPago;
@@ -167,6 +179,15 @@ public class VeiculoVenda : Entity
 
     public void LimparPagamentoIpva() => AnoUltimoIpvaPago = null;
 
+    /// <summary>
+    /// Atualiza o texto preliminar do termo de entrega. Pode ser editado a
+    /// qualquer momento enquanto o veículo está no estoque.
+    /// </summary>
+    public void AtualizarTextoTermoPreliminar(string? texto)
+    {
+        TextoTermoPreliminar = (texto ?? "").Trim();
+    }
+
     public void AtualizarValor(Dinheiro novoValor)
     {
         if (novoValor.GetValorDinheiro() <= 0)
@@ -202,6 +223,30 @@ public class VeiculoVenda : Entity
         => Disponibilidade = DisponibilidadeVeiculo.Vendido;
     public void MarcarComoDisponivel()
         => Disponibilidade = DisponibilidadeVeiculo.Disponivel;
+
+    /// <summary>
+    /// Libera o veículo da fase de preparação para a venda. Só faz transição
+    /// quando o veículo está em <c>EmPreparacao</c>.
+    /// </summary>
+    public void LiberarParaVenda()
+    {
+        if (Disponibilidade != DisponibilidadeVeiculo.EmPreparacao)
+            throw new InvalidOperationException(
+                $"Só é possível liberar para venda veículos em preparação (atual: {Disponibilidade}).");
+        Disponibilidade = DisponibilidadeVeiculo.Disponivel;
+    }
+
+    /// <summary>
+    /// Devolve o veículo para preparação (ex.: precisa de retoque adicional
+    /// antes da venda). Só faz transição quando o veículo está <c>Disponivel</c>.
+    /// </summary>
+    public void VoltarParaPreparacao()
+    {
+        if (Disponibilidade != DisponibilidadeVeiculo.Disponivel)
+            throw new InvalidOperationException(
+                $"Só é possível voltar para preparação veículos disponíveis (atual: {Disponibilidade}).");
+        Disponibilidade = DisponibilidadeVeiculo.EmPreparacao;
+    }
 
     /*
         gerenciamento das fotos

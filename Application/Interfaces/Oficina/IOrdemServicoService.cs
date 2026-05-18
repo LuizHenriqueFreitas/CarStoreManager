@@ -19,6 +19,8 @@ public interface IOrdemServicoService : IService<
 
     // CHECKLIST
     Task<Result> AdicionarItemChecklistAsync(AdicionarChecklistItemDTO dto);
+    Task<Result> RemoverItemChecklistAsync(Guid ordemId, Guid itemId);
+    Task<Result> AtualizarDescricaoChecklistAsync(Guid ordemId, Guid itemId, string novaDescricao);
     Task<Result> AtualizarStatusChecklistAsync(AtualizarStatusChecklistDTO dto);
 
     // CÁLCULO

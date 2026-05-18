@@ -186,6 +186,23 @@ public class OrdemServicoController : ControllerBase
         return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
     }
 
+    [HttpPut("{id:guid}/checklist/{itemId:guid}")]
+    [Authorize(Roles = "Admin,Mecanico")]
+    public async Task<IActionResult> AtualizarDescricaoChecklist(
+        Guid id, Guid itemId, [FromBody] AtualizarDescricaoChecklistDTO dto)
+    {
+        var resultado = await _service.AtualizarDescricaoChecklistAsync(id, itemId, dto.Descricao);
+        return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
+    }
+
+    [HttpDelete("{id:guid}/checklist/{itemId:guid}")]
+    [Authorize(Roles = "Admin,Mecanico")]
+    public async Task<IActionResult> RemoverItemChecklist(Guid id, Guid itemId)
+    {
+        var resultado = await _service.RemoverItemChecklistAsync(id, itemId);
+        return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
+    }
+
     // =========================
     // CÁLCULO
     // =========================

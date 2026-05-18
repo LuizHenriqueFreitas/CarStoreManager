@@ -42,7 +42,6 @@ public static class VendedorMapping
             dto.Email,
             dto.Telefone,
             senhaHash,
-            dto.Salario,
             nivel,
             dto.DataContratacao
         );

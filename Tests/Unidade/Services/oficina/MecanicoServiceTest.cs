@@ -228,7 +228,6 @@ namespace CarStoreManager.Tests.Unidade.Services
                 "mecanico@teste.com",
                 "11999999999",
                 "Senha123",
-                3000,
                 EspecialidadeMecanico.Mecanica,
                 NivelFuncionario.Junior,
                 DateTime.Now.AddDays(1)

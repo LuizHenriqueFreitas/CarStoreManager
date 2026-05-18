@@ -151,11 +151,26 @@ else
                                     @if (item.Status == "Concluido") { <span>✓</span> }
                                     else if (item.Status == "EmAndamento") { <span>●</span> }
                                 </div>
-                                <span class="check-descricao">@item.Descricao</span>
-                                <span class="check-origem @(item.Origem == "Manual" ? "origem-manual" : "origem-auto")">
-                                    @item.Origem
-                                </span>
-                                <span class="check-status-label @CheckClass(item.Status)">@item.Status</span>
+                                @if (itemEmEdicao == item.Id)
+                                {
+                                    <input class="campo-input-inline" @bind="descricaoEdicao"
+                                           @onkeydown="TeclaSalvarDescricao" />
+                                    <button class="btn-mini azul" @onclick="() => SalvarDescricaoItem(item)">Salvar</button>
+                                    <button class="btn-mini" @onclick="() => itemEmEdicao = Guid.Empty">Cancelar</button>
+                                }
+                                else
+                                {
+                                    <span class="check-descricao">@item.Descricao</span>
+                                    <span class="check-origem @(item.Origem == "Manual" ? "origem-manual" : "origem-auto")">
+                                        @item.Origem
+                                    </span>
+                                    <span class="check-status-label @CheckClass(item.Status)">@item.Status</span>
+                                    @if (PodeEditarChecklist)
+                                    {
+                                        <button class="btn-mini" @onclick="() => IniciarEdicaoItem(item)">Editar</button>
+                                        <button class="btn-mini btn-remover" @onclick="() => RemoverItemChecklist(item)">×</button>
+                                    }
+                                }
                             </div>
                         }
                         @if (!os.Checklist.Any())
@@ -576,6 +591,35 @@ else
     {
         if (e.Key == "Enter") await AdicionarItemChecklist();
         if (e.Key == "Escape") mostrarAdicionarItem = false;
+    }
+
+    private Guid itemEmEdicao = Guid.Empty;
+    private string descricaoEdicao = "";
+
+    private void IniciarEdicaoItem(ChecklistItemDTO item)
+    {
+        itemEmEdicao = item.Id;
+        descricaoEdicao = item.Descricao;
+    }
+
+    private async Task SalvarDescricaoItem(ChecklistItemDTO item)
+    {
+        if (string.IsNullOrWhiteSpace(descricaoEdicao)) return;
+        var r = await OrdemService.AtualizarDescricaoChecklistAsync(Id, item.Id, descricaoEdicao);
+        if (r.IsSuccess) { itemEmEdicao = Guid.Empty; await CarregarOS(); }
+        else await MostrarMensagem(r.Error ?? "Erro ao salvar.", erro: true);
+    }
+
+    private async Task TeclaSalvarDescricao(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") itemEmEdicao = Guid.Empty;
+    }
+
+    private async Task RemoverItemChecklist(ChecklistItemDTO item)
+    {
+        var r = await OrdemService.RemoverItemChecklistAsync(Id, item.Id);
+        if (r.IsSuccess) await CarregarOS();
+        else await MostrarMensagem(r.Error ?? "Erro ao remover.", erro: true);
     }
 
     private async Task TratarResultado(

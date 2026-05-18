@@ -5,4 +5,5 @@ public class AtualizarVeiculoVendaDTO
     public Guid Id { get; set; }
     public string Disponibilidade { get; set; } = null!;
     public decimal Valor { get; set; }
+    public string? TextoTermoPreliminar { get; set; }
 }

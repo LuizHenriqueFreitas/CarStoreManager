@@ -33,7 +33,6 @@ public class UsuarioTest
             "pedro@email.com",
             "11 98556-7124",
             "Senha1",
-            3000,
             role
         );
         // validação
@@ -55,7 +54,6 @@ public class UsuarioTest
             "pedro@email.com",
             "11 98556-7124",
             "Senha1",
-            3000,
             RoleUsuario.Admin
         ));
     }
@@ -76,7 +74,6 @@ public class UsuarioTest
             email,
             "11 98556-7124",
             "Senha1",
-            3000,
             RoleUsuario.Admin
         ));
     }
@@ -96,7 +93,6 @@ public class UsuarioTest
             "pedro@email.com",
             numero,
             "Senha1",
-            3000,
             RoleUsuario.Admin
         ));
     }
@@ -114,7 +110,6 @@ public class UsuarioTest
             "pedro@email.com",
             "11 98556-7124",
             "Senha1",
-            3000,
             RoleUsuario.Admin
         );
         // aplicação
@@ -137,7 +132,6 @@ public class UsuarioTest
             "pedro@email.com",
             "11 98556-7124",
             "Senha1",
-            3000,
             RoleUsuario.Admin
         );
         // aplicação
@@ -160,7 +154,6 @@ public class UsuarioTest
             "pedro@email.com",
             "11 98556-7124",
             "Senha1",
-            3000,
             RoleUsuario.Admin
         );
         // aplicação
@@ -179,7 +172,6 @@ public class UsuarioTest
             "pedro@email.com",
             "11 98556-7124",
             "Senha1",
-            3000,
             RoleUsuario.Admin
         );
         // aplicação

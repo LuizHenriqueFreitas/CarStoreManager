@@ -12,7 +12,7 @@ public class RecepcionistaTest
         var data = DateTime.Now.AddDays(1);
         var r = new Recepcionista(
             "Ana Recepcionista", "ana@x.com", "11988887777", "Senha@1",
-            3500m, NivelFuncionario.Pleno, data);
+            NivelFuncionario.Pleno, data);
 
         r.GetNome().Should().Be("Ana Recepcionista");
         r.Role.Should().Be(RoleUsuario.Recepcionista);
@@ -39,5 +39,5 @@ public class RecepcionistaTest
 
     private static Recepcionista CriarValido() => new(
         "Ana", "ana@x.com", "11988887777", "Senha@1",
-        3500m, NivelFuncionario.Pleno, DateTime.Now.AddDays(1));
+        NivelFuncionario.Pleno, DateTime.Now.AddDays(1));
 }

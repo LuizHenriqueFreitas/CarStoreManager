@@ -90,6 +90,8 @@ public class PropostaVendaServiceTests
     {
         var veiculo = new VeiculoVenda("Marca", "Modelo", "Cor", "1.0", 2020, 10000, "ABC1234", "12345678900",
             TipoCambio.Manual, TipoCombustivel.Gasolina, 50000, AcessoriosVeiculo.Nenhum);
+        // Veículo nasce EmPreparacao — precisa liberar para o teste de proposta.
+        veiculo.LiberarParaVenda();
         _veiculoRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync(veiculo);
         _propostaRepoMock.Setup(r => r.AddAsync(It.IsAny<PropostaVenda>())).Returns(Task.CompletedTask);
         _propostaRepoMock.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);

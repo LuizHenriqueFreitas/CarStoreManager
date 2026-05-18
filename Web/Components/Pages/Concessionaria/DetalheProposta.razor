@@ -179,6 +179,16 @@
                 }
                 else if (proposta.Status == "AguardandoVistoria")
                 {
+                    var vistoriaAtual = vistorias.FirstOrDefault(v => !v.Concluida);
+                    @if (vistoriaAtual is not null)
+                    {
+                        <UploadFotosEntidade
+                            EntidadeTipo="Vistoria"
+                            EntidadeId="vistoriaAtual.Id"
+                            Titulo="Fotos da vistoria"
+                            Descricao="Anexe fotos do veículo (avarias, painéis, motor, hodômetro etc.) antes de registrar o resultado." />
+                    }
+
                     <h3>Registrar resultado</h3>
                     <textarea placeholder="Descreva o estado do veículo, equipamentos, avarias visíveis, quilometragem, etc."
                               @bind="vistoriaObs" rows="5"></textarea>
@@ -192,18 +202,25 @@
                     </div>
                 }
 
-                @if (vistorias.Any())
+                @if (vistorias.Any(v => v.Concluida))
                 {
                     <h3>Histórico</h3>
                     <ul class="vistoria-lista">
-                        @foreach (var v in vistorias)
+                        @foreach (var v in vistorias.Where(x => x.Concluida))
                         {
                             <li>
-                                <span class="@(v.Aprovado ? "v-ok" : "v-fail")">
-                                    @(v.Aprovado ? "✓ Aprovada" : "✗ Reprovada")
-                                </span>
-                                em @v.DataRealizada.ToLocalTime().ToString("dd/MM/yyyy HH:mm") —
-                                @v.Observacoes
+                                <div>
+                                    <span class="@(v.Aprovado ? "v-ok" : "v-fail")">
+                                        @(v.Aprovado ? "✓ Aprovada" : "✗ Reprovada")
+                                    </span>
+                                    em @v.DataRealizada.ToLocalTime().ToString("dd/MM/yyyy HH:mm") —
+                                    @v.Observacoes
+                                </div>
+                                <UploadFotosEntidade
+                                    EntidadeTipo="Vistoria"
+                                    EntidadeId="v.Id"
+                                    Titulo=""
+                                    PodeEditar="false" />
                             </li>
                         }
                     </ul>
@@ -414,9 +431,9 @@
     private async Task IniciarVistoria()
     {
         processando = true;
-        var r = await PropostaService.IniciarVistoriaAsync(Id);
+        var r = await PropostaService.IniciarVistoriaAsync(Id, Guid.Empty);
         processando = false;
-        if (r.IsSuccess) { MostrarOk("Vistoria iniciada."); await Carregar(); }
+        if (r.IsSuccess) { MostrarOk("Vistoria iniciada — anexe fotos do veículo e registre o resultado."); await Carregar(); }
         else MostrarErro(r.Error);
     }
 

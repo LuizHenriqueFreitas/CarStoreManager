@@ -18,6 +18,10 @@ public class ConfiguracaoSistemaDTO
     public DateTime? DataUltimaAtualizacao { get; set; }
     public bool SmtpConfigurado { get; set; }
     public bool FinanciadoraConfigurada { get; set; }
+
+    // === Modo operante — entrada mínima ===
+    public bool ExigirEntradaMinima { get; set; } = false;
+    public decimal PercentualEntradaMinima { get; set; } = 0m;
 }
 
 public class TestarEmailDTO

@@ -1,0 +1,650 @@
+@page "/consulta"
+@page "/consulta/{Codigo}"
+@layout CarStoreManager.Web.Layout.LoginLayout
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@rendermode InteractiveServer
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@inject IOrdemServicoService OrdemService
+@inject NavigationManager Nav
+
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Oficina.OrdemServico
+@using Microsoft.AspNetCore.Components.Web
+
+<PageTitle>Consultar ordem de serviço</PageTitle>
+
+<div class="consulta-page">
+    <div class="consulta-topo">
+        <div class="logo-topo">
+            <span class="logo-texto">AUTO</span><span class="logo-destaque">STORE</span>
+        </div>
+        <a class="link-login" href="/login">Acesso interno →</a>
+    </div>
+
+    <div class="consulta-container">
+        <div class="busca-card">
+            <h1 class="busca-titulo">Acompanhe sua ordem de serviço</h1>
+            <p class="busca-sub">
+                Digite o código de 8 caracteres que você recebeu da oficina
+                para ver o andamento do seu serviço.
+            </p>
+
+            <div class="busca-row">
+                <input class="busca-input @(erro is not null ? "erro" : "")"
+                       type="text"
+                       placeholder="Ex: A1B2C3D4"
+                       maxlength="8"
+                       @bind="codigoBusca"
+                       @bind:event="oninput"
+                       @onkeydown="TeclaPressionada" />
+                <button class="btn-buscar" @onclick="Buscar" disabled="@buscando">
+                    @(buscando ? "Buscando..." : "Consultar")
+                </button>
+            </div>
+
+            @if (erro is not null)
+            {
+                <div class="erro-banner">@erro</div>
+            }
+        </div>
+
+        @if (os is not null)
+        {
+            <div class="resultado">
+                <div class="resultado-header">
+                    <div>
+                        <span class="resultado-label">Ordem de serviço</span>
+                        <span class="resultado-codigo">@os.NumeroPublico</span>
+                    </div>
+                    <span class="status-badge @StatusClass(os.Status)">@StatusLabel(os.Status)</span>
+                </div>
+
+                <!-- Trilha visual do andamento -->
+                <div class="trilha">
+                    @foreach (var etapa in trilha)
+                    {
+                        <div class="trilha-etapa @TrilhaClass(etapa.status)">
+                            <span class="trilha-bola">
+                                @if (etapa.status == "ok") { <span>✓</span> }
+                                else { @etapa.numero }
+                            </span>
+                            <span class="trilha-label">@etapa.label</span>
+                        </div>
+                    }
+                </div>
+
+                <!-- Informações da OS -->
+                <div class="info-card">
+                    <h2 class="card-titulo">Informações do serviço</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Tipo</span>
+                            <span class="info-val">@os.Tipo</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Aberta em</span>
+                            <span class="info-val">@os.DataCriacao.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                        <div class="info-item info-item-largo">
+                            <span class="info-label">Descrição</span>
+                            <span class="info-val">@os.Descricao</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Prazo estimado</span>
+                            <span class="info-val @(os.PrazoEstimado < DateTime.Now && os.Status != "Finalizada" && os.Status != "Entregue" && os.Status != "Cancelada" ? "prazo-vencido" : "")">
+                                @os.PrazoEstimado.ToLocalTime().ToString("dd/MM/yyyy")
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Valor total</span>
+                            <span class="info-val destaque">
+                                @os.ValorTotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Checklist do serviço -->
+                <div class="info-card">
+                    <div class="card-header-row">
+                        <h2 class="card-titulo">Etapas do serviço</h2>
+                        @if (os.Checklist.Count > 0)
+                        {
+                            <span class="progresso-mini">@ConcluidosChecklist de @os.Checklist.Count concluídos</span>
+                        }
+                    </div>
+
+                    @if (os.Checklist.Count == 0)
+                    {
+                        <p class="vazio">A oficina ainda não definiu as etapas deste serviço.</p>
+                    }
+                    else
+                    {
+                        <div class="barra-progresso">
+                            <div class="barra-fill" style="width: @PercentualChecklist%"></div>
+                        </div>
+
+                        <div class="checklist-cliente">
+                            @foreach (var item in os.Checklist)
+                            {
+                                <div class="check-row @(item.Status == "Concluido" ? "concluido" : "")">
+                                    <span class="check-bola @CheckClass(item.Status)">
+                                        @if (item.Status == "Concluido") { <span>✓</span> }
+                                        else if (item.Status == "EmAndamento") { <span>●</span> }
+                                    </span>
+                                    <span class="check-texto">@item.Descricao</span>
+                                    <span class="check-status @CheckClass(item.Status)">@CheckStatusLabel(item.Status)</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="rodape-info">
+                    <p>
+                        Esta página foi consultada em @DateTime.Now.ToString("dd/MM/yyyy HH:mm").
+                        Em caso de dúvidas, entre em contato com a oficina.
+                    </p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Codigo { get; set; }
+
+    private string codigoBusca = string.Empty;
+    private string? erro;
+    private bool buscando = false;
+    private OrdemServicoPublicaDTO? os;
+
+    private (int numero, string label, string status)[] trilha = Array.Empty<(int, string, string)>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Codigo))
+        {
+            codigoBusca = Codigo.Trim().ToUpper();
+            await Buscar();
+        }
+    }
+
+    private async Task Buscar()
+    {
+        erro = null;
+        os = null;
+
+        var codigo = codigoBusca?.Trim().ToUpper() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(codigo))
+        {
+            erro = "Informe o código da ordem de serviço.";
+            return;
+        }
+
+        buscando = true;
+        try
+        {
+            var resultado = await OrdemService.ObterPorNumeroPublicoAsync(codigo);
+            if (!resultado.IsSuccess || resultado.Value is null)
+            {
+                erro = "Nenhuma ordem de serviço encontrada com esse código. Confira e tente novamente.";
+                return;
+            }
+
+            os = resultado.Value;
+            AtualizarTrilha();
+        }
+        finally
+        {
+            buscando = false;
+        }
+    }
+
+    private async Task TeclaPressionada(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Buscar();
+    }
+
+    private void AtualizarTrilha()
+    {
+        if (os is null) return;
+
+        int atual = os.Status switch
+        {
+            "Pendente"                     => 1,
+            "BuscandoPecasParaOrcamento"   => 1,
+            "EmAnalise"                    => 2,
+            "AguardandoCliente"            => 3,
+            "Aprovada"                     => 4,
+            "EmAndamento"                  => 5,
+            "Pausada"                      => 5,
+            "Finalizada"                   => 6,
+            "Entregue"                     => 6,
+            "Cancelada"                    => 0,
+            _                              => 1
+        };
+
+        var etapas = new (int, string)[]
+        {
+            (1, "Orçamento"),
+            (2, "Em revisão"),
+            (3, "Aguardando você"),
+            (4, "Aprovada"),
+            (5, "Em andamento"),
+            (6, "Concluída")
+        };
+
+        trilha = etapas.Select(e =>
+        {
+            var status = atual == 0
+                ? "cancelada"
+                : (e.Item1 < atual ? "ok"
+                : e.Item1 == atual ? "atual"
+                : "pendente");
+            return (e.Item1, e.Item2, status);
+        }).ToArray();
+    }
+
+    private int ConcluidosChecklist =>
+        os?.Checklist.Count(c => c.Status == "Concluido") ?? 0;
+
+    private int PercentualChecklist
+    {
+        get
+        {
+            if (os is null || os.Checklist.Count == 0) return 0;
+            return (int)((double)ConcluidosChecklist / os.Checklist.Count * 100);
+        }
+    }
+
+    private string StatusLabel(string s) => s switch
+    {
+        "Pendente"                   => "Em orçamento",
+        "BuscandoPecasParaOrcamento" => "Buscando peças",
+        "EmAnalise"                  => "Em revisão técnica",
+        "AguardandoCliente"          => "Aguardando sua aprovação",
+        "Aprovada"                   => "Aprovada — pronta para iniciar",
+        "EmAndamento"                => "Em andamento",
+        "Pausada"                    => "Pausada — aguardando você",
+        "Finalizada"                 => "Serviço concluído",
+        "Entregue"                   => "Entregue",
+        "Cancelada"                  => "Cancelada",
+        _                            => s
+    };
+
+    private string StatusClass(string s) => s switch
+    {
+        "Pendente" or "BuscandoPecasParaOrcamento" => "status-pendente",
+        "EmAnalise"                                => "status-analise",
+        "AguardandoCliente" or "Pausada"           => "status-aguardando",
+        "Aprovada"                                 => "status-aprovada",
+        "EmAndamento"                              => "status-andamento",
+        "Finalizada" or "Entregue"                 => "status-finalizada",
+        "Cancelada"                                => "status-cancelada",
+        _                                          => "status-pendente"
+    };
+
+    private string TrilhaClass(string status) => status switch
+    {
+        "ok"        => "trilha-ok",
+        "atual"     => "trilha-atual",
+        "cancelada" => "trilha-cancelada",
+        _           => "trilha-pendente"
+    };
+
+    private string CheckClass(string status) => status switch
+    {
+        "Concluido"   => "check-concluido",
+        "EmAndamento" => "check-andamento",
+        _             => "check-pendente"
+    };
+
+    private string CheckStatusLabel(string status) => status switch
+    {
+        "Concluido"   => "Concluído",
+        "EmAndamento" => "Em andamento",
+        _             => "Pendente"
+    };
+}
+
+<style>
+    .consulta-page {
+        min-height: 100vh;
+        background: #f7f7f8;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .consulta-topo {
+        background: #111;
+        padding: 18px 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .logo-topo {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 2px;
+    }
+
+    .logo-texto { color: #fff; }
+    .logo-destaque { color: #e02020; }
+
+    .link-login {
+        color: #aaa;
+        font-size: 13px;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+    .link-login:hover { color: #fff; }
+
+    .consulta-container {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 40px 24px;
+    }
+
+    .busca-card {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 16px;
+        padding: 36px 32px;
+        text-align: center;
+    }
+
+    .busca-titulo {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0 0 8px;
+        color: #1a1a1a;
+    }
+
+    .busca-sub {
+        color: #666;
+        font-size: 14px;
+        margin: 0 0 28px;
+        line-height: 1.5;
+    }
+
+    .busca-row {
+        display: flex;
+        gap: 10px;
+        max-width: 440px;
+        margin: 0 auto;
+    }
+
+    .busca-input {
+        flex: 1;
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-size: 16px;
+        font-family: monospace;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    .busca-input:focus { border-color: #2563eb; }
+    .busca-input.erro  { border-color: #e02020; }
+    .busca-input::placeholder { color: #aaa; letter-spacing: 0; font-family: inherit; }
+
+    .btn-buscar {
+        background: #e02020;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 12px 22px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .btn-buscar:hover:not(:disabled) { background: #c01818; }
+    .btn-buscar:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .erro-banner {
+        background: rgba(224, 32, 32, 0.08);
+        border: 0.5px solid rgba(224, 32, 32, 0.3);
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        color: #e02020;
+        margin-top: 16px;
+        max-width: 440px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .resultado {
+        margin-top: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .resultado-header {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 18px 22px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .resultado-label {
+        display: block;
+        font-size: 12px;
+        color: #888;
+        margin-bottom: 2px;
+    }
+    .resultado-codigo {
+        font-size: 22px;
+        font-weight: 700;
+        font-family: monospace;
+        color: #2563eb;
+        letter-spacing: 2px;
+    }
+
+    .status-badge {
+        padding: 6px 14px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .status-pendente   { background: #f4f4f4; color: #666; }
+    .status-analise    { background: #fef3c7; color: #92400e; }
+    .status-aguardando { background: #fde68a; color: #92400e; }
+    .status-aprovada   { background: #ddd6fe; color: #5b21b6; }
+    .status-andamento  { background: #dbeafe; color: #1d4ed8; }
+    .status-finalizada { background: #dcfce7; color: #15803d; }
+    .status-cancelada  { background: #fff5f5; color: #e02020; }
+
+    .trilha {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 18px;
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+    }
+    .trilha-etapa {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        font-size: 12px;
+        white-space: nowrap;
+        flex: 1;
+        justify-content: center;
+        position: relative;
+    }
+    .trilha-etapa:not(:last-child)::after {
+        content: '→';
+        position: absolute;
+        right: -8px;
+        color: #ccc;
+    }
+    .trilha-bola {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 12px;
+    }
+    .trilha-pendente .trilha-bola { background: #f4f4f4; color: #aaa; }
+    .trilha-pendente .trilha-label { color: #aaa; }
+    .trilha-ok .trilha-bola       { background: #dcfce7; color: #16a34a; }
+    .trilha-ok .trilha-label      { color: #16a34a; }
+    .trilha-atual .trilha-bola    { background: #2563eb; color: #fff; }
+    .trilha-atual .trilha-label   { color: #2563eb; font-weight: 600; }
+    .trilha-cancelada .trilha-bola { background: #fff5f5; color: #e02020; }
+    .trilha-cancelada .trilha-label { color: #e02020; }
+
+    .info-card {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 20px 22px;
+    }
+
+    .card-titulo {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0 0 14px;
+        padding-bottom: 10px;
+        border-bottom: 0.5px solid #eee;
+        color: #1a1a1a;
+    }
+
+    .card-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+        border-bottom: 0.5px solid #eee;
+    }
+    .card-header-row .card-titulo {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+    .progresso-mini {
+        font-size: 12px;
+        color: #16a34a;
+        font-weight: 500;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+    .info-item { display: flex; flex-direction: column; gap: 3px; }
+    .info-item-largo { grid-column: 1 / -1; }
+    .info-label { font-size: 11px; color: #888; }
+    .info-val   { font-size: 14px; font-weight: 500; color: #1a1a1a; }
+    .info-val.destaque { color: #2563eb; font-size: 16px; }
+    .prazo-vencido { color: #e02020; }
+
+    .barra-progresso {
+        background: #f4f4f4;
+        height: 6px;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 16px;
+    }
+    .barra-fill {
+        height: 100%;
+        background: #16a34a;
+        transition: width 0.3s;
+    }
+
+    .checklist-cliente {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .check-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        background: #fafafa;
+        border-radius: 8px;
+    }
+    .check-row.concluido { background: #f0fdf4; }
+
+    .check-bola {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+    .check-pendente   { background: #fff; border: 1.5px solid #ccc; color: transparent; }
+    .check-andamento  { background: #dbeafe; color: #1d4ed8; }
+    .check-concluido  { background: #16a34a; color: #fff; }
+
+    .check-texto {
+        flex: 1;
+        font-size: 14px;
+        color: #1a1a1a;
+    }
+    .check-row.concluido .check-texto {
+        color: #666;
+        text-decoration: line-through;
+    }
+
+    .check-status {
+        font-size: 11px;
+        font-weight: 500;
+        padding: 3px 9px;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+    .check-status.check-pendente  { background: #f4f4f4; color: #888; border: none; }
+    .check-status.check-andamento { background: #dbeafe; color: #1d4ed8; }
+    .check-status.check-concluido { background: #dcfce7; color: #15803d; }
+
+    .vazio {
+        font-size: 13px;
+        color: #888;
+        text-align: center;
+        padding: 16px 0;
+        margin: 0;
+    }
+
+    .rodape-info {
+        text-align: center;
+        margin-top: 8px;
+    }
+    .rodape-info p {
+        font-size: 12px;
+        color: #888;
+        margin: 0;
+    }
+
+    @@media (max-width: 600px) {
+        .info-grid { grid-template-columns: 1fr; }
+        .busca-row { flex-direction: column; }
+        .resultado-header { flex-direction: column; align-items: flex-start; }
+    }
+</style>

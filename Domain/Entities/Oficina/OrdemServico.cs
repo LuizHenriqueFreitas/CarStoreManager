@@ -1,6 +1,5 @@
 using CarStoreManager.Domain.Base;
 using CarStoreManager.Domain.Enums;
-using CarStoreManager.Domain.Services.Oficina;
 using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Domain.Entities.Oficina;
@@ -164,16 +163,20 @@ public class OrdemServico : Entity
     /* ==============================
         Gerenciamento de CHECKLIST
       ==============================*/
-    //metodo que faz a criação automatica da checklist padrão
-    public void GerarChecklistAutomatico()
+    /// <summary>
+    /// Gera o checklist inicial a partir de uma lista de descrições vinda do
+    /// preset escolhido pelo recepcionista na criação da OS. É um snapshot —
+    /// edições posteriores no preset não afetam essa OS.
+    /// </summary>
+    public void GerarChecklistAPartirDoPreset(IEnumerable<string> descricoes)
     {
         if (Checklist.Any(c => c.Origem == OrigemChecklistItem.Automatico))
             return;
 
-        var itens = ChecklistTemplates.ObterPorTipo(Tipo);
-        for (int i = 0; i < itens.Count; i++)
+        var lista = descricoes?.Where(d => !string.IsNullOrWhiteSpace(d)).ToList() ?? new();
+        for (int i = 0; i < lista.Count; i++)
         {
-            var item = new ChecklistOrdemServico(Id, itens[i], OrigemChecklistItem.Automatico, i + 1);
+            var item = new ChecklistOrdemServico(Id, lista[i], OrigemChecklistItem.Automatico, i + 1);
             Checklist.Add(item);
         }
     }
@@ -184,9 +187,24 @@ public class OrdemServico : Entity
         if (Status == StatusOrdemServico.Finalizada || Status == StatusOrdemServico.Cancelada)
             throw new InvalidOperationException("Não é possível alterar o checklist desta OS");
 
-        var ordem = Checklist.Count + 1;
+        var ordem = Checklist.Count == 0 ? 1 : Checklist.Max(c => c.OrdemExibicao) + 1;
         var item = new ChecklistOrdemServico(Id, descricao, OrigemChecklistItem.Manual, ordem);
         Checklist.Add(item);
+    }
+
+    /// <summary>
+    /// Remove qualquer item do checklist (vindo do preset ou manual) — o
+    /// mecânico tem controle total sobre os itens da OS dele.
+    /// </summary>
+    public void RemoverItemChecklist(Guid itemId)
+    {
+        if (Status == StatusOrdemServico.Finalizada || Status == StatusOrdemServico.Cancelada)
+            throw new InvalidOperationException("Não é possível alterar o checklist desta OS");
+
+        var item = Checklist.FirstOrDefault(c => c.Id == itemId)
+            ?? throw new InvalidOperationException("Item do checklist não encontrado");
+
+        Checklist.Remove(item);
     }
 
     /*

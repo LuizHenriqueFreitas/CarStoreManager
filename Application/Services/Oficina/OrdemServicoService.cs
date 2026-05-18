@@ -5,6 +5,7 @@ using CarStoreManager.Application.Mappings.Oficina;
 using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Interfaces.Repositories.Oficina;
+using CarStoreManager.Domain.Interfaces.Repositories.Sistema;
 using CarStoreManager.Domain.Repositories;
 
 namespace CarStoreManager.Application.Services;
@@ -27,6 +28,8 @@ public class OrdemServicoService : IOrdemServicoService
     private readonly IClienteRepository? _clienteRepo;
     private readonly IPagamentoOrdemServicoRepository? _pagamentoRepo;
     private readonly IAlertaOSRepository? _alertaRepo;
+    private readonly IConfiguracaoSistemaRepository? _configRepo;
+    private readonly IChecklistPresetRepository? _presetRepo;
 
     public OrdemServicoService(
         IOrdemServicoRepository repository,
@@ -35,7 +38,9 @@ public class OrdemServicoService : IOrdemServicoService
         Domain.Interfaces.Repositories.Oficina.INotaFiscalVendaOSRepository? notaVendaRepo = null,
         IClienteRepository? clienteRepo = null,
         IPagamentoOrdemServicoRepository? pagamentoRepo = null,
-        IAlertaOSRepository? alertaRepo = null)
+        IAlertaOSRepository? alertaRepo = null,
+        IConfiguracaoSistemaRepository? configRepo = null,
+        IChecklistPresetRepository? presetRepo = null)
     {
         _repository = repository;
         _componenteRepository = componenteRepository;
@@ -44,6 +49,8 @@ public class OrdemServicoService : IOrdemServicoService
         _clienteRepo = clienteRepo;
         _pagamentoRepo = pagamentoRepo;
         _alertaRepo = alertaRepo;
+        _configRepo = configRepo;
+        _presetRepo = presetRepo;
     }
 
     /*
@@ -105,16 +112,40 @@ public class OrdemServicoService : IOrdemServicoService
                 var componente = await _componenteRepository.GetByIdAsync(itemDto.ComponenteId);
                 if (componente != null)
                 {
+                    // Recepção só pode escolher Estoque ou Cliente — Encomenda
+                    // só nasce via fluxo de RequisicaoPeca atendida.
+                    var origem = OrigemItemOrdemServico.Estoque;
+                    if (!string.IsNullOrWhiteSpace(itemDto.Origem) &&
+                        Enum.TryParse<OrigemItemOrdemServico>(itemDto.Origem, true, out var parsed) &&
+                        parsed != OrigemItemOrdemServico.Encomenda)
+                    {
+                        origem = parsed;
+                    }
+
                     ordem.AdicionarItem(new ItemOrdemServico(
-                        itemDto.Id,
                         itemDto.ComponenteId,
+                        ordem.Id,
                         itemDto.Quantidade,
-                        itemDto.ValorUnitario
+                        itemDto.ValorUnitario,
+                        origem
                     ));
                 }
             }
 
-            ordem.GerarChecklistAutomatico();
+            // Aplica preset escolhido pela recepção como snapshot inicial do
+            // checklist da OS. Sem preset => OS começa sem checklist e o
+            // mecânico monta do zero adicionando itens.
+            if (dto.ChecklistPresetId.HasValue && _presetRepo is not null)
+            {
+                var preset = await _presetRepo.GetByIdAsync(dto.ChecklistPresetId.Value);
+                if (preset is not null && preset.Ativo)
+                {
+                    var descricoes = preset.Itens
+                        .OrderBy(i => i.Ordem)
+                        .Select(i => i.Descricao);
+                    ordem.GerarChecklistAPartirDoPreset(descricoes);
+                }
+            }
 
             await _repository.AddAsync(ordem);
             await _repository.SaveChangesAsync();
@@ -146,7 +177,12 @@ public class OrdemServicoService : IOrdemServicoService
             return Result.Fail("Dados inválidos");
 
         if (!Enum.TryParse<Domain.Enums.OrigemItemOrdemServico>(dto.Origem, true, out var origem))
-            return Result.Fail($"Origem inválida: {dto.Origem}. Use Estoque, Cliente ou Encomenda.");
+            return Result.Fail($"Origem inválida: {dto.Origem}. Use Estoque ou Cliente.");
+
+        // Encomenda só é criada via fluxo de RequisicaoPeca atendida pelo admin
+        // — não pode ser informada manualmente na adição de item.
+        if (origem == Domain.Enums.OrigemItemOrdemServico.Encomenda)
+            return Result.Fail("Itens por encomenda só podem ser adicionados via requisição atendida pelo admin.");
 
         try
         {
@@ -290,6 +326,45 @@ public class OrdemServicoService : IOrdemServicoService
         catch (Exception ex) { return Result.Fail(ex.Message); }
     }
 
+    /// <summary>
+    /// Remove um item do checklist da OS — válido para itens de qualquer origem
+    /// (preset ou manuais), permitindo ao mecânico curar a lista.
+    /// </summary>
+    public async Task<Result> RemoverItemChecklistAsync(Guid ordemId, Guid itemId)
+    {
+        var ordem = await _repository.GetByIdAsync(ordemId);
+        if (ordem is null) return Result.Fail("OS não encontrada");
+
+        try
+        {
+            ordem.RemoverItemChecklist(itemId);
+            _repository.Update(ordem);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+    }
+
+    /// <summary>
+    /// Atualiza a descrição de um item do checklist — permitido para qualquer
+    /// origem (preset ou manual), o mecânico tem controle total.
+    /// </summary>
+    public async Task<Result> AtualizarDescricaoChecklistAsync(Guid ordemId, Guid itemId, string novaDescricao)
+    {
+        var ordem = await _repository.GetByIdAsync(ordemId);
+        var item = ordem?.Checklist.FirstOrDefault(c => c.Id == itemId);
+        if (item is null) return Result.Fail("Item do checklist não encontrado");
+
+        try
+        {
+            item.AtualizarDescricao(novaDescricao);
+            _repository.Update(ordem!);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+    }
+
     /*
         metodo que atualiza o status de item da checklist
         falha caso o item seja vazio
@@ -358,8 +433,40 @@ public class OrdemServicoService : IOrdemServicoService
     public Task<Result> RegistrarAprovacaoDoClienteAsync(Guid ordemId)
         => MutarOrdem(ordemId, o => o.RegistrarAprovacaoDoCliente());
 
-    public Task<Result> IniciarAsync(Guid ordemId)
-        => MutarOrdem(ordemId, o => o.Iniciar());
+    public async Task<Result> IniciarAsync(Guid ordemId)
+    {
+        // Modo operante: se a configuração exige entrada mínima, valida o
+        // percentual já pago antes de permitir a transição para EmAndamento.
+        if (_configRepo is not null && _pagamentoRepo is not null)
+        {
+            var cfg = await _configRepo.ObterAsync();
+            if (cfg.ExigirEntradaMinima && cfg.PercentualEntradaMinima > 0m)
+            {
+                var ordem = await _repository.GetByIdAsync(ordemId);
+                if (ordem is null) return Result.Fail("Ordem de serviço não encontrada");
+
+                var total = ordem.GetValorTotal();
+                if (total > 0m)
+                {
+                    var pagamentos = await _pagamentoRepo.ObterPorOrdemAsync(ordemId);
+                    var pago = pagamentos.Sum(p => p.Valor.GetValorDinheiro());
+                    var percentualPago = (pago / total) * 100m;
+
+                    if (percentualPago < cfg.PercentualEntradaMinima)
+                    {
+                        var entradaExigida = total * (cfg.PercentualEntradaMinima / 100m);
+                        var faltando = entradaExigida - pago;
+                        return Result.Fail(
+                            $"Entrada mínima de {cfg.PercentualEntradaMinima:N2}% não atingida. " +
+                            $"Pago: R$ {pago:N2} de R$ {total:N2} ({percentualPago:N2}%). " +
+                            $"Receba ao menos R$ {faltando:N2} para iniciar o serviço.");
+                    }
+                }
+            }
+        }
+
+        return await MutarOrdem(ordemId, o => o.Iniciar());
+    }
 
     /// <summary>
     /// Mecânico declara que terminou o serviço técnico. NÃO exige pagamento —
