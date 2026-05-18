@@ -20,19 +20,107 @@ public class RelatorioController : ControllerBase
     private readonly IPropostaVendaService _propostaService;
     private readonly IClienteService _clienteService;
     private readonly IMecanicoService _mecanicoService;
+    private readonly IDashboardService _dashboardService;
 
     public RelatorioController(
         IVeiculoVendaService veiculoService,
         IOrdemServicoService ordemService,
         IPropostaVendaService propostaService,
         IClienteService clienteService,
-        IMecanicoService mecanicoService)
+        IMecanicoService mecanicoService,
+        IDashboardService dashboardService)
     {
         _veiculoService = veiculoService;
         _ordemService = ordemService;
         _propostaService = propostaService;
         _clienteService = clienteService;
         _mecanicoService = mecanicoService;
+        _dashboardService = dashboardService;
+    }
+
+    // ===== FLUXO DE CAIXA CONSOLIDADO (período escolhido pelo admin) =====
+    /// <summary>
+    /// Relatório CSV multi-seção que consolida receitas, despesas, lucro por setor
+    /// e evolução mês a mês — para o intervalo <c>?inicio=yyyy-MM-dd&amp;fim=yyyy-MM-dd</c>.
+    /// Quando os parâmetros são omitidos, assume o mês corrente como padrão razoável.
+    /// </summary>
+    [HttpGet("fluxo-caixa")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> FluxoCaixa([FromQuery] DateTime? inicio, [FromQuery] DateTime? fim)
+    {
+        // Defaults: primeiro dia do mês corrente até hoje. Cliente da Dashboard
+        // sempre manda explícito — esse fallback existe pra quem chama a URL direta.
+        var hoje = DateTime.Today;
+        var dataInicio = inicio?.Date ?? new DateTime(hoje.Year, hoje.Month, 1);
+        var dataFim = fim?.Date ?? hoje;
+
+        var r = await _dashboardService.ObterFluxoCaixaPorPeriodoAsync(dataInicio, dataFim);
+        if (!r.IsSuccess) return BadRequest(r.Error);
+        var m = r.Value!;
+        var ptBr = CultureInfo.GetCultureInfo("pt-BR");
+        string F(decimal v) => v.ToString("N2", ptBr);
+
+        var sb = new StringBuilder();
+
+        sb.AppendLine("RELATÓRIO DE FLUXO DE CAIXA — CarStore Manager");
+        sb.AppendLine($"Gerado em;{DateTime.Now.ToString("dd/MM/yyyy HH:mm", ptBr)}");
+        sb.AppendLine($"Período;{m.PeriodoInicio:dd/MM/yyyy} a {m.PeriodoFim:dd/MM/yyyy}");
+        sb.AppendLine($"Meses-calendário tocados;{m.QuantidadeMeses}");
+        sb.AppendLine();
+
+        // === RESUMO DO PERÍODO ===
+        sb.AppendLine("=== RESUMO DO PERÍODO ===");
+        sb.AppendLine("Indicador;Valor (R$)");
+        sb.AppendLine($"Receita de serviços (oficina);{F(m.ReceitaServicos)}");
+        sb.AppendLine($"Receita de vendas (concessionária);{F(m.ReceitaVendas)}");
+        sb.AppendLine($"TOTAL DE RECEITAS;{F(m.TotalReceitas)}");
+        sb.AppendLine();
+        sb.AppendLine($"Despesas fixas — Geral ({m.QuantidadeMeses}x mensal);{F(m.DespesasFixasGeralPeriodo)}");
+        sb.AppendLine($"Despesas fixas — Oficina ({m.QuantidadeMeses}x mensal);{F(m.DespesasFixasOficinaPeriodo)}");
+        sb.AppendLine($"Despesas fixas — Concessionária ({m.QuantidadeMeses}x mensal);{F(m.DespesasFixasConcessionariaPeriodo)}");
+        sb.AppendLine($"Gasto com peças (notas fiscais aprovadas);{F(m.GastoPecas)}");
+        sb.AppendLine($"TOTAL DE DESPESAS;{F(m.TotalDespesas)}");
+        sb.AppendLine();
+        sb.AppendLine($"LUCRO LÍQUIDO DO PERÍODO;{F(m.LucroLiquido)}");
+        sb.AppendLine();
+
+        // === LUCRO POR SETOR ===
+        // Despesas Gerais não são alocadas a um setor (compartilhadas); por isso a
+        // soma dos lucros por setor pode diferir do Lucro Líquido total acima.
+        var receitaOficina = m.ReceitaServicos;
+        var despesaOficina = m.GastoPecas + m.DespesasFixasOficinaPeriodo;
+        var receitaConce = m.ReceitaVendas;
+        var despesaConce = m.DespesasFixasConcessionariaPeriodo;
+
+        sb.AppendLine("=== LUCRO POR SETOR ===");
+        sb.AppendLine("Setor;Receitas (R$);Despesas (R$);Lucro (R$)");
+        sb.AppendLine($"Oficina;{F(receitaOficina)};{F(despesaOficina)};{F(m.LucroOficina)}");
+        sb.AppendLine($"Concessionária;{F(receitaConce)};{F(despesaConce)};{F(m.LucroConcessionaria)}");
+        sb.AppendLine($"Despesas Gerais (não alocadas);0,00;{F(m.DespesasFixasGeralPeriodo)};{F(-m.DespesasFixasGeralPeriodo)}");
+        sb.AppendLine();
+
+        // === EVOLUÇÃO MÊS A MÊS ===
+        sb.AppendLine("=== EVOLUÇÃO MÊS A MÊS ===");
+        sb.AppendLine("Mês;Receita serviços (R$);Receita vendas (R$);Gasto peças (R$);Despesas fixas (R$);Saldo do mês (R$)");
+        for (int i = 0; i < m.SerieReceitaServicos.Count; i++)
+        {
+            var rs = m.SerieReceitaServicos[i].Valor;
+            var rv = i < m.SerieReceitaVendas.Count ? m.SerieReceitaVendas[i].Valor : 0m;
+            var gp = i < m.SerieGastoPecas.Count ? m.SerieGastoPecas[i].Valor : 0m;
+            var df = m.DespesasFixasTotalMensal; // valor recorrente
+            var saldo = rs + rv - gp - df;
+            sb.AppendLine($"{Csv(m.SerieReceitaServicos[i].MesLabel)};{F(rs)};{F(rv)};{F(gp)};{F(df)};{F(saldo)}");
+        }
+        sb.AppendLine();
+
+        // === CAPITAL IMOBILIZADO (não-caixa) ===
+        sb.AppendLine("=== CAPITAL IMOBILIZADO (referência — NÃO compõe fluxo de caixa) ===");
+        sb.AppendLine("Indicador;Valor (R$)");
+        sb.AppendLine($"Veículos disponíveis em estoque (snapshot atual);{F(m.CapitalEstoqueVeiculos)}");
+        sb.AppendLine("Observação;Dinheiro investido em estoque — só vira receita quando o veículo for vendido.");
+
+        var nome = $"fluxo-caixa_{m.PeriodoInicio:yyyyMMdd}_{m.PeriodoFim:yyyyMMdd}";
+        return Csv(sb, nome);
     }
 
     // ===== ÁREA: CONCESSIONÁRIA =====

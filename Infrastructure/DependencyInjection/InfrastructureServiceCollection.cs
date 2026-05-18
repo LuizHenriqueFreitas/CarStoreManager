@@ -16,6 +16,7 @@ using CarStoreManager.Infrastructure.Data;
 using CarStoreManager.Infrastructure.Persistence.Repositories;
 using CarStoreManager.Infrastructure.Repositories;
 using CarStoreManager.Infrastructure.Repositories.Concessionaria;
+using CarStoreManager.Infrastructure.Repositories.Oficina;
 using CarStoreManager.Infrastructure.Repositories.Sistema;
 using CarStoreManager.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -57,6 +58,7 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IEstoqueRepository, EstoqueRepository>();
         services.AddScoped<IEstoqueService, EstoqueService>();
         services.AddScoped<IMecanicoRepository, MecanicoRepository>();
+        services.AddScoped<IChefeOficinaRepository, ChefeOficinaRepository>();
         services.AddScoped<IVeiculoClienteRepository, VeiculoClienteRepository>();
 
         // Checklist presets (admin gerencia em Configurações)
@@ -88,6 +90,7 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IVeiculoVendaRepository, VeiculoVendaRepository>();
         services.AddScoped<IPropostaVendaRepository, PropostaVendaRepository>();
         services.AddScoped<IVendedorRepository, VendedorRepository>();
+        services.AddScoped<IGerenteVendasRepository, GerenteVendasRepository>();
         services.AddScoped<IFotoRepository, FotoRepository>();
         services.AddScoped<IFotoService, FotoService>();
         services.AddScoped<IArquivoStorage, ArquivoStorageService>();
@@ -108,6 +111,7 @@ public static class InfrastructureServiceCollection
         // USUÁRIOS (GENÉRICO SE NECESSÁRIO)
         // =========================
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<IRecepcionistaRepository, RecepcionistaRepository>();
 
         // =========================
         // SISTEMA

@@ -24,7 +24,7 @@
     }
 
     <div class="abas">
-        <button class="@AbaClass("geral")" @onclick='() => abaAtiva = "geral"'>Geral</button>
+        <!--<button class="@AbaClass("geral")" @onclick='() => abaAtiva = "geral"'>Geral</button>-->
         <button class="@AbaClass("despesas")" @onclick='() => abaAtiva = "despesas"'>Despesas mensais</button>
         <button class="@AbaClass("checklists")" @onclick='() => abaAtiva = "checklists"'>Checklists</button>
         <button class="@AbaClass("operacao")" @onclick='() => abaAtiva = "operacao"'>Modo operante</button>
@@ -36,6 +36,7 @@
     }
     else if (config is not null)
     {
+        /*
         @* ===================== ABA GERAL ===================== *@
         @if (abaAtiva == "geral")
         {
@@ -127,6 +128,7 @@
                 </div>
             </div>
         }
+        */
 
         @* ===================== ABA DESPESAS ===================== *@
         @if (abaAtiva == "despesas")

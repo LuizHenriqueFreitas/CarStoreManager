@@ -10,6 +10,9 @@
 @inject IPropostaVendaService PropostaService
 @inject IMecanicoService MecanicoService
 @inject IVendedorService VendedorService
+@inject IGerenteVendasService GerenteVendasService
+@inject IChefeOficinaService ChefeOficinaService
+@inject IRecepcionistaService RecepcionistaService
 @inject IEstoqueService EstoqueService
 @inject IDashboardService DashboardService
 @inject IJSRuntime JS
@@ -89,24 +92,6 @@
                     </div>
                 </div>
             </div>
-
-            <div class="grafico-row">
-                <div class="grafico-card grafico-largo">
-                    <h3 class="grafico-titulo">Receitas e despesas — últimos 6 meses</h3>
-                    <div class="grafico-area"><canvas id="chartFaturamento6m"></canvas></div>
-                </div>
-            </div>
-
-            <div class="grafico-row">
-                <div class="grafico-card">
-                    <h3 class="grafico-titulo">Composição do mês</h3>
-                    <div class="grafico-area"><canvas id="chartReceitaDespesa"></canvas></div>
-                </div>
-                <div class="grafico-card">
-                    <h3 class="grafico-titulo">Ordens de serviço por status</h3>
-                    <div class="grafico-area"><canvas id="chartOSStatus"></canvas></div>
-                </div>
-            </div>
         }
     }
 
@@ -159,19 +144,6 @@
                 </div>
             </div>
 
-            <div class="grafico-row">
-                <div class="grafico-card grafico-largo">
-                    <h3 class="grafico-titulo">Oficina — receitas vs gastos com peças (6 meses)</h3>
-                    <div class="grafico-area"><canvas id="chartOficina6m"></canvas></div>
-                </div>
-            </div>
-
-            <div class="grafico-row">
-                <div class="grafico-card">
-                    <h3 class="grafico-titulo">Ordens de serviço por status</h3>
-                    <div class="grafico-area"><canvas id="chartOSStatusOf"></canvas></div>
-                </div>
-            </div>
         }
 
         <div class="duas-colunas">
@@ -270,12 +242,6 @@
                 </div>
             </div>
 
-            <div class="grafico-row">
-                <div class="grafico-card grafico-largo">
-                    <h3 class="grafico-titulo">Receita de vendas — últimos 6 meses</h3>
-                    <div class="grafico-area"><canvas id="chartConcessionaria6m"></canvas></div>
-                </div>
-            </div>
         }
     }
 
@@ -293,10 +259,64 @@
             <span class="metrica-label">Vendedores</span>
             <span class="metrica-valor">@totalVendedores</span>
         </div>
+        <div class="metrica-card">
+            <span class="metrica-label">Gerentes de Venda</span>
+            <span class="metrica-valor">@totalGerentesVenda</span>
+        </div>
+        <div class="metrica-card">
+            <span class="metrica-label">Chefes de Oficina</span>
+            <span class="metrica-valor">@totalChefesOficina</span>
+        </div>
+        <div class="metrica-card">
+            <span class="metrica-label">Recepcionistas</span>
+            <span class="metrica-valor">@totalRecepcionistas</span>
+        </div>
     </div>
+
+    @if (PodeVerOficina && PodeVerConcessionaria)
+    {
+        <h2 class="grupo-titulo">Fluxo de caixa</h2>
+        <div class="fluxo-card">
+            <div class="fluxo-info">
+                <div class="fluxo-icone">📊</div>
+                <div>
+                    <div class="fluxo-titulo">Relatório consolidado</div>
+                    <div class="fluxo-desc">
+                        Receitas, despesas, lucro por setor e evolução mês a mês — CSV pronto para Excel.
+                    </div>
+                </div>
+            </div>
+            <div class="fluxo-form">
+                <div class="fluxo-campo">
+                    <label>De</label>
+                    <input type="date" @bind="fluxoInicio" max="@fluxoFim.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="fluxo-campo">
+                    <label>Até</label>
+                    <input type="date" @bind="fluxoFim" min="@fluxoInicio.ToString("yyyy-MM-dd")"
+                           max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="fluxo-atalhos">
+                    <button type="button" @onclick='() => DefinirPeriodo("mes")'>Mês atual</button>
+                    <button type="button" @onclick='() => DefinirPeriodo("ultimo")'>Mês anterior</button>
+                    <button type="button" @onclick='() => DefinirPeriodo("trimestre")'>Últ. 3 meses</button>
+                    <button type="button" @onclick='() => DefinirPeriodo("ano")'>Ano corrente</button>
+                </div>
+                <button type="button" class="fluxo-gerar" @onclick="GerarFluxoCaixa"
+                        disabled="@(fluxoFim < fluxoInicio)">
+                    Gerar relatório
+                </button>
+            </div>
+            @if (fluxoErro is not null)
+            {
+                <div class="fluxo-erro">@fluxoErro</div>
+            }
+        </div>
+    }
 
     <h2 class="grupo-titulo">Relatórios</h2>
     <div class="relatorios-grid">
+
         @if (PodeVerConcessionaria)
         {
             <a class="rel-card" href="/api/relatorio/veiculos-venda" target="_blank">
@@ -381,6 +401,57 @@
     private string abaAtiva = "geral";
     private string roleUsuario = string.Empty;
 
+    // === Estado do form de Fluxo de Caixa ===
+    // Default: primeiro dia do mês atual até hoje (cobre o caso "quanto rendeu até agora?")
+    private DateTime fluxoInicio = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime fluxoFim = DateTime.Today;
+    private string? fluxoErro;
+
+    private void DefinirPeriodo(string preset)
+    {
+        var hoje = DateTime.Today;
+        switch (preset)
+        {
+            case "mes":
+                fluxoInicio = new DateTime(hoje.Year, hoje.Month, 1);
+                fluxoFim = hoje;
+                break;
+            case "ultimo":
+                var mesPassado = hoje.AddMonths(-1);
+                fluxoInicio = new DateTime(mesPassado.Year, mesPassado.Month, 1);
+                fluxoFim = new DateTime(hoje.Year, hoje.Month, 1).AddDays(-1);
+                break;
+            case "trimestre":
+                fluxoInicio = hoje.AddMonths(-3).AddDays(1);
+                fluxoFim = hoje;
+                break;
+            case "ano":
+                fluxoInicio = new DateTime(hoje.Year, 1, 1);
+                fluxoFim = hoje;
+                break;
+        }
+        fluxoErro = null;
+    }
+
+    private async Task GerarFluxoCaixa()
+    {
+        fluxoErro = null;
+        if (fluxoFim < fluxoInicio)
+        {
+            fluxoErro = "Data fim deve ser igual ou posterior à data início.";
+            return;
+        }
+        if ((fluxoFim - fluxoInicio).TotalDays > 366 * 10)
+        {
+            fluxoErro = "Período máximo: 10 anos.";
+            return;
+        }
+
+        var url = $"/api/relatorio/fluxo-caixa?inicio={fluxoInicio:yyyy-MM-dd}&fim={fluxoFim:yyyy-MM-dd}";
+        // Abre em nova aba — o download dispara automaticamente pelo Content-Disposition do FileResult.
+        await JS.InvokeVoidAsync("open", url, "_blank");
+    }
+
     // ChefeOficina e GerenteVendas veem apenas a aba/relatórios do seu setor.
     // Admin enxerga tudo.
     private bool PodeVerOficina         => roleUsuario is "Admin" or "ChefeOficina";
@@ -397,6 +468,9 @@
     private int totalClientes;
     private int totalMecanicos;
     private int totalVendedores;
+    private int totalGerentesVenda;
+    private int totalChefesOficina;
+    private int totalRecepcionistas;
 
     private List<OrdemServicoListaDTO> osRecentes = new();
     private List<EstoqueComponenteDTO> estoquesCriticos = new();
@@ -456,6 +530,15 @@
 
         var vendedores = await VendedorService.GetAllAsync();
         if (vendedores.IsSuccess) totalVendedores = vendedores.Value?.Count() ?? 0;
+
+        var gerentes = await GerenteVendasService.GetAllAsync();
+        if (gerentes.IsSuccess) totalGerentesVenda = gerentes.Value?.Count() ?? 0;
+
+        var chefes = await ChefeOficinaService.GetAllAsync();
+        if (chefes.IsSuccess) totalChefesOficina = chefes.Value?.Count() ?? 0;
+
+        var recepcionistas = await RecepcionistaService.GetAllAsync();
+        if (recepcionistas.IsSuccess) totalRecepcionistas = recepcionistas.Value?.Count() ?? 0;
 
         var propostas = await PropostaService.GetAllAsync();
         if (propostas.IsSuccess && propostas.Value is not null)
@@ -826,6 +909,74 @@
     .rel-card:hover { border-color: #2563eb; transform: translateY(-2px); }
 
     .rel-icone { font-size: 22px; }
+
+    /* === Card de Fluxo de Caixa === */
+    .fluxo-card {
+        background: linear-gradient(135deg, #f0fdf4 0%, #f7fafc 100%);
+        border: 0.5px solid #86efac;
+        border-radius: 12px;
+        padding: 18px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+    .fluxo-info { display: flex; align-items: center; gap: 14px; }
+    .fluxo-icone { font-size: 28px; }
+    .fluxo-titulo { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+    .fluxo-desc { font-size: 13px; color: #555; margin-top: 2px; }
+
+    .fluxo-form {
+        display: grid;
+        grid-template-columns: auto auto 1fr auto;
+        gap: 12px;
+        align-items: end;
+        flex-wrap: wrap;
+    }
+    .fluxo-campo { display: flex; flex-direction: column; gap: 4px; }
+    .fluxo-campo label { font-size: 11px; color: #555; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+    .fluxo-campo input[type="date"] {
+        border: 0.5px solid #c8d8c8;
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 13px;
+        background: #fff;
+    }
+    .fluxo-campo input[type="date"]:focus { outline: none; border-color: #16a34a; }
+
+    .fluxo-atalhos { display: flex; gap: 6px; flex-wrap: wrap; }
+    .fluxo-atalhos button {
+        background: #fff;
+        border: 0.5px solid #d4d4d4;
+        border-radius: 14px;
+        padding: 4px 10px;
+        font-size: 11px;
+        color: #444;
+        cursor: pointer;
+    }
+    .fluxo-atalhos button:hover { border-color: #16a34a; color: #16a34a; }
+
+    .fluxo-gerar {
+        background: #16a34a;
+        color: #fff;
+        border: 0;
+        border-radius: 8px;
+        padding: 10px 18px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .fluxo-gerar:hover:not(:disabled) { background: #15803d; }
+    .fluxo-gerar:disabled { background: #aaa; cursor: not-allowed; }
+
+    .fluxo-erro {
+        background: #fff5f5;
+        border: 0.5px solid #fca5a5;
+        color: #a72020;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+    }
     .rel-nome { font-size: 13px; font-weight: 600; color: #1a1a1a; }
     .rel-desc { font-size: 11px; color: #888; margin-top: 1px; }
 
