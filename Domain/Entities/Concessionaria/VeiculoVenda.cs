@@ -36,6 +36,13 @@ public class VeiculoVenda : Entity
     public Dinheiro Valor { get; private set; } = null!;
 
     /// <summary>
+    /// Custo pago pela concessionária para adquirir o veículo. Compõe os
+    /// gastos da concessionária ("Compra de material"), análogo ao gasto
+    /// com peças da oficina. Nasce em zero quando não informado.
+    /// </summary>
+    public Dinheiro CustoAquisicao { get; private set; } = new Dinheiro(0);
+
+    /// <summary>
     /// Texto preliminar do termo de entrega, redigido pelo admin no
     /// cadastro do veículo. Quando uma proposta é gerada, o termo de
     /// entrega da proposta começa preenchido com esse texto — basta
@@ -60,7 +67,8 @@ public class VeiculoVenda : Entity
         TipoCombustivel combustivel,
         decimal valor,
         AcessoriosVeiculo acessorios = AcessoriosVeiculo.Nenhum,
-        int? anoUltimoIpvaPago = null)
+        int? anoUltimoIpvaPago = null,
+        decimal custoAquisicao = 0)
     {
         AlterarMarca(marca);
         AlterarModelo(modelo);
@@ -81,6 +89,7 @@ public class VeiculoVenda : Entity
         // confirma que o veículo está pronto para venda.
         Disponibilidade = DisponibilidadeVeiculo.EmPreparacao;
         Valor = new Dinheiro(valor);
+        CustoAquisicao = new Dinheiro(custoAquisicao);
         Acessorios = acessorios;
         AnoUltimoIpvaPago = anoUltimoIpvaPago;
     }
@@ -101,6 +110,7 @@ public class VeiculoVenda : Entity
     public string GetCambio() => Cambio.ToString();
     public string GetCombustivel() => Combustivel.ToString();
     public decimal GetValor() => Valor.GetValorDinheiro();
+    public decimal GetCustoAquisicao() => CustoAquisicao.GetValorDinheiro();
 
     public AcessoriosVeiculo GetAcessoriosVeiculo() => Acessorios;
 
@@ -194,6 +204,13 @@ public class VeiculoVenda : Entity
             throw new ArgumentException("Valor inválido");
         Valor.SetValorDinheiro(novoValor);
     }
+
+    /// <summary>
+    /// Atualiza o custo de aquisição do veículo. Aceita zero (custo não
+    /// informado); valores negativos são bloqueados pelo VO Dinheiro.
+    /// </summary>
+    public void AtualizarCustoAquisicao(decimal custo)
+        => CustoAquisicao = new Dinheiro(custo);
 
     //atualizar dados relevantes do veiculo
     public void AtualizarVeiculoVendaDados(

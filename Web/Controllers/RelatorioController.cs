@@ -79,6 +79,7 @@ public class RelatorioController : ControllerBase
         sb.AppendLine($"Despesas fixas — Oficina ({m.QuantidadeMeses}x mensal);{F(m.DespesasFixasOficinaPeriodo)}");
         sb.AppendLine($"Despesas fixas — Concessionária ({m.QuantidadeMeses}x mensal);{F(m.DespesasFixasConcessionariaPeriodo)}");
         sb.AppendLine($"Gasto com peças (notas fiscais aprovadas);{F(m.GastoPecas)}");
+        sb.AppendLine($"Compra de material (aquisição de veículos);{F(m.CompraMaterial)}");
         sb.AppendLine($"TOTAL DE DESPESAS;{F(m.TotalDespesas)}");
         sb.AppendLine();
         sb.AppendLine($"LUCRO LÍQUIDO DO PERÍODO;{F(m.LucroLiquido)}");
@@ -90,7 +91,7 @@ public class RelatorioController : ControllerBase
         var receitaOficina = m.ReceitaServicos;
         var despesaOficina = m.GastoPecas + m.DespesasFixasOficinaPeriodo;
         var receitaConce = m.ReceitaVendas;
-        var despesaConce = m.DespesasFixasConcessionariaPeriodo;
+        var despesaConce = m.CompraMaterial + m.DespesasFixasConcessionariaPeriodo;
 
         sb.AppendLine("=== LUCRO POR SETOR ===");
         sb.AppendLine("Setor;Receitas (R$);Despesas (R$);Lucro (R$)");
@@ -101,15 +102,16 @@ public class RelatorioController : ControllerBase
 
         // === EVOLUÇÃO MÊS A MÊS ===
         sb.AppendLine("=== EVOLUÇÃO MÊS A MÊS ===");
-        sb.AppendLine("Mês;Receita serviços (R$);Receita vendas (R$);Gasto peças (R$);Despesas fixas (R$);Saldo do mês (R$)");
+        sb.AppendLine("Mês;Receita serviços (R$);Receita vendas (R$);Gasto peças (R$);Compra material (R$);Despesas fixas (R$);Saldo do mês (R$)");
         for (int i = 0; i < m.SerieReceitaServicos.Count; i++)
         {
             var rs = m.SerieReceitaServicos[i].Valor;
             var rv = i < m.SerieReceitaVendas.Count ? m.SerieReceitaVendas[i].Valor : 0m;
             var gp = i < m.SerieGastoPecas.Count ? m.SerieGastoPecas[i].Valor : 0m;
+            var cm = i < m.SerieCompraMaterial.Count ? m.SerieCompraMaterial[i].Valor : 0m;
             var df = m.DespesasFixasTotalMensal; // valor recorrente
-            var saldo = rs + rv - gp - df;
-            sb.AppendLine($"{Csv(m.SerieReceitaServicos[i].MesLabel)};{F(rs)};{F(rv)};{F(gp)};{F(df)};{F(saldo)}");
+            var saldo = rs + rv - gp - cm - df;
+            sb.AppendLine($"{Csv(m.SerieReceitaServicos[i].MesLabel)};{F(rs)};{F(rv)};{F(gp)};{F(cm)};{F(df)};{F(saldo)}");
         }
         sb.AppendLine();
 
@@ -131,9 +133,9 @@ public class RelatorioController : ControllerBase
         var r = await _veiculoService.GetAllAsync();
         if (!r.IsSuccess) return BadRequest(r.Error);
 
-        var sb = NovoCsv("Marca;Modelo;Ano;Combustivel;Disponibilidade;Valor");
+        var sb = NovoCsv("Marca;Modelo;Ano;Combustivel;Disponibilidade;CustoAquisicao;Valor");
         foreach (var v in r.Value!)
-            sb.AppendLine($"{Csv(v.Marca)};{Csv(v.Modelo)};{v.Ano};{Csv(v.Combustivel)};{Csv(v.Disponibilidade)};{v.Valor.ToString("F2", CultureInfo.InvariantCulture)}");
+            sb.AppendLine($"{Csv(v.Marca)};{Csv(v.Modelo)};{v.Ano};{Csv(v.Combustivel)};{Csv(v.Disponibilidade)};{v.CustoAquisicao.ToString("F2", CultureInfo.InvariantCulture)};{v.Valor.ToString("F2", CultureInfo.InvariantCulture)}");
 
         return Csv(sb, "veiculos-venda");
     }

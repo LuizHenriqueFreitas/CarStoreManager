@@ -14,5 +14,6 @@ public class VeiculoVendaListaDTO
     public int? AnoUltimoIpvaPago { get; set; }
     public List<string> Acessorios { get; set; } = new();
     public decimal Valor { get; set; }
+    public decimal CustoAquisicao { get; set; }
     public string? FotoPrincipal { get; set; }
 }

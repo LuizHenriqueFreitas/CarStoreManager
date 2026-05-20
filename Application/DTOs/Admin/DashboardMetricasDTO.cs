@@ -16,12 +16,19 @@ public class DashboardMetricasDTO
     public decimal TotalDespesasConcessionariaMensal { get; set; }
 
     public decimal GastoPecasMesAtual { get; set; }
+
+    /// <summary>
+    /// Gasto da concessionária com a compra de veículos cadastrados no mês
+    /// corrente ("Compra de material") — análogo ao GastoPecas da oficina.
+    /// </summary>
+    public decimal CompraMaterialMesAtual { get; set; }
+
     public decimal CapitalEstoqueVeiculos { get; set; }
     public decimal ReceitaServicosMesAtual { get; set; }
     public decimal ReceitaVendasMesAtual { get; set; }
 
     public decimal TotalReceitasMes => ReceitaServicosMesAtual + ReceitaVendasMesAtual;
-    public decimal TotalDespesasMes => TotalDespesasFixasMensal + GastoPecasMesAtual;
+    public decimal TotalDespesasMes => TotalDespesasFixasMensal + GastoPecasMesAtual + CompraMaterialMesAtual;
     public decimal LucroLiquidoMes => TotalReceitasMes - TotalDespesasMes;
 
     /// <summary>
@@ -33,10 +40,12 @@ public class DashboardMetricasDTO
 
     /// <summary>
     /// Lucro operacional da concessionária (mês corrente) — receita de vendas
-    /// menos despesas exclusivas da concessionária. CapitalEstoqueVeiculos NÃO
-    /// entra: é dinheiro parado em estoque, não saída de caixa do mês.
+    /// menos a compra de material (aquisição de veículos) e as despesas
+    /// exclusivas da concessionária. CapitalEstoqueVeiculos NÃO entra: é
+    /// dinheiro parado em estoque, não saída de caixa do mês.
     /// </summary>
-    public decimal LucroConcessionariaMes => ReceitaVendasMesAtual - TotalDespesasConcessionariaMensal;
+    public decimal LucroConcessionariaMes =>
+        ReceitaVendasMesAtual - CompraMaterialMesAtual - TotalDespesasConcessionariaMensal;
 
     // === Distribuições para gráficos ===
     public Dictionary<string, int> OrdensServicoPorStatus { get; set; } = new();
@@ -44,6 +53,7 @@ public class DashboardMetricasDTO
     public List<MesValorDTO> SerieReceitaServicos { get; set; } = new();
     public List<MesValorDTO> SerieReceitaVendas { get; set; } = new();
     public List<MesValorDTO> SerieGastoPecas { get; set; } = new();
+    public List<MesValorDTO> SerieCompraMaterial { get; set; } = new();
 }
 
 public class MesValorDTO

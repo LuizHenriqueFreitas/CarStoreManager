@@ -13,6 +13,14 @@ public class CriarVeiculoVendaDTO
     public string Cambio { get; set; } = null!;
     public string Combustivel { get; set; } = null!;
     public decimal Valor { get; set; }
+
+    /// <summary>
+    /// Custo de aquisição do veículo — quanto a concessionária pagou para
+    /// comprá-lo. Lançado como "Compra de material" nos gastos da
+    /// concessionária. Opcional: quando não informado, vale 0.
+    /// </summary>
+    public decimal CustoAquisicao { get; set; }
+
     public List<string> Acessorios { get; set; } = new();
     public int? AnoUltimoIpvaPago { get; set; }
 

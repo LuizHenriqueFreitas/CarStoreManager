@@ -409,6 +409,10 @@ public class AppDbContext : DbContext
                 d.Property("Valor").HasColumnName("Valor"));
 
         modelBuilder.Entity<VeiculoVenda>()
+            .OwnsOne(v => v.CustoAquisicao, d =>
+                d.Property("Valor").HasColumnName("CustoAquisicao").HasPrecision(18, 2));
+
+        modelBuilder.Entity<VeiculoVenda>()
             .HasMany(v => v.Fotos)
             .WithOne()
             .HasForeignKey(f => f.VeiculoVendaId)

@@ -8,6 +8,7 @@
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
 @using CarStoreManager.Application.Common
+@using CarStoreManager.Application.DTOs
 @using CarStoreManager.Application.Interfaces
 @inject NavigationManager Nav
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
@@ -39,12 +40,12 @@ else
                 {
                     var idxAnt = (fotoAtiva - 1 + veiculo.Fotos.Count) % veiculo.Fotos.Count;
                     <div class="galeria-vizinha esquerda" @onclick="FotoAnterior">
-                        <img src="@veiculo.Fotos[idxAnt]" alt="" />
+                        <img src="@veiculo.Fotos[idxAnt].Url" alt="" />
                     </div>
                 }
 
                 <div class="galeria-foto" @onclick="() => AbrirFullscreen(fotoAtiva)">
-                    <img src="@veiculo.Fotos[fotoAtiva]" alt="Foto do veículo" />
+                    <img src="@veiculo.Fotos[fotoAtiva].Url" alt="Foto do veículo" />
                     <span class="galeria-zoom">🔍</span>
                 </div>
 
@@ -52,7 +53,7 @@ else
                 {
                     var idxProx = (fotoAtiva + 1) % veiculo.Fotos.Count;
                     <div class="galeria-vizinha direita" @onclick="ProximaFoto">
-                        <img src="@veiculo.Fotos[idxProx]" alt="" />
+                        <img src="@veiculo.Fotos[idxProx].Url" alt="" />
                     </div>
                 }
 
@@ -87,7 +88,7 @@ else
                 <button class="fs-arr left" @onclick:stopPropagation="true" @onclick="FsAnterior">‹</button>
                 <button class="fs-arr right" @onclick:stopPropagation="true" @onclick="FsProxima">›</button>
             }
-            <img src="@veiculo.Fotos[fotoFullscreenIdx.Value]" class="fs-img" @onclick:stopPropagation="true" alt="Foto ampliada" />
+            <img src="@veiculo.Fotos[fotoFullscreenIdx.Value].Url" class="fs-img" @onclick:stopPropagation="true" alt="Foto ampliada" />
         </div>
     }
 
@@ -111,6 +112,10 @@ else
                     <div class="spec"><span class="spec-label">Câmbio</span><span class="spec-val">@veiculo.Cambio</span></div>
                     <div class="spec"><span class="spec-label">Motorização</span><span class="spec-val">@veiculo.Motorizacao</span></div>
                     <div class="spec"><span class="spec-label">Placa</span><span class="spec-val">@veiculo.Placa</span></div>
+                    <div class="spec">
+                        <span class="spec-label">Custo de aquisição</span>
+                        <span class="spec-val">@veiculo.CustoAquisicao.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</span>
+                    </div>
                 </div>
             </div>
 
@@ -217,6 +222,10 @@ else
                     <div class="form-campo">
                         <label class="campo-label">Valor (R$)</label>
                         <input type="number" class="campo-input" @bind="formEdicao.Valor" />
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Custo de aquisição (R$)</label>
+                        <input type="number" step="0.01" class="campo-input" @bind="formEdicao.CustoAquisicao" />
                     </div>
                     <div class="form-campo">
                         <label class="campo-label">Disponibilidade</label>
@@ -333,7 +342,7 @@ else
     private Guid UsuarioAtualId;
 
     // Propriedades para gerenciamento de fotos
-    private List<FotoVeiculoDTO> fotosEditaveis = new();
+    private List<FotoDto> fotosEditaveis = new();
     private record FotoEmMemoria(string Nome, string ContentType, byte[] Conteudo);
     private List<FotoEmMemoria> arquivosSelecionados = new();
     private List<string> previewsNovasFotos = new();
@@ -360,13 +369,8 @@ else
             veiculo = resultado.IsSuccess ? resultado.Value : null;
             if (veiculo != null)
             {
-                // Converte as URLs para lista de FotoVeiculoDTO
-                fotosEditaveis = veiculo.Fotos.Select((url, idx) => new FotoVeiculoDTO
-                {
-                    Id = Guid.NewGuid(), // TEMPORÁRIO - substituir pelo ID real vindo do backend
-                    Url = url,
-                    Ordem = idx
-                }).ToList();
+                // Fotos já vêm do backend com Id real e ordenadas — basta copiar.
+                fotosEditaveis = new List<FotoDto>(veiculo.Fotos);
             }
         }
         catch { veiculo = null; }
@@ -409,6 +413,7 @@ else
         {
             Id = veiculo!.Id,
             Valor = veiculo.Valor,
+            CustoAquisicao = veiculo.CustoAquisicao,
             Disponibilidade = veiculo.Disponibilidade,
             TextoTermoPreliminar = veiculo.TextoTermoPreliminar
         };
@@ -649,24 +654,13 @@ else
         if (resultado.IsSuccess && resultado.Value != null)
         {
             veiculo = resultado.Value;
-            // Aqui você deve ajustar conforme seu DTO.
-            // Se veiculo.Fotos já for List<FotoVeiculoDTO>, use diretamente.
-            // Caso contrário, mapeie.
-            fotosEditaveis = veiculo.Fotos.Select((url, idx) => new FotoVeiculoDTO
-            {
-                Id = Guid.NewGuid(), // ajuste para o ID real se disponível
-                Url = url,
-                Ordem = idx
-            }).ToList();
-        }
-    }
+            // Fotos chegam com Id real do backend, já ordenadas por Ordem.
+            fotosEditaveis = new List<FotoDto>(veiculo.Fotos);
 
-    // DTO auxiliar (mova para seu domínio se necessário)
-    public class FotoVeiculoDTO
-    {
-        public Guid Id { get; set; }
-        public string Url { get; set; } = string.Empty;
-        public int Ordem { get; set; }
+            // Mantém o índice da galeria dentro dos limites após remoções.
+            if (fotoAtiva >= veiculo.Fotos.Count)
+                fotoAtiva = Math.Max(0, veiculo.Fotos.Count - 1);
+        }
     }
 }
 

@@ -70,7 +70,8 @@
                     <span class="metrica-valor alerta">@FormatBRL(metricas.TotalDespesasMes)</span>
                     <span class="metrica-sub muted">
                         Fixas @FormatBRL(metricas.TotalDespesasFixasMensal) ·
-                        Peças @FormatBRL(metricas.GastoPecasMesAtual)
+                        Peças @FormatBRL(metricas.GastoPecasMesAtual) ·
+                        Material @FormatBRL(metricas.CompraMaterialMesAtual)
                     </span>
                 </div>
                 <div class="metrica-card destaque-lucro">
@@ -218,6 +219,11 @@
                     <span class="metrica-valor sucesso">@FormatBRL(metricas.ReceitaVendasMesAtual)</span>
                 </div>
                 <div class="metrica-card">
+                    <span class="metrica-label">Compra de material</span>
+                    <span class="metrica-valor alerta">@FormatBRL(metricas.CompraMaterialMesAtual)</span>
+                    <span class="metrica-sub muted">Aquisição de veículos cadastrados no mês</span>
+                </div>
+                <div class="metrica-card">
                     <span class="metrica-label">Despesas da concessionária</span>
                     <span class="metrica-valor alerta">@FormatBRL(metricas.TotalDespesasConcessionariaMensal)</span>
                     <span class="metrica-sub muted">Despesas com setor "Concessionária"</span>
@@ -227,7 +233,7 @@
                     <span class="metrica-valor @(metricas.LucroConcessionariaMes >= 0 ? "sucesso" : "alerta")">
                         @FormatBRL(metricas.LucroConcessionariaMes)
                     </span>
-                    <span class="metrica-sub muted">Vendas − Despesas da concessionária (excl. capital imobilizado)</span>
+                    <span class="metrica-sub muted">Vendas − Compra de material − Despesas da concessionária (excl. capital imobilizado)</span>
                 </div>
             </div>
 
@@ -622,7 +628,7 @@
             var labelsComp = new[] {
                 "Receita serviços", "Receita vendas",
                 "Despesas Geral", "Despesas Oficina", "Despesas Concessionária",
-                "Gasto peças"
+                "Gasto peças", "Compra material"
             };
             var dadosComp = new[] {
                 metricas.ReceitaServicosMesAtual,
@@ -630,7 +636,8 @@
                 metricas.TotalDespesasGeralMensal,
                 metricas.TotalDespesasOficinaMensal,
                 metricas.TotalDespesasConcessionariaMensal,
-                metricas.GastoPecasMesAtual
+                metricas.GastoPecasMesAtual,
+                metricas.CompraMaterialMesAtual
             };
             var datasetComp = new object[]
             {
@@ -639,7 +646,7 @@
                     backgroundColor = new[] {
                         "#16a34a", "#2563eb",
                         "#ea580c", "#f97316", "#fbbf24",
-                        "#e02020"
+                        "#e02020", "#b91c1c"
                     }
                 }
             };

@@ -21,6 +21,12 @@ public class FluxoCaixaPeriodoDTO
     public decimal ReceitaVendas { get; set; }
     public decimal GastoPecas { get; set; }
 
+    /// <summary>
+    /// Compra de material da concessionária — soma do custo de aquisição dos
+    /// veículos cadastrados dentro do período (análogo ao GastoPecas).
+    /// </summary>
+    public decimal CompraMaterial { get; set; }
+
     // === Despesas fixas recorrentes (valor mensal cadastrado) ===
     public decimal DespesasFixasGeralMensal { get; set; }
     public decimal DespesasFixasOficinaMensal { get; set; }
@@ -35,14 +41,14 @@ public class FluxoCaixaPeriodoDTO
     public decimal DespesasFixasTotalPeriodo => DespesasFixasTotalMensal * QuantidadeMeses;
 
     public decimal TotalReceitas => ReceitaServicos + ReceitaVendas;
-    public decimal TotalDespesas => GastoPecas + DespesasFixasTotalPeriodo;
+    public decimal TotalDespesas => GastoPecas + CompraMaterial + DespesasFixasTotalPeriodo;
     public decimal LucroLiquido => TotalReceitas - TotalDespesas;
 
     // Lucros operacionais por setor (mesma regra do dashboard, mas com período)
     public decimal LucroOficina
         => ReceitaServicos - GastoPecas - DespesasFixasOficinaPeriodo;
     public decimal LucroConcessionaria
-        => ReceitaVendas - DespesasFixasConcessionariaPeriodo;
+        => ReceitaVendas - CompraMaterial - DespesasFixasConcessionariaPeriodo;
 
     // Capital imobilizado é snapshot atual (não tem como recompor data-data)
     public decimal CapitalEstoqueVeiculos { get; set; }
@@ -51,4 +57,5 @@ public class FluxoCaixaPeriodoDTO
     public List<MesValorDTO> SerieReceitaServicos { get; set; } = new();
     public List<MesValorDTO> SerieReceitaVendas { get; set; } = new();
     public List<MesValorDTO> SerieGastoPecas { get; set; } = new();
+    public List<MesValorDTO> SerieCompraMaterial { get; set; } = new();
 }

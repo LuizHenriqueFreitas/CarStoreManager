@@ -1,5 +1,6 @@
 //Arquivo que faz as converções entre DTOS e Entidades de Veiculos de Venda
 
+using CarStoreManager.Application.DTOs;
 using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda;
 using CarStoreManager.Domain.Entities.Concessionaria;
 using CarStoreManager.Domain.Enums;
@@ -26,11 +27,19 @@ public static class VeiculoVendaMapping
             Combustivel = entity.Combustivel.ToString(),
             Disponibilidade = entity.Disponibilidade.ToString(),
             Valor = entity.GetValor(),
+            CustoAquisicao = entity.GetCustoAquisicao(),
             AnoUltimoIpvaPago = entity.AnoUltimoIpvaPago,
             Acessorios = entity.GetAcessoriosLista(),
             Fotos = entity.Fotos
                 .OrderBy(f => f.Ordem)
-                .Select(f => f.Url)
+                .Select(f => new FotoDto
+                {
+                    Id = f.Id,
+                    Url = f.Url,
+                    Ordem = f.Ordem,
+                    NomeArquivo = f.NomeArquivo,
+                    DataUpload = f.DataUpload
+                })
                 .ToList(),
             TextoTermoPreliminar = entity.TextoTermoPreliminar
         };
@@ -57,6 +66,7 @@ public static class VeiculoVendaMapping
                 .Select(a => a.ToString())
                 .ToList(),
             Valor = entity.GetValor(),
+            CustoAquisicao = entity.GetCustoAquisicao(),
             FotoPrincipal = entity.Fotos
                 .OrderBy(f => f.Ordem)
                 .FirstOrDefault()?.Url
@@ -78,7 +88,8 @@ public static class VeiculoVendaMapping
             ConverterEnum<TipoCombustivel>(dto.Combustivel, "Combustível"),
             dto.Valor,
             ConverterAcessorios(dto.Acessorios),
-            dto.AnoUltimoIpvaPago
+            dto.AnoUltimoIpvaPago,
+            dto.CustoAquisicao
         );
 
         if (!string.IsNullOrWhiteSpace(dto.TextoTermoPreliminar))
@@ -93,6 +104,8 @@ public static class VeiculoVendaMapping
             new Dinheiro(dto.Valor),
             ConverterEnum<DisponibilidadeVeiculo>(dto.Disponibilidade, "Disponibilidade")
         );
+
+        entity.AtualizarCustoAquisicao(dto.CustoAquisicao);
 
         if (dto.TextoTermoPreliminar is not null)
             entity.AtualizarTextoTermoPreliminar(dto.TextoTermoPreliminar);

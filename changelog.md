@@ -1,3 +1,15 @@
+## 2026-05-20
+
+### Correções
+- corrigida a reordenação de fotos do veículo — o front recebia IDs aleatórios
+  (`Guid.NewGuid()`) em vez dos IDs reais, fazendo `ReordenarFotosAsync` falhar
+  sempre. `VeiculoVendaDTO.Fotos` agora carrega `FotoDto` (Id, Url, Ordem)
+
+### Atualizações
+- novo campo "Custo de aquisição" no cadastro/edição do veículo
+- custo de aquisição entra como "Compra de material" nos gastos da concessionária,
+  análogo ao gasto com peças da oficina — abatido do lucro no dashboard e relatórios
+
 ## 2026-05-08
 
 ### Atualização

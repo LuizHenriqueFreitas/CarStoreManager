@@ -113,10 +113,23 @@ public class DashboardService : IDashboardService
             janelaInicio);
 
         // === Capital imobilizado em veículos disponíveis ===
-        var veiculos = await _veiculos.GetAllAsync();
+        var veiculos = (await _veiculos.GetAllAsync()).ToList();
         dto.CapitalEstoqueVeiculos = veiculos
             .Where(v => v.Disponibilidade == DisponibilidadeVeiculo.Disponivel)
             .Sum(v => v.Valor.GetValorDinheiro());
+
+        // === Compra de material (aquisição de veículos cadastrados no período) ===
+        // Análogo ao GastoPecas da oficina: o custo de aquisição é lançado como
+        // gasto da concessionária no mês em que o veículo entrou no estoque.
+        dto.CompraMaterialMesAtual = veiculos
+            .Where(v => v.DataCriacao >= inicioMes)
+            .Sum(v => v.GetCustoAquisicao());
+
+        dto.SerieCompraMaterial = AgruparPorMes(
+            veiculos
+                .Where(v => v.DataCriacao >= janelaInicio)
+                .Select(v => (Data: v.DataCriacao, Valor: v.GetCustoAquisicao())),
+            janelaInicio);
 
         return Result<DashboardMetricasDTO>.Ok(dto);
     }
@@ -183,10 +196,18 @@ public class DashboardService : IDashboardService
         dto.SerieGastoPecas = AgruparPorMesPeriodo(notasNoPeriodo, inicio, dto.QuantidadeMeses);
 
         // === Capital imobilizado (snapshot atual — não dá pra reconstituir histórico) ===
-        var veiculos = await _veiculos.GetAllAsync();
+        var veiculos = (await _veiculos.GetAllAsync()).ToList();
         dto.CapitalEstoqueVeiculos = veiculos
             .Where(v => v.Disponibilidade == DisponibilidadeVeiculo.Disponivel)
             .Sum(v => v.Valor.GetValorDinheiro());
+
+        // === Compra de material (veículos adquiridos dentro do período) ===
+        var comprasNoPeriodo = veiculos
+            .Select(v => (Data: v.DataCriacao, Valor: v.GetCustoAquisicao()))
+            .Where(x => x.Data >= inicio && x.Data <= fim)
+            .ToList();
+        dto.CompraMaterial = comprasNoPeriodo.Sum(x => x.Valor);
+        dto.SerieCompraMaterial = AgruparPorMesPeriodo(comprasNoPeriodo, inicio, dto.QuantidadeMeses);
 
         return Result<FluxoCaixaPeriodoDTO>.Ok(dto);
     }
