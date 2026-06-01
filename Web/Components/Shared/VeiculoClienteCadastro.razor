@@ -8,7 +8,7 @@
     @if (veiculoSelecionado is not null)
     {
         <div class="cliente-selecionado">
-            <span>@veiculoSelecionado.Marca @veiculoSelecionado.Modelo (@veiculoSelecionado.Cor) - @veiculoSelecionado.Ano</span>
+            <span>@veiculoSelecionado.Marca @veiculoSelecionado.Modelo (@veiculoSelecionado.Cor) - @veiculoSelecionado.Ano · Placa @veiculoSelecionado.Placa</span>
             <button type="button" class="btn-remover" @onclick="RemoverSelecao">×</button>
         </div>
     }
@@ -68,7 +68,7 @@
                     @foreach (var v in resultadosBusca)
                     {
                         <li @onclick="() => SelecionarVeiculo(v.Id)">
-                            @v.Marca @v.Modelo (@v.Ano) - @v.Cor
+                            @v.Marca @v.Modelo (@v.Ano) - @v.Cor · Placa @v.Placa
                         </li>
                     }
                 </ul>
@@ -143,7 +143,7 @@
                 if (detalhes.IsSuccess && detalhes.Value is not null)
                     veiculoSelecionado = detalhes.Value;
                 else
-                    veiculoSelecionado = new VeiculoClienteDTO { Id = novoId, Marca = form.Marca, Modelo = form.Modelo, Cor = form.Cor, Ano = form.Ano, ClienteId = ClienteId };
+                    veiculoSelecionado = new VeiculoClienteDTO { Id = novoId, Marca = form.Marca, Modelo = form.Modelo, Cor = form.Cor, Ano = form.Ano, Placa = form.Placa, ClienteId = ClienteId };
                 form = new();
             }
             else
