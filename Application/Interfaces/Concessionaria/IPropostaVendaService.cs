@@ -17,13 +17,22 @@ public interface IPropostaVendaService : IService<
     Task<Result> DefinirModoPagamentoAsync(Guid propostaId, string modoPagamento);
 
     /// <summary>
-    /// Marca proposta como AguardandoFinanciadora E envia e-mail com dados
-    /// (cliente, veículo, entrada, valor líquido) para a financiadora
-    /// configurada em ConfiguracaoSistema.
+    /// Marca a proposta como AguardandoFinanciadora — o vendedor entrou em contato
+    /// com a financiadora por fora do sistema e a proposta fica pendente de retorno.
     /// </summary>
     Task<Result> SolicitarFinanciamentoAsync(Guid propostaId);
 
+    /// <summary>
+    /// Registra o retorno da financiadora (texto livre digitado pelo vendedor) e
+    /// avança para PropostaFinanciadoraRecebida, para o cliente decidir.
+    /// </summary>
     Task<Result> RegistrarRespostaFinanciadoraAsync(Guid propostaId, RegistrarRespostaFinanciadoraDTO dto);
+
+    /// <summary>
+    /// A financiadora negou o financiamento — desliga a proposta (Rejeitada).
+    /// O cliente deve ser avisado pelo vendedor.
+    /// </summary>
+    Task<Result> NegarFinanciamentoAsync(Guid propostaId, string motivo);
 
     Task<Result> AprovarAsync(Guid propostaId);
     Task<Result> RejeitarAsync(Guid propostaId, string motivo);
@@ -52,7 +61,4 @@ public interface IPropostaVendaService : IService<
     Task<Result> EnviarTermoParaAssinaturaAsync(Guid propostaId);
     Task<Result<TermoEntregaDTO>> ObterTermoPorTokenAsync(string token);
     Task<Result> AssinarTermoAsync(string token, AssinarTermoDTO dto, string ipOrigem);
-
-    // Compat com chamadores antigos (sem motivo) — depreciado.
-    Task<Result> GerarFinanciamentoAsync(GerarFinanciamentoDTO dto);
 }

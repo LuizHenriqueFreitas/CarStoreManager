@@ -57,6 +57,7 @@ public class AppDbContext : DbContext
     // =========================
     public DbSet<ConfiguracaoSistema> ConfiguracoesSistema { get; set; }
     public DbSet<Despesa> Despesas { get; set; }
+    public DbSet<TipoDespesa> TiposDespesa { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -458,11 +459,8 @@ public class AppDbContext : DbContext
             });
 
             // ===== FINANCIAMENTO =====
-            entity.OwnsOne(p => p.ValorParcela, vo =>
-            {
-                vo.Property("Valor").HasColumnName("ValorParcela").HasPrecision(18, 2);
-            });
-            entity.Property(p => p.TaxaJurosMensal).HasPrecision(7, 4);
+            // Sem campos estruturados: o retorno da financiadora é texto livre
+            // (DadosFinanciamento), mapeado automaticamente como string.
         });
 
         // =========================
@@ -505,13 +503,14 @@ public class AppDbContext : DbContext
         // =========================
         modelBuilder.Entity<Despesa>().HasKey(d => d.Id);
         modelBuilder.Entity<Despesa>().Property(d => d.Nome).IsRequired();
-        modelBuilder.Entity<Despesa>()
-            .Property(d => d.Setor)
-            .HasConversion<string>()
-            .HasDefaultValue(CarStoreManager.Domain.Enums.SetorDespesa.Geral);
+        modelBuilder.Entity<Despesa>().HasIndex(d => d.TipoDespesaId);
         modelBuilder.Entity<Despesa>()
             .OwnsOne(d => d.Valor, vo =>
                 vo.Property("Valor").HasColumnName("Valor").HasPrecision(18, 2));
+
+        // === TIPO DE DESPESA (categorias cadastráveis pelo admin) ===
+        modelBuilder.Entity<TipoDespesa>().HasKey(t => t.Id);
+        modelBuilder.Entity<TipoDespesa>().Property(t => t.Nome).IsRequired();
 
         // === Precificação de componentes ===
         modelBuilder.Entity<Componente>()

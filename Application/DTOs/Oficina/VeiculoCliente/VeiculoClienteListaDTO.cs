@@ -8,4 +8,5 @@ public class VeiculoClienteListaDTO
     public string Modelo { get; set; } = null!;
     public string Cor { get; set; } = null!;
     public int Ano { get;set; }
+    public string Placa { get; set; } = null!;
 }

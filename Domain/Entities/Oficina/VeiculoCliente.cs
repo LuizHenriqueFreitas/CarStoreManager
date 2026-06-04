@@ -58,6 +58,8 @@ public class VeiculoCliente : Entity
     public string GetModelo() => Modelo;
     public string GetCor() => Cor;
     public int GetAno() => Ano.GetValorAno();
+    public string GetPlaca() => Placa.GetPlaca();
+    public string GetPlacaFormatada() => Placa.ToString();
     public string GetHistorico()
     {
         

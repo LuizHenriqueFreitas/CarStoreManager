@@ -7,7 +7,6 @@ public interface IConfiguracaoSistemaService
 {
     Task<Result<ConfiguracaoSistemaDTO>> ObterAsync();
     Task<Result> AtualizarAsync(ConfiguracaoSistemaDTO dto);
-    Task<Result> TestarEnvioAsync(string emailDestino);
 
     Task<Result<MargensDTO>> ObterMargensAsync();
     Task<Result> AtualizarMargensAsync(MargensDTO dto);

@@ -102,16 +102,16 @@
                             <label class="campo-label">&nbsp;</label>
                             <label class="solicitar-check">
                                 <input type="checkbox" @bind="solicitarFinanciadoraAgora" />
-                                Solicitar simulação à financiadora ao criar
+                                Já entrei em contato com a financiadora
                             </label>
                         </div>
                     </div>
                     @if (solicitarFinanciadoraAgora)
                     {
                         <p class="dica">
-                            Dados do cliente, veículo, entrada e valor a financiar serão enviados
-                            por e-mail à financiadora configurada nas
-                            <a href="/admin/configuracoes" target="_blank">configurações do sistema</a>.
+                            A proposta será criada já <b>aguardando o retorno da financiadora</b>.
+                            Cada financiadora tem o próprio modelo de negociação: ao receber a
+                            resposta, registre os dados do acordo na tela da proposta.
                         </p>
                     }
                 </div>
@@ -285,15 +285,15 @@
                 }
             }
 
-            // Se financiamento + opt-in, dispara solicitação à financiadora.
+            // Se financiamento + opt-in, marca a proposta como aguardando retorno da financiadora.
             if (modoPagamento == "Financiamento" && solicitarFinanciadoraAgora)
             {
                 var rFin = await PropostaVendaService.SolicitarFinanciamentoAsync(propostaId);
                 if (!rFin.IsSuccess)
                 {
                     // Não bloqueia a navegação — proposta foi criada com sucesso.
-                    // Admin pode reenviar do detalhe.
-                    erro = $"Proposta criada com financiamento mas houve falha no envio à financiadora: {rFin.Error}. Você pode reenviar do detalhe.";
+                    // O vendedor pode registrar o contato a partir do detalhe.
+                    erro = $"Proposta criada, mas houve falha ao marcá-la como aguardando a financiadora: {rFin.Error}. Você pode registrar o contato no detalhe.";
                     sucesso = true;
                     await Task.Delay(2500);
                     Navigation.NavigateTo($"/concessionaria/proposta/{propostaId}");

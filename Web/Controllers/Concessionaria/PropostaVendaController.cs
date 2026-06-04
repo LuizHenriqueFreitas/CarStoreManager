@@ -92,6 +92,13 @@ public class PropostaVendaController : ControllerBase
         return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
     }
 
+    [HttpPost("{id:guid}/negar-financiamento")]
+    public async Task<IActionResult> NegarFinanciamento(Guid id, [FromBody] NegarFinanciamentoDTO dto)
+    {
+        var resultado = await _service.NegarFinanciamentoAsync(id, dto.Motivo);
+        return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
+    }
+
     [HttpPatch("{id:guid}/aprovar")]
     public async Task<IActionResult> Aprovar(Guid id)
     {

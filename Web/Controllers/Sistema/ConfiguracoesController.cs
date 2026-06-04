@@ -28,13 +28,6 @@ public class ConfiguracoesController : ControllerBase
         return r.IsSuccess ? NoContent() : BadRequest(r.Error);
     }
 
-    [HttpPost("testar-email")]
-    public async Task<IActionResult> TestarEmail([FromBody] TestarEmailDTO dto)
-    {
-        var r = await _service.TestarEnvioAsync(dto.EmailDestino);
-        return r.IsSuccess ? NoContent() : BadRequest(r.Error);
-    }
-
     [HttpGet("margens")]
     public async Task<IActionResult> ObterMargens()
     {

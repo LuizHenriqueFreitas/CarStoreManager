@@ -1,5 +1,4 @@
 using CarStoreManager.Domain.Entities.Sistema;
-using CarStoreManager.Domain.Enums;
 
 namespace CarStoreManager.Domain.Interfaces.Repositories.Sistema;
 
@@ -9,8 +8,8 @@ public interface IDespesaRepository
     Task<IEnumerable<Despesa>> GetAllAsync();
     Task<IEnumerable<Despesa>> GetAtivasAsync();
 
-    /// <summary>Despesas ativas filtradas por setor.</summary>
-    Task<IEnumerable<Despesa>> GetAtivasPorSetorAsync(SetorDespesa setor);
+    /// <summary>Despesas (ativas e inativas) de um tipo — usado ao remover um tipo.</summary>
+    Task<IEnumerable<Despesa>> GetPorTipoAsync(Guid tipoDespesaId);
 
     Task AddAsync(Despesa despesa);
     void Update(Despesa despesa);

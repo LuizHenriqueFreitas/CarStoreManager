@@ -18,10 +18,9 @@ public class PropostaVendaDTO
     // === Financiamento ===
     public DateTime? DataSolicitacaoFinanciamento { get; set; }
     public DateTime? DataRespostaFinanciadora { get; set; }
-    public int? ParcelasFinanciamento { get; set; }
-    public decimal? ValorParcela { get; set; }
-    public decimal? TaxaJurosMensal { get; set; }
-    public string? ObservacoesFinanciamento { get; set; }
+
+    /// <summary>Dados do acordo da financiadora, em texto livre.</summary>
+    public string? DadosFinanciamento { get; set; }
 
     // === Auditoria ===
     public DateTime? DataAprovacao { get; set; }

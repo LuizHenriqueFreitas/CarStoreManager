@@ -6,7 +6,7 @@
 @rendermode InteractiveServer
 
 @inject IConfiguracaoSistemaService ConfigService
-@inject IDespesaService DespesaService
+@inject ITipoDespesaService TipoDespesaService
 @inject IChecklistPresetService PresetService
 
 @using CarStoreManager.Application.Interfaces.Sistema
@@ -24,8 +24,7 @@
     }
 
     <div class="abas">
-        <!--<button class="@AbaClass("geral")" @onclick='() => abaAtiva = "geral"'>Geral</button>-->
-        <button class="@AbaClass("despesas")" @onclick='() => abaAtiva = "despesas"'>Despesas mensais</button>
+        <button class="@AbaClass("tipos")" @onclick='() => abaAtiva = "tipos"'>Tipos de despesa</button>
         <button class="@AbaClass("checklists")" @onclick='() => abaAtiva = "checklists"'>Checklists</button>
         <button class="@AbaClass("operacao")" @onclick='() => abaAtiva = "operacao"'>Modo operante</button>
     </div>
@@ -36,166 +35,48 @@
     }
     else if (config is not null)
     {
-        /*
-        @* ===================== ABA GERAL ===================== *@
-        @if (abaAtiva == "geral")
-        {
-            <div class="cfg-grid">
-                <section class="cfg-card">
-                    <h2>Financiadora preferida</h2>
-                    <p class="muted">Para onde os pedidos de simulação de financiamento serão enviados.</p>
 
-                    <label>Nome da financiadora</label>
-                    <input @bind="config.NomeFinanciadora" placeholder="ex: Banco XYZ — Financiamento Auto" />
-
-                    <label>E-mail da financiadora</label>
-                    <input @bind="config.EmailFinanciadora" type="email" placeholder="financiamento@banco.com.br" />
-
-                    <div class="status-line">
-                        @if (config.FinanciadoraConfigurada)
-                        {
-                            <span class="tag-ok">✓ Financiadora configurada</span>
-                        }
-                        else
-                        {
-                            <span class="tag-warn">⚠ Não configurada — propostas com financiamento ficarão bloqueadas</span>
-                        }
-                    </div>
-                </section>
-
-                <section class="cfg-card">
-                    <h2>Servidor SMTP</h2>
-                    <p class="muted">Credenciais usadas pelo sistema para enviar e-mails (financiamento, termos, notificações).</p>
-
-                    <div class="row-2">
-                        <div>
-                            <label>Host SMTP</label>
-                            <input @bind="config.SmtpHost" placeholder="smtp.gmail.com" />
-                        </div>
-                        <div>
-                            <label>Porta</label>
-                            <input @bind="config.SmtpPort" type="number" min="1" max="65535" />
-                        </div>
-                    </div>
-
-                    <label>Usuário</label>
-                    <input @bind="config.SmtpUsuario" placeholder="conta@gmail.com" />
-
-                    <label>Senha (deixe em branco para manter a atual)</label>
-                    <input @bind="config.SmtpSenha" type="password" placeholder="••••••••" />
-
-                    <label class="check-line">
-                        <input type="checkbox" @bind="config.SmtpUsarSsl" />
-                        Usar SSL/TLS (recomendado)
-                    </label>
-
-                    <div class="row-2">
-                        <div>
-                            <label>E-mail remetente (From)</label>
-                            <input @bind="config.EmailRemetente" type="email" placeholder="noreply@carstore.com.br" />
-                        </div>
-                        <div>
-                            <label>Nome remetente</label>
-                            <input @bind="config.NomeRemetente" placeholder="CarStore Concessionária" />
-                        </div>
-                    </div>
-
-                    <div class="status-line">
-                        @if (config.SmtpConfigurado)
-                        {
-                            <span class="tag-ok">✓ SMTP configurado</span>
-                        }
-                        else
-                        {
-                            <span class="tag-warn">⚠ Faltam dados — host e e-mail remetente são obrigatórios</span>
-                        }
-                    </div>
-                </section>
-            </div>
-
-            <div class="acoes">
-                <button class="btn-salvar" @onclick="Salvar" disabled="@salvando">
-                    @(salvando ? "Salvando..." : "Salvar configurações")
-                </button>
-
-                <div class="testar-bloco">
-                    <input type="email" placeholder="Enviar e-mail de teste para..."
-                           @bind="emailTeste" class="input-teste" />
-                    <button class="btn-testar" @onclick="TestarEnvio"
-                            disabled="@(string.IsNullOrWhiteSpace(emailTeste) || salvando || !config.SmtpConfigurado)">
-                        Testar envio
-                    </button>
-                </div>
-            </div>
-        }
-        */
-
-        @* ===================== ABA DESPESAS ===================== *@
-        @if (abaAtiva == "despesas")
+        @* ===================== ABA TIPOS DE DESPESA ===================== *@
+        @if (abaAtiva == "tipos")
         {
             <section class="cfg-card-full">
-                <h2>Planilha de despesas mensais</h2>
+                <h2>Tipos de despesa</h2>
                 <p class="muted">
-                    Cadastre as despesas fixas mensais da oficina — luz, água, aluguel, salário de cada
-                    funcionário, etc. A soma destas linhas compõe o total de despesas exibido no dashboard.
+                    Categorias usadas para classificar as despesas mensais (aluguel, água, energia,
+                    internet, salários, manutenção, investimento, etc.). A planilha de despesas fica
+                    no <a href="/admin/despesas">dashboard de despesas</a>. Tipos em uso não podem ser
+                    excluídos — desative-os para preservar o histórico.
                 </p>
 
                 <table class="tabela">
                     <thead>
                         <tr>
-                            <th style="width:35%">Nome</th>
-                            <th style="width:20%">Valor (R$)</th>
-                            <th style="width:20%">Setor</th>
-                            <th style="width:10%">Ativa</th>
-                            <th style="width:15%"></th>
+                            <th style="width:60%">Nome</th>
+                            <th style="width:15%">Ativo</th>
+                            <th style="width:25%"></th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var d in despesas)
+                        @foreach (var t in tipos)
                         {
                             <tr>
-                                <td><input @bind="d.Nome" /></td>
-                                <td><input type="number" step="0.01" @bind="d.Valor" /></td>
+                                <td><input @bind="t.Nome" /></td>
+                                <td><input type="checkbox" @bind="t.Ativo" /></td>
                                 <td>
-                                    <select @bind="d.Setor">
-                                        <option value="Geral">Geral</option>
-                                        <option value="Oficina">Oficina</option>
-                                        <option value="Concessionaria">Concessionária</option>
-                                    </select>
-                                </td>
-                                <td><input type="checkbox" @bind="d.Ativa" /></td>
-                                <td>
-                                    <button class="btn-mini btn-salvar-mini" @onclick="() => SalvarDespesa(d)">Salvar</button>
-                                    <button class="btn-mini btn-remover" @onclick="() => RemoverDespesa(d.Id)">Excluir</button>
+                                    <button class="btn-mini btn-salvar-mini" @onclick="() => SalvarTipo(t)">Salvar</button>
+                                    <button class="btn-mini btn-remover" @onclick="() => RemoverTipo(t.Id)">Excluir</button>
                                 </td>
                             </tr>
                         }
                         <tr>
-                            <td><input @bind="novaDespesa.Nome" placeholder="ex: Salário João" /></td>
-                            <td><input type="number" step="0.01" @bind="novaDespesa.Valor" /></td>
-                            <td>
-                                <select @bind="novaDespesa.Setor">
-                                    <option value="Geral">Geral</option>
-                                    <option value="Oficina">Oficina</option>
-                                    <option value="Concessionaria">Concessionária</option>
-                                </select>
-                            </td>
+                            <td><input @bind="novoTipo.Nome" placeholder="ex: Manutenção" /></td>
                             <td>—</td>
                             <td>
-                                <button class="btn-mini btn-salvar-mini" @onclick="AdicionarDespesa">Adicionar</button>
+                                <button class="btn-mini btn-salvar-mini" @onclick="AdicionarTipo">Adicionar</button>
                             </td>
                         </tr>
                     </tbody>
                 </table>
-
-                <div class="resumo">
-                    <strong>Total ativo:</strong> R$ @despesas.Where(d => d.Ativa).Sum(d => d.Valor).ToString("N2")
-                    <span class="muted" style="margin-left:18px;">
-                        Geral: R$ @despesas.Where(d => d.Ativa && d.Setor == "Geral").Sum(d => d.Valor).ToString("N2") ·
-                        Oficina: R$ @despesas.Where(d => d.Ativa && d.Setor == "Oficina").Sum(d => d.Valor).ToString("N2") ·
-                        Concessionária: R$ @despesas.Where(d => d.Ativa && d.Setor == "Concessionaria").Sum(d => d.Valor).ToString("N2")
-                    </span>
-                </div>
             </section>
         }
 
@@ -405,12 +286,11 @@
     private bool salvando;
     private string mensagem = "";
     private bool mensagemErro;
-    private string emailTeste = "";
-    private string abaAtiva = "geral";
+    private string abaAtiva = "tipos";
 
-    // Despesas
-    private List<DespesaDTO> despesas = new();
-    private CriarDespesaDTO novaDespesa = new() { Valor = 0, Setor = "Geral" };
+    // Tipos de despesa
+    private List<TipoDespesaDTO> tipos = new();
+    private SalvarTipoDespesaDTO novoTipo = new();
 
     // Checklist presets
     private List<ChecklistPresetDTO> presets = new();
@@ -430,8 +310,8 @@
         if (r.IsSuccess) config = r.Value;
         else MostrarErro(r.Error);
 
-        var rd = await DespesaService.GetAllAsync();
-        if (rd.IsSuccess) despesas = rd.Value!.ToList();
+        var rt = await TipoDespesaService.GetAllAsync();
+        if (rt.IsSuccess) tipos = rt.Value!.ToList();
 
         var rp = await PresetService.GetAllAsync();
         if (rp.IsSuccess) presets = rp.Value!.ToList();
@@ -456,51 +336,41 @@
         else MostrarErro(r.Error);
     }
 
-    private async Task TestarEnvio()
+    // ===================== TIPOS DE DESPESA =====================
+    private async Task AdicionarTipo()
     {
-        if (string.IsNullOrWhiteSpace(emailTeste)) return;
-        salvando = true;
-        var r = await ConfigService.TestarEnvioAsync(emailTeste);
-        salvando = false;
-        if (r.IsSuccess) MostrarOk($"E-mail de teste enviado para {emailTeste}.");
-        else MostrarErro(r.Error);
-    }
-
-    // ===================== DESPESAS =====================
-    private async Task AdicionarDespesa()
-    {
-        if (string.IsNullOrWhiteSpace(novaDespesa.Nome)) { MostrarErro("Informe o nome da despesa."); return; }
-        var r = await DespesaService.AddAsync(novaDespesa);
+        if (string.IsNullOrWhiteSpace(novoTipo.Nome)) { MostrarErro("Informe o nome do tipo."); return; }
+        var r = await TipoDespesaService.AddAsync(novoTipo);
         if (r.IsSuccess)
         {
-            MostrarOk("Despesa adicionada.");
-            novaDespesa = new CriarDespesaDTO { Valor = 0, Setor = "Geral" };
-            await RecarregarDespesas();
+            MostrarOk("Tipo de despesa adicionado.");
+            novoTipo = new SalvarTipoDespesaDTO();
+            await RecarregarTipos();
         }
         else MostrarErro(r.Error);
     }
 
-    private async Task SalvarDespesa(DespesaDTO d)
+    private async Task SalvarTipo(TipoDespesaDTO t)
     {
-        var r = await DespesaService.UpdateAsync(new AtualizarDespesaDTO
+        var r = await TipoDespesaService.UpdateAsync(new SalvarTipoDespesaDTO
         {
-            Id = d.Id, Nome = d.Nome, Valor = d.Valor, Ativa = d.Ativa, Setor = d.Setor
+            Id = t.Id, Nome = t.Nome, Ativo = t.Ativo
         });
-        if (r.IsSuccess) { MostrarOk("Despesa atualizada."); await RecarregarDespesas(); }
+        if (r.IsSuccess) { MostrarOk("Tipo atualizado."); await RecarregarTipos(); }
         else MostrarErro(r.Error);
     }
 
-    private async Task RemoverDespesa(Guid id)
+    private async Task RemoverTipo(Guid id)
     {
-        var r = await DespesaService.RemoveAsync(id);
-        if (r.IsSuccess) { MostrarOk("Despesa removida."); await RecarregarDespesas(); }
+        var r = await TipoDespesaService.RemoveAsync(id);
+        if (r.IsSuccess) { MostrarOk("Tipo removido."); await RecarregarTipos(); }
         else MostrarErro(r.Error);
     }
 
-    private async Task RecarregarDespesas()
+    private async Task RecarregarTipos()
     {
-        var rd = await DespesaService.GetAllAsync();
-        if (rd.IsSuccess) despesas = rd.Value!.ToList();
+        var rt = await TipoDespesaService.GetAllAsync();
+        if (rt.IsSuccess) tipos = rt.Value!.ToList();
     }
 
     // ===================== CHECKLISTS =====================

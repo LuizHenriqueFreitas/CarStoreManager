@@ -4,7 +4,6 @@ using Moq;
 using CarStoreManager.Application.DTOs.Sistema;
 using CarStoreManager.Application.Services.Sistema;
 using CarStoreManager.Domain.Entities.Sistema;
-using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Interfaces.Repositories.Sistema;
 
 namespace CarStoreManager.Tests.Unidade.Services.Sistema;
@@ -12,22 +11,28 @@ namespace CarStoreManager.Tests.Unidade.Services.Sistema;
 /// <summary>
 /// Testes unitários do DespesaService.
 ///
-/// O service é fino — apenas converte DTOs ↔ entidade, agrupa por setor e
+/// O service é fino — converte DTOs ↔ entidade, valida o tipo informado e
 /// soma valores. As regras (nome obrigatório, valor não-negativo, etc.) ficam
 /// na entidade Despesa, então aqui o foco é:
-///   • mapeamento correto entre DTO e entidade,
-///   • escolha do setor (default = Geral quando inválido/vazio),
+///   • mapeamento correto entre DTO e entidade (incluindo TipoDespesaId/TipoNome),
+///   • rejeição quando o tipo informado não existe,
 ///   • transições Ativa/Desativa quando o DTO de update muda o flag,
 ///   • soma do total mensal apenas com despesas ativas.
 /// </summary>
 public class DespesaServiceTests
 {
     private readonly Mock<IDespesaRepository> _repoMock = new();
+    private readonly Mock<ITipoDespesaRepository> _tipoRepoMock = new();
     private readonly DespesaService _service;
+
+    private readonly TipoDespesa _tipo = new("Aluguel");
 
     public DespesaServiceTests()
     {
-        _service = new DespesaService(_repoMock.Object);
+        _service = new DespesaService(_repoMock.Object, _tipoRepoMock.Object);
+        // Por padrão, o tipo usado nos testes existe.
+        _tipoRepoMock.Setup(r => r.GetByIdAsync(_tipo.Id)).ReturnsAsync(_tipo);
+        _tipoRepoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(new[] { _tipo });
     }
 
     // ==================== ADD ====================
@@ -35,37 +40,36 @@ public class DespesaServiceTests
     [Fact]
     public async Task AddAsync_DTOValido_PersisteESalvaERetornaId()
     {
-        var dto = new CriarDespesaDTO { Nome = "Aluguel", Valor = 1500m, Setor = "Oficina" };
+        var dto = new CriarDespesaDTO { Nome = "Aluguel", Valor = 1500m, TipoDespesaId = _tipo.Id };
 
         var resultado = await _service.AddAsync(dto);
 
         resultado.IsSuccess.Should().BeTrue();
         resultado.Value.Should().NotBeEmpty();
         _repoMock.Verify(r => r.AddAsync(It.Is<Despesa>(
-            d => d.Nome == "Aluguel" && d.GetValor() == 1500m && d.Setor == SetorDespesa.Oficina)), Times.Once);
+            d => d.Nome == "Aluguel" && d.GetValor() == 1500m && d.TipoDespesaId == _tipo.Id)), Times.Once);
         _repoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData("setor-inexistente")]
-    public async Task AddAsync_SetorInvalidoOuVazio_UsaGeral(string? setor)
+    [Fact]
+    public async Task AddAsync_TipoInexistente_RetornaFailSemSalvar()
     {
-        var dto = new CriarDespesaDTO { Nome = "Luz", Valor = 200m, Setor = setor! };
+        _tipoRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((TipoDespesa?)null);
+        var dto = new CriarDespesaDTO { Nome = "Luz", Valor = 200m, TipoDespesaId = Guid.NewGuid() };
 
         var resultado = await _service.AddAsync(dto);
 
-        resultado.IsSuccess.Should().BeTrue();
-        _repoMock.Verify(r => r.AddAsync(It.Is<Despesa>(d => d.Setor == SetorDespesa.Geral)), Times.Once);
+        resultado.IsSuccess.Should().BeFalse();
+        resultado.Error.Should().Contain("tipo");
+        _repoMock.Verify(r => r.AddAsync(It.IsAny<Despesa>()), Times.Never);
+        _repoMock.Verify(r => r.SaveChangesAsync(), Times.Never);
     }
 
     [Fact]
     public async Task AddAsync_NomeVazio_RetornaFail()
     {
         // Regra vem da entidade Despesa, service só repassa
-        var dto = new CriarDespesaDTO { Nome = "", Valor = 100m, Setor = "Geral" };
+        var dto = new CriarDespesaDTO { Nome = "", Valor = 100m, TipoDespesaId = _tipo.Id };
 
         var resultado = await _service.AddAsync(dto);
 
@@ -77,7 +81,7 @@ public class DespesaServiceTests
     [Fact]
     public async Task AddAsync_ValorNegativo_RetornaFail()
     {
-        var dto = new CriarDespesaDTO { Nome = "Luz", Valor = -50m };
+        var dto = new CriarDespesaDTO { Nome = "Luz", Valor = -50m, TipoDespesaId = _tipo.Id };
 
         var resultado = await _service.AddAsync(dto);
 
@@ -88,9 +92,9 @@ public class DespesaServiceTests
     // ==================== GET ====================
 
     [Fact]
-    public async Task GetByIdAsync_Existente_RetornaDTO()
+    public async Task GetByIdAsync_Existente_RetornaDTOComTipoNome()
     {
-        var despesa = new Despesa("Internet", 100m, SetorDespesa.Concessionaria);
+        var despesa = new Despesa("Internet", 100m, _tipo.Id);
         _repoMock.Setup(r => r.GetByIdAsync(despesa.Id)).ReturnsAsync(despesa);
 
         var resultado = await _service.GetByIdAsync(despesa.Id);
@@ -98,7 +102,8 @@ public class DespesaServiceTests
         resultado.IsSuccess.Should().BeTrue();
         resultado.Value!.Nome.Should().Be("Internet");
         resultado.Value.Valor.Should().Be(100m);
-        resultado.Value.Setor.Should().Be("Concessionaria");
+        resultado.Value.TipoDespesaId.Should().Be(_tipo.Id);
+        resultado.Value.TipoNome.Should().Be("Aluguel");
         resultado.Value.Ativa.Should().BeTrue();
     }
 
@@ -118,7 +123,7 @@ public class DespesaServiceTests
     {
         _repoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(new[]
         {
-            new Despesa("a", 10m), new Despesa("b", 20m)
+            new Despesa("a", 10m, _tipo.Id), new Despesa("b", 20m, _tipo.Id)
         });
 
         var resultado = await _service.GetAllAsync();
@@ -134,39 +139,58 @@ public class DespesaServiceTests
     {
         _repoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((Despesa?)null);
 
-        var r = await _service.UpdateAsync(new AtualizarDespesaDTO { Id = Guid.NewGuid() });
+        var r = await _service.UpdateAsync(new AtualizarDespesaDTO { Id = Guid.NewGuid(), TipoDespesaId = _tipo.Id });
 
         r.IsSuccess.Should().BeFalse();
     }
 
     [Fact]
-    public async Task UpdateAsync_Existente_AlteraNomeValorESetor()
+    public async Task UpdateAsync_Existente_AlteraNomeValorETipo()
     {
-        var despesa = new Despesa("antigo", 10m, SetorDespesa.Geral);
+        var outroTipo = new TipoDespesa("Energia");
+        _tipoRepoMock.Setup(r => r.GetByIdAsync(outroTipo.Id)).ReturnsAsync(outroTipo);
+
+        var despesa = new Despesa("antigo", 10m, _tipo.Id);
         _repoMock.Setup(r => r.GetByIdAsync(despesa.Id)).ReturnsAsync(despesa);
 
         var r = await _service.UpdateAsync(new AtualizarDespesaDTO
         {
-            Id = despesa.Id, Nome = "novo", Valor = 50m, Setor = "Oficina", Ativa = true
+            Id = despesa.Id, Nome = "novo", Valor = 50m, TipoDespesaId = outroTipo.Id, Ativa = true
         });
 
         r.IsSuccess.Should().BeTrue();
         despesa.Nome.Should().Be("novo");
         despesa.GetValor().Should().Be(50m);
-        despesa.Setor.Should().Be(SetorDespesa.Oficina);
+        despesa.TipoDespesaId.Should().Be(outroTipo.Id);
         _repoMock.Verify(repo => repo.Update(despesa), Times.Once);
         _repoMock.Verify(repo => repo.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
+    public async Task UpdateAsync_TipoInexistente_RetornaFailSemSalvar()
+    {
+        var despesa = new Despesa("X", 10m, _tipo.Id);
+        _repoMock.Setup(r => r.GetByIdAsync(despesa.Id)).ReturnsAsync(despesa);
+        _tipoRepoMock.Setup(r => r.GetByIdAsync(It.Is<Guid>(g => g != _tipo.Id))).ReturnsAsync((TipoDespesa?)null);
+
+        var r = await _service.UpdateAsync(new AtualizarDespesaDTO
+        {
+            Id = despesa.Id, Nome = "X", Valor = 10m, TipoDespesaId = Guid.NewGuid(), Ativa = true
+        });
+
+        r.IsSuccess.Should().BeFalse();
+        _repoMock.Verify(repo => repo.SaveChangesAsync(), Times.Never);
+    }
+
+    [Fact]
     public async Task UpdateAsync_DesativaQuandoFlagFalsa()
     {
-        var despesa = new Despesa("X", 10m); // Ativa = true por padrão
+        var despesa = new Despesa("X", 10m, _tipo.Id); // Ativa = true por padrão
         _repoMock.Setup(r => r.GetByIdAsync(despesa.Id)).ReturnsAsync(despesa);
 
         await _service.UpdateAsync(new AtualizarDespesaDTO
         {
-            Id = despesa.Id, Nome = "X", Valor = 10m, Setor = "Geral", Ativa = false
+            Id = despesa.Id, Nome = "X", Valor = 10m, TipoDespesaId = _tipo.Id, Ativa = false
         });
 
         despesa.Ativa.Should().BeFalse();
@@ -175,13 +199,13 @@ public class DespesaServiceTests
     [Fact]
     public async Task UpdateAsync_ReativaQuandoFlagVerdadeira()
     {
-        var despesa = new Despesa("X", 10m);
+        var despesa = new Despesa("X", 10m, _tipo.Id);
         despesa.Desativar();
         _repoMock.Setup(r => r.GetByIdAsync(despesa.Id)).ReturnsAsync(despesa);
 
         await _service.UpdateAsync(new AtualizarDespesaDTO
         {
-            Id = despesa.Id, Nome = "X", Valor = 10m, Setor = "Geral", Ativa = true
+            Id = despesa.Id, Nome = "X", Valor = 10m, TipoDespesaId = _tipo.Id, Ativa = true
         });
 
         despesa.Ativa.Should().BeTrue();
@@ -190,12 +214,12 @@ public class DespesaServiceTests
     [Fact]
     public async Task UpdateAsync_NomeVazio_RetornaFail()
     {
-        var despesa = new Despesa("nome ok", 10m);
+        var despesa = new Despesa("nome ok", 10m, _tipo.Id);
         _repoMock.Setup(r => r.GetByIdAsync(despesa.Id)).ReturnsAsync(despesa);
 
         var r = await _service.UpdateAsync(new AtualizarDespesaDTO
         {
-            Id = despesa.Id, Nome = "", Valor = 10m, Setor = "Geral", Ativa = true
+            Id = despesa.Id, Nome = "", Valor = 10m, TipoDespesaId = _tipo.Id, Ativa = true
         });
 
         r.IsSuccess.Should().BeFalse();
@@ -207,7 +231,7 @@ public class DespesaServiceTests
     [Fact]
     public async Task RemoveAsync_Existente_RemoveESalva()
     {
-        var despesa = new Despesa("X", 10m);
+        var despesa = new Despesa("X", 10m, _tipo.Id);
         _repoMock.Setup(r => r.GetByIdAsync(despesa.Id)).ReturnsAsync(despesa);
 
         var r = await _service.RemoveAsync(despesa.Id);
@@ -237,9 +261,9 @@ public class DespesaServiceTests
         // soma os valores corretamente, sem reincluir desativadas
         _repoMock.Setup(r => r.GetAtivasAsync()).ReturnsAsync(new[]
         {
-            new Despesa("luz", 100m),
-            new Despesa("água", 50m),
-            new Despesa("aluguel", 1500m)
+            new Despesa("luz", 100m, _tipo.Id),
+            new Despesa("água", 50m, _tipo.Id),
+            new Despesa("aluguel", 1500m, _tipo.Id)
         });
 
         var r = await _service.ObterTotalMensalAsync();

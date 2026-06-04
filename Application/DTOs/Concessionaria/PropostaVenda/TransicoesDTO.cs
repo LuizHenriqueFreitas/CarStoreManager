@@ -7,10 +7,16 @@ public class DefinirModoPagamentoDTO
 
 public class RegistrarRespostaFinanciadoraDTO
 {
-    public int Parcelas { get; set; }
-    public decimal ValorParcela { get; set; }
-    public decimal TaxaJurosMensal { get; set; }
-    public string? Observacoes { get; set; }
+    /// <summary>
+    /// Texto livre com os dados do acordo retornado pela financiadora, digitado
+    /// pelo vendedor (parcelas, valor, taxa, condições — sem formato fixo).
+    /// </summary>
+    public string DadosFinanciamento { get; set; } = "";
+}
+
+public class NegarFinanciamentoDTO
+{
+    public string Motivo { get; set; } = "";
 }
 
 public class RejeitarPropostaDTO

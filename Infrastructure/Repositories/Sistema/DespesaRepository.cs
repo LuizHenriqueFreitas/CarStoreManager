@@ -1,5 +1,4 @@
 using CarStoreManager.Domain.Entities.Sistema;
-using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Interfaces.Repositories.Sistema;
 using CarStoreManager.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -26,10 +25,9 @@ public class DespesaRepository : IDespesaRepository
             .OrderBy(d => d.Nome)
             .ToListAsync();
 
-    public async Task<IEnumerable<Despesa>> GetAtivasPorSetorAsync(SetorDespesa setor)
+    public async Task<IEnumerable<Despesa>> GetPorTipoAsync(Guid tipoDespesaId)
         => await _context.Despesas
-            .Where(d => d.Ativa && d.Setor == setor)
-            .OrderBy(d => d.Nome)
+            .Where(d => d.TipoDespesaId == tipoDespesaId)
             .ToListAsync();
 
     public async Task AddAsync(Despesa despesa) => await _context.Despesas.AddAsync(despesa);

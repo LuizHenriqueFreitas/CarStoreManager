@@ -2,7 +2,6 @@ using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs.Sistema;
 using CarStoreManager.Application.Interfaces.Sistema;
 using CarStoreManager.Domain.Entities.Sistema;
-using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Interfaces.Repositories.Sistema;
 
 namespace CarStoreManager.Application.Services.Sistema;
@@ -10,29 +9,38 @@ namespace CarStoreManager.Application.Services.Sistema;
 public class DespesaService : IDespesaService
 {
     private readonly IDespesaRepository _repo;
+    private readonly ITipoDespesaRepository _tipoRepo;
 
-    public DespesaService(IDespesaRepository repo) => _repo = repo;
+    public DespesaService(IDespesaRepository repo, ITipoDespesaRepository tipoRepo)
+    {
+        _repo = repo;
+        _tipoRepo = tipoRepo;
+    }
 
     public async Task<Result<IEnumerable<DespesaDTO>>> GetAllAsync()
     {
         var lista = await _repo.GetAllAsync();
-        return Result<IEnumerable<DespesaDTO>>.Ok(lista.Select(MapToDto));
+        var tipos = (await _tipoRepo.GetAllAsync()).ToDictionary(t => t.Id, t => t.Nome);
+        return Result<IEnumerable<DespesaDTO>>.Ok(lista.Select(d => MapToDto(d, tipos)));
     }
 
     public async Task<Result<DespesaDTO>> GetByIdAsync(Guid id)
     {
         var d = await _repo.GetByIdAsync(id);
-        return d is null
-            ? Result<DespesaDTO>.Fail("Despesa não encontrada.")
-            : Result<DespesaDTO>.Ok(MapToDto(d));
+        if (d is null) return Result<DespesaDTO>.Fail("Despesa não encontrada.");
+
+        var tipo = await _tipoRepo.GetByIdAsync(d.TipoDespesaId);
+        return Result<DespesaDTO>.Ok(MapToDto(d, tipo?.Nome ?? ""));
     }
 
     public async Task<Result<Guid>> AddAsync(CriarDespesaDTO dto)
     {
+        var tipo = await _tipoRepo.GetByIdAsync(dto.TipoDespesaId);
+        if (tipo is null) return Result<Guid>.Fail("Selecione um tipo de despesa válido.");
+
         try
         {
-            var setor = ParseSetor(dto.Setor);
-            var despesa = new Despesa(dto.Nome, dto.Valor, setor);
+            var despesa = new Despesa(dto.Nome, dto.Valor, dto.TipoDespesaId);
             await _repo.AddAsync(despesa);
             await _repo.SaveChangesAsync();
             return Result<Guid>.Ok(despesa.Id);
@@ -45,10 +53,13 @@ public class DespesaService : IDespesaService
         var despesa = await _repo.GetByIdAsync(dto.Id);
         if (despesa is null) return Result.Fail("Despesa não encontrada.");
 
+        var tipo = await _tipoRepo.GetByIdAsync(dto.TipoDespesaId);
+        if (tipo is null) return Result.Fail("Selecione um tipo de despesa válido.");
+
         try
         {
             despesa.Atualizar(dto.Nome, dto.Valor);
-            despesa.AtualizarSetor(ParseSetor(dto.Setor));
+            despesa.AtualizarTipo(dto.TipoDespesaId);
             if (dto.Ativa && !despesa.Ativa) despesa.Reativar();
             else if (!dto.Ativa && despesa.Ativa) despesa.Desativar();
 
@@ -57,12 +68,6 @@ public class DespesaService : IDespesaService
             return Result.Ok();
         }
         catch (ArgumentException ex) { return Result.Fail(ex.Message); }
-    }
-
-    private static SetorDespesa ParseSetor(string? setor)
-    {
-        if (string.IsNullOrWhiteSpace(setor)) return SetorDespesa.Geral;
-        return Enum.TryParse<SetorDespesa>(setor, true, out var s) ? s : SetorDespesa.Geral;
     }
 
     public async Task<Result> RemoveAsync(Guid id)
@@ -81,13 +86,17 @@ public class DespesaService : IDespesaService
         return Result<decimal>.Ok(ativas.Sum(d => d.GetValor()));
     }
 
-    private static DespesaDTO MapToDto(Despesa d) => new()
+    private static DespesaDTO MapToDto(Despesa d, IReadOnlyDictionary<Guid, string> tipos)
+        => MapToDto(d, tipos.TryGetValue(d.TipoDespesaId, out var nome) ? nome : "");
+
+    private static DespesaDTO MapToDto(Despesa d, string tipoNome) => new()
     {
         Id = d.Id,
         Nome = d.Nome,
         Valor = d.GetValor(),
         Ativa = d.Ativa,
-        Setor = d.Setor.ToString(),
+        TipoDespesaId = d.TipoDespesaId,
+        TipoNome = tipoNome,
         DataUltimaAtualizacao = d.DataUltimaAtualizacao
     };
 }

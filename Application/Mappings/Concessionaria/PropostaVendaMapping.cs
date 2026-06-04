@@ -27,10 +27,7 @@ public static class PropostaVendaMapping
             ModoPagamento = entity.ModoPagamento.ToString(),
             DataSolicitacaoFinanciamento = entity.DataSolicitacaoFinanciamento,
             DataRespostaFinanciadora = entity.DataRespostaFinanciadora,
-            ParcelasFinanciamento = entity.ParcelasFinanciamento,
-            ValorParcela = entity.ValorParcela?.GetValorDinheiro(),
-            TaxaJurosMensal = entity.TaxaJurosMensal,
-            ObservacoesFinanciamento = entity.ObservacoesFinanciamento,
+            DadosFinanciamento = entity.DadosFinanciamento,
             DataAprovacao = entity.DataAprovacao,
             MotivoRejeicao = entity.MotivoRejeicao,
             MotivoCancelamento = entity.MotivoCancelamento,
@@ -70,7 +67,6 @@ public static class PropostaVendaMapping
 
     public static decimal ToDesconto(AplicarDescontoDTO dto) => dto.Percentual;
     public static decimal ToEntrada(DefinirEntradaDTO dto) => dto.ValorEntrada;
-    public static int ToParcelas(GerarFinanciamentoDTO dto) => dto.Parcelas;
 
     public static ModoPagamento ParseModoPagamento(string s)
     {

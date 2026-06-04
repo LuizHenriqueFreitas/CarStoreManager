@@ -28,27 +28,23 @@ public class FluxoCaixaPeriodoDTO
     public decimal CompraMaterial { get; set; }
 
     // === Despesas fixas recorrentes (valor mensal cadastrado) ===
-    public decimal DespesasFixasGeralMensal { get; set; }
-    public decimal DespesasFixasOficinaMensal { get; set; }
-    public decimal DespesasFixasConcessionariaMensal { get; set; }
+    /// <summary>Soma mensal de todas as despesas fixas ativas.</summary>
+    public decimal DespesasFixasTotalMensal { get; set; }
+
+    /// <summary>Despesas fixas mensais por tipo (nome do tipo → valor mensal).</summary>
+    public Dictionary<string, decimal> DespesasFixasPorTipoMensal { get; set; } = new();
 
     // Totalizadores derivados — facilitam o relatório
-    public decimal DespesasFixasTotalMensal
-        => DespesasFixasGeralMensal + DespesasFixasOficinaMensal + DespesasFixasConcessionariaMensal;
-    public decimal DespesasFixasGeralPeriodo => DespesasFixasGeralMensal * QuantidadeMeses;
-    public decimal DespesasFixasOficinaPeriodo => DespesasFixasOficinaMensal * QuantidadeMeses;
-    public decimal DespesasFixasConcessionariaPeriodo => DespesasFixasConcessionariaMensal * QuantidadeMeses;
     public decimal DespesasFixasTotalPeriodo => DespesasFixasTotalMensal * QuantidadeMeses;
 
     public decimal TotalReceitas => ReceitaServicos + ReceitaVendas;
     public decimal TotalDespesas => GastoPecas + CompraMaterial + DespesasFixasTotalPeriodo;
     public decimal LucroLiquido => TotalReceitas - TotalDespesas;
 
-    // Lucros operacionais por setor (mesma regra do dashboard, mas com período)
-    public decimal LucroOficina
-        => ReceitaServicos - GastoPecas - DespesasFixasOficinaPeriodo;
-    public decimal LucroConcessionaria
-        => ReceitaVendas - CompraMaterial - DespesasFixasConcessionariaPeriodo;
+    // Lucros operacionais por setor — custos diretos do setor (sem rateio das
+    // despesas fixas, que agora são classificadas por tipo, não por setor).
+    public decimal LucroOficina => ReceitaServicos - GastoPecas;
+    public decimal LucroConcessionaria => ReceitaVendas - CompraMaterial;
 
     // Capital imobilizado é snapshot atual (não tem como recompor data-data)
     public decimal CapitalEstoqueVeiculos { get; set; }

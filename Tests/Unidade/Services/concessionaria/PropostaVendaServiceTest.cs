@@ -24,7 +24,6 @@ public class PropostaVendaServiceTests
     private readonly Mock<IVeiculoVendaRepository> _veiculoRepoMock;
     private readonly Mock<IClienteRepository> _clienteRepoMock;
     private readonly Mock<IConfiguracaoSistemaRepository> _configRepoMock;
-    private readonly Mock<IEmailService> _emailServiceMock;
     private readonly Mock<IVistoriaRepository> _vistoriaRepoMock;
     private readonly Mock<ITermoEntregaRepository> _termoRepoMock;
     private readonly PropostaVendaService _service;
@@ -35,7 +34,6 @@ public class PropostaVendaServiceTests
         _veiculoRepoMock = new Mock<IVeiculoVendaRepository>();
         _clienteRepoMock = new Mock<IClienteRepository>();
         _configRepoMock = new Mock<IConfiguracaoSistemaRepository>();
-        _emailServiceMock = new Mock<IEmailService>();
         _vistoriaRepoMock = new Mock<IVistoriaRepository>();
         _termoRepoMock = new Mock<ITermoEntregaRepository>();
         _configRepoMock.Setup(r => r.ObterAsync()).ReturnsAsync(new ConfiguracaoSistema(true));
@@ -44,7 +42,6 @@ public class PropostaVendaServiceTests
             _veiculoRepoMock.Object,
             _clienteRepoMock.Object,
             _configRepoMock.Object,
-            _emailServiceMock.Object,
             _vistoriaRepoMock.Object,
             _termoRepoMock.Object);
     }

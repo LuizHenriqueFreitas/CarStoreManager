@@ -229,6 +229,99 @@ public class PropostaVendaTest
         proposta.Status.Should().Be(StatusPropostaVenda.Aprovada);
     }
 
+    // ==================== FINANCIAMENTO (texto livre) ====================
+
+    [Fact]
+    public void SolicitarFinanciamento_ModoFinanciamento_MudaParaAguardandoFinanciadora()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+
+        proposta.SolicitarFinanciamento();
+
+        proposta.Status.Should().Be(StatusPropostaVenda.AguardandoFinanciadora);
+        proposta.DataSolicitacaoFinanciamento.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void SolicitarFinanciamento_ModoNaoFinanciamento_LancaInvalidOperationException()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Dinheiro);
+        Action act = () => proposta.SolicitarFinanciamento();
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void RegistrarRespostaFinanciadora_TextoValido_GravaDadosEAvancaStatus()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+        proposta.SolicitarFinanciamento();
+
+        proposta.RegistrarRespostaFinanciadora("48x de R$ 1.250,00, taxa 1,8% a.m.");
+
+        proposta.Status.Should().Be(StatusPropostaVenda.PropostaFinanciadoraRecebida);
+        proposta.DadosFinanciamento.Should().Be("48x de R$ 1.250,00, taxa 1,8% a.m.");
+        proposta.DataRespostaFinanciadora.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void RegistrarRespostaFinanciadora_TextoVazio_LancaArgumentException()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+        proposta.SolicitarFinanciamento();
+
+        Action act = () => proposta.RegistrarRespostaFinanciadora("   ");
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void RegistrarRespostaFinanciadora_ForaDoStatusAguardando_LancaInvalidOperationException()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+        Action act = () => proposta.RegistrarRespostaFinanciadora("qualquer");
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void NegarFinanciamento_DeAguardandoFinanciadora_DesligaProposta()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+        proposta.SolicitarFinanciamento();
+
+        proposta.NegarFinanciamento("crédito reprovado pela financiadora");
+
+        proposta.Status.Should().Be(StatusPropostaVenda.Rejeitada);
+        proposta.MotivoRejeicao.Should().Be("crédito reprovado pela financiadora");
+    }
+
+    [Fact]
+    public void NegarFinanciamento_SemMotivo_LancaArgumentException()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+        proposta.SolicitarFinanciamento();
+        Action act = () => proposta.NegarFinanciamento(" ");
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Aprovar_Financiamento_ComRespostaRegistrada_MudaParaAprovada()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+        proposta.SolicitarFinanciamento();
+        proposta.RegistrarRespostaFinanciadora("acordo fechado");
+
+        proposta.Aprovar();
+
+        proposta.Status.Should().Be(StatusPropostaVenda.Aprovada);
+    }
+
     // ==================== MÉTODO AUXILIAR ====================
 
     private static PropostaVenda CriarPropostaBase()

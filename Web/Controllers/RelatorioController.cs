@@ -75,9 +75,9 @@ public class RelatorioController : ControllerBase
         sb.AppendLine($"Receita de vendas (concessionária);{F(m.ReceitaVendas)}");
         sb.AppendLine($"TOTAL DE RECEITAS;{F(m.TotalReceitas)}");
         sb.AppendLine();
-        sb.AppendLine($"Despesas fixas — Geral ({m.QuantidadeMeses}x mensal);{F(m.DespesasFixasGeralPeriodo)}");
-        sb.AppendLine($"Despesas fixas — Oficina ({m.QuantidadeMeses}x mensal);{F(m.DespesasFixasOficinaPeriodo)}");
-        sb.AppendLine($"Despesas fixas — Concessionária ({m.QuantidadeMeses}x mensal);{F(m.DespesasFixasConcessionariaPeriodo)}");
+        foreach (var (tipo, valorMensal) in m.DespesasFixasPorTipoMensal)
+            sb.AppendLine($"Despesas fixas — {Csv(tipo)} ({m.QuantidadeMeses}x mensal);{F(valorMensal * m.QuantidadeMeses)}");
+        sb.AppendLine($"Despesas fixas — TOTAL ({m.QuantidadeMeses}x mensal);{F(m.DespesasFixasTotalPeriodo)}");
         sb.AppendLine($"Gasto com peças (notas fiscais aprovadas);{F(m.GastoPecas)}");
         sb.AppendLine($"Compra de material (aquisição de veículos);{F(m.CompraMaterial)}");
         sb.AppendLine($"TOTAL DE DESPESAS;{F(m.TotalDespesas)}");
@@ -86,18 +86,19 @@ public class RelatorioController : ControllerBase
         sb.AppendLine();
 
         // === LUCRO POR SETOR ===
-        // Despesas Gerais não são alocadas a um setor (compartilhadas); por isso a
-        // soma dos lucros por setor pode diferir do Lucro Líquido total acima.
+        // As despesas fixas não são mais rateadas por setor (agora classificadas por
+        // tipo); por isso o lucro por setor considera só os custos diretos. As
+        // despesas fixas entram no Lucro Líquido total, não no lucro setorial.
         var receitaOficina = m.ReceitaServicos;
-        var despesaOficina = m.GastoPecas + m.DespesasFixasOficinaPeriodo;
+        var despesaOficina = m.GastoPecas;
         var receitaConce = m.ReceitaVendas;
-        var despesaConce = m.CompraMaterial + m.DespesasFixasConcessionariaPeriodo;
+        var despesaConce = m.CompraMaterial;
 
-        sb.AppendLine("=== LUCRO POR SETOR ===");
+        sb.AppendLine("=== LUCRO POR SETOR (custos diretos) ===");
         sb.AppendLine("Setor;Receitas (R$);Despesas (R$);Lucro (R$)");
         sb.AppendLine($"Oficina;{F(receitaOficina)};{F(despesaOficina)};{F(m.LucroOficina)}");
         sb.AppendLine($"Concessionária;{F(receitaConce)};{F(despesaConce)};{F(m.LucroConcessionaria)}");
-        sb.AppendLine($"Despesas Gerais (não alocadas);0,00;{F(m.DespesasFixasGeralPeriodo)};{F(-m.DespesasFixasGeralPeriodo)}");
+        sb.AppendLine($"Despesas fixas (não alocadas a setor);0,00;{F(m.DespesasFixasTotalPeriodo)};{F(-m.DespesasFixasTotalPeriodo)}");
         sb.AppendLine();
 
         // === EVOLUÇÃO MÊS A MÊS ===

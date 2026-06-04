@@ -19,6 +19,7 @@ public class DashboardService : IDashboardService
     private const int JANELA_MESES = 6;
 
     private readonly IDespesaRepository _despesas;
+    private readonly ITipoDespesaRepository _tiposDespesa;
     private readonly INotaFiscalRepository _notasEntrada;
     private readonly IOrdemServicoRepository _ordens;
     private readonly IPropostaVendaRepository _propostas;
@@ -26,16 +27,34 @@ public class DashboardService : IDashboardService
 
     public DashboardService(
         IDespesaRepository despesas,
+        ITipoDespesaRepository tiposDespesa,
         INotaFiscalRepository notasEntrada,
         IOrdemServicoRepository ordens,
         IPropostaVendaRepository propostas,
         IVeiculoVendaRepository veiculos)
     {
         _despesas = despesas;
+        _tiposDespesa = tiposDespesa;
         _notasEntrada = notasEntrada;
         _ordens = ordens;
         _propostas = propostas;
         _veiculos = veiculos;
+    }
+
+    /// <summary>
+    /// Agrupa despesas ativas por nome do tipo (tipo → total). Tipos sem nome
+    /// conhecido caem em "Outros".
+    /// </summary>
+    private async Task<Dictionary<string, decimal>> AgruparDespesasPorTipoAsync(
+        IEnumerable<Domain.Entities.Sistema.Despesa> despesasAtivas)
+    {
+        var nomesPorId = (await _tiposDespesa.GetAllAsync())
+            .ToDictionary(t => t.Id, t => t.Nome);
+
+        return despesasAtivas
+            .GroupBy(d => nomesPorId.TryGetValue(d.TipoDespesaId, out var nome) ? nome : "Outros")
+            .OrderByDescending(g => g.Sum(d => d.GetValor()))
+            .ToDictionary(g => g.Key, g => g.Sum(d => d.GetValor()));
     }
 
     public async Task<Result<DashboardMetricasDTO>> ObterMetricasAsync()
@@ -49,15 +68,7 @@ public class DashboardService : IDashboardService
         // === Despesas fixas mensais cadastradas pelo admin (luz, água, aluguel, salários, etc.) ===
         var despesasAtivas = (await _despesas.GetAtivasAsync()).ToList();
         dto.TotalDespesasFixasMensal = despesasAtivas.Sum(d => d.GetValor());
-        dto.TotalDespesasGeralMensal = despesasAtivas
-            .Where(d => d.Setor == SetorDespesa.Geral)
-            .Sum(d => d.GetValor());
-        dto.TotalDespesasOficinaMensal = despesasAtivas
-            .Where(d => d.Setor == SetorDespesa.Oficina)
-            .Sum(d => d.GetValor());
-        dto.TotalDespesasConcessionariaMensal = despesasAtivas
-            .Where(d => d.Setor == SetorDespesa.Concessionaria)
-            .Sum(d => d.GetValor());
+        dto.DespesasPorTipo = await AgruparDespesasPorTipoAsync(despesasAtivas);
 
         // === Gastos com peças (NotaFiscal entrada aprovada) ===
         var todasNotas = (await _notasEntrada.GetAllAsync())
@@ -159,12 +170,8 @@ public class DashboardService : IDashboardService
 
         // === Despesas fixas (snapshot do valor mensal atual cadastrado) ===
         var despesasAtivas = (await _despesas.GetAtivasAsync()).ToList();
-        dto.DespesasFixasGeralMensal = despesasAtivas
-            .Where(d => d.Setor == SetorDespesa.Geral).Sum(d => d.GetValor());
-        dto.DespesasFixasOficinaMensal = despesasAtivas
-            .Where(d => d.Setor == SetorDespesa.Oficina).Sum(d => d.GetValor());
-        dto.DespesasFixasConcessionariaMensal = despesasAtivas
-            .Where(d => d.Setor == SetorDespesa.Concessionaria).Sum(d => d.GetValor());
+        dto.DespesasFixasTotalMensal = despesasAtivas.Sum(d => d.GetValor());
+        dto.DespesasFixasPorTipoMensal = await AgruparDespesasPorTipoAsync(despesasAtivas);
 
         // === Gasto com peças (notas aprovadas dentro do período) ===
         var notasNoPeriodo = (await _notasEntrada.GetAllAsync())

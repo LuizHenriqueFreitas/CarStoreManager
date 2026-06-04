@@ -120,7 +120,8 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IConfiguracaoSistemaService, ConfiguracaoSistemaService>();
         services.AddScoped<IDespesaRepository, DespesaRepository>();
         services.AddScoped<IDespesaService, DespesaService>();
-        services.AddScoped<IEmailService, SmtpEmailService>();
+        services.AddScoped<ITipoDespesaRepository, TipoDespesaRepository>();
+        services.AddScoped<ITipoDespesaService, TipoDespesaService>();
 
         // =========================
         // DASHBOARD (admin)

@@ -3,17 +3,11 @@ namespace CarStoreManager.Application.DTOs.Admin;
 public class DashboardMetricasDTO
 {
     // === KPIs financeiros do mês corrente ===
-    /// <summary>Soma de TODAS as despesas mensais ativas (todos os setores).</summary>
+    /// <summary>Soma de TODAS as despesas mensais ativas.</summary>
     public decimal TotalDespesasFixasMensal { get; set; }
 
-    /// <summary>Despesas mensais ativas com setor = Geral (compartilhadas).</summary>
-    public decimal TotalDespesasGeralMensal { get; set; }
-
-    /// <summary>Despesas mensais ativas com setor = Oficina (exclusivas do setor).</summary>
-    public decimal TotalDespesasOficinaMensal { get; set; }
-
-    /// <summary>Despesas mensais ativas com setor = Concessionaria (exclusivas do setor).</summary>
-    public decimal TotalDespesasConcessionariaMensal { get; set; }
+    /// <summary>Despesas mensais ativas agrupadas por tipo (nome do tipo → total).</summary>
+    public Dictionary<string, decimal> DespesasPorTipo { get; set; } = new();
 
     public decimal GastoPecasMesAtual { get; set; }
 
@@ -32,20 +26,19 @@ public class DashboardMetricasDTO
     public decimal LucroLiquidoMes => TotalReceitasMes - TotalDespesasMes;
 
     /// <summary>
-    /// Lucro operacional da oficina (mês corrente) — receita de serviços menos
-    /// gasto direto com peças menos despesas exclusivas da oficina. Despesas
-    /// Gerais (compartilhadas) ficam só no resumo Geral.
+    /// Lucro operacional da oficina (mês corrente) — receita de serviços menos o
+    /// gasto direto com peças. As despesas fixas não são mais rateadas por setor;
+    /// entram só no resumo geral.
     /// </summary>
-    public decimal LucroOficinaMes => ReceitaServicosMesAtual - GastoPecasMesAtual - TotalDespesasOficinaMensal;
+    public decimal LucroOficinaMes => ReceitaServicosMesAtual - GastoPecasMesAtual;
 
     /// <summary>
     /// Lucro operacional da concessionária (mês corrente) — receita de vendas
-    /// menos a compra de material (aquisição de veículos) e as despesas
-    /// exclusivas da concessionária. CapitalEstoqueVeiculos NÃO entra: é
-    /// dinheiro parado em estoque, não saída de caixa do mês.
+    /// menos a compra de material (aquisição de veículos). CapitalEstoqueVeiculos
+    /// NÃO entra: é dinheiro parado em estoque, não saída de caixa do mês.
     /// </summary>
     public decimal LucroConcessionariaMes =>
-        ReceitaVendasMesAtual - CompraMaterialMesAtual - TotalDespesasConcessionariaMensal;
+        ReceitaVendasMesAtual - CompraMaterialMesAtual;
 
     // === Distribuições para gráficos ===
     public Dictionary<string, int> OrdensServicoPorStatus { get; set; } = new();

@@ -66,7 +66,10 @@
                     </span>
                 </div>
                 <div class="metrica-card">
-                    <span class="metrica-label">Despesas do mês</span>
+                    <span class="metrica-label">
+                        Despesas do mês
+                        <a class="metrica-link" href="/admin/despesas">gerenciar →</a>
+                    </span>
                     <span class="metrica-valor alerta">@FormatBRL(metricas.TotalDespesasMes)</span>
                     <span class="metrica-sub muted">
                         Fixas @FormatBRL(metricas.TotalDespesasFixasMensal) ·
@@ -82,6 +85,20 @@
                     <span class="metrica-sub muted">Receitas − Despesas</span>
                 </div>
             </div>
+
+            @if (metricas.DespesasPorTipo.Any())
+            {
+                <h2 class="grupo-titulo">Despesas fixas por tipo</h2>
+                <div class="metricas-grid">
+                    @foreach (var dt in metricas.DespesasPorTipo)
+                    {
+                        <div class="metrica-card">
+                            <span class="metrica-label">@dt.Key</span>
+                            <span class="metrica-valor alerta">@FormatBRL(dt.Value)</span>
+                        </div>
+                    }
+                </div>
+            }
 
             <div class="capital-imobilizado-bloco">
                 <div class="capital-card">
@@ -131,17 +148,12 @@
                     <span class="metrica-label">Gasto com peças</span>
                     <span class="metrica-valor alerta">@FormatBRL(metricas.GastoPecasMesAtual)</span>
                 </div>
-                <div class="metrica-card">
-                    <span class="metrica-label">Despesas da oficina</span>
-                    <span class="metrica-valor alerta">@FormatBRL(metricas.TotalDespesasOficinaMensal)</span>
-                    <span class="metrica-sub muted">Despesas com setor "Oficina"</span>
-                </div>
                 <div class="metrica-card destaque-lucro">
                     <span class="metrica-label">Lucro operacional da oficina</span>
                     <span class="metrica-valor @(metricas.LucroOficinaMes >= 0 ? "sucesso" : "alerta")">
                         @FormatBRL(metricas.LucroOficinaMes)
                     </span>
-                    <span class="metrica-sub muted">Serviços − Peças − Despesas da oficina</span>
+                    <span class="metrica-sub muted">Serviços − Peças (custos diretos)</span>
                 </div>
             </div>
 
@@ -223,17 +235,12 @@
                     <span class="metrica-valor alerta">@FormatBRL(metricas.CompraMaterialMesAtual)</span>
                     <span class="metrica-sub muted">Aquisição de veículos cadastrados no mês</span>
                 </div>
-                <div class="metrica-card">
-                    <span class="metrica-label">Despesas da concessionária</span>
-                    <span class="metrica-valor alerta">@FormatBRL(metricas.TotalDespesasConcessionariaMensal)</span>
-                    <span class="metrica-sub muted">Despesas com setor "Concessionária"</span>
-                </div>
                 <div class="metrica-card destaque-lucro">
                     <span class="metrica-label">Lucro operacional da concessionária</span>
                     <span class="metrica-valor @(metricas.LucroConcessionariaMes >= 0 ? "sucesso" : "alerta")">
                         @FormatBRL(metricas.LucroConcessionariaMes)
                     </span>
-                    <span class="metrica-sub muted">Vendas − Compra de material − Despesas da concessionária (excl. capital imobilizado)</span>
+                    <span class="metrica-sub muted">Vendas − Compra de material (custos diretos, excl. capital imobilizado)</span>
                 </div>
             </div>
 
@@ -400,6 +407,17 @@
             </div>
             <span class="modulo-seta">→</span>
         </div>
+        @if (roleUsuario == "Admin")
+        {
+            <div class="modulo-card" @onclick='() => Nav.NavigateTo("/admin/despesas")'>
+                <div class="modulo-icone despesas">💰</div>
+                <div>
+                    <div class="modulo-titulo">Despesas</div>
+                    <div class="modulo-sub">Despesas fixas mensais por tipo</div>
+                </div>
+                <span class="modulo-seta">→</span>
+            </div>
+        }
     </div>
 </div>
 
@@ -625,33 +643,30 @@
             await JS.InvokeVoidAsync("carstoreChart.render",
                 "chartFaturamento6m", "line", labels6m, datasets6m, commonOpts);
 
-            var labelsComp = new[] {
-                "Receita serviços", "Receita vendas",
-                "Despesas Geral", "Despesas Oficina", "Despesas Concessionária",
-                "Gasto peças", "Compra material"
-            };
-            var dadosComp = new[] {
-                metricas.ReceitaServicosMesAtual,
-                metricas.ReceitaVendasMesAtual,
-                metricas.TotalDespesasGeralMensal,
-                metricas.TotalDespesasOficinaMensal,
-                metricas.TotalDespesasConcessionariaMensal,
-                metricas.GastoPecasMesAtual,
-                metricas.CompraMaterialMesAtual
-            };
+            // Receitas + uma fatia por tipo de despesa fixa + custos diretos.
+            var labelsComp = new List<string> { "Receita serviços", "Receita vendas" };
+            var dadosComp = new List<decimal> { metricas.ReceitaServicosMesAtual, metricas.ReceitaVendasMesAtual };
+            var coresComp = new List<string> { "#16a34a", "#2563eb" };
+
+            var paletaDespesas = new[] { "#ea580c", "#f97316", "#fbbf24", "#f59e0b", "#d97706", "#fb923c", "#fdba74", "#facc15" };
+            var iTipo = 0;
+            foreach (var dt in metricas.DespesasPorTipo)
+            {
+                labelsComp.Add(dt.Key);
+                dadosComp.Add(dt.Value);
+                coresComp.Add(paletaDespesas[iTipo % paletaDespesas.Length]);
+                iTipo++;
+            }
+
+            labelsComp.Add("Gasto peças"); dadosComp.Add(metricas.GastoPecasMesAtual); coresComp.Add("#e02020");
+            labelsComp.Add("Compra material"); dadosComp.Add(metricas.CompraMaterialMesAtual); coresComp.Add("#b91c1c");
+
             var datasetComp = new object[]
             {
-                new {
-                    data = dadosComp,
-                    backgroundColor = new[] {
-                        "#16a34a", "#2563eb",
-                        "#ea580c", "#f97316", "#fbbf24",
-                        "#e02020", "#b91c1c"
-                    }
-                }
+                new { data = dadosComp.ToArray(), backgroundColor = coresComp.ToArray() }
             };
             await JS.InvokeVoidAsync("carstoreChart.render",
-                "chartReceitaDespesa", "doughnut", labelsComp, datasetComp, commonOpts);
+                "chartReceitaDespesa", "doughnut", labelsComp.ToArray(), datasetComp, commonOpts);
 
             var (labelsOS, dadosOS, coresOS) = MontarOSDataset();
             await JS.InvokeVoidAsync("carstoreChart.render",
@@ -678,14 +693,6 @@
                     borderColor = "#e02020",
                     backgroundColor = "rgba(224, 32, 32, 0.1)",
                     tension = 0.3, fill = false
-                },
-                new {
-                    label = "Despesas da oficina",
-                    data = LinhaConstante(metricas.TotalDespesasOficinaMensal),
-                    borderColor = "#ea580c",
-                    backgroundColor = "rgba(234, 88, 12, 0.05)",
-                    borderDash = new[] { 6, 4 },
-                    tension = 0, fill = false
                 }
             };
             await JS.InvokeVoidAsync("carstoreChart.render",
@@ -709,14 +716,6 @@
                     borderColor = "#2563eb",
                     backgroundColor = "rgba(37, 99, 235, 0.15)",
                     tension = 0.3, fill = true
-                },
-                new {
-                    label = "Despesas da concessionária",
-                    data = LinhaConstante(metricas.TotalDespesasConcessionariaMensal),
-                    borderColor = "#ea580c",
-                    backgroundColor = "rgba(234, 88, 12, 0.05)",
-                    borderDash = new[] { 6, 4 },
-                    tension = 0, fill = false
                 }
             };
             await JS.InvokeVoidAsync("carstoreChart.render",
@@ -1020,6 +1019,10 @@
     .modulo-icone.oficina        { background: #f0f4ff; color: #3b5bdb; }
     .modulo-icone.estoque        { background: #fff7ed; color: #ea580c; }
     .modulo-icone.usuarios       { background: #f0fdf4; color: #2f9e44; }
+    .modulo-icone.despesas       { background: #fff7ed; color: #c2410c; }
+
+    .metrica-link { font-size: 11px; font-weight: 500; color: #0a84ff; text-decoration: none; margin-left: 8px; }
+    .metrica-link:hover { text-decoration: underline; }
 
     .modulo-titulo { font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 1px; }
     .modulo-sub    { font-size: 12px; color: #888; }

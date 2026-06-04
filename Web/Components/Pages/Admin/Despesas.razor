@@ -1,0 +1,199 @@
+@page "/admin/despesas"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+
+@inject IDespesaService DespesaService
+@inject ITipoDespesaService TipoDespesaService
+@inject NavigationManager Nav
+
+@using CarStoreManager.Application.Interfaces.Sistema
+@using CarStoreManager.Application.DTOs.Sistema
+
+<div class="desp-page">
+    <div class="page-header">
+        <button class="btn-link" @onclick='() => Nav.NavigateTo("/dashboard")'>← Dashboard</button>
+        <h1 class="page-titulo">Despesas mensais</h1>
+    </div>
+    <p class="page-sub">
+        Despesas fixas recorrentes da empresa, classificadas por tipo. A soma das despesas
+        ativas compõe o total exibido no dashboard. Os tipos são gerenciados em
+        <a href="/admin/configuracoes">Configurações → Tipos de despesa</a>.
+    </p>
+
+    @if (!string.IsNullOrEmpty(mensagem))
+    {
+        <div class="banner @(mensagemErro ? "banner-erro" : "banner-ok")">@mensagem</div>
+    }
+
+    @if (carregando)
+    {
+        <p class="muted">Carregando...</p>
+    }
+    else if (!tiposAtivos.Any())
+    {
+        <div class="banner banner-erro">
+            Nenhum tipo de despesa ativo cadastrado. Cadastre tipos em
+            <a href="/admin/configuracoes">Configurações → Tipos de despesa</a> antes de lançar despesas.
+        </div>
+    }
+    else
+    {
+        <section class="card-full">
+            <table class="tabela">
+                <thead>
+                    <tr>
+                        <th style="width:35%">Nome</th>
+                        <th style="width:20%">Valor (R$)</th>
+                        <th style="width:20%">Tipo</th>
+                        <th style="width:10%">Ativa</th>
+                        <th style="width:15%"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in despesas)
+                    {
+                        <tr>
+                            <td><input @bind="d.Nome" /></td>
+                            <td><input type="number" step="0.01" @bind="d.Valor" /></td>
+                            <td>
+                                <select @bind="d.TipoDespesaId">
+                                    @foreach (var t in tiposAtivos)
+                                    {
+                                        <option value="@t.Id">@t.Nome</option>
+                                    }
+                                </select>
+                            </td>
+                            <td><input type="checkbox" @bind="d.Ativa" /></td>
+                            <td>
+                                <button class="btn-mini btn-salvar-mini" @onclick="() => SalvarDespesa(d)">Salvar</button>
+                                <button class="btn-mini btn-remover" @onclick="() => RemoverDespesa(d.Id)">Excluir</button>
+                            </td>
+                        </tr>
+                    }
+                    <tr>
+                        <td><input @bind="novaDespesa.Nome" placeholder="ex: Salário João" /></td>
+                        <td><input type="number" step="0.01" @bind="novaDespesa.Valor" /></td>
+                        <td>
+                            <select @bind="novaDespesa.TipoDespesaId">
+                                @foreach (var t in tiposAtivos)
+                                {
+                                    <option value="@t.Id">@t.Nome</option>
+                                }
+                            </select>
+                        </td>
+                        <td>—</td>
+                        <td>
+                            <button class="btn-mini btn-salvar-mini" @onclick="AdicionarDespesa">Adicionar</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="resumo">
+                <strong>Total ativo:</strong> R$ @despesas.Where(d => d.Ativa).Sum(d => d.Valor).ToString("N2")
+                <div class="por-tipo muted">
+                    @foreach (var g in despesas.Where(d => d.Ativa)
+                        .GroupBy(d => string.IsNullOrEmpty(d.TipoNome) ? "Outros" : d.TipoNome)
+                        .OrderByDescending(g => g.Sum(d => d.Valor)))
+                    {
+                        <span class="chip">@g.Key: R$ @g.Sum(d => d.Valor).ToString("N2")</span>
+                    }
+                </div>
+            </div>
+        </section>
+    }
+</div>
+
+<style>
+    .desp-page { padding:24px; max-width:1000px; margin:0 auto; }
+    .page-header { display:flex; align-items:center; gap:16px; }
+    .btn-link { background:none; border:0; color:#888; cursor:pointer; }
+    .page-titulo { margin:0; font-size:1.6rem; }
+    .page-sub { margin:4px 0 20px; color:#666; font-size:0.92em; }
+    .muted { color:#888; font-size:0.9em; }
+    .banner { padding:12px 16px; border-radius:6px; margin-bottom:16px; }
+    .banner-ok { background:#e6f7ed; color:#1f7a3a; border:1px solid #b6e4c2; }
+    .banner-erro { background:#fdecea; color:#a72020; border:1px solid #f5c2bd; }
+    .card-full { background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:20px; }
+    .tabela { width:100%; border-collapse:collapse; margin-top:4px; }
+    .tabela th, .tabela td { padding:8px; border-bottom:1px solid #eee; text-align:left; }
+    .tabela th { background:#fafafa; font-weight:500; color:#444; font-size:0.9em; }
+    .tabela input:not([type="checkbox"]), .tabela select { width:100%; padding:6px 8px; border:1px solid #ddd; border-radius:4px; }
+    .btn-mini { padding:6px 10px; border-radius:4px; border:1px solid #ccc; background:#fff; cursor:pointer; font-size:0.85em; margin-right:4px; }
+    .btn-salvar-mini { background:#0a84ff; color:#fff; border-color:#0a84ff; }
+    .btn-remover { background:#fdecea; color:#a72020; border-color:#f5c2bd; }
+    .resumo { margin-top:16px; padding:12px; background:#fafafa; border-radius:4px; }
+    .por-tipo { margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; }
+    .chip { background:#eef2f7; border-radius:12px; padding:3px 10px; font-size:0.85em; color:#444; }
+</style>
+
+@code {
+    private List<DespesaDTO> despesas = new();
+    private List<TipoDespesaDTO> tiposAtivos = new();
+    private CriarDespesaDTO novaDespesa = new();
+    private bool carregando = true;
+    private string mensagem = "";
+    private bool mensagemErro;
+
+    protected override async Task OnInitializedAsync() => await CarregarTudo();
+
+    private async Task CarregarTudo()
+    {
+        carregando = true;
+
+        var rt = await TipoDespesaService.GetAtivosAsync();
+        if (rt.IsSuccess) tiposAtivos = rt.Value!.ToList();
+
+        // Pré-seleciona o primeiro tipo ativo no formulário de nova despesa.
+        if (novaDespesa.TipoDespesaId == Guid.Empty && tiposAtivos.Any())
+            novaDespesa.TipoDespesaId = tiposAtivos[0].Id;
+
+        await RecarregarDespesas();
+
+        carregando = false;
+    }
+
+    private async Task AdicionarDespesa()
+    {
+        if (string.IsNullOrWhiteSpace(novaDespesa.Nome)) { MostrarErro("Informe o nome da despesa."); return; }
+        if (novaDespesa.TipoDespesaId == Guid.Empty) { MostrarErro("Selecione um tipo."); return; }
+
+        var r = await DespesaService.AddAsync(novaDespesa);
+        if (r.IsSuccess)
+        {
+            MostrarOk("Despesa adicionada.");
+            novaDespesa = new CriarDespesaDTO { TipoDespesaId = tiposAtivos.FirstOrDefault()?.Id ?? Guid.Empty };
+            await RecarregarDespesas();
+        }
+        else MostrarErro(r.Error);
+    }
+
+    private async Task SalvarDespesa(DespesaDTO d)
+    {
+        var r = await DespesaService.UpdateAsync(new AtualizarDespesaDTO
+        {
+            Id = d.Id, Nome = d.Nome, Valor = d.Valor, Ativa = d.Ativa, TipoDespesaId = d.TipoDespesaId
+        });
+        if (r.IsSuccess) { MostrarOk("Despesa atualizada."); await RecarregarDespesas(); }
+        else MostrarErro(r.Error);
+    }
+
+    private async Task RemoverDespesa(Guid id)
+    {
+        var r = await DespesaService.RemoveAsync(id);
+        if (r.IsSuccess) { MostrarOk("Despesa removida."); await RecarregarDespesas(); }
+        else MostrarErro(r.Error);
+    }
+
+    private async Task RecarregarDespesas()
+    {
+        var rd = await DespesaService.GetAllAsync();
+        if (rd.IsSuccess) despesas = rd.Value!.ToList();
+    }
+
+    private void MostrarOk(string? msg) { mensagem = msg ?? ""; mensagemErro = false; }
+    private void MostrarErro(string? msg) { mensagem = msg ?? "Erro"; mensagemErro = true; }
+}
