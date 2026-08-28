@@ -1,11 +1,13 @@
 @namespace CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 @using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Web.Tours
 @using Microsoft.JSInterop
 @inject NavigationManager Navigation
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
+@inject TourEstadoService TourEstado
 
 <nav class="navbar">
     <a href="/" class="navbar-logo">AUTOSTORE</a>
@@ -38,12 +40,6 @@
             </NavLink>
         </AuthorizeView>
 
-        <AuthorizeView Roles="Admin,ChefeOficina" Context="ctxNfe">
-            <NavLink href="/oficina/notas-fiscais" class="nav-link" ActiveClass="nav-link-active">
-                NF-e
-            </NavLink>
-        </AuthorizeView>
-
         <AuthorizeView Roles="Admin,ChefeOficina,GerenteVendas" Context="ctxDash">
             <NavLink href="/dashboard" class="nav-link" ActiveClass="nav-link-active">
                 Dashboard
@@ -51,14 +47,15 @@
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin" Context="ctxAdmin">
-            <NavLink href="/admin/usuarios" class="nav-link" ActiveClass="nav-link-active">
-                Usuários
-            </NavLink>
             <NavLink href="/admin/configuracoes" class="nav-link" ActiveClass="nav-link-active">
                 Configurações
             </NavLink>
         </AuthorizeView>
     </div>
+
+    <button class="tour-btn-ajuda" @onclick="AbrirTourAsync" title="Ajuda desta tela" aria-label="Ajuda desta tela">
+        ?
+    </button>
 
     <div class="navbar-user" @onclick="ToggleDropdown">
         <div class="navbar-avatar">
@@ -92,6 +89,8 @@
     private bool mostrarDropdown = false;
 
     private void ToggleDropdown() => mostrarDropdown = !mostrarDropdown;
+
+    private async Task AbrirTourAsync() => await TourEstado.SolicitarTourAsync();
 
     private void IrParaConfiguracoes()
     {
@@ -157,6 +156,25 @@
         color: #fff !important;
         border-bottom: 2px solid #e02020;
     }
+
+    .tour-btn-ajuda {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 0.5px solid #555;
+        background: transparent;
+        color: #ccc;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 16px;
+    }
+
+    .tour-btn-ajuda:hover { background: #2a2a2a; color: #fff; border-color: #888; }
+    .tour-btn-ajuda:focus { outline: 2px solid #e02020; outline-offset: 2px; }
 
     .navbar-user {
         display: flex;

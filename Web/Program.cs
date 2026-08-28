@@ -1,23 +1,16 @@
 using CarStoreManager.Infrastructure.DependencyInjection;
 using CarStoreManager.Web.Extensions;
-using CarStoreManager.Web;
-using CarStoreManager.Application.Interfaces;
-using CarStoreManager.Infrastructure.Services;
-using CarStoreManager.Application.Services;
-using CarStoreManager.Infrastructure.Repositories;
-using CarStoreManager.Domain.Repositories;
 using CarStoreManager.Application.Common;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using CarStoreManager.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using CarStoreManager.Domain.Entities;
-using CarStoreManager.Domain.ValueObjects;
 using Microsoft.AspNetCore.Components.Authorization;
-using CarStoreManager.Web.Components.Shared;
 using CarStoreManager.Web.Imports;
 using CarStoreManager.Web.Components.Shared.Auth;
 
@@ -42,6 +35,15 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // =========================
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("Jwt"));
+
+// =========================
+// DATA PROTECTION (criptografia dos tokens OAuth do Mercado Livre)
+// =========================
+// Nenhuma persistência explícita de chaves existia antes desta integração — o
+// anel de chaves padrão implícito não é garantido estável entre reinícios/redeploys.
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "keys")))
+    .SetApplicationName("CarStoreManager");
 
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>()!;
 
@@ -114,8 +116,12 @@ var app = builder.Build();
 // =========================
 // SEED DO BANCO
 // =========================
-using (var scope = app.Services.CreateScope())
+// Pulado no ambiente "Testing" — é o que WebApplicationFactory usa nos testes
+// de integração de controller (ver Tests/Integratrion/Controllers/*), que
+// mockam a camada de serviço e nunca precisam de um Postgres de verdade no ar.
+if (!app.Environment.IsEnvironment("Testing"))
 {
+    using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await context.Database.MigrateAsync();
     await SeedAdminAsync(context);

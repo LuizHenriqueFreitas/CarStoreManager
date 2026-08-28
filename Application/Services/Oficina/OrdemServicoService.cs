@@ -24,8 +24,6 @@ public class OrdemServicoService : IOrdemServicoService
     private readonly IComponenteRepository _componenteRepository;
     private readonly IMecanicoService _mecanicoService;
 
-    private readonly Domain.Interfaces.Repositories.Oficina.INotaFiscalVendaOSRepository? _notaVendaRepo;
-    private readonly IClienteRepository? _clienteRepo;
     private readonly IPagamentoOrdemServicoRepository? _pagamentoRepo;
     private readonly IAlertaOSRepository? _alertaRepo;
     private readonly IConfiguracaoSistemaRepository? _configRepo;
@@ -35,8 +33,6 @@ public class OrdemServicoService : IOrdemServicoService
         IOrdemServicoRepository repository,
         IComponenteRepository componenteRepository,
         IMecanicoService mecanicoService,
-        Domain.Interfaces.Repositories.Oficina.INotaFiscalVendaOSRepository? notaVendaRepo = null,
-        IClienteRepository? clienteRepo = null,
         IPagamentoOrdemServicoRepository? pagamentoRepo = null,
         IAlertaOSRepository? alertaRepo = null,
         IConfiguracaoSistemaRepository? configRepo = null,
@@ -45,8 +41,6 @@ public class OrdemServicoService : IOrdemServicoService
         _repository = repository;
         _componenteRepository = componenteRepository;
         _mecanicoService = mecanicoService;
-        _notaVendaRepo = notaVendaRepo;
-        _clienteRepo = clienteRepo;
         _pagamentoRepo = pagamentoRepo;
         _alertaRepo = alertaRepo;
         _configRepo = configRepo;
@@ -481,16 +475,20 @@ public class OrdemServicoService : IOrdemServicoService
         try
         {
             ordem.Finalizar();
-            _repository.Update(ordem);
 
-            // Gera NF de venda automaticamente ao finalizar (registro interno).
-            if (_notaVendaRepo is not null && _clienteRepo is not null)
+            // Se a OS já nasceu totalmente paga (ex.: entrada mínima cobriu o
+            // valor todo), confirma na hora — sem isso ela ficaria presa em
+            // "Pagamento Pendente" com saldo zerado, exigindo um pagamento de
+            // R$ 0,00 pra sair do estado.
+            if (_pagamentoRepo is not null)
             {
-                var jaTem = await _notaVendaRepo.ObterPorOrdemAsync(ordemId);
-                if (jaTem is null)
-                    await GerarNotaVendaAsync(ordem);
+                var pagamentos = await _pagamentoRepo.ObterPorOrdemAsync(ordemId);
+                var pago = pagamentos.Sum(p => p.Valor.GetValorDinheiro());
+                if (pago >= ordem.GetValorTotal())
+                    ordem.ConfirmarPagamentoCompleto();
             }
 
+            _repository.Update(ordem);
             await _repository.SaveChangesAsync();
             return Result.Ok();
         }
@@ -528,49 +526,6 @@ public class OrdemServicoService : IOrdemServicoService
             return Result.Ok();
         }
         catch (Exception ex) { return Result.Fail(ex.Message); }
-    }
-
-    private async Task GerarNotaVendaAsync(Domain.Entities.Oficina.OrdemServico ordem)
-    {
-        if (_notaVendaRepo is null || _clienteRepo is null) return;
-
-        var ano = DateTime.UtcNow.Year;
-        var sequencia = (await _notaVendaRepo.ContarPorAnoAsync(ano)) + 1;
-        var numero = $"NFV-{ano}-{sequencia:D5}";
-
-        var cliente = await _clienteRepo.GetByIdAsync(ordem.GetClienteId());
-        var clienteSnap = System.Text.Json.JsonSerializer.Serialize(new
-        {
-            Id = ordem.GetClienteId(),
-            Nome = cliente?.GetNome() ?? "(cliente removido)",
-            Cpf = cliente?.GetCpf() ?? "",
-            Email = cliente?.GetEmail() ?? "",
-            Telefone = cliente?.GetTelefone() ?? ""
-        });
-
-        var itensSnap = System.Text.Json.JsonSerializer.Serialize(
-            ordem.Itens.Select(i => new
-            {
-                ComponenteId = i.ComponenteId,
-                Quantidade = i.Quantidade,
-                ValorUnitario = i.ValorUnitario.GetValorDinheiro(),
-                ValorTotal = i.ValorTotal.GetValorDinheiro(),
-                Origem = i.Origem.ToString()
-            }));
-
-        var valorPecas = ordem.Itens.Sum(i => i.ValorTotal.GetValorDinheiro());
-        var valorServico = ordem.GetCustoServico();
-
-        var nota = new Domain.Entities.Oficina.NotaFiscalVendaOS(
-            ordemServicoId: ordem.Id,
-            clienteId: ordem.GetClienteId(),
-            numero: numero,
-            valorServico: valorServico,
-            valorPecas: valorPecas,
-            itensJson: itensSnap,
-            clienteSnapshotJson: clienteSnap);
-
-        await _notaVendaRepo.AddAsync(nota);
     }
 
     public Task<Result> CancelarAsync(Guid ordemId)

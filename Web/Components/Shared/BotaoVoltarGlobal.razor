@@ -1,0 +1,69 @@
+@namespace CarStoreManager.Web.Components.Shared
+@using Microsoft.JSInterop
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IDisposable
+
+@if (MostrarBotaoVoltar)
+{
+    <div class="voltar-bar">
+        <button class="btn-voltar-global" @onclick="Voltar">
+            ← Voltar
+        </button>
+    </div>
+}
+
+@code {
+    // Rotas iniciais (a home de cada perfil, para onde a raiz redireciona
+    // logo após o login — ver Index.razor) — não fazem sentido com botão de
+    // voltar, já que não há uma página anterior natural dentro do sistema.
+    private static readonly HashSet<string> RotasIniciais = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "", "dashboard", "concessionaria", "oficina", "recepcao", "login"
+    };
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+        => InvokeAsync(StateHasChanged);
+
+    private bool MostrarBotaoVoltar
+    {
+        get
+        {
+            var caminho = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].TrimEnd('/');
+            return !RotasIniciais.Contains(caminho);
+        }
+    }
+
+    // history.back() (não NavigationManager.NavigateTo com uma rota fixa) —
+    // volta pra rota que o usuário realmente visitou antes, igual ao botão
+    // voltar do navegador, em vez de sempre cair numa página-pai fixa.
+    private async Task Voltar() => await JS.InvokeVoidAsync("history.back");
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+}
+
+<style>
+    .voltar-bar {
+        padding: 10px 24px 0;
+        background-color: #fafafa;
+    }
+
+    .btn-voltar-global {
+        background: none;
+        border: none;
+        color: #666;
+        font-size: 14px;
+        cursor: pointer;
+        padding: 6px 10px;
+        border-radius: 6px;
+    }
+    .btn-voltar-global:hover {
+        background: #eee;
+        color: #1a1a1a;
+    }
+</style>

@@ -4,6 +4,7 @@
 @inject IPropostaVendaService PropostaService
 @inject IClienteService ClienteService
 @inject IVeiculoVendaService VeiculoService
+@inject IVeiculoConsignacaoService ConsignacaoService
 @inject NavigationManager Nav
 
 @using System.Globalization
@@ -15,7 +16,6 @@
 
 <div class="prop-page">
     <div class="page-header">
-        <button class="btn-link" @onclick='() => Nav.NavigateTo("/concessionaria/propostas")'>← Voltar</button>
         <h1 class="page-titulo">Proposta @(proposta is null ? "" : "#" + proposta.Id.ToString()[..8].ToUpper())</h1>
     </div>
 
@@ -34,7 +34,7 @@
     }
     else
     {
-        <div class="status-bar">
+        <div class="status-bar" data-tour="proposta-detalhe-status">
             <span class="status-tag tag-@proposta.Status.ToLower()">@StatusLabel(proposta.Status)</span>
             @if (proposta.Status is "Criada" or "AguardandoFinanciadora" or "PropostaFinanciadoraRecebida")
             {
@@ -55,7 +55,7 @@
             { <span class="muted">— Cancelada: @proposta.MotivoCancelamento</span> }
         </div>
 
-        <div class="grid-2">
+        <div class="grid-2" data-tour="proposta-detalhe-cliente-veiculo">
             <section class="card">
                 <h2>Cliente</h2>
                 @if (cliente is not null)
@@ -80,7 +80,7 @@
             </section>
         </div>
 
-        <section class="card">
+        <section class="card" data-tour="proposta-detalhe-valores">
             <h2>Valores</h2>
             <table class="tbl-valores">
                 <tr><td>Valor base</td><td>@FormatBRL(proposta.ValorBase)</td></tr>
@@ -100,7 +100,7 @@
             }
         </section>
 
-        <section class="card">
+        <section class="card" data-tour="proposta-detalhe-modo-pagamento">
             <h2>Modo de pagamento</h2>
             <p><b>@ModoPagamentoLabel(proposta.ModoPagamento)</b></p>
             <p class="muted small">
@@ -111,7 +111,7 @@
 
         @if (proposta.ModoPagamento == "Financiamento" || proposta.ParcelasFinanciamento.HasValue)
         {
-            <section class="card">
+            <section class="card" data-tour="proposta-detalhe-financiamento">
                 <h2>Financiamento</h2>
 
                 @if (proposta.Status == "Criada" && proposta.ModoPagamento == "Financiamento")
@@ -167,7 +167,7 @@
         @if (proposta.Status is "Aprovada" or "AguardandoVistoria" or "VistoriaConcluida"
             or "AguardandoAssinaturaTermo" or "Concluida")
         {
-            <section class="card">
+            <section class="card" data-tour="proposta-detalhe-vistoria">
                 <h2>Vistoria do veículo</h2>
 
                 @if (proposta.Status == "Aprovada")
@@ -236,7 +236,7 @@
 
         @if (proposta.Status is "VistoriaConcluida" or "AguardandoAssinaturaTermo" or "Concluida")
         {
-            <section class="card">
+            <section class="card" data-tour="proposta-detalhe-termo">
                 <h2>Termo de entrega</h2>
 
                 @if (termo is null && proposta.Status == "VistoriaConcluida")
@@ -289,7 +289,7 @@
 
         @if (PodeEditar)
         {
-            <section class="card acoes">
+            <section class="card acoes" data-tour="proposta-detalhe-acoes">
                 <h2>Ações</h2>
                 <button class="btn-aprovar" @onclick="Aprovar" disabled="@processando">
                     ✓ Cliente aprova proposta
@@ -314,7 +314,6 @@
 <style>
     .prop-page { max-width: 980px; margin: 0 auto; padding: 24px; }
     .page-header { display:flex; align-items:center; gap:16px; margin-bottom:20px; }
-    .btn-link { background:none; border:0; color:#888; cursor:pointer; }
     .page-titulo { margin:0; font-size:1.4rem; }
     .banner { padding:12px 16px; border-radius:6px; margin-bottom:16px; }
     .banner-ok { background:#e6f7ed; color:#1f7a3a; border:1px solid #b6e4c2; }
@@ -410,8 +409,27 @@
             var rc = await ClienteService.GetByIdAsync(proposta.ClienteId);
             if (rc.IsSuccess) cliente = rc.Value;
 
-            var rv = await VeiculoService.GetByIdAsync(proposta.VeiculoVendaId);
-            if (rv.IsSuccess) veiculo = rv.Value;
+            if (proposta.VeiculoEntidadeTipo == "VeiculoConsignacao")
+            {
+                var rConsig = await ConsignacaoService.GetByIdAsync(proposta.VeiculoVendaId);
+                if (rConsig.IsSuccess && rConsig.Value is not null)
+                {
+                    var c = rConsig.Value;
+                    veiculo = new VeiculoVendaDTO
+                    {
+                        Id = c.Id, Marca = c.Marca, Modelo = c.Modelo, Cor = c.Cor,
+                        Motorizacao = c.Motorizacao, Ano = c.Ano, Quilometragem = c.Quilometragem,
+                        Placa = c.Placa, Renavam = c.Renavam, Cambio = c.Cambio,
+                        Combustivel = c.Combustivel, Disponibilidade = c.Status,
+                        Valor = c.ValorVendaEsperado, Acessorios = c.Acessorios
+                    };
+                }
+            }
+            else
+            {
+                var rv = await VeiculoService.GetByIdAsync(proposta.VeiculoVendaId);
+                if (rv.IsSuccess) veiculo = rv.Value;
+            }
 
             // Vistorias + termo (carregamento opcional, falha silenciosa)
             var rVist = await PropostaService.ListarVistoriasAsync(Id);

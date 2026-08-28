@@ -15,13 +15,18 @@ public class ClienteRepository : IClienteRepository
     }
 
     public async Task<Cliente?> GetByIdAsync(Guid id)
-        => await _context.Clientes.FindAsync(id);
+        => await _context.Clientes
+            .Include(c => c.Endereco)
+            .FirstOrDefaultAsync(c => c.Id == id);
 
     public async Task<IEnumerable<Cliente>> GetAllAsync()
-        => await _context.Clientes.ToListAsync();
+        => await _context.Clientes
+            .Include(c => c.Endereco)
+            .ToListAsync();
 
     public async Task<Cliente?> ObterPorCpfAsync(string cpf)
         => await _context.Clientes
+            .Include(c => c.Endereco)
             .FirstOrDefaultAsync(c => c.Cpf.Numero == cpf);
 
     public async Task<bool> CpfExisteAsync(string cpf)
@@ -38,6 +43,7 @@ public class ClienteRepository : IClienteRepository
         var termoCpf = new string(termo.Where(char.IsDigit).ToArray());
 
         return await _context.Clientes
+            .Include(c => c.Endereco)
             .Where(c => c.Nome.ToLower().Contains(termoLower)
                      || (termoCpf.Length > 0 && c.Cpf.Numero.Contains(termoCpf)))
             .Take(20)
@@ -50,8 +56,15 @@ public class ClienteRepository : IClienteRepository
     public void Update(Cliente cliente)
         => _context.Clientes.Update(cliente);
 
+    // Cliente é dono da FK (EnderecoId) — remover o cliente não apaga o
+    // endereço sozinho (cascade só anda de principal pra dependente), por
+    // isso o endereço é removido explicitamente junto.
     public void Remove(Cliente cliente)
-        => _context.Clientes.Remove(cliente);
+    {
+        _context.Clientes.Remove(cliente);
+        if (cliente.Endereco is not null)
+            _context.Enderecos.Remove(cliente.Endereco);
+    }
 
     public async Task SaveChangesAsync()
         => await _context.SaveChangesAsync();

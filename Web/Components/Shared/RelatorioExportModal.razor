@@ -1,0 +1,188 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@if (Visivel)
+{
+    <div class="rem-overlay" @onclick="Fechar">
+        <div class="rem-box" @onclick:stopPropagation>
+            <div class="rem-header">
+                <span class="rem-titulo">@Titulo</span>
+                <button class="rem-fechar" @onclick="Fechar">×</button>
+            </div>
+
+            <p class="rem-desc">Escolha o período e o formato do arquivo.</p>
+
+            <div class="rem-campo-linha">
+                <div class="rem-campo">
+                    <label class="rem-campo-label">Data início</label>
+                    <input type="date" class="rem-campo-input" @bind="dataInicio" />
+                </div>
+                <div class="rem-campo">
+                    <label class="rem-campo-label">Data fim</label>
+                    <input type="date" class="rem-campo-input" @bind="dataFim" />
+                </div>
+            </div>
+
+            <div class="rem-campo">
+                <label class="rem-campo-label">Formato do arquivo</label>
+                <select class="rem-campo-input" @bind="formato">
+                    <option value="csv">CSV</option>
+                    <option value="xml">XML</option>
+                </select>
+            </div>
+
+            @if (erro is not null)
+            {
+                <div class="rem-erro">@erro</div>
+            }
+
+            <div class="rem-acoes">
+                <button class="rem-btn-cancelar" @onclick="Fechar">Cancelar</button>
+                <button class="rem-btn-confirmar" @onclick="Baixar">Baixar relatório</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visivel { get; set; }
+    [Parameter] public string Titulo { get; set; } = "Exportar relatório";
+    [Parameter] public EventCallback<(DateTime DataInicio, DateTime DataFim, string Formato)> OnConfirmar { get; set; }
+    [Parameter] public EventCallback OnCancelar { get; set; }
+
+    private DateTime dataInicio = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateTime dataFim = DateTime.Today;
+    private string formato = "csv";
+    private string? erro;
+
+    // Reseta os campos toda vez que o modal é reaberto — evita reaproveitar o
+    // período/formato escolhido para um relatório diferente do anterior.
+    protected override void OnParametersSet()
+    {
+        if (Visivel && !visivelAnterior)
+        {
+            dataInicio = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            dataFim = DateTime.Today;
+            formato = "csv";
+            erro = null;
+        }
+        visivelAnterior = Visivel;
+    }
+
+    private bool visivelAnterior;
+
+    private async Task Baixar()
+    {
+        if (dataFim.Date < dataInicio.Date)
+        {
+            erro = "A data final não pode ser anterior à data inicial.";
+            return;
+        }
+        erro = null;
+        await OnConfirmar.InvokeAsync((dataInicio, dataFim, formato));
+    }
+
+    private async Task Fechar()
+    {
+        erro = null;
+        await OnCancelar.InvokeAsync();
+    }
+}
+
+<style>
+    .rem-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .rem-box {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        width: 100%;
+        max-width: 380px;
+        border: 0.5px solid #e0e0e0;
+    }
+
+    .rem-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .rem-titulo { font-size: 16px; font-weight: 500; color: #1a1a1a; }
+
+    .rem-fechar {
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: #888;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0 4px;
+    }
+    .rem-fechar:hover { color: #1a1a1a; }
+
+    .rem-desc { font-size: 13px; color: #666; margin-bottom: 16px; line-height: 1.5; }
+
+    .rem-campo-linha { display: flex; gap: 10px; }
+    .rem-campo-linha .rem-campo { flex: 1; }
+
+    .rem-campo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .rem-campo-label { font-size: 12px; color: #555; font-weight: 500; }
+
+    .rem-campo-input {
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 10px;
+        font-size: 14px;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s;
+        width: 100%;
+        background: #fff;
+        color: #1a1a1a;
+    }
+    .rem-campo-input:focus { border-color: #e02020; }
+
+    .rem-erro {
+        background: rgba(224, 32, 32, 0.08);
+        border: 0.5px solid rgba(224, 32, 32, 0.3);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 12px;
+        color: #e02020;
+        margin-bottom: 12px;
+    }
+
+    .rem-acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+    .rem-btn-cancelar {
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        cursor: pointer;
+        color: #444;
+    }
+    .rem-btn-cancelar:hover { background: #f5f5f5; }
+
+    .rem-btn-confirmar {
+        background: #1a1a1a;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #fff;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .rem-btn-confirmar:hover { background: #333; }
+</style>

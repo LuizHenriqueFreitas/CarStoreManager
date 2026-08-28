@@ -16,6 +16,7 @@ public static class PropostaVendaMapping
             Id = entity.Id,
             VendedorId = entity.GetVendedorId(),
             VeiculoVendaId = entity.GetVeiculoId(),
+            VeiculoEntidadeTipo = entity.VeiculoEntidadeTipo,
             ClienteId = entity.GetClienteId(),
             ValorBase = entity.GetValorBase(),
             DescontoPercentual = entity.GetDesconto(),
@@ -48,6 +49,7 @@ public static class PropostaVendaMapping
             Id = entity.Id,
             ClienteId = entity.GetClienteId(),
             VeiculoVendaId = entity.GetVeiculoId(),
+            VeiculoEntidadeTipo = entity.VeiculoEntidadeTipo,
             ValorFinal = entity.GetValorFinal(),
             Status = entity.Status.ToString(),
             DataCriacao = entity.GetDataCriacao(),
@@ -64,13 +66,13 @@ public static class PropostaVendaMapping
             dto.VeiculoVendaId,
             dto.ClienteId,
             dto.ValorBase,
-            dto.DescontoPercentual
+            dto.DescontoPercentual,
+            dto.VeiculoEntidadeTipo
         );
     }
 
     public static decimal ToDesconto(AplicarDescontoDTO dto) => dto.Percentual;
     public static decimal ToEntrada(DefinirEntradaDTO dto) => dto.ValorEntrada;
-    public static int ToParcelas(GerarFinanciamentoDTO dto) => dto.Parcelas;
 
     public static ModoPagamento ParseModoPagamento(string s)
     {

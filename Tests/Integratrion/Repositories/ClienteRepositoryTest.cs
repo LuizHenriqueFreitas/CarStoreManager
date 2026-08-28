@@ -185,7 +185,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
         public async Task AddAsync_ClienteValido_PersisteDados()
         {
             var cliente = new Cliente("Ricardo", "ricardo@email.com", "11988887777", "52998224725",
-                new CarStoreManager.Domain.ValueObjects.Endereco("Rua A", "1", null, "Centro", "São Paulo", "SP", "01001000"));
+                new CarStoreManager.Domain.Entities.Endereco("Rua A", "1", null, "Centro", "São Paulo", "SP", "01001000"));
             await _repository.AddAsync(cliente);
             await _repository.SaveChangesAsync();
 
@@ -233,7 +233,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
         private async Task<Cliente> SalvarCliente(string nome, string email, string telefone, string cpf)
         {
             var cliente = new Cliente(nome, email, telefone, cpf,
-                new CarStoreManager.Domain.ValueObjects.Endereco("Rua A", "1", null, "Centro", "São Paulo", "SP", "01001000"));
+                new CarStoreManager.Domain.Entities.Endereco("Rua A", "1", null, "Centro", "São Paulo", "SP", "01001000"));
             await _repository.AddAsync(cliente);
             await _repository.SaveChangesAsync();
             return cliente;

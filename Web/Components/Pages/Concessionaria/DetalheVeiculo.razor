@@ -4,60 +4,66 @@
 @namespace CarStoreManager.Web.Components.Pages
 
 @inject IVeiculoVendaService VeiculoService
+@inject IVeiculoConsignacaoService ConsignacaoService
 @inject IFotoService FotoService
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IMercadoLivrePublicacaoService MercadoLivreService
 @using CarStoreManager.Application.Common
 @using CarStoreManager.Application.Interfaces
 @inject NavigationManager Nav
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoConsignacao
+@using CarStoreManager.Application.DTOs.Integracoes.MercadoLivre
+@using CarStoreManager.Application.DTOs
 @using CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
+@using System.Globalization
 @using System.IO
 
 @if (carregando)
 {
     <div class="loading">Carregando...</div>
 }
-else if (veiculo is null)
+else if (!Encontrado)
 {
     <div class="loading">Veículo não encontrado.</div>
 }
 else
 {
-    <div class="galeria-wrapper">
+    <div class="galeria-wrapper" data-tour="veiculo-detalhe-galeria">
         <div class="galeria-principal">
-            @if (veiculo.Fotos.Any())
+            @if (FotosUrls.Any())
             {
                 @* Mostra a foto principal com object-fit contain (sem esticar/cortar)
                    e prévias parciais das fotos vizinhas nas margens. *@
                 <button class="galeria-arr left" @onclick="FotoAnterior"
-                        style="@(veiculo.Fotos.Count > 1 ? "" : "display:none")">‹</button>
+                        style="@(FotosUrls.Count > 1 ? "" : "display:none")">‹</button>
 
-                @if (veiculo.Fotos.Count > 1)
+                @if (FotosUrls.Count > 1)
                 {
-                    var idxAnt = (fotoAtiva - 1 + veiculo.Fotos.Count) % veiculo.Fotos.Count;
+                    var idxAnt = (fotoAtiva - 1 + FotosUrls.Count) % FotosUrls.Count;
                     <div class="galeria-vizinha esquerda" @onclick="FotoAnterior">
-                        <img src="@veiculo.Fotos[idxAnt]" alt="" />
+                        <img src="@FotosUrls[idxAnt]" alt="" />
                     </div>
                 }
 
                 <div class="galeria-foto" @onclick="() => AbrirFullscreen(fotoAtiva)">
-                    <img src="@veiculo.Fotos[fotoAtiva]" alt="Foto do veículo" />
+                    <img src="@FotosUrls[fotoAtiva]" alt="Foto do veículo" />
                     <span class="galeria-zoom">🔍</span>
                 </div>
 
-                @if (veiculo.Fotos.Count > 1)
+                @if (FotosUrls.Count > 1)
                 {
-                    var idxProx = (fotoAtiva + 1) % veiculo.Fotos.Count;
+                    var idxProx = (fotoAtiva + 1) % FotosUrls.Count;
                     <div class="galeria-vizinha direita" @onclick="ProximaFoto">
-                        <img src="@veiculo.Fotos[idxProx]" alt="" />
+                        <img src="@FotosUrls[idxProx]" alt="" />
                     </div>
                 }
 
                 <button class="galeria-arr right" @onclick="ProximaFoto"
-                        style="@(veiculo.Fotos.Count > 1 ? "" : "display:none")">›</button>
+                        style="@(FotosUrls.Count > 1 ? "" : "display:none")">›</button>
             }
             else
             {
@@ -65,10 +71,10 @@ else
             }
         </div>
 
-        @if (veiculo.Fotos.Count > 1)
+        @if (FotosUrls.Count > 1)
         {
             <div class="galeria-dots">
-                @for (int i = 0; i < veiculo.Fotos.Count; i++)
+                @for (int i = 0; i < FotosUrls.Count; i++)
                 {
                     var idx = i;
                     <span class="@(i == fotoAtiva ? "dot ativo" : "dot")"
@@ -82,44 +88,56 @@ else
     {
         <div class="fs-overlay" @onclick="FecharFullscreen">
             <button class="fs-fechar" @onclick="FecharFullscreen" @onclick:stopPropagation="true">✕</button>
-            @if (veiculo.Fotos.Count > 1)
+            @if (FotosUrls.Count > 1)
             {
                 <button class="fs-arr left" @onclick:stopPropagation="true" @onclick="FsAnterior">‹</button>
                 <button class="fs-arr right" @onclick:stopPropagation="true" @onclick="FsProxima">›</button>
             }
-            <img src="@veiculo.Fotos[fotoFullscreenIdx.Value]" class="fs-img" @onclick:stopPropagation="true" alt="Foto ampliada" />
+            <img src="@FotosUrls[fotoFullscreenIdx.Value]" class="fs-img" @onclick:stopPropagation="true" alt="Foto ampliada" />
         </div>
     }
 
     <div class="detalhe-content">
         <div class="detalhe-main">
-            <div class="detalhe-header">
+            <div class="detalhe-header" data-tour="veiculo-detalhe-header">
                 <div>
-                    <h1 class="detalhe-titulo">@veiculo.Marca @veiculo.Modelo</h1>
-                    <p class="detalhe-sub">@veiculo.Ano · @veiculo.Combustivel · @veiculo.Cambio · @veiculo.Motorizacao</p>
+                    <h1 class="detalhe-titulo">@Marca @Modelo</h1>
+                    <p class="detalhe-sub">@Ano · @Combustivel · @Cambio · @Motorizacao</p>
                 </div>
-                <span class="badge @BadgeClass">@veiculo.Disponibilidade</span>
+                <span class="badge @BadgeClass">@StatusLabel</span>
             </div>
 
-            <div class="detalhe-section">
+            @if (IsConsignado && consignacao is not null)
+            {
+                @if (consignacao.EstaVencido)
+                {
+                    <div class="banner-alerta">⚠ Prazo de consignação vencido há @Math.Abs(consignacao.DiasRestantes) dia(s).</div>
+                }
+                else if (consignacao.Status == "Ativa")
+                {
+                    <div class="banner-info">@consignacao.DiasRestantes dia(s) restantes até @consignacao.DataVencimento.ToString("dd/MM/yyyy")</div>
+                }
+            }
+
+            <div class="detalhe-section" data-tour="veiculo-detalhe-especificacoes">
                 <h2 class="section-titulo">Especificações</h2>
                 <div class="specs-grid">
-                    <div class="spec"><span class="spec-label">Ano</span><span class="spec-val">@veiculo.Ano</span></div>
-                    <div class="spec"><span class="spec-label">Quilometragem</span><span class="spec-val">@veiculo.Quilometragem.ToString("N0") km</span></div>
-                    <div class="spec"><span class="spec-label">Cor</span><span class="spec-val">@veiculo.Cor</span></div>
-                    <div class="spec"><span class="spec-label">Combustível</span><span class="spec-val">@veiculo.Combustivel</span></div>
-                    <div class="spec"><span class="spec-label">Câmbio</span><span class="spec-val">@veiculo.Cambio</span></div>
-                    <div class="spec"><span class="spec-label">Motorização</span><span class="spec-val">@veiculo.Motorizacao</span></div>
-                    <div class="spec"><span class="spec-label">Placa</span><span class="spec-val">@veiculo.Placa</span></div>
+                    <div class="spec"><span class="spec-label">Ano</span><span class="spec-val">@Ano</span></div>
+                    <div class="spec"><span class="spec-label">Quilometragem</span><span class="spec-val">@Quilometragem.ToString("N0") km</span></div>
+                    <div class="spec"><span class="spec-label">Cor</span><span class="spec-val">@Cor</span></div>
+                    <div class="spec"><span class="spec-label">Combustível</span><span class="spec-val">@Combustivel</span></div>
+                    <div class="spec"><span class="spec-label">Câmbio</span><span class="spec-val">@Cambio</span></div>
+                    <div class="spec"><span class="spec-label">Motorização</span><span class="spec-val">@Motorizacao</span></div>
+                    <div class="spec"><span class="spec-label">Placa</span><span class="spec-val">@Placa</span></div>
                 </div>
             </div>
 
-            @if (veiculo.Acessorios.Any())
+            @if (Acessorios.Any())
             {
                 <div class="detalhe-section">
                     <h2 class="section-titulo">Acessórios</h2>
                     <div class="acc-lista">
-                        @foreach (var acc in veiculo.Acessorios)
+                        @foreach (var acc in Acessorios)
                         {
                             <span class="acc-tag">
                                 <span class="acc-dot"></span>
@@ -129,53 +147,196 @@ else
                     </div>
                 </div>
             }
+
+            @if (IsConsignado && consignacao is not null)
+            {
+                <div class="detalhe-section" data-tour="consig-detalhe-info">
+                    <h2 class="section-titulo">Consignação — proprietário e vendedor</h2>
+                    <div class="specs-grid">
+                        <div class="spec"><span class="spec-label">Proprietário</span><span class="spec-val">@consignacao.ClienteProprietarioNome</span></div>
+                        <div class="spec"><span class="spec-label">Vendedor responsável</span><span class="spec-val">@consignacao.VendedorResponsavelNome</span></div>
+                        <div class="spec"><span class="spec-label">Início da consignação</span><span class="spec-val">@consignacao.DataInicio.ToString("dd/MM/yyyy")</span></div>
+                        <div class="spec"><span class="spec-label">Vencimento</span><span class="spec-val">@consignacao.DataVencimento.ToString("dd/MM/yyyy")</span></div>
+                    </div>
+                </div>
+
+                <div class="detalhe-section" data-tour="consig-detalhe-comissao">
+                    <h2 class="section-titulo">Consignação — comissão</h2>
+                    <div class="specs-grid">
+                        <div class="spec"><span class="spec-label">Valor de venda esperado</span><span class="spec-val">@FormatBRL(consignacao.ValorVendaEsperado)</span></div>
+                        @if (consignacao.TipoComissao == "Fixo")
+                        {
+                            <div class="spec"><span class="spec-label">Repasse ao proprietário</span><span class="spec-val">@FormatBRL(consignacao.ValorFixoProprietario ?? 0)</span></div>
+                        }
+                        else
+                        {
+                            <div class="spec"><span class="spec-label">% do proprietário</span><span class="spec-val">@consignacao.PorcentagemProprietario%</span></div>
+                        }
+                    </div>
+                </div>
+
+                <div class="detalhe-section">
+                    <h2 class="section-titulo">Consignação — contrato</h2>
+                    <p class="contrato-texto">@(string.IsNullOrWhiteSpace(consignacao.TextoContrato) ? "Nenhum termo cadastrado." : consignacao.TextoContrato)</p>
+                    @if (!string.IsNullOrWhiteSpace(consignacao.UrlContratoPdf))
+                    {
+                        <a href="@consignacao.UrlContratoPdf" target="_blank" class="link-contrato">📄 Abrir contrato (PDF)</a>
+                    }
+                </div>
+
+                <div class="detalhe-section">
+                    <h2 class="section-titulo">Consignação — histórico</h2>
+                    @if (consignacao.Historico.Any())
+                    {
+                        <ul class="historico-lista">
+                            @foreach (var h in consignacao.Historico)
+                            {
+                                <li class="historico-item">
+                                    <span class="historico-data">@h.Data.ToString("dd/MM/yyyy HH:mm")</span>
+                                    <span class="historico-tipo">@h.TipoEvento</span>
+                                    <span class="historico-desc">@h.Descricao</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="vazio">Nenhum evento registrado.</p>
+                    }
+                </div>
+            }
         </div>
 
         <div class="detalhe-sidebar">
             <div class="preco-card">
-                <span class="preco-label">Valor</span>
+                <span class="preco-label">@(IsConsignado ? "Valor de venda esperado" : "Valor")</span>
                 <span class="preco-val">
-                    @veiculo.Valor.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
+                    @ValorPrincipal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
                 </span>
 
-                @if (veiculo.Disponibilidade == "Disponivel")
+                @if (!IsConsignado)
                 {
-                    <button class="btn-primary" @onclick="GerarProposta">
-                        Gerar proposta de venda
+                    @if (veiculo!.Disponibilidade == "Disponivel")
+                    {
+                        <button class="btn-primary" data-tour="veiculo-detalhe-acao-principal" @onclick="GerarProposta">
+                            Gerar proposta de venda
+                        </button>
+                    }
+                    else if (veiculo.Disponibilidade == "EmPreparacao")
+                    {
+                        <div class="preparacao-aviso">
+                            ⚙ Veículo em preparação (lavagem / ajustes / documentação)
+                        </div>
+                        <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxLib">
+                            <Authorized>
+                                <button class="btn-primary" data-tour="veiculo-detalhe-acao-principal" @onclick="LiberarParaVenda">
+                                    ✓ Liberar para venda
+                                </button>
+                            </Authorized>
+                        </AuthorizeView>
+                    }
+
+                    @if (veiculo.Disponibilidade == "Disponivel")
+                    {
+                        <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxVolta">
+                            <Authorized>
+                                <button class="btn-secondary" @onclick="VoltarParaPreparacao">
+                                    ⚙ Voltar para preparação
+                                </button>
+                            </Authorized>
+                        </AuthorizeView>
+                        <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxPublicarMl">
+                            <Authorized>
+                                <button class="btn-secondary" @onclick="PublicarNoMercadoLivre" disabled="@publicandoMl">
+                                    @(publicandoMl ? "Publicando..." : "Publicar no Mercado Livre")
+                                </button>
+                            </Authorized>
+                        </AuthorizeView>
+                    }
+
+                    <button class="btn-secondary" @onclick="AbrirModalEdicao">
+                        Editar veículo
+                    </button>
+
+                    <button class="btn-excluir" @onclick="AbrirModalExclusao">
+                        Excluir veículo
                     </button>
                 }
-                else if (veiculo.Disponibilidade == "EmPreparacao")
+                else if (consignacao is not null)
                 {
-                    <div class="preparacao-aviso">
-                        ⚙ Veículo em preparação (lavagem / ajustes / documentação)
-                    </div>
-                    <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxLib">
+                    @if (consignacao.Status is "Ativa" or "Expirada")
+                    {
+                        <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxRenovar">
+                            <Authorized>
+                                <button class="btn-secondary" data-tour="consig-detalhe-renovar-btn" @onclick="AbrirModalRenovar" disabled="@processandoConsignacao">Renovar (+90 dias)</button>
+                            </Authorized>
+                        </AuthorizeView>
+                        <AuthorizeView Roles="Admin,GerenteVendas,Vendedor" Context="ctxGerarPropostaConsig">
+                            <Authorized>
+                                <button class="btn-primary" data-tour="consig-detalhe-gerar-proposta-btn" @onclick="GerarPropostaConsignado">Gerar proposta de venda</button>
+                            </Authorized>
+                        </AuthorizeView>
+                        <AuthorizeView Roles="Admin,GerenteVendas,Vendedor" Context="ctxDevolver">
+                            <Authorized>
+                                <button class="btn-secondary" data-tour="consig-detalhe-devolver-btn" @onclick="Devolver" disabled="@processandoConsignacao">Devolver ao proprietário</button>
+                            </Authorized>
+                        </AuthorizeView>
+                        <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxPublicarMlConsig">
+                            <Authorized>
+                                <button class="btn-secondary" @onclick="PublicarNoMercadoLivre" disabled="@publicandoMl">
+                                    @(publicandoMl ? "Publicando..." : "Publicar no Mercado Livre")
+                                </button>
+                            </Authorized>
+                        </AuthorizeView>
+                    }
+                    @if (consignacao.Status == "VendidoAguardandoPagamento")
+                    {
+                        <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxConcluir">
+                            <Authorized>
+                                <button class="btn-primary" @onclick="ConcluirVenda" disabled="@processandoConsignacao">Confirmar pagamento e concluir</button>
+                            </Authorized>
+                        </AuthorizeView>
+                    }
+
+                    <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxEditarContrato">
                         <Authorized>
-                            <button class="btn-primary" @onclick="LiberarParaVenda">
-                                ✓ Liberar para venda
+                            <button class="btn-secondary" @onclick="AbrirModalEdicao">
+                                Editar contrato / fotos
                             </button>
                         </Authorized>
                     </AuthorizeView>
+
+                    @if (consignacao.Status is "Ativa" or "Expirada")
+                    {
+                        <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxCancelarConsig">
+                            <Authorized>
+                                @if (!mostrarCancelamento)
+                                {
+                                    <button class="btn-excluir" @onclick="() => mostrarCancelamento = true" disabled="@processandoConsignacao">
+                                        Cancelar consignação
+                                    </button>
+                                }
+                            </Authorized>
+                        </AuthorizeView>
+                    }
+
+                    @if (mostrarCancelamento)
+                    {
+                        <div class="cancelamento-bloco">
+                            <label class="campo-label">Motivo do cancelamento *</label>
+                            <textarea class="campo-input" rows="3" @bind="motivoCancelamento"></textarea>
+                            <div class="cancelamento-acoes">
+                                <button class="btn-cancelar" @onclick="() => mostrarCancelamento = false">Voltar</button>
+                                <button class="btn-excluir" @onclick="Cancelar" disabled="@processandoConsignacao">Confirmar</button>
+                            </div>
+                        </div>
+                    }
+
+                    @if (erroConsignacao is not null)
+                    {
+                        <div class="erro-banner">@erroConsignacao</div>
+                    }
                 }
-
-                @if (veiculo.Disponibilidade == "Disponivel")
-                {
-                    <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxVolta">
-                        <Authorized>
-                            <button class="btn-secondary" @onclick="VoltarParaPreparacao">
-                                ⚙ Voltar para preparação
-                            </button>
-                        </Authorized>
-                    </AuthorizeView>
-                }
-
-                <button class="btn-secondary" @onclick="AbrirModalEdicao">
-                    Editar veículo
-                </button>
-
-                <button class="btn-excluir" @onclick="AbrirModalExclusao">
-                    Excluir veículo
-                </button>
 
                 <button class="btn-voltar" @onclick='() => Nav.NavigateTo("/concessionaria")'>
                     ← Voltar ao estoque
@@ -187,57 +348,88 @@ else
     <ConfirmacaoSenhaModal
         Visivel="modalSalvarEdicaoVisivel"
         Titulo="Confirmar alterações"
-        Descricao="@($"Salvar alterações em {veiculo.Marca} {veiculo.Modelo}? Confirme com sua senha.")"
+        Descricao="@($"Salvar alterações em {Marca} {Modelo}? Confirme com sua senha.")"
         TextoBotao="Salvar alterações"
         OnConfirmar="ConfirmarSalvarEdicao"
         OnCancelar="() => modalSalvarEdicaoVisivel = false"
         @ref="modalSalvarEdicaoRef" />
 
-    <ConfirmacaoSenhaModal
-        Visivel="modalExclusaoVisivel"
-        Titulo="Excluir veículo"
-        Descricao="@($"Tem certeza que deseja excluir {veiculo.Marca} {veiculo.Modelo}? Esta ação não pode ser desfeita.")"
-        TextoBotao="Excluir permanentemente"
-        Destrutivo="true"
-        ApenasAdmin="true"
-        OnConfirmar="ConfirmarExclusao"
-        OnCancelar="() => modalExclusaoVisivel = false"
-        @ref="modalExclusaoRef" />
+    @if (IsConsignado)
+    {
+        <ConfirmacaoSenhaModal
+            Visivel="modalRenovarVisivel"
+            Titulo="Renovar consignação"
+            Descricao="@($"Renovar a consignação de {Marca} {Modelo} por mais 90 dias? Confirme com sua senha.")"
+            TextoBotao="Renovar"
+            OnConfirmar="ConfirmarRenovar"
+            OnCancelar="() => modalRenovarVisivel = false"
+            @ref="modalRenovarRef" />
+    }
+
+    @if (!IsConsignado)
+    {
+        <ConfirmacaoSenhaModal
+            Visivel="modalExclusaoVisivel"
+            Titulo="Excluir veículo"
+            Descricao="@($"Tem certeza que deseja excluir {Marca} {Modelo}? Esta ação não pode ser desfeita.")"
+            TextoBotao="Excluir permanentemente"
+            Destrutivo="true"
+            ApenasAdmin="true"
+            OnConfirmar="ConfirmarExclusao"
+            OnCancelar="() => modalExclusaoVisivel = false"
+            @ref="modalExclusaoRef" />
+    }
 
     @if (modalFormEdicaoVisivel)
     {
         <div class="modal-overlay" @onclick="() => modalFormEdicaoVisivel = false">
             <div class="modal-form" @onclick:stopPropagation>
                 <div class="modal-header">
-                    <span class="modal-titulo">Editar veículo</span>
+                    <span class="modal-titulo">@(IsConsignado ? "Editar contrato / fotos" : "Editar veículo")</span>
                     <button class="modal-fechar" @onclick="() => modalFormEdicaoVisivel = false">×</button>
                 </div>
 
-                <div class="form-grid">
-                    <div class="form-campo">
-                        <label class="campo-label">Valor (R$)</label>
-                        <input type="number" class="campo-input" @bind="formEdicao.Valor" />
+                @if (!IsConsignado)
+                {
+                    <div class="form-grid">
+                        <div class="form-campo">
+                            <label class="campo-label">Valor (R$)</label>
+                            <input type="number" class="campo-input" @bind="formEdicao.Valor" />
+                        </div>
+                        <div class="form-campo">
+                            <label class="campo-label">Disponibilidade</label>
+                            <select class="campo-input" @bind="formEdicao.Disponibilidade">
+                                <option value="EmPreparacao">Em preparação</option>
+                                <option value="Disponivel">Disponível</option>
+                                <option value="Reservado">Reservado</option>
+                                <option value="Vendido">Vendido</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-campo">
-                        <label class="campo-label">Disponibilidade</label>
-                        <select class="campo-input" @bind="formEdicao.Disponibilidade">
-                            <option value="EmPreparacao">Em preparação</option>
-                            <option value="Disponivel">Disponível</option>
-                            <option value="Reservado">Reservado</option>
-                            <option value="Vendido">Vendido</option>
-                        </select>
-                    </div>
-                </div>
 
-                <div class="form-secao">
-                    <label class="campo-label">Termo de entrega preliminar</label>
-                    <p class="secao-sub" style="font-size:.85em; color:#666; margin:4px 0 6px;">
-                        Será usado como base do termo final quando a proposta for gerada.
-                    </p>
-                    <textarea class="campo-input" rows="6"
-                              @bind="formEdicao.TextoTermoPreliminar"
-                              placeholder="Texto do termo de entrega..."></textarea>
-                </div>
+                    <div class="form-secao">
+                        <label class="campo-label">Termo de entrega preliminar</label>
+                        <p class="secao-sub" style="font-size:.85em; color:#666; margin:4px 0 6px;">
+                            Será usado como base do termo final quando a proposta for gerada.
+                        </p>
+                        <textarea class="campo-input" rows="6"
+                                  @bind="formEdicao.TextoTermoPreliminar"
+                                  placeholder="Texto do termo de entrega..."></textarea>
+                    </div>
+                }
+                else
+                {
+                    <div class="form-secao">
+                        <label class="campo-label">Texto do contrato de consignação</label>
+                        <textarea class="campo-input" rows="6"
+                                  @bind="formEdicaoConsignacao.TextoContrato"
+                                  placeholder="Texto do contrato..."></textarea>
+                    </div>
+                    <div class="form-secao">
+                        <label class="campo-label">URL do contrato (PDF)</label>
+                        <input class="campo-input" @bind="formEdicaoConsignacao.UrlContratoPdf" placeholder="https://..." />
+                    </div>
+                }
 
                 <!-- SEÇÃO DE GERENCIAMENTO DE FOTOS -->
                 <div class="form-secao">
@@ -315,25 +507,74 @@ else
 @code {
     [Parameter] public Guid Id { get; set; }
 
+    // Só um dos dois é populado por vez — veiculo para estoque próprio,
+    // consignacao para veículo consignado. A rota é a mesma para os dois
+    // (não existe mais tela de detalhe separada para consignados).
     private VeiculoVendaDTO? veiculo;
+    private VeiculoConsignacaoDTO? consignacao;
     private bool carregando = true;
     private int fotoAtiva = 0;
+
+    private bool IsConsignado => consignacao is not null;
+    private bool Encontrado => veiculo is not null || consignacao is not null;
+    private string EntidadeTipoAtual => IsConsignado ? "VeiculoConsignacao" : "VeiculoVenda";
+
+    // === Campos unificados — leem de qualquer um dos dois DTOs carregados ===
+    private string Marca => veiculo?.Marca ?? consignacao?.Marca ?? "";
+    private string Modelo => veiculo?.Modelo ?? consignacao?.Modelo ?? "";
+    private string Cor => veiculo?.Cor ?? consignacao?.Cor ?? "";
+    private int Ano => veiculo?.Ano ?? consignacao?.Ano ?? 0;
+    private int Quilometragem => veiculo?.Quilometragem ?? consignacao?.Quilometragem ?? 0;
+    private string Combustivel => veiculo?.Combustivel ?? consignacao?.Combustivel ?? "";
+    private string Cambio => veiculo?.Cambio ?? consignacao?.Cambio ?? "";
+    private string Motorizacao => veiculo?.Motorizacao ?? consignacao?.Motorizacao ?? "";
+    private string Placa => veiculo?.Placa ?? consignacao?.Placa ?? "";
+    private List<string> Acessorios => veiculo?.Acessorios ?? consignacao?.Acessorios ?? new();
+    private decimal ValorPrincipal => veiculo?.Valor ?? consignacao?.ValorVendaEsperado ?? 0;
+    private string StatusLabel => IsConsignado ? RotuloStatusConsignacao(consignacao!.Status) : (veiculo?.Disponibilidade ?? "");
+    private List<string> FotosUrls => veiculo?.Fotos
+        ?? consignacao?.Fotos.OrderBy(f => f.Ordem).Select(f => f.Url).ToList()
+        ?? new();
+
+    private static string RotuloStatusConsignacao(string status) => status switch
+    {
+        "Ativa" => "Disponível",
+        "Expirada" => "Prazo expirado",
+        "VendidoAguardandoPagamento" => "Vendido (aguard. pagamento)",
+        "Concluida" => "Vendido",
+        "Devolvida" => "Devolvida",
+        "Cancelada" => "Cancelada",
+        _ => status
+    };
+
+    private static string FormatBRL(decimal v) => v.ToString("C", CultureInfo.GetCultureInfo("pt-BR"));
 
     private bool modalExclusaoVisivel = false;
     private bool modalFormEdicaoVisivel = false;
     private bool modalSalvarEdicaoVisivel = false;
+    private bool modalRenovarVisivel = false;
     private bool salvando = false;
     private string? erroEdicao;
 
     private ConfirmacaoSenhaModal? modalSalvarEdicaoRef;
     private ConfirmacaoSenhaModal? modalExclusaoRef;
+    private ConfirmacaoSenhaModal? modalRenovarRef;
 
     private AtualizarVeiculoVendaDTO formEdicao = new();
+    private AtualizarVeiculoConsignacaoDTO formEdicaoConsignacao = new();
 
     private Guid UsuarioAtualId;
 
-    // Propriedades para gerenciamento de fotos
-    private List<FotoVeiculoDTO> fotosEditaveis = new();
+    // === Consignação — estado das ações de decisão ===
+    private bool processandoConsignacao = false;
+    private string? erroConsignacao;
+    private bool mostrarCancelamento;
+    private string motivoCancelamento = "";
+
+    // Propriedades para gerenciamento de fotos (via IFotoService, genérico
+    // para os dois tipos — resolve também o Id real da foto, que o DTO de
+    // VeiculoVenda não carrega por vir só como lista de URLs).
+    private List<FotoDto> fotosEditaveis = new();
     private record FotoEmMemoria(string Nome, string ContentType, byte[] Conteudo);
     private List<FotoEmMemoria> arquivosSelecionados = new();
     private List<string> previewsNovasFotos = new();
@@ -357,32 +598,32 @@ else
         try
         {
             var resultado = await VeiculoService.GetByIdAsync(Id);
-            veiculo = resultado.IsSuccess ? resultado.Value : null;
-            if (veiculo != null)
+            if (resultado.IsSuccess)
             {
-                // Converte as URLs para lista de FotoVeiculoDTO
-                fotosEditaveis = veiculo.Fotos.Select((url, idx) => new FotoVeiculoDTO
-                {
-                    Id = Guid.NewGuid(), // TEMPORÁRIO - substituir pelo ID real vindo do backend
-                    Url = url,
-                    Ordem = idx
-                }).ToList();
+                veiculo = resultado.Value;
+                consignacao = null;
+            }
+            else
+            {
+                veiculo = null;
+                var rConsig = await ConsignacaoService.GetByIdAsync(Id);
+                consignacao = rConsig.IsSuccess ? rConsig.Value : null;
             }
         }
-        catch { veiculo = null; }
+        catch { veiculo = null; consignacao = null; }
         finally { carregando = false; }
     }
 
     private void ProximaFoto()
     {
-        if (veiculo?.Fotos.Count > 0)
-            fotoAtiva = (fotoAtiva + 1) % veiculo.Fotos.Count;
+        if (FotosUrls.Count > 0)
+            fotoAtiva = (fotoAtiva + 1) % FotosUrls.Count;
     }
 
     private void FotoAnterior()
     {
-        if (veiculo?.Fotos.Count > 0)
-            fotoAtiva = (fotoAtiva - 1 + veiculo.Fotos.Count) % veiculo.Fotos.Count;
+        if (FotosUrls.Count > 0)
+            fotoAtiva = (fotoAtiva - 1 + FotosUrls.Count) % FotosUrls.Count;
     }
 
     private int? fotoFullscreenIdx;
@@ -392,26 +633,38 @@ else
 
     private void FsProxima()
     {
-        if (fotoFullscreenIdx is null || veiculo?.Fotos.Count is null or 0) return;
-        fotoFullscreenIdx = (fotoFullscreenIdx.Value + 1) % veiculo.Fotos.Count;
+        if (fotoFullscreenIdx is null || FotosUrls.Count == 0) return;
+        fotoFullscreenIdx = (fotoFullscreenIdx.Value + 1) % FotosUrls.Count;
     }
     private void FsAnterior()
     {
-        if (fotoFullscreenIdx is null || veiculo?.Fotos.Count is null or 0) return;
-        fotoFullscreenIdx = (fotoFullscreenIdx.Value - 1 + veiculo.Fotos.Count) % veiculo.Fotos.Count;
+        if (fotoFullscreenIdx is null || FotosUrls.Count == 0) return;
+        fotoFullscreenIdx = (fotoFullscreenIdx.Value - 1 + FotosUrls.Count) % FotosUrls.Count;
     }
 
     private async Task AbrirModalEdicao()
     {
         // Abre o formulário direto — sem pedir senha aqui.
         // A confirmação de senha acontece no SUBMIT (botão Salvar alterações).
-        formEdicao = new AtualizarVeiculoVendaDTO
+        if (!IsConsignado)
         {
-            Id = veiculo!.Id,
-            Valor = veiculo.Valor,
-            Disponibilidade = veiculo.Disponibilidade,
-            TextoTermoPreliminar = veiculo.TextoTermoPreliminar
-        };
+            formEdicao = new AtualizarVeiculoVendaDTO
+            {
+                Id = veiculo!.Id,
+                Valor = veiculo.Valor,
+                Disponibilidade = veiculo.Disponibilidade,
+                TextoTermoPreliminar = veiculo.TextoTermoPreliminar
+            };
+        }
+        else
+        {
+            formEdicaoConsignacao = new AtualizarVeiculoConsignacaoDTO
+            {
+                Id = consignacao!.Id,
+                TextoContrato = consignacao.TextoContrato,
+                UrlContratoPdf = consignacao.UrlContratoPdf
+            };
+        }
         await RecarregarFotos();
         modalFormEdicaoVisivel = true;
     }
@@ -434,12 +687,14 @@ else
         salvando = true;
         try
         {
-            var resultado = await VeiculoService.UpdateAsync(formEdicao);
+            var resultado = IsConsignado
+                ? await ConsignacaoService.UpdateAsync(formEdicaoConsignacao)
+                : await VeiculoService.UpdateAsync(formEdicao);
+
             if (resultado.IsSuccess)
             {
                 modalFormEdicaoVisivel = false;
-                var atualizado = await VeiculoService.GetByIdAsync(Id);
-                veiculo = atualizado.IsSuccess ? atualizado.Value : veiculo;
+                await CarregarVeiculo();
                 StateHasChanged();
             }
             else
@@ -456,10 +711,12 @@ else
 
     private async Task ConfirmarExclusao(string senha)
     {
+        if (IsConsignado || veiculo is null) return;
+
         var ok = await VerificarSenha(senha);
         if (!ok) { modalExclusaoRef?.MostrarErro(); return; }
 
-        var resultado = await VeiculoService.RemoveAsync(veiculo!.Id);
+        var resultado = await VeiculoService.RemoveAsync(veiculo.Id);
         if (resultado.IsSuccess)
         {
             modalExclusaoVisivel = false;
@@ -492,13 +749,79 @@ else
         if (r.IsSuccess) await CarregarVeiculo();
     }
 
-    private string BadgeClass => veiculo?.Disponibilidade switch
+    private bool publicandoMl = false;
+
+    private async Task PublicarNoMercadoLivre()
     {
-        "Disponivel"   => "badge badge-disponivel",
-        "Vendido"      => "badge badge-vendido",
-        "EmPreparacao" => "badge badge-preparacao",
-        _              => "badge badge-reservado"
-    };
+        publicandoMl = true;
+        var r = await MercadoLivreService.PublicarAsync(new PublicarAnuncioDTO { EntidadeTipo = EntidadeTipoAtual, EntidadeId = Id });
+        publicandoMl = false;
+        if (r.IsSuccess) Nav.NavigateTo("/integracoes/mercadolivre/anuncios");
+    }
+
+    // === Ações de decisão da consignação ===
+
+    private async Task ExecutarAcaoConsignacao(Func<Task<Result>> acao)
+    {
+        processandoConsignacao = true;
+        erroConsignacao = null;
+        var r = await acao();
+        if (!r.IsSuccess) erroConsignacao = r.Error;
+        processandoConsignacao = false;
+        mostrarCancelamento = false;
+        await CarregarVeiculo();
+    }
+
+    private void AbrirModalRenovar() => modalRenovarVisivel = true;
+
+    private async Task ConfirmarRenovar(string senha)
+    {
+        var ok = await VerificarSenha(senha);
+        if (!ok) { modalRenovarRef?.MostrarErro(); return; }
+
+        modalRenovarVisivel = false;
+        await ExecutarAcaoConsignacao(() => ConsignacaoService.RenovarAsync(Id));
+    }
+
+    private void GerarPropostaConsignado() =>
+        Nav.NavigateTo($"/concessionaria/proposta/nova-consignado/{Id}");
+
+    private Task ConcluirVenda() => ExecutarAcaoConsignacao(() => ConsignacaoService.ConcluirVendaAsync(Id));
+    private Task Devolver() => ExecutarAcaoConsignacao(() => ConsignacaoService.DevolverAsync(Id));
+
+    private Task Cancelar()
+    {
+        if (string.IsNullOrWhiteSpace(motivoCancelamento))
+        {
+            erroConsignacao = "Informe o motivo do cancelamento.";
+            return Task.CompletedTask;
+        }
+        return ExecutarAcaoConsignacao(() => ConsignacaoService.CancelarAsync(Id, motivoCancelamento));
+    }
+
+    private string BadgeClass
+    {
+        get
+        {
+            if (IsConsignado)
+            {
+                return consignacao?.Status switch
+                {
+                    "Ativa" => "badge badge-disponivel",
+                    "Concluida" or "VendidoAguardandoPagamento" => "badge badge-vendido",
+                    _ => "badge badge-reservado"
+                };
+            }
+
+            return veiculo?.Disponibilidade switch
+            {
+                "Disponivel"   => "badge badge-disponivel",
+                "Vendido"      => "badge badge-vendido",
+                "EmPreparacao" => "badge badge-preparacao",
+                _              => "badge badge-reservado"
+            };
+        }
+    }
 
     // Métodos para gerenciamento de fotos
 
@@ -554,7 +877,7 @@ else
                     () => new MemoryStream(f.Conteudo)))
                 .ToList();
 
-            var resultado = await FotoService.UploadFotosAsync("VeiculoVenda", veiculo!.Id, arquivos);
+            var resultado = await FotoService.UploadFotosAsync(EntidadeTipoAtual, Id, arquivos);
             if (resultado.IsSuccess)
             {
                 sucessos = resultado.Value!.Count;
@@ -593,7 +916,7 @@ else
 
         if (foto.Id != Guid.Empty)
         {
-            var resultado = await VeiculoService.RemoverFotoAsync(veiculo!.Id, foto.Id);
+            var resultado = await FotoService.RemoverFotoAsync(foto.Id);
             if (!resultado.IsSuccess)
             {
                 erroUpload = resultado.Error ?? "Erro ao remover foto.";
@@ -636,7 +959,7 @@ else
     private async Task SalvarOrdem()
     {
         var ordemIds = fotosEditaveis.Select(f => f.Id).ToList();
-        var resultado = await VeiculoService.ReordenarFotosAsync(veiculo!.Id, ordemIds);
+        var resultado = await FotoService.ReordenarFotosAsync(EntidadeTipoAtual, Id, ordemIds);
         if (!resultado.IsSuccess)
         {
             erroUpload = resultado.Error ?? "Erro ao reordenar fotos.";
@@ -645,28 +968,10 @@ else
 
     private async Task RecarregarFotos()
     {
-        var resultado = await VeiculoService.GetByIdAsync(Id);
-        if (resultado.IsSuccess && resultado.Value != null)
-        {
-            veiculo = resultado.Value;
-            // Aqui você deve ajustar conforme seu DTO.
-            // Se veiculo.Fotos já for List<FotoVeiculoDTO>, use diretamente.
-            // Caso contrário, mapeie.
-            fotosEditaveis = veiculo.Fotos.Select((url, idx) => new FotoVeiculoDTO
-            {
-                Id = Guid.NewGuid(), // ajuste para o ID real se disponível
-                Url = url,
-                Ordem = idx
-            }).ToList();
-        }
-    }
-
-    // DTO auxiliar (mova para seu domínio se necessário)
-    public class FotoVeiculoDTO
-    {
-        public Guid Id { get; set; }
-        public string Url { get; set; } = string.Empty;
-        public int Ordem { get; set; }
+        var resultado = await FotoService.GetFotosByEntidadeAsync(EntidadeTipoAtual, Id);
+        fotosEditaveis = resultado.IsSuccess && resultado.Value is not null
+            ? resultado.Value.OrderBy(f => f.Ordem).ToList()
+            : new();
     }
 }
 
@@ -1006,6 +1311,30 @@ else
         color: #e02020;
         margin-bottom: 12px;
     }
+
+    /* === Consignação — banners, contrato, histórico, cancelamento === */
+    .banner-alerta {
+        background: #fff5f5; border: 0.5px solid #fca5a5; border-radius: 8px;
+        padding: 10px 16px; font-size: 13px; color: #e02020; margin-bottom: 16px;
+    }
+    .banner-info {
+        background: #eff6ff; border: 0.5px solid #bfdbfe; border-radius: 8px;
+        padding: 10px 16px; font-size: 13px; color: #1d4ed8; margin-bottom: 16px;
+    }
+    .contrato-texto { font-size: 13px; color: #444; line-height: 1.5; white-space: pre-wrap; }
+    .link-contrato { display: inline-block; margin-top: 10px; font-size: 13px; color: #2563eb; }
+    .historico-lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+    .historico-item { display: flex; gap: 12px; align-items: baseline; font-size: 13px; padding: 8px 0; border-bottom: 0.5px solid #f4f4f4; flex-wrap: wrap; }
+    .historico-data { color: #888; font-size: 11px; min-width: 120px; }
+    .historico-tipo { font-weight: 600; color: #1a1a1a; min-width: 100px; }
+    .historico-desc { color: #444; }
+    .vazio { font-size: 13px; color: #888; }
+    .cancelamento-bloco {
+        background: #fafafa; border: 0.5px solid #e0e0e0; border-radius: 8px;
+        padding: 14px; margin-top: 8px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .cancelamento-acoes { display: flex; gap: 8px; justify-content: flex-end; }
+
     .modal-acoes {
         display: flex;
         gap: 8px;

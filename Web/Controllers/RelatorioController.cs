@@ -1,14 +1,16 @@
-using System.Globalization;
-using System.Text;
+using CarStoreManager.Application.DTOs.Reports;
 using CarStoreManager.Application.Interfaces;
+using CarStoreManager.Application.Services.Reports;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CarStoreManager.Web.Controllers;
 
 /*
-    Endpoints que geram relatórios em CSV (UTF-8 com BOM para abrir bem no Excel).
-    Acessíveis por Admin via UI da Dashboard ou direto pela URL com cookie/Bearer.
+    Endpoints que geram relatórios em CSV/XML (UTF-8 com BOM no CSV, para abrir
+    bem no Excel). Acessíveis por Admin via UI da Dashboard ou direto pela URL
+    com cookie/Bearer. Todo relatório aceita um intervalo [dataInicio, dataFim]
+    opcional (formato yyyy-MM-dd) — se omitido, traz todos os registros.
 */
 [ApiController]
 [Route("api/[controller]")]
@@ -20,112 +22,235 @@ public class RelatorioController : ControllerBase
     private readonly IPropostaVendaService _propostaService;
     private readonly IClienteService _clienteService;
     private readonly IMecanicoService _mecanicoService;
+    private readonly IReportService _reportService;
+    private readonly CsvReportFormatter _csvFormatter;
+    private readonly XmlReportFormatter _xmlFormatter;
 
     public RelatorioController(
         IVeiculoVendaService veiculoService,
         IOrdemServicoService ordemService,
         IPropostaVendaService propostaService,
         IClienteService clienteService,
-        IMecanicoService mecanicoService)
+        IMecanicoService mecanicoService,
+        IReportService reportService,
+        CsvReportFormatter csvFormatter,
+        XmlReportFormatter xmlFormatter)
     {
         _veiculoService = veiculoService;
         _ordemService = ordemService;
         _propostaService = propostaService;
         _clienteService = clienteService;
         _mecanicoService = mecanicoService;
+        _reportService = reportService;
+        _csvFormatter = csvFormatter;
+        _xmlFormatter = xmlFormatter;
+    }
+
+    // ===== Relatórios consolidados (mesmas métricas dos gráficos da dashboard,
+    // recalculadas para o período escolhido) =====
+    // /api/relatorio/export?tipo=OficinaCompleto&formato=csv&dataInicio=2026-01-01&dataFim=2026-06-30
+    [HttpGet("export")]
+    public async Task<IActionResult> Export(
+        [FromQuery] string tipo,
+        [FromQuery] string formato,
+        [FromQuery] DateTime dataInicio,
+        [FromQuery] DateTime dataFim)
+    {
+        if (!Enum.TryParse<ReportType>(tipo, ignoreCase: true, out var tipoRelatorio))
+            return BadRequest($"Tipo de relatório inválido: {tipo}");
+
+        if (formato is not ("csv" or "xml"))
+            return BadRequest($"Formato não suportado: {formato}. Use 'csv' ou 'xml'.");
+
+        if (dataFim.Date < dataInicio.Date)
+            return BadRequest("Data final não pode ser anterior à data inicial.");
+
+        var podeVerOficina = User.IsInRole("Admin") || User.IsInRole("ChefeOficina");
+        var podeVerConcessionaria = User.IsInRole("Admin") || User.IsInRole("GerenteVendas");
+        var permitido = tipoRelatorio switch
+        {
+            ReportType.OficinaCompleto => podeVerOficina,
+            ReportType.ConcessionariaCompleto => podeVerConcessionaria,
+            ReportType.Geral => podeVerOficina && podeVerConcessionaria,
+            _ => false
+        };
+        if (!permitido) return Forbid();
+
+        var r = await _reportService.ExportAsync(tipoRelatorio, formato, dataInicio, dataFim);
+        if (!r.IsSuccess) return BadRequest(r.Error);
+
+        var contentType = formato == "xml" ? "application/xml; charset=utf-8" : "text/csv; charset=utf-8";
+        var fileName = $"relatorio-{tipo.ToLowerInvariant()}-{DateTime.Now:yyyyMMdd-HHmm}.{formato}";
+        return File(r.Value!, contentType, fileName);
     }
 
     // ===== ÁREA: CONCESSIONÁRIA =====
     [HttpGet("veiculos-venda")]
     [Authorize(Roles = "Admin,GerenteVendas")]
-    public async Task<IActionResult> VeiculosVenda()
+    public async Task<IActionResult> VeiculosVenda(
+        [FromQuery] DateTime? dataInicio, [FromQuery] DateTime? dataFim, [FromQuery] string formato = "csv")
     {
         var r = await _veiculoService.GetAllAsync();
         if (!r.IsSuccess) return BadRequest(r.Error);
 
-        var sb = NovoCsv("Marca;Modelo;Ano;Combustivel;Disponibilidade;Valor");
-        foreach (var v in r.Value!)
-            sb.AppendLine($"{Csv(v.Marca)};{Csv(v.Modelo)};{v.Ano};{Csv(v.Combustivel)};{Csv(v.Disponibilidade)};{v.Valor.ToString("F2", CultureInfo.InvariantCulture)}");
+        var itens = FiltrarPorPeriodo(r.Value!, v => v.DataCriacao, dataInicio, dataFim);
 
-        return Csv(sb, "veiculos-venda");
+        var data = NovoReportData("Veículos à venda", dataInicio, dataFim, "Veículos à venda", itens, v =>
+            new Dictionary<string, object?>
+            {
+                ["Marca"] = v.Marca,
+                ["Modelo"] = v.Modelo,
+                ["Ano"] = v.Ano,
+                ["Combustivel"] = v.Combustivel,
+                ["Disponibilidade"] = v.Disponibilidade,
+                ["Valor"] = v.Valor,
+                ["DataCriacao"] = v.DataCriacao
+            });
+
+        return await Formatar(data, formato, "veiculos-venda");
     }
 
     // ===== ÁREA: OFICINA =====
     [HttpGet("ordens-servico")]
     [Authorize(Roles = "Admin,ChefeOficina")]
-    public async Task<IActionResult> OrdensServico()
+    public async Task<IActionResult> OrdensServico(
+        [FromQuery] DateTime? dataInicio, [FromQuery] DateTime? dataFim, [FromQuery] string formato = "csv")
     {
         var r = await _ordemService.GetAllAsync();
         if (!r.IsSuccess) return BadRequest(r.Error);
 
-        var sb = NovoCsv("NumeroPublico;Tipo;Status;PrazoEstimado;ValorTotal");
-        foreach (var o in r.Value!)
-            sb.AppendLine($"{Csv(o.NumeroPublico)};{Csv(o.Tipo)};{Csv(o.Status)};{o.PrazoEstimado:yyyy-MM-dd};{o.ValorTotal.ToString("F2", CultureInfo.InvariantCulture)}");
+        var itens = FiltrarPorPeriodo(r.Value!, o => o.DataCriacao, dataInicio, dataFim);
 
-        return Csv(sb, "ordens-servico");
+        var data = NovoReportData("Ordens de serviço", dataInicio, dataFim, "Ordens de serviço", itens, o =>
+            new Dictionary<string, object?>
+            {
+                ["NumeroPublico"] = o.NumeroPublico,
+                ["Tipo"] = o.Tipo,
+                ["Status"] = o.Status,
+                ["PrazoEstimado"] = o.PrazoEstimado,
+                ["ValorTotal"] = o.ValorTotal,
+                ["DataCriacao"] = o.DataCriacao
+            });
+
+        return await Formatar(data, formato, "ordens-servico");
     }
 
     // ===== ÁREA: CONCESSIONÁRIA =====
     [HttpGet("propostas-venda")]
     [Authorize(Roles = "Admin,GerenteVendas")]
-    public async Task<IActionResult> PropostasVenda()
+    public async Task<IActionResult> PropostasVenda(
+        [FromQuery] DateTime? dataInicio, [FromQuery] DateTime? dataFim, [FromQuery] string formato = "csv")
     {
         var r = await _propostaService.GetAllAsync();
         if (!r.IsSuccess) return BadRequest(r.Error);
 
-        var sb = NovoCsv("VeiculoId;ClienteId;ValorFinal;Status;DataCriacao");
-        foreach (var p in r.Value!)
-            sb.AppendLine($"{p.VeiculoVendaId};{p.ClienteId};{p.ValorFinal.ToString("F2", CultureInfo.InvariantCulture)};{Csv(p.Status)};{p.DataCriacao:yyyy-MM-dd HH:mm}");
+        var itens = FiltrarPorPeriodo(r.Value!, p => p.DataCriacao, dataInicio, dataFim);
 
-        return Csv(sb, "propostas-venda");
+        var data = NovoReportData("Propostas de venda", dataInicio, dataFim, "Propostas de venda", itens, p =>
+            new Dictionary<string, object?>
+            {
+                ["VeiculoId"] = p.VeiculoVendaId,
+                ["ClienteId"] = p.ClienteId,
+                ["ValorFinal"] = p.ValorFinal,
+                ["Status"] = p.Status,
+                ["DataCriacao"] = p.DataCriacao
+            });
+
+        return await Formatar(data, formato, "propostas-venda");
     }
 
     // Clientes são compartilhados entre as duas áreas (cliente compra carro e
     // também faz manutenção). Liberado para os dois gestores.
     [HttpGet("clientes")]
     [Authorize(Roles = "Admin,ChefeOficina,GerenteVendas")]
-    public async Task<IActionResult> Clientes()
+    public async Task<IActionResult> Clientes(
+        [FromQuery] DateTime? dataInicio, [FromQuery] DateTime? dataFim, [FromQuery] string formato = "csv")
     {
         var r = await _clienteService.GetAllAsync();
         if (!r.IsSuccess) return BadRequest(r.Error);
 
-        var sb = NovoCsv("Nome;CPF;Telefone;Email");
-        foreach (var c in r.Value!)
-            sb.AppendLine($"{Csv(c.Nome)};{Csv(c.Cpf)};{Csv(c.Telefone)};{Csv(c.Email)}");
+        var itens = FiltrarPorPeriodo(r.Value!, c => c.DataCriacao, dataInicio, dataFim);
 
-        return Csv(sb, "clientes");
+        var data = NovoReportData("Clientes", dataInicio, dataFim, "Clientes", itens, c =>
+            new Dictionary<string, object?>
+            {
+                ["Nome"] = c.Nome,
+                ["CPF"] = c.Cpf,
+                ["Telefone"] = c.Telefone,
+                ["Email"] = c.Email,
+                ["DataCriacao"] = c.DataCriacao
+            });
+
+        return await Formatar(data, formato, "clientes");
     }
 
     // ===== ÁREA: OFICINA =====
     [HttpGet("mecanicos")]
     [Authorize(Roles = "Admin,ChefeOficina")]
-    public async Task<IActionResult> Mecanicos()
+    public async Task<IActionResult> Mecanicos(
+        [FromQuery] DateTime? dataInicio, [FromQuery] DateTime? dataFim, [FromQuery] string formato = "csv")
     {
         var r = await _mecanicoService.GetAllAsync();
         if (!r.IsSuccess) return BadRequest(r.Error);
 
-        var sb = NovoCsv("Nome;Especialidade;Nivel");
-        foreach (var m in r.Value!)
-            sb.AppendLine($"{Csv(m.Nome)};{Csv(m.Especialidade)};{Csv(m.Nivel)}");
+        var itens = FiltrarPorPeriodo(r.Value!, m => m.DataCriacao, dataInicio, dataFim);
 
-        return Csv(sb, "mecanicos");
+        var data = NovoReportData("Mecânicos", dataInicio, dataFim, "Mecânicos", itens, m =>
+            new Dictionary<string, object?>
+            {
+                ["Nome"] = m.Nome,
+                ["Especialidade"] = m.Especialidade,
+                ["Nivel"] = m.Nivel,
+                ["DataCriacao"] = m.DataCriacao
+            });
+
+        return await Formatar(data, formato, "mecanicos");
     }
 
-    private static StringBuilder NovoCsv(string header)
+    // =========================
+    // HELPERS PRIVADOS
+    // =========================
+
+    private static List<T> FiltrarPorPeriodo<T>(
+        IEnumerable<T> itens, Func<T, DateTime> dataSeletor, DateTime? inicio, DateTime? fim)
     {
-        var sb = new StringBuilder();
-        sb.AppendLine(header);
-        return sb;
+        var q = itens.AsEnumerable();
+        if (inicio.HasValue)
+            q = q.Where(i => dataSeletor(i) >= inicio.Value.Date);
+        if (fim.HasValue)
+            q = q.Where(i => dataSeletor(i) <= fim.Value.Date.AddDays(1).AddTicks(-1));
+        return q.ToList();
     }
 
-    private static string Csv(string? v) => v is null ? string.Empty : v.Replace(";", ",").Replace("\n", " ");
-
-    private FileResult Csv(StringBuilder sb, string nome)
+    private static ReportData NovoReportData<T>(
+        string titulo, DateTime? dataInicio, DateTime? dataFim, string nomeSecao,
+        List<T> itens, Func<T, Dictionary<string, object?>> linha)
     {
-        // BOM UTF-8 garante acentuação correta no Excel.
-        var bom = new byte[] { 0xEF, 0xBB, 0xBF };
-        var body = Encoding.UTF8.GetBytes(sb.ToString());
-        var bytes = bom.Concat(body).ToArray();
-        return File(bytes, "text/csv; charset=utf-8", $"{nome}-{DateTime.Now:yyyyMMdd-HHmm}.csv");
+        return new ReportData
+        {
+            Title = titulo,
+            GeneratedAt = DateTime.Now,
+            Periodo = dataInicio.HasValue && dataFim.HasValue
+                ? $"{dataInicio.Value:dd/MM/yyyy} a {dataFim.Value:dd/MM/yyyy}"
+                : "",
+            Sections = new List<ReportSection>
+            {
+                new() { Name = nomeSecao, Rows = itens.Select(linha).ToList() }
+            }
+        };
+    }
+
+    private async Task<IActionResult> Formatar(ReportData data, string formato, string nomeArquivoBase)
+    {
+        if (formato is not ("csv" or "xml"))
+            return BadRequest($"Formato não suportado: {formato}. Use 'csv' ou 'xml'.");
+
+        var bytes = formato == "xml"
+            ? await _xmlFormatter.FormatAsync(data)
+            : await _csvFormatter.FormatAsync(data);
+
+        var contentType = formato == "xml" ? "application/xml; charset=utf-8" : "text/csv; charset=utf-8";
+        var fileName = $"{nomeArquivoBase}-{DateTime.Now:yyyyMMdd-HHmm}.{formato}";
+        return File(bytes, contentType, fileName);
     }
 }

@@ -321,20 +321,39 @@ public class OrdemServico : Entity
     }
 
     /*
-        metodo que finaliza uma OS — significa apenas que o mecânico terminou
-        o trabalho técnico. A cobrança e a entrega ao cliente são responsabilidade
-        da recepção (ver Entregar()). Só é possível finalizar a partir de EmAndamento.
+        metodo que finaliza uma OS — significa que o mecânico terminou o
+        trabalho técnico. Vai sempre para PagamentoPendente, nunca direto pra
+        Finalizada — a entidade não conhece pagamentos (ver comentário em
+        Entregar()), então quem decide se já está tudo pago e chama
+        ConfirmarPagamentoCompleto() em seguida é o service, que tem acesso
+        ao repositório de pagamentos. Só é possível finalizar a partir de EmAndamento.
     */
     public void Finalizar()
     {
         ValidarStatus(StatusOrdemServico.EmAndamento);
+        Status = StatusOrdemServico.PagamentoPendente;
+    }
+
+    /*
+        Recepção confirma que o saldo da OS foi totalmente quitado — só então
+        ela conta como "Finalizada" de verdade (trabalho pronto + pago). Quem
+        decide QUANDO chamar isso é o service (PagamentoOrdemServicoService,
+        ao registrar um pagamento que zera o saldo, ou OrdemServicoService.
+        FinalizarAsync, se a OS já nasceu totalmente paga por adiantamento).
+    */
+    public void ConfirmarPagamentoCompleto()
+    {
+        ValidarStatus(StatusOrdemServico.PagamentoPendente);
         Status = StatusOrdemServico.Finalizada;
     }
 
     /*
         Recepcionista marca a OS como entregue ao cliente — terminal feliz.
-        A regra de "tem que estar totalmente paga" é validada no service
-        (a entidade não conhece pagamentos). Só é possível entregar a partir de Finalizada.
+        Só é possível entregar a partir de Finalizada, que agora só existe
+        quando o saldo já foi confirmado quitado (ver ConfirmarPagamentoCompleto).
+        O service ainda faz uma checagem de saldo por segurança (ver
+        OrdemServicoService.EntregarAsync) — redundante no caminho normal, mas
+        protege contra dado legado/inconsistente.
     */
     public void Entregar()
     {

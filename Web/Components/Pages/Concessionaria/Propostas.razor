@@ -12,18 +12,18 @@
 @using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda
 
 <div class="prop-page">
-    <div class="prop-header">
+    <div class="prop-header" data-tour="prop-lista-header">
         <div>
             <h1>Propostas de venda</h1>
             <p class="muted">@propostas.Count proposta(s) no total · @propostasPrecisamAtencao.Count precisam de atenção</p>
         </div>
-        <input type="text" class="busca-prop" placeholder="Buscar por cliente, veículo ou nº..."
+        <input type="text" class="busca-prop" data-tour="prop-lista-busca" placeholder="Buscar por cliente, veículo ou nº..."
                value="@busca" @oninput="OnBuscaChanged" />
     </div>
 
     @if (propostasPrecisamAtencao.Any())
     {
-        <div class="atencao-banner">
+        <div class="atencao-banner" data-tour="prop-lista-atencao-banner">
             <strong>⚠ @propostasPrecisamAtencao.Count proposta(s) aguardando ação:</strong>
             @foreach (var p in propostasPrecisamAtencao.Take(3))
             {
@@ -38,7 +38,7 @@
         </div>
     }
 
-    <div class="filtros-row">
+    <div class="filtros-row" data-tour="prop-lista-filtros">
         @foreach (var s in todoStatus)
         {
             var count = propostas.Count(p => s.valor == "Todos" || p.Status == s.valor);
@@ -76,6 +76,7 @@
                 @foreach (var p in propostasFiltradas)
                 {
                     <tr class="prop-row @(PrecisaAtencao(p) ? "destaque" : "")"
+                        data-tour="prop-lista-row-exemplo"
                         @onclick="() => AbrirDetalhe(p.Id)">
                         <td><code>#@p.Id.ToString()[..6].ToUpper()</code></td>
                         <td>@(string.IsNullOrEmpty(p.ClienteNome) ? "—" : p.ClienteNome)</td>

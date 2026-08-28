@@ -16,11 +16,7 @@ public interface IPropostaVendaService : IService<
     Task<Result> DefinirEntradaAsync(DefinirEntradaDTO dto);
     Task<Result> DefinirModoPagamentoAsync(Guid propostaId, string modoPagamento);
 
-    /// <summary>
-    /// Marca proposta como AguardandoFinanciadora E envia e-mail com dados
-    /// (cliente, veículo, entrada, valor líquido) para a financiadora
-    /// configurada em ConfiguracaoSistema.
-    /// </summary>
+    /// <summary>Marca proposta como AguardandoFinanciadora.</summary>
     Task<Result> SolicitarFinanciamentoAsync(Guid propostaId);
 
     Task<Result> RegistrarRespostaFinanciadoraAsync(Guid propostaId, RegistrarRespostaFinanciadoraDTO dto);
@@ -52,7 +48,4 @@ public interface IPropostaVendaService : IService<
     Task<Result> EnviarTermoParaAssinaturaAsync(Guid propostaId);
     Task<Result<TermoEntregaDTO>> ObterTermoPorTokenAsync(string token);
     Task<Result> AssinarTermoAsync(string token, AssinarTermoDTO dto, string ipOrigem);
-
-    // Compat com chamadores antigos (sem motivo) — depreciado.
-    Task<Result> GerarFinanciamentoAsync(GerarFinanciamentoDTO dto);
 }

@@ -1,0 +1,207 @@
+@page "/integracoes/mercadolivre/anuncios"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@inject IMercadoLivrePublicacaoService PublicacaoService
+@inject NavigationManager Nav
+
+@using CarStoreManager.Application.Common
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Integracoes.MercadoLivre
+@using System.Globalization
+
+<div class="lc-page">
+    <div class="lc-header">
+        <div>
+            <h1 class="page-titulo">Anúncios no Mercado Livre</h1>
+            <p class="lc-sub">@anuncios.Count anúncio(s)</p>
+        </div>
+        <button class="btn-novo" data-tour="ml-anuncios-btn-status" @onclick='() => Nav.NavigateTo("/integracoes/mercadolivre")'>
+            ← Status da conexão
+        </button>
+    </div>
+
+    @if (erro is not null)
+    {
+        <div class="erro-banner">@erro</div>
+    }
+    @if (sucesso is not null)
+    {
+        <div class="sucesso-banner">@sucesso</div>
+    }
+
+    @if (carregando)
+    {
+        <p class="loading">Carregando...</p>
+    }
+    else if (!anuncios.Any())
+    {
+        <p class="vazio">Nenhum anúncio publicado ainda. Publique um veículo, consignação ou componente a partir da respectiva tela de detalhes.</p>
+    }
+    else
+    {
+        <div class="anuncios-lista" data-tour="ml-anuncios-lista">
+            @foreach (var a in anuncios)
+            {
+                <div class="dc-card anuncio-item" data-tour="ml-anuncios-card-exemplo">
+                    <div class="anuncio-header">
+                        <div>
+                            <span class="anuncio-nome">@a.NomeEntidade</span>
+                            <span class="anuncio-tipo">@a.EntidadeTipo</span>
+                        </div>
+                        <span class="badge @StatusBadgeClass(a.Status)">@a.Status</span>
+                    </div>
+                    <div class="specs-grid">
+                        <div class="spec"><span class="spec-label">Item ML</span><span class="spec-val">@a.ItemIdML</span></div>
+                        <div class="spec"><span class="spec-label">Último preço sincronizado</span><span class="spec-val">@FormatBRL(a.UltimoPrecoSincronizado)</span></div>
+                        <div class="spec"><span class="spec-label">Última sincronização</span><span class="spec-val">@(a.DataUltimaSincronizacao?.ToString("dd/MM/yyyy HH:mm") ?? "—")</span></div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(a.UltimoErro))
+                    {
+                        <div class="erro-banner" style="margin-top: 10px;">@a.UltimoErro</div>
+                    }
+                    @if (a.Status == "Publicado")
+                    {
+                        <div class="dc-acoes">
+                            <button class="btn-acao btn-devolver" data-tour="ml-anuncios-btn-pausar" @onclick="() => Pausar(a.Id)" disabled="@processando">Pausar</button>
+                            <button class="btn-acao btn-cancelar-consig" data-tour="ml-anuncios-btn-encerrar" @onclick="() => Encerrar(a.Id)" disabled="@processando">Encerrar</button>
+                        </div>
+                    }
+                    else if (a.Status == "Pausado")
+                    {
+                        <div class="dc-acoes">
+                            <button class="btn-acao btn-cancelar-consig" data-tour="ml-anuncios-btn-encerrar" @onclick="() => Encerrar(a.Id)" disabled="@processando">Encerrar</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<AnuncioMercadoLivreDTO> anuncios = new();
+    private bool carregando = true;
+    private bool processando = false;
+    private string? erro;
+    private string? sucesso;
+
+    private async Task CarregarAsync()
+    {
+        carregando = true;
+        var r = await PublicacaoService.ListarAsync();
+        anuncios = r.IsSuccess && r.Value is not null ? r.Value : new();
+        carregando = false;
+    }
+
+    protected override async Task OnInitializedAsync() => await CarregarAsync();
+
+    private async Task Pausar(Guid anuncioId)
+    {
+        processando = true;
+        erro = null; sucesso = null;
+        var r = await PublicacaoService.PausarAsync(anuncioId);
+        if (r.IsSuccess) sucesso = "Anúncio pausado."; else erro = r.Error;
+        processando = false;
+        await CarregarAsync();
+    }
+
+    private async Task Encerrar(Guid anuncioId)
+    {
+        processando = true;
+        erro = null; sucesso = null;
+        var r = await PublicacaoService.EncerrarAsync(anuncioId);
+        if (r.IsSuccess) sucesso = "Anúncio encerrado."; else erro = r.Error;
+        processando = false;
+        await CarregarAsync();
+    }
+
+    private static string StatusBadgeClass(string status) => status switch
+    {
+        "Publicado" => "badge-verde",
+        "Pausado" => "badge-amarelo",
+        "Encerrado" => "badge-cinza",
+        "ErroPublicacao" => "badge-vermelho",
+        _ => "badge-cinza"
+    };
+
+    private static string FormatBRL(decimal v) => v.ToString("C", new CultureInfo("pt-BR"));
+}
+
+<style>
+    .lc-page { max-width: 1000px; margin: 0 auto; padding: 24px; }
+    .lc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+    .page-titulo { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+    .lc-sub { font-size: 13px; color: #888; }
+
+    .btn-novo {
+        background: #fff; border: 0.5px solid #ccc; border-radius: 8px;
+        padding: 8px 16px; font-size: 13px; cursor: pointer; color: #444;
+    }
+
+    .dc-card { background: #fff; border: 0.5px solid #e0e0e0; border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+    .section-titulo {
+        font-size: 14px; font-weight: 500; color: #1a1a1a;
+        margin-bottom: 6px; padding-bottom: 10px; border-bottom: 0.5px solid #eee;
+    }
+    .secao-sub { font-size: 12px; color: #888; margin-bottom: 12px; }
+
+    .form-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; }
+    .form-campo { display: flex; flex-direction: column; gap: 6px; }
+    .campo-label { font-size: 12px; color: #555; font-weight: 500; }
+    .campo-input {
+        border: 0.5px solid #ccc; border-radius: 8px; padding: 9px 12px;
+        font-size: 14px; outline: none; width: 100%;
+    }
+    .campo-input:focus { border-color: #e02020; }
+
+    .form-acoes { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-salvar {
+        background: #e02020; color: #fff; border: none; border-radius: 8px;
+        padding: 10px 24px; font-size: 14px; font-weight: 500; cursor: pointer;
+    }
+    .btn-salvar:hover:not(:disabled) { background: #c01818; }
+    .btn-salvar:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .anuncios-lista { display: flex; flex-direction: column; gap: 12px; }
+    .anuncio-item .anuncio-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .anuncio-nome { font-size: 15px; font-weight: 600; color: #1a1a1a; margin-right: 8px; }
+    .anuncio-tipo { font-size: 11px; color: #888; }
+
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-verde { background: #dcfce7; color: #166534; }
+    .badge-amarelo { background: #fef9c3; color: #854d0e; }
+    .badge-cinza { background: #f1f1f1; color: #666; }
+    .badge-vermelho { background: #fff5f5; color: #e02020; }
+
+    .specs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .spec { display: flex; flex-direction: column; gap: 3px; }
+    .spec-label { font-size: 11px; color: #888; }
+    .spec-val { font-size: 13px; color: #1a1a1a; font-weight: 500; }
+
+    .dc-acoes { display: flex; gap: 10px; margin-top: 12px; }
+    .btn-acao {
+        border: none; border-radius: 8px; padding: 8px 16px; font-size: 12px;
+        font-weight: 500; cursor: pointer; color: #fff;
+    }
+    .btn-acao:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-devolver { background: #ea580c; }
+    .btn-cancelar-consig { background: #e02020; }
+
+    .erro-banner {
+        background: #fff5f5; border: 0.5px solid #fca5a5; border-radius: 8px;
+        padding: 12px 16px; font-size: 13px; color: #e02020; margin-bottom: 16px;
+    }
+    .sucesso-banner {
+        background: #f0fdf4; border: 0.5px solid #86efac; border-radius: 8px;
+        padding: 12px 16px; font-size: 13px; color: #166534; margin-bottom: 16px;
+    }
+
+    .loading, .vazio { padding: 40px; text-align: center; color: #888; }
+
+    @@media (max-width: 800px) {
+        .form-grid { grid-template-columns: 1fr; }
+        .specs-grid { grid-template-columns: 1fr; }
+    }
+</style>

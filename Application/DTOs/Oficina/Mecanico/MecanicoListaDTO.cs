@@ -7,4 +7,5 @@ public class MecanicoListaDTO
     public string Especialidade { get; set; } = null!;
     public string Ocupado { get; set; } = null!;
     public string Nivel { get; set; } = null!;
+    public DateTime DataCriacao { get; set; }
 }

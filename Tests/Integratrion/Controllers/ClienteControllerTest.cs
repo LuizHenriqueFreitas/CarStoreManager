@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +35,10 @@ public class ClienteControllerTests : IClassFixture<WebApplicationFactory<Progra
         _serviceMock = new Mock<IClienteService>();
         _factory = factory.WithWebHostBuilder(builder =>
         {
+            // "Testing" faz o Program.cs pular migrate/seed do banco real —
+            // esses testes mockam o service, nunca tocam o AppDbContext de verdade.
+            builder.UseEnvironment("Testing");
+
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IClienteService>();

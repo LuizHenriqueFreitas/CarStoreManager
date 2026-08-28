@@ -111,13 +111,38 @@ public class PropostaVendaTest
         act.Should().Throw<ArgumentException>();
     }
 
+    // ==================== FORMA DE PAGAMENTO ====================
+
+    [Theory]
+    [InlineData(ModoPagamento.Dinheiro)]
+    [InlineData(ModoPagamento.CartaoDebito)]
+    [InlineData(ModoPagamento.CartaoCredito)]
+    public void DefinirModoPagamento_FormaNaoAceitaParaVeiculo_LancaArgumentException(ModoPagamento modo)
+    {
+        var proposta = CriarPropostaBase();
+        Action act = () => proposta.DefinirModoPagamento(modo);
+        act.Should().Throw<ArgumentException>().WithMessage("*não aceita*");
+    }
+
+    [Theory]
+    [InlineData(ModoPagamento.Financiamento)]
+    [InlineData(ModoPagamento.Pix)]
+    [InlineData(ModoPagamento.Transferencia)]
+    [InlineData(ModoPagamento.Boleto)]
+    public void DefinirModoPagamento_FormaAceitaParaVeiculo_Aplica(ModoPagamento modo)
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(modo);
+        proposta.ModoPagamento.Should().Be(modo);
+    }
+
     // ==================== STATUS ====================
 
     [Fact]
     public void Aprovar_AVista_ComModoPagamentoDefinido_MudaParaAprovada()
     {
         var proposta = CriarPropostaBase();
-        proposta.DefinirModoPagamento(ModoPagamento.Dinheiro);
+        proposta.DefinirModoPagamento(ModoPagamento.Pix);
         proposta.Aprovar();
         proposta.Status.Should().Be(StatusPropostaVenda.Aprovada);
         proposta.DataAprovacao.Should().NotBeNull();
@@ -220,7 +245,7 @@ public class PropostaVendaTest
     public void TentarExpirar_PropostaJaAprovada_NaoExpira()
     {
         var proposta = CriarPropostaBase();
-        proposta.DefinirModoPagamento(ModoPagamento.Dinheiro);
+        proposta.DefinirModoPagamento(ModoPagamento.Pix);
         proposta.Aprovar();
         typeof(PropostaVenda).GetProperty("DataCriacao")?.SetValue(proposta, DateTime.UtcNow.AddDays(-30));
 

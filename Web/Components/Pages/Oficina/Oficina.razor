@@ -20,11 +20,11 @@
         </div>
         @if (!ehMecanico)
         {
-            <button class="btn-nova" @onclick="NovaOrdem">+ Nova OS</button>
+            <button class="btn-nova" data-tour="oficina-btn-nova" @onclick="NovaOrdem">+ Nova OS</button>
         }
     </div>
 
-    <div class="filtros-status">
+    <div class="filtros-status" data-tour="oficina-filtros">
         @foreach (var s in todosStatus)
         {
             <button class="@FiltroClass(s.valor)"
@@ -45,10 +45,10 @@
     }
     else
     {
-        <div class="ordens-lista">
+        <div class="ordens-lista" data-tour="oficina-lista">
             @foreach (var os in ordensFiltradas)
             {
-                <div class="os-card" @onclick="() => AbrirDetalhe(os.Id)">
+                <div class="os-card" data-tour="oficina-card-exemplo" @onclick="() => AbrirDetalhe(os.Id)">
                     <div class="os-numero">@os.NumeroPublico</div>
                     <div class="os-info">
                         <span class="os-descricao">@os.Tipo</span>
@@ -74,11 +74,12 @@
 
     private readonly List<(string valor, string label, string cor)> todosStatus = new()
     {
-        ("Todos",       "Todas",          "dot-cinza"),
-        ("Pendente",    "Pendentes",      "dot-amarelo"),
-        ("EmAndamento", "Em andamento",   "dot-azul"),
-        ("Finalizada",  "Finalizadas",    "dot-verde"),
-        ("Cancelada",   "Canceladas",     "dot-vermelho"),
+        ("Todos",             "Todas",              "dot-cinza"),
+        ("Pendente",          "Pendentes",          "dot-amarelo"),
+        ("EmAndamento",       "Em andamento",       "dot-azul"),
+        ("PagamentoPendente", "Pagamento pendente", "dot-laranja"),
+        ("Finalizada",        "Finalizadas",        "dot-verde"),
+        ("Cancelada",         "Canceladas",         "dot-vermelho"),
     };
 
     protected override async Task OnInitializedAsync()
@@ -128,11 +129,12 @@
 
     private string StatusClass(string status) => status switch
     {
-        "Pendente"    => "status-pendente",
-        "EmAndamento" => "status-andamento",
-        "Finalizada"  => "status-finalizada",
-        "Cancelada"   => "status-cancelada",
-        _             => "status-pendente"
+        "Pendente"          => "status-pendente",
+        "EmAndamento"       => "status-andamento",
+        "PagamentoPendente" => "status-pagamento-pendente",
+        "Finalizada"        => "status-finalizada",
+        "Cancelada"         => "status-cancelada",
+        _                   => "status-pendente"
     };
 }
 
@@ -203,6 +205,7 @@
     .dot-azul     { background: #3b82f6; }
     .dot-verde    { background: #22c55e; }
     .dot-vermelho { background: #ef4444; }
+    .dot-laranja  { background: #f97316; }
 
     .ordens-lista {
         display: flex;
@@ -266,6 +269,7 @@
     .status-andamento  { background: #eff6ff; color: #1d4ed8; }
     .status-finalizada { background: #dcfce7; color: #166534; }
     .status-cancelada  { background: #fff5f5; color: #e02020; }
+    .status-pagamento-pendente { background: #fff7ed; color: #c2410c; font-weight: 600; }
 
     .loading, .vazio {
         text-align: center;

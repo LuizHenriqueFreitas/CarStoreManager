@@ -5,6 +5,7 @@
 
 @rendermode Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer
 @inject IVeiculoVendaService VeiculoService
+@inject IVeiculoConsignacaoService ConsignacaoService
 @inject IOrdemServicoService OrdemService
 @inject IClienteService ClienteService
 @inject IPropostaVendaService PropostaService
@@ -20,6 +21,8 @@
 @using CarStoreManager.Application.DTOs.Admin
 @using CarStoreManager.Application.DTOs.Oficina.OrdemServico
 @using CarStoreManager.Application.DTOs.Oficina.Componente
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoConsignacao
+@using CarStoreManager.Web.Components.Shared
 @using System.Globalization
 @using System.Text.Json
 @using Microsoft.JSInterop
@@ -30,9 +33,15 @@
             <h1 class="dash-titulo">Dashboard</h1>
             <p class="dash-sub">Visão geral · @DateTime.Now.ToString("dd/MM/yyyy")</p>
         </div>
+        @if (PodeGerenciarUsuarios)
+        {
+            <button class="btn-usuarios" @onclick='() => Nav.NavigateTo("/admin/usuarios")'>
+                Usuários
+            </button>
+        }
     </div>
 
-    <div class="dash-abas">
+    <div class="dash-abas" data-tour="dashboard-abas">
         @if (PodeVerOficina && PodeVerConcessionaria)
         {
             <button class="@AbaClass("geral")" @onclick='() => SetAba("geral")'>Geral</button>
@@ -53,7 +62,7 @@
         <h2 class="grupo-titulo">Resumo geral</h2>
         @if (metricas is not null)
         {
-            <div class="metricas-grid">
+            <div class="metricas-grid" data-tour="dashboard-metricas-geral">
                 <div class="metrica-card">
                     <span class="metrica-label">Receitas do mês</span>
                     <span class="metrica-valor sucesso">@FormatBRL(metricas.TotalReceitasMes)</span>
@@ -66,8 +75,7 @@
                     <span class="metrica-label">Despesas do mês</span>
                     <span class="metrica-valor alerta">@FormatBRL(metricas.TotalDespesasMes)</span>
                     <span class="metrica-sub muted">
-                        Fixas @FormatBRL(metricas.TotalDespesasFixasMensal) ·
-                        Peças @FormatBRL(metricas.GastoPecasMesAtual)
+                        Fixas @FormatBRL(metricas.TotalDespesasFixasMensal)
                     </span>
                 </div>
                 <div class="metrica-card destaque-lucro">
@@ -79,7 +87,7 @@
                 </div>
             </div>
 
-            <div class="capital-imobilizado-bloco">
+            <div class="capital-imobilizado-bloco" data-tour="dashboard-capital-imobilizado">
                 <div class="capital-card">
                     <div class="capital-titulo">💎 Capital imobilizado</div>
                     <div class="capital-valor">@FormatBRL(metricas.CapitalEstoqueVeiculos)</div>
@@ -98,13 +106,29 @@
             </div>
 
             <div class="grafico-row">
-                <div class="grafico-card">
-                    <h3 class="grafico-titulo">Composição do mês</h3>
-                    <div class="grafico-area"><canvas id="chartReceitaDespesa"></canvas></div>
+                <div class="grafico-card grafico-largo" data-tour="dashboard-analises">
+                    <div class="analise-header">
+                        <h3 class="grafico-titulo">Análises</h3>
+                        <select class="analise-select" value="@graficoSelecionadoId" @onchange="OnGraficoSelecionado">
+                            @foreach (var grupo in metricas.Graficos.GroupBy(g => g.Categoria))
+                            {
+                                <optgroup label="@grupo.Key">
+                                    @foreach (var g in grupo)
+                                    {
+                                        <option value="@g.Id">@g.Titulo</option>
+                                    }
+                                </optgroup>
+                            }
+                        </select>
+                    </div>
+                    <div class="grafico-area"><canvas id="chartAnaliseSelecionada"></canvas></div>
                 </div>
-                <div class="grafico-card">
-                    <h3 class="grafico-titulo">Ordens de serviço por status</h3>
-                    <div class="grafico-area"><canvas id="chartOSStatus"></canvas></div>
+            </div>
+
+            <div class="grafico-row">
+                <div class="grafico-card grafico-largo">
+                    <h3 class="grafico-titulo">Receita Oficina vs Concessionária — últimos 6 meses</h3>
+                    <div class="grafico-area"><canvas id="chartComparacaoReceita"></canvas></div>
                 </div>
             </div>
         }
@@ -114,7 +138,7 @@
     @if (abaAtiva == "oficina")
     {
         <h2 class="grupo-titulo">Oficina — operação</h2>
-        <div class="metricas-grid">
+        <div class="metricas-grid" data-tour="dashboard-oficina-metricas">
             <div class="metrica-card">
                 <span class="metrica-label">OS pendentes</span>
                 <span class="metrica-valor warn">@osPendentes</span>
@@ -142,10 +166,6 @@
                     <span class="metrica-valor sucesso">@FormatBRL(metricas.ReceitaServicosMesAtual)</span>
                 </div>
                 <div class="metrica-card">
-                    <span class="metrica-label">Gasto com peças</span>
-                    <span class="metrica-valor alerta">@FormatBRL(metricas.GastoPecasMesAtual)</span>
-                </div>
-                <div class="metrica-card">
                     <span class="metrica-label">Despesas da oficina</span>
                     <span class="metrica-valor alerta">@FormatBRL(metricas.TotalDespesasOficinaMensal)</span>
                     <span class="metrica-sub muted">Despesas com setor "Oficina"</span>
@@ -155,7 +175,7 @@
                     <span class="metrica-valor @(metricas.LucroOficinaMes >= 0 ? "sucesso" : "alerta")">
                         @FormatBRL(metricas.LucroOficinaMes)
                     </span>
-                    <span class="metrica-sub muted">Serviços − Peças − Despesas da oficina</span>
+                    <span class="metrica-sub muted">Serviços − Despesas da oficina</span>
                 </div>
             </div>
 
@@ -170,6 +190,45 @@
                 <div class="grafico-card">
                     <h3 class="grafico-titulo">Ordens de serviço por status</h3>
                     <div class="grafico-area"><canvas id="chartOSStatusOf"></canvas></div>
+                </div>
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Receita por mecânico (top 5)</h3>
+                    <div class="grafico-area"><canvas id="chartReceitaMecanico"></canvas></div>
+                </div>
+            </div>
+
+            <div class="grafico-row">
+                <div class="grafico-card grafico-largo">
+                    <h3 class="grafico-titulo">Receita de serviços acumulada — últimos 12 meses</h3>
+                    <div class="grafico-area"><canvas id="chartReceitaAcumulada12m"></canvas></div>
+                </div>
+            </div>
+
+            <h2 class="grupo-titulo">Oficina — principais comparativos</h2>
+            <div class="grafico-row">
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Mecânicos por especialização</h3>
+                    <div class="grafico-area"><canvas id="chartMecanicosEspecializacao"></canvas></div>
+                </div>
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Tipos de serviço mais realizados</h3>
+                    <div class="grafico-area"><canvas id="chartServicosTipo"></canvas></div>
+                </div>
+            </div>
+            <div class="grafico-row">
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Marcas que mais visitam a oficina</h3>
+                    <div class="grafico-area"><canvas id="chartMarcasVisitamOficina"></canvas></div>
+                </div>
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Componentes em estoque por sistema</h3>
+                    <div class="grafico-area"><canvas id="chartEstoquePorSistema"></canvas></div>
+                </div>
+            </div>
+            <div class="grafico-row">
+                <div class="grafico-card grafico-largo">
+                    <h3 class="grafico-titulo">Prazo médio estimado por tipo de serviço (dias)</h3>
+                    <div class="grafico-area"><canvas id="chartPrazoMedioServico"></canvas></div>
                 </div>
             </div>
         }
@@ -222,7 +281,18 @@
     @if (abaAtiva == "concessionaria")
     {
         <h2 class="grupo-titulo">Concessionária — operação</h2>
-        <div class="metricas-grid">
+
+        @if (consignacoesVencendoEmBreve.Any())
+        {
+            <div class="banner-vencimento-consignacao">
+                ⚠ @consignacoesVencendoEmBreve.Count consignação(ões) vencendo em breve:
+                @string.Join(", ", consignacoesVencendoEmBreve.Select(c =>
+                    $"{c.Marca} {c.Modelo} ({(c.EstaVencido ? "vencida" : $"{c.DiasRestantes}d")})"))
+                <a href='/concessionaria' class="link-ver-consignacoes">Ver na concessionária →</a>
+            </div>
+        }
+
+        <div class="metricas-grid" data-tour="dashboard-concessionaria-metricas">
             <div class="metrica-card">
                 <span class="metrica-label">Veículos disponíveis</span>
                 <span class="metrica-valor">@veiculosDisponiveis</span>
@@ -276,11 +346,51 @@
                     <div class="grafico-area"><canvas id="chartConcessionaria6m"></canvas></div>
                 </div>
             </div>
+
+            <div class="grafico-row">
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Veículos por status</h3>
+                    <div class="grafico-area"><canvas id="chartVeiculosStatus"></canvas></div>
+                </div>
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Marca mais vendida</h3>
+                    <div class="grafico-area"><canvas id="chartVendasMarca"></canvas></div>
+                </div>
+            </div>
+
+            <h2 class="grupo-titulo">Concessionária — principais comparativos</h2>
+            <div class="grafico-row">
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Modelo mais vendido</h3>
+                    <div class="grafico-area"><canvas id="chartModelosVendidos"></canvas></div>
+                </div>
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Cores mais vendidas</h3>
+                    <div class="grafico-area"><canvas id="chartCoresVendidas"></canvas></div>
+                </div>
+            </div>
+            <div class="grafico-row">
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Consignação vs. loja própria</h3>
+                    <div class="grafico-area"><canvas id="chartConsignacaoLoja"></canvas></div>
+                </div>
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Modos de pagamento</h3>
+                    <div class="grafico-area"><canvas id="chartModosPagamento"></canvas></div>
+                </div>
+            </div>
+
+            <div class="grafico-row">
+                <div class="grafico-card grafico-largo">
+                    <h3 class="grafico-titulo">Propostas aprovadas vs rejeitadas — últimos 6 meses</h3>
+                    <div class="grafico-area"><canvas id="chartPropostasTimeline"></canvas></div>
+                </div>
+            </div>
         }
     }
 
     <h2 class="grupo-titulo">Pessoas</h2>
-    <div class="metricas-grid">
+    <div class="metricas-grid" data-tour="dashboard-pessoas">
         <div class="metrica-card">
             <span class="metrica-label">Clientes</span>
             <span class="metrica-valor">@totalClientes</span>
@@ -296,52 +406,76 @@
     </div>
 
     <h2 class="grupo-titulo">Relatórios</h2>
-    <div class="relatorios-grid">
+    <div class="relatorios-grid" data-tour="dashboard-relatorios">
         @if (PodeVerConcessionaria)
         {
-            <a class="rel-card" href="/api/relatorio/veiculos-venda" target="_blank">
+            <button type="button" class="rel-card" @onclick='() => AbrirExport("Veículos à venda", "/api/relatorio/veiculos-venda")'>
                 <div class="rel-icone">📄</div>
                 <div>
                     <div class="rel-nome">Veículos à venda</div>
-                    <div class="rel-desc">CSV — todos os anúncios</div>
+                    <div class="rel-desc">Todos os anúncios do período</div>
                 </div>
-            </a>
-            <a class="rel-card" href="/api/relatorio/propostas-venda" target="_blank">
+            </button>
+            <button type="button" class="rel-card" @onclick='() => AbrirExport("Propostas de venda", "/api/relatorio/propostas-venda")'>
                 <div class="rel-icone">💼</div>
                 <div>
                     <div class="rel-nome">Propostas de venda</div>
-                    <div class="rel-desc">CSV — todas as propostas</div>
+                    <div class="rel-desc">Propostas criadas no período</div>
                 </div>
-            </a>
+            </button>
+            <button type="button" class="rel-card" @onclick='() => AbrirExport("Relatório completo — Concessionária", "/api/relatorio/export?tipo=ConcessionariaCompleto")'>
+                <div class="rel-icone">📊</div>
+                <div>
+                    <div class="rel-nome">Relatório completo — Concessionária</div>
+                    <div class="rel-desc">Métricas e gráficos recalculados para o período</div>
+                </div>
+            </button>
         }
         @if (PodeVerOficina)
         {
-            <a class="rel-card" href="/api/relatorio/ordens-servico" target="_blank">
+            <button type="button" class="rel-card" @onclick='() => AbrirExport("Ordens de serviço", "/api/relatorio/ordens-servico")'>
                 <div class="rel-icone">🔧</div>
                 <div>
                     <div class="rel-nome">Ordens de serviço</div>
-                    <div class="rel-desc">CSV — histórico completo</div>
+                    <div class="rel-desc">Ordens criadas no período</div>
                 </div>
-            </a>
-            <a class="rel-card" href="/api/relatorio/mecanicos" target="_blank">
+            </button>
+            <button type="button" class="rel-card" @onclick='() => AbrirExport("Mecânicos", "/api/relatorio/mecanicos")'>
                 <div class="rel-icone">🛠</div>
                 <div>
                     <div class="rel-nome">Mecânicos</div>
-                    <div class="rel-desc">CSV — equipe da oficina</div>
+                    <div class="rel-desc">Equipe cadastrada no período</div>
                 </div>
-            </a>
+            </button>
+            <button type="button" class="rel-card" @onclick='() => AbrirExport("Relatório completo — Oficina", "/api/relatorio/export?tipo=OficinaCompleto")'>
+                <div class="rel-icone">📊</div>
+                <div>
+                    <div class="rel-nome">Relatório completo — Oficina</div>
+                    <div class="rel-desc">Métricas e gráficos recalculados para o período</div>
+                </div>
+            </button>
         }
-        <a class="rel-card" href="/api/relatorio/clientes" target="_blank">
+        @if (PodeVerOficina && PodeVerConcessionaria)
+        {
+            <button type="button" class="rel-card" @onclick='() => AbrirExport("Relatório completo — Geral", "/api/relatorio/export?tipo=Geral")'>
+                <div class="rel-icone">📈</div>
+                <div>
+                    <div class="rel-nome">Relatório completo — Geral</div>
+                    <div class="rel-desc">Oficina + concessionária, recalculado para o período</div>
+                </div>
+            </button>
+        }
+        <button type="button" class="rel-card" @onclick='() => AbrirExport("Clientes", "/api/relatorio/clientes")'>
             <div class="rel-icone">👤</div>
             <div>
                 <div class="rel-nome">Clientes</div>
-                <div class="rel-desc">CSV — base de clientes</div>
+                <div class="rel-desc">Base de clientes cadastrados no período</div>
             </div>
-        </a>
+        </button>
     </div>
 
     <h2 class="grupo-titulo">Atalhos</h2>
-    <div class="dash-modulos">
+    <div class="dash-modulos" data-tour="dashboard-atalhos">
         <div class="modulo-card" @onclick='() => Nav.NavigateTo("/concessionaria")'>
             <div class="modulo-icone concessionaria">🚗</div>
             <div>
@@ -377,6 +511,12 @@
     </div>
 </div>
 
+<RelatorioExportModal
+    Visivel="modalExportVisivel"
+    Titulo="@modalExportTitulo"
+    OnConfirmar="ConfirmarExport"
+    OnCancelar="() => modalExportVisivel = false" />
+
 @code {
     private string abaAtiva = "geral";
     private string roleUsuario = string.Empty;
@@ -385,6 +525,7 @@
     // Admin enxerga tudo.
     private bool PodeVerOficina         => roleUsuario is "Admin" or "ChefeOficina";
     private bool PodeVerConcessionaria  => roleUsuario is "Admin" or "GerenteVendas";
+    private bool PodeGerenciarUsuarios  => roleUsuario is "Admin";
 
     private int veiculosDisponiveis;
     private int veiculosVendidos;
@@ -400,7 +541,39 @@
 
     private List<OrdemServicoListaDTO> osRecentes = new();
     private List<EstoqueComponenteDTO> estoquesCriticos = new();
+    private List<VeiculoConsignacaoListaDTO> consignacoesVencendoEmBreve = new();
     private DashboardMetricasDTO? metricas;
+
+    // Aba Geral: seletor de qual gráfico comparativo mostrar — dados
+    // financeiros básicos por padrão, trocável por qualquer outro gráfico
+    // do catálogo modular (ver DashboardService.MontarGraficos).
+    private string graficoSelecionadoId = "financeiro-composicao";
+
+    // === Modal de exportação de relatório (data início/fim + formato) ===
+    private bool modalExportVisivel;
+    private string modalExportTitulo = "";
+    private string modalExportEndpoint = "";
+
+    private void AbrirExport(string titulo, string endpointBase)
+    {
+        modalExportTitulo = titulo;
+        modalExportEndpoint = endpointBase;
+        modalExportVisivel = true;
+    }
+
+    private async Task ConfirmarExport((DateTime DataInicio, DateTime DataFim, string Formato) selecao)
+    {
+        modalExportVisivel = false;
+
+        var separador = modalExportEndpoint.Contains('?') ? "&" : "?";
+        var url = $"{modalExportEndpoint}{separador}" +
+                  $"dataInicio={selecao.DataInicio:yyyy-MM-dd}&dataFim={selecao.DataFim:yyyy-MM-dd}&formato={selecao.Formato}";
+
+        // window.open (não NavigationManager) — o endpoint devolve o arquivo
+        // com Content-Disposition: attachment, então o navegador só baixa e
+        // fecha a aba, sem tirar o usuário da dashboard nem derrubar o circuito.
+        await JS.InvokeVoidAsync("open", url, "_blank");
+    }
 
     private string AbaClass(string aba) => aba == abaAtiva ? "dash-aba dash-aba-ativa" : "dash-aba";
 
@@ -413,6 +586,12 @@
         // existem no DOM depois do StateHasChanged).
         await Task.Yield();
         await RenderizarGraficos();
+    }
+
+    private async Task OnGraficoSelecionado(ChangeEventArgs e)
+    {
+        graficoSelecionadoId = e.Value?.ToString() ?? "financeiro-composicao";
+        await RenderizarGraficoSelecionado();
     }
 
     protected override async Task OnInitializedAsync()
@@ -444,7 +623,8 @@
             osPendentes = todas.Count(o => o.Status == "Pendente");
             osEmAndamento = todas.Count(o => o.Status == "EmAndamento");
             var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-            osFinalizadasMes = todas.Count(o => o.Status == "Finalizada" && o.PrazoEstimado >= inicioMes);
+            osFinalizadasMes = todas.Count(o =>
+                (o.Status == "Finalizada" || o.Status == "PagamentoPendente") && o.PrazoEstimado >= inicioMes);
             osRecentes = todas.OrderByDescending(o => o.PrazoEstimado).Take(6).ToList();
         }
 
@@ -468,6 +648,13 @@
             estoquesCriticos = baixos.Value.Take(6).ToList();
             pecasEstoqueBaixo = baixos.Value.Count();
         }
+
+        var consignacoesAtivas = await ConsignacaoService.ObterAtivasAsync();
+        if (consignacoesAtivas.IsSuccess && consignacoesAtivas.Value is not null)
+            consignacoesVencendoEmBreve = consignacoesAtivas.Value
+                .Where(c => c.EstaVencido || c.DiasRestantes <= 7)
+                .OrderBy(c => c.DiasRestantes)
+                .ToList();
 
         var rMetricas = await DashboardService.ObterMetricasAsync();
         if (rMetricas.IsSuccess) metricas = rMetricas.Value;
@@ -518,13 +705,6 @@
                     tension = 0.3, fill = true
                 },
                 new {
-                    label = "Gastos com peças",
-                    data = metricas.SerieGastoPecas.Select(s => s.Valor).ToArray(),
-                    borderColor = "#e02020",
-                    backgroundColor = "rgba(224, 32, 32, 0.1)",
-                    tension = 0.3, fill = false
-                },
-                new {
                     label = "Despesas fixas (total)",
                     data = LinhaConstante(metricas.TotalDespesasFixasMensal),
                     borderColor = "#ea580c",
@@ -536,38 +716,23 @@
             await JS.InvokeVoidAsync("carstoreChart.render",
                 "chartFaturamento6m", "line", labels6m, datasets6m, commonOpts);
 
-            var labelsComp = new[] {
-                "Receita serviços", "Receita vendas",
-                "Despesas Geral", "Despesas Oficina", "Despesas Concessionária",
-                "Gasto peças"
-            };
-            var dadosComp = new[] {
-                metricas.ReceitaServicosMesAtual,
-                metricas.ReceitaVendasMesAtual,
-                metricas.TotalDespesasGeralMensal,
-                metricas.TotalDespesasOficinaMensal,
-                metricas.TotalDespesasConcessionariaMensal,
-                metricas.GastoPecasMesAtual
-            };
-            var datasetComp = new object[]
+            await RenderizarGraficoSelecionado();
+
+            var datasetsComparacao = new object[]
             {
                 new {
-                    data = dadosComp,
-                    backgroundColor = new[] {
-                        "#16a34a", "#2563eb",
-                        "#ea580c", "#f97316", "#fbbf24",
-                        "#e02020"
-                    }
+                    label = "Oficina",
+                    data = metricas.SerieReceitaServicos.Select(s => s.Valor).ToArray(),
+                    backgroundColor = "#16a34a"
+                },
+                new {
+                    label = "Concessionária",
+                    data = metricas.SerieReceitaVendas.Select(s => s.Valor).ToArray(),
+                    backgroundColor = "#2563eb"
                 }
             };
             await JS.InvokeVoidAsync("carstoreChart.render",
-                "chartReceitaDespesa", "doughnut", labelsComp, datasetComp, commonOpts);
-
-            var (labelsOS, dadosOS, coresOS) = MontarOSDataset();
-            await JS.InvokeVoidAsync("carstoreChart.render",
-                "chartOSStatus", "doughnut", labelsOS, new object[] {
-                    new { data = dadosOS, backgroundColor = coresOS }
-                }, commonOpts);
+                "chartComparacaoReceita", "bar", labels6m, datasetsComparacao, commonOpts);
         }
 
         // ========== ABA OFICINA ==========
@@ -583,13 +748,6 @@
                     tension = 0.3, fill = true
                 },
                 new {
-                    label = "Gasto com peças",
-                    data = metricas.SerieGastoPecas.Select(s => s.Valor).ToArray(),
-                    borderColor = "#e02020",
-                    backgroundColor = "rgba(224, 32, 32, 0.1)",
-                    tension = 0.3, fill = false
-                },
-                new {
                     label = "Despesas da oficina",
                     data = LinhaConstante(metricas.TotalDespesasOficinaMensal),
                     borderColor = "#ea580c",
@@ -603,9 +761,37 @@
 
             var (labelsOS, dadosOS, coresOS) = MontarOSDataset();
             await JS.InvokeVoidAsync("carstoreChart.render",
-                "chartOSStatusOf", "doughnut", labelsOS, new object[] {
+                "chartOSStatusOf", "bar", labelsOS, new object[] {
                     new { data = dadosOS, backgroundColor = coresOS }
                 }, commonOpts);
+
+            var labelsMec = metricas.ReceitaPorMecanico.Select(m => m.MecanicoNome).ToArray();
+            var dadosMec = metricas.ReceitaPorMecanico.Select(m => m.Receita).ToArray();
+            await JS.InvokeVoidAsync("carstoreChart.render",
+                "chartReceitaMecanico", "doughnut", labelsMec, new object[] {
+                    new { data = dadosMec, backgroundColor = CoresCategoricas }
+                }, commonOpts);
+
+            var labelsAcumulada = metricas.SerieReceitaServicosAcumulada12m.Select(s => s.MesLabel).ToArray();
+            var dadosAcumulada = metricas.SerieReceitaServicosAcumulada12m.Select(s => s.Valor).ToArray();
+            var datasetAcumulada = new object[]
+            {
+                new {
+                    label = "Receita acumulada",
+                    data = dadosAcumulada,
+                    borderColor = "#16a34a",
+                    backgroundColor = "rgba(22, 163, 74, 0.1)",
+                    tension = 0.3, fill = true
+                }
+            };
+            await JS.InvokeVoidAsync("carstoreChart.render",
+                "chartReceitaAcumulada12m", "line", labelsAcumulada, datasetAcumulada, commonOpts);
+
+            await RenderizarGraficoPorId("mecanicos-por-especializacao", "chartMecanicosEspecializacao");
+            await RenderizarGraficoPorId("servicos-tipo", "chartServicosTipo");
+            await RenderizarGraficoPorId("marcas-visitam-oficina", "chartMarcasVisitamOficina");
+            await RenderizarGraficoPorId("estoque-por-sistema", "chartEstoquePorSistema");
+            await RenderizarGraficoPorId("prazo-medio-servico", "chartPrazoMedioServico");
         }
 
         // ========== ABA CONCESSIONÁRIA ==========
@@ -631,24 +817,127 @@
             };
             await JS.InvokeVoidAsync("carstoreChart.render",
                 "chartConcessionaria6m", "line", labels6m, datasetsCo, commonOpts);
+
+            var (labelsVeic, dadosVeic, coresVeic) = MontarVeiculoStatusDataset();
+            await JS.InvokeVoidAsync("carstoreChart.render",
+                "chartVeiculosStatus", "bar", labelsVeic, new object[] {
+                    new { data = dadosVeic, backgroundColor = coresVeic }
+                }, commonOpts);
+
+            await RenderizarGraficoPorId("marcas-vendidas", "chartVendasMarca");
+            await RenderizarGraficoPorId("modelos-vendidos", "chartModelosVendidos");
+            await RenderizarGraficoPorId("cores-vendidas", "chartCoresVendidas");
+            await RenderizarGraficoPorId("vendas-consignacao-loja", "chartConsignacaoLoja");
+            await RenderizarGraficoPorId("modos-pagamento", "chartModosPagamento");
+
+            var labelsTimeline = metricas.PropostasTimeline.Select(t => t.MesLabel).ToArray();
+            var datasetsTimeline = new object[]
+            {
+                new {
+                    label = "Aprovadas",
+                    data = metricas.PropostasTimeline.Select(t => t.Aprovadas).ToArray(),
+                    borderColor = "#16a34a",
+                    backgroundColor = "rgba(22, 163, 74, 0.1)",
+                    tension = 0.3, fill = true
+                },
+                new {
+                    label = "Rejeitadas",
+                    data = metricas.PropostasTimeline.Select(t => t.Rejeitadas).ToArray(),
+                    borderColor = "#ef4444",
+                    backgroundColor = "rgba(239, 68, 68, 0.1)",
+                    tension = 0.3, fill = true
+                }
+            };
+            await JS.InvokeVoidAsync("carstoreChart.render",
+                "chartPropostasTimeline", "line", labelsTimeline, datasetsTimeline, commonOpts);
         }
     }
+
+    // ========== CATÁLOGO MODULAR DE GRÁFICOS (metricas.Graficos) ==========
+    // Um único caminho de render para qualquer entrada do catálogo — a aba
+    // Geral usa isso via seletor (troca o id, chama de novo); Oficina e
+    // Concessionária fixam um id por cartão. Adicionar um gráfico novo no
+    // DashboardService não exige nenhuma mudança aqui.
+
+    private async Task RenderizarGraficoSelecionado()
+        => await RenderizarGraficoPorId(graficoSelecionadoId, "chartAnaliseSelecionada");
+
+    private async Task RenderizarGraficoPorId(string graficoId, string canvasId)
+    {
+        var grafico = metricas?.Graficos.FirstOrDefault(g => g.Id == graficoId);
+        if (grafico is null) return;
+
+        var labels = grafico.Dados.Select(d => d.Rotulo).ToArray();
+        var valores = grafico.Dados.Select(d => d.Valor).ToArray();
+        var cores = labels.Select((_, i) => CorCategorica(labels[i], i)).ToArray();
+
+        var isBarra = grafico.TipoGrafico == "bar";
+        var datasets = new object[]
+        {
+            new { data = valores, backgroundColor = cores }
+        };
+
+        // Gráfico de barra aqui é sempre uma única série (uma métrica por
+        // categoria) — legenda não agrega nada, o título do cartão já diz o
+        // que é. Doughnut mantém a legenda: é ela que identifica cada fatia.
+        var opcoes = new
+        {
+            responsive = true,
+            maintainAspectRatio = false,
+            indexAxis = isBarra ? "y" : "x",
+            plugins = new { legend = new { display = !isBarra, position = "bottom" } }
+        };
+
+        await JS.InvokeVoidAsync("carstoreChart.render", canvasId, grafico.TipoGrafico, labels, datasets, opcoes);
+    }
+
+    /// <summary>
+    /// Paleta categórica validada (8 tons distinguíveis para daltonismo, na
+    /// ordem que passa nos pares adjacentes) — "Outros" sempre cinza neutro,
+    /// fora da rotação, para não competir com as categorias reais.
+    /// </summary>
+    private static readonly string[] CoresCategoricas =
+        { "#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948" };
+    private const string CorOutros = "#898781";
+
+    private static string CorCategorica(string rotulo, int indice)
+        => rotulo == "Outros" ? CorOutros : CoresCategoricas[indice % CoresCategoricas.Length];
 
     private (string[] labels, int[] dados, string[] cores) MontarOSDataset()
     {
         var corStatus = new Dictionary<string, string>
         {
-            ["Pendente"]      = "#eab308",
-            ["EmAndamento"]   = "#2563eb",
-            ["Finalizada"]    = "#16a34a",
-            ["Concluida"]     = "#16a34a",
-            ["Cancelada"]     = "#ef4444",
-            ["Pausada"]       = "#a855f7",
-            ["BuscandoPecasParaOrcamento"] = "#a855f7"
+            ["Pendente"]                    = "#eab308",
+            ["EmAnalise"]                   = "#f97316",
+            ["AguardandoCliente"]           = "#fbbf24",
+            ["Aprovada"]                    = "#0ea5e9",
+            ["EmAndamento"]                 = "#2563eb",
+            ["BuscandoPecasParaOrcamento"]  = "#a855f7",
+            ["Pausada"]                     = "#c026d3",
+            ["PagamentoPendente"]           = "#ea580c",
+            ["Finalizada"]                  = "#16a34a",
+            ["Entregue"]                    = "#0d9488",
+            ["Cancelada"]                   = "#ef4444"
         };
 
         var labels = metricas!.OrdensServicoPorStatus.Keys.ToArray();
         var dados = metricas.OrdensServicoPorStatus.Values.ToArray();
+        var cores = labels.Select(l => corStatus.TryGetValue(l, out var c) ? c : "#888888").ToArray();
+        return (labels, dados, cores);
+    }
+
+    private (string[] labels, int[] dados, string[] cores) MontarVeiculoStatusDataset()
+    {
+        var corStatus = new Dictionary<string, string>
+        {
+            ["EmPreparacao"] = "#fbbf24",
+            ["Disponivel"]   = "#16a34a",
+            ["Reservado"]    = "#eab308",
+            ["Vendido"]      = "#2563eb"
+        };
+
+        var labels = metricas!.VeiculosPorStatus.Keys.ToArray();
+        var dados = metricas.VeiculosPorStatus.Values.ToArray();
         var cores = labels.Select(l => corStatus.TryGetValue(l, out var c) ? c : "#888888").ToArray();
         return (labels, dados, cores);
     }
@@ -658,8 +947,12 @@
         try
         {
             foreach (var id in new[] {
-                "chartFaturamento6m", "chartReceitaDespesa", "chartOSStatus",
-                "chartOficina6m", "chartOSStatusOf", "chartConcessionaria6m"
+                "chartFaturamento6m", "chartAnaliseSelecionada", "chartComparacaoReceita",
+                "chartOficina6m", "chartOSStatusOf", "chartReceitaMecanico", "chartReceitaAcumulada12m",
+                "chartMecanicosEspecializacao", "chartServicosTipo", "chartMarcasVisitamOficina",
+                "chartEstoquePorSistema", "chartPrazoMedioServico",
+                "chartConcessionaria6m", "chartVeiculosStatus", "chartVendasMarca", "chartPropostasTimeline",
+                "chartModelosVendidos", "chartCoresVendidas", "chartConsignacaoLoja", "chartModosPagamento"
             })
             {
                 await JS.InvokeVoidAsync("carstoreChart.destroy", id);
@@ -675,6 +968,7 @@
     {
         "Pendente" => "tag tag-amarelo",
         "EmAndamento" => "tag tag-azul",
+        "PagamentoPendente" => "tag tag-laranja",
         "Finalizada" => "tag tag-verde",
         "Cancelada" => "tag tag-vermelho",
         _ => "tag"
@@ -683,9 +977,14 @@
 
 <style>
     .dash-page { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
-    .dash-header { margin-bottom: 24px; }
+    .dash-header { margin-bottom: 24px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .dash-titulo { font-size: 24px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px; }
     .dash-sub { font-size: 14px; color: #888; }
+    .btn-usuarios {
+        background: #1a1a1a; color: #fff; padding: 9px 18px; border-radius: 6px;
+        border: 0; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap;
+    }
+    .btn-usuarios:hover { background: #333; }
 
     .dash-abas {
         display: flex; gap: 4px; border-bottom: 1px solid #ddd;
@@ -698,6 +997,12 @@
     }
     .dash-aba:hover { color: #0a84ff; }
     .dash-aba-ativa { color: #0a84ff; border-bottom-color: #0a84ff; }
+
+    .banner-vencimento-consignacao {
+        background: #fff7ed; border: 0.5px solid #fed7aa; color: #9a3412;
+        border-radius: 8px; padding: 12px 16px; font-size: 0.85em; margin: 12px 0 20px;
+    }
+    .link-ver-consignacoes { color: #9a3412; font-weight: 600; margin-left: 8px; white-space: nowrap; }
 
     .capital-imobilizado-bloco { margin: 18px 0 20px; }
     .capital-card {
@@ -800,6 +1105,7 @@
     }
     .tag-amarelo  { background: #fef9c3; color: #854d0e; }
     .tag-azul     { background: #eff6ff; color: #1d4ed8; }
+    .tag-laranja  { background: #fff7ed; color: #c2410c; }
     .tag-verde    { background: #dcfce7; color: #166534; }
     .tag-vermelho { background: #fff5f5; color: #e02020; }
 
@@ -821,6 +1127,10 @@
         gap: 12px;
         text-decoration: none;
         color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        width: 100%;
         transition: border-color 0.2s, transform 0.15s;
     }
     .rel-card:hover { border-color: #2563eb; transform: translateY(-2px); }
@@ -898,6 +1208,26 @@
         position: relative;
         height: 280px;
     }
+
+    .analise-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+    }
+    .analise-header .grafico-titulo { margin-bottom: 0; }
+    .analise-select {
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 7px 10px;
+        font-size: 13px;
+        color: #1a1a1a;
+        background: #fff;
+        min-width: 260px;
+    }
+    .analise-select:focus { border-color: #0a84ff; outline: none; }
 
     @@media (max-width: 800px) {
         .metricas-grid { grid-template-columns: repeat(2, 1fr); }

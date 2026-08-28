@@ -1,14 +1,10 @@
-using System.Globalization;
-using System.Text;
 using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda;
 using CarStoreManager.Application.Interfaces;
-using CarStoreManager.Application.Interfaces.Sistema;
 using CarStoreManager.Application.Mappings.Concessionaria;
 using CarStoreManager.Domain.Entities.Concessionaria;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Interfaces.Repositories.Concessionaria;
-using CarStoreManager.Domain.Interfaces.Repositories.Sistema;
 using CarStoreManager.Domain.Repositories;
 
 namespace CarStoreManager.Application.Services;
@@ -17,9 +13,8 @@ public class PropostaVendaService : IPropostaVendaService
 {
     private readonly IPropostaVendaRepository _repository;
     private readonly IVeiculoVendaRepository _veiculoRepository;
+    private readonly IVeiculoConsignacaoRepository _consignacaoRepository;
     private readonly IClienteRepository _clienteRepository;
-    private readonly IConfiguracaoSistemaRepository _configRepository;
-    private readonly IEmailService _emailService;
     private readonly IVistoriaRepository _vistoriaRepository;
     private readonly ITermoEntregaRepository _termoRepository;
     private readonly IPagamentoPropostaRepository? _pagamentoRepository;
@@ -27,18 +22,16 @@ public class PropostaVendaService : IPropostaVendaService
     public PropostaVendaService(
         IPropostaVendaRepository repository,
         IVeiculoVendaRepository veiculoRepository,
+        IVeiculoConsignacaoRepository consignacaoRepository,
         IClienteRepository clienteRepository,
-        IConfiguracaoSistemaRepository configRepository,
-        IEmailService emailService,
         IVistoriaRepository vistoriaRepository,
         ITermoEntregaRepository termoRepository,
         IPagamentoPropostaRepository? pagamentoRepository = null)
     {
         _repository = repository;
         _veiculoRepository = veiculoRepository;
+        _consignacaoRepository = consignacaoRepository;
         _clienteRepository = clienteRepository;
-        _configRepository = configRepository;
-        _emailService = emailService;
         _vistoriaRepository = vistoriaRepository;
         _termoRepository = termoRepository;
         _pagamentoRepository = pagamentoRepository;
@@ -92,11 +85,23 @@ public class PropostaVendaService : IPropostaVendaService
                 var cli = await _clienteRepository.GetByIdAsync(p.GetClienteId());
                 if (cli is not null) dto.ClienteNome = cli.GetNome();
 
-                var veic = await _veiculoRepository.GetByIdAsync(p.GetVeiculoId());
-                if (veic is not null)
+                if (p.IsConsignado)
                 {
-                    dto.VeiculoMarca = veic.GetMarca();
-                    dto.VeiculoModelo = veic.GetModelo();
+                    var consig = await _consignacaoRepository.GetByIdAsync(p.GetVeiculoId());
+                    if (consig is not null)
+                    {
+                        dto.VeiculoMarca = consig.GetMarca();
+                        dto.VeiculoModelo = consig.GetModelo();
+                    }
+                }
+                else
+                {
+                    var veic = await _veiculoRepository.GetByIdAsync(p.GetVeiculoId());
+                    if (veic is not null)
+                    {
+                        dto.VeiculoMarca = veic.GetMarca();
+                        dto.VeiculoModelo = veic.GetModelo();
+                    }
                 }
             }
             catch { /* best-effort */ }
@@ -107,12 +112,24 @@ public class PropostaVendaService : IPropostaVendaService
 
     public async Task<Result<Guid>> AddAsync(CriarPropostaVendaDTO dto)
     {
-        var veiculo = await _veiculoRepository.GetByIdAsync(dto.VeiculoVendaId);
-        if (veiculo is null)
-            return Result<Guid>.Fail("Veículo não encontrado");
+        var isConsignado = dto.VeiculoEntidadeTipo == "VeiculoConsignacao";
 
-        if (veiculo.Disponibilidade != Domain.Enums.DisponibilidadeVeiculo.Disponivel)
-            return Result<Guid>.Fail("Veículo não está disponível para venda");
+        if (isConsignado)
+        {
+            var consignacao = await _consignacaoRepository.GetByIdAsync(dto.VeiculoVendaId);
+            if (consignacao is null)
+                return Result<Guid>.Fail("Veículo consignado não encontrado");
+            if (consignacao.Status != Domain.Enums.StatusConsignacao.Ativa)
+                return Result<Guid>.Fail("Consignação não está ativa — não é possível gerar proposta.");
+        }
+        else
+        {
+            var veiculo = await _veiculoRepository.GetByIdAsync(dto.VeiculoVendaId);
+            if (veiculo is null)
+                return Result<Guid>.Fail("Veículo não encontrado");
+            if (veiculo.Disponibilidade != Domain.Enums.DisponibilidadeVeiculo.Disponivel)
+                return Result<Guid>.Fail("Veículo não está disponível para venda");
+        }
 
         try
         {
@@ -186,32 +203,11 @@ public class PropostaVendaService : IPropostaVendaService
         if (await ExpirarSeNecessarioAsync(proposta))
             return Result.Fail("Proposta expirou.");
 
-        var cfg = await _configRepository.ObterAsync();
-        if (!cfg.FinanciadoraConfigurada())
-            return Result.Fail("Financiadora não está configurada. Acesse Configurações do sistema.");
-        if (!cfg.SmtpConfigurado())
-            return Result.Fail("SMTP não está configurado. Acesse Configurações do sistema.");
-
-        var veiculo = await _veiculoRepository.GetByIdAsync(proposta.VeiculoVendaId);
-        var cliente = await _clienteRepository.GetByIdAsync(proposta.ClienteId);
-        if (veiculo is null || cliente is null)
-            return Result.Fail("Cliente ou veículo não encontrado.");
-
         try
         {
-            // Persiste a transição PRIMEIRO — se o e-mail falhar, ainda marcamos
-            // a tentativa de solicitação. Admin pode reenviar manualmente.
             proposta.SolicitarFinanciamento();
             _repository.Update(proposta);
             await _repository.SaveChangesAsync();
-
-            var corpo = MontarEmailFinanciadora(proposta, veiculo, cliente, cfg.NomeFinanciadora);
-            var assunto = $"[CarStore] Solicitação de financiamento — {cliente.GetNome()} — Proposta {proposta.Id.ToString()[..8]}";
-            var envio = await _emailService.EnviarAsync(cfg.EmailFinanciadora, assunto, corpo, isHtml: true);
-
-            if (!envio.IsSuccess)
-                return Result.Fail($"Solicitação registrada, mas falha ao enviar e-mail: {envio.Error}");
-
             return Result.Ok();
         }
         catch (Exception ex) { return Result.Fail(ex.Message); }
@@ -246,9 +242,23 @@ public class PropostaVendaService : IPropostaVendaService
         {
             proposta.Aprovar();
 
-            var veiculo = await _veiculoRepository.GetByIdAsync(proposta.VeiculoVendaId);
-            veiculo?.MarcarComoVendido();
-            if (veiculo is not null) _veiculoRepository.Update(veiculo);
+            // Reserva o veículo assim que a proposta é aprovada — pra estoque
+            // próprio isso já é venda concluída (Vendido); pra consignado é só
+            // o primeiro passo do próprio ciclo de venda da consignação
+            // (VendidoAguardandoPagamento), concluído de fato só quando a
+            // proposta em si chegar em Concluida (ver AssinarTermoAsync).
+            if (proposta.IsConsignado)
+            {
+                var consignacao = await _consignacaoRepository.GetByIdAsync(proposta.VeiculoVendaId);
+                consignacao?.MarcarComoVendida();
+                if (consignacao is not null) _consignacaoRepository.Update(consignacao);
+            }
+            else
+            {
+                var veiculo = await _veiculoRepository.GetByIdAsync(proposta.VeiculoVendaId);
+                veiculo?.MarcarComoVendido();
+                if (veiculo is not null) _veiculoRepository.Update(veiculo);
+            }
 
             _repository.Update(proposta);
             await _repository.SaveChangesAsync();
@@ -399,6 +409,12 @@ public class PropostaVendaService : IPropostaVendaService
         var proposta = await _repository.GetByIdAsync(propostaId);
         if (proposta is null) return Result<string>.Fail("Proposta não encontrada.");
 
+        // Veículo consignado não tem TextoTermoPreliminar (esse campo é sobre
+        // o termo de entrega ao comprador; o TextoContrato do consignado é um
+        // documento diferente, entre a loja e o proprietário) — editor começa
+        // em branco, igual a um veículo próprio que nunca teve rascunho definido.
+        if (proposta.IsConsignado) return Result<string>.Ok("");
+
         var veiculo = await _veiculoRepository.GetByIdAsync(proposta.VeiculoVendaId);
         return Result<string>.Ok(veiculo?.TextoTermoPreliminar ?? "");
     }
@@ -490,6 +506,20 @@ public class PropostaVendaService : IPropostaVendaService
             proposta.Concluir();
             _termoRepository.Update(termo);
             _repository.Update(proposta);
+
+            // Venda de veículo consignado só conta como realmente concluída
+            // (dinheiro repassado ao proprietário) quando a proposta em si
+            // chega no fim do próprio funil — não antes.
+            if (proposta.IsConsignado)
+            {
+                var consignacao = await _consignacaoRepository.GetByIdAsync(proposta.VeiculoVendaId);
+                if (consignacao?.Status == Domain.Enums.StatusConsignacao.VendidoAguardandoPagamento)
+                {
+                    consignacao.ConcluirVenda();
+                    _consignacaoRepository.Update(consignacao);
+                }
+            }
+
             await _termoRepository.SaveChangesAsync();
             return Result.Ok();
         }
@@ -522,10 +552,6 @@ public class PropostaVendaService : IPropostaVendaService
         AssinaturaCpfCliente = t.AssinaturaCpfCliente,
         AssinaturaIp = t.AssinaturaIp
     };
-
-    public Task<Result> GerarFinanciamentoAsync(GerarFinanciamentoDTO dto)
-        => Task.FromResult(Result.Fail(
-            "Endpoint depreciado. Use DefinirModoPagamento + SolicitarFinanciamento + RegistrarRespostaFinanciadora."));
 
     public Task<Result> UpdateAsync(PropostaVendaDTO dto)
         => Task.FromResult(Result.Fail("Update direto não suportado — use as transições específicas."));
@@ -562,45 +588,5 @@ public class PropostaVendaService : IPropostaVendaService
                 alterada = true;
             }
         if (alterada) await _repository.SaveChangesAsync();
-    }
-
-    private static string MontarEmailFinanciadora(
-        PropostaVenda proposta,
-        Domain.Entities.Concessionaria.VeiculoVenda veiculo,
-        Domain.Entities.Cliente cliente,
-        string nomeFinanciadora)
-    {
-        var ci = CultureInfo.GetCultureInfo("pt-BR");
-        var sb = new StringBuilder();
-        sb.AppendLine("<html><body style='font-family: Arial, sans-serif; color:#222;'>");
-        sb.AppendLine($"<h2>Solicitação de simulação de financiamento</h2>");
-        sb.AppendLine($"<p>Prezados {nomeFinanciadora},</p>");
-        sb.AppendLine("<p>Solicitamos análise para o financiamento abaixo:</p>");
-
-        sb.AppendLine("<h3>Cliente</h3><table cellpadding='4'>");
-        sb.AppendLine($"<tr><td><b>Nome:</b></td><td>{cliente.GetNome()}</td></tr>");
-        sb.AppendLine($"<tr><td><b>CPF:</b></td><td>{cliente.GetCpf()}</td></tr>");
-        sb.AppendLine($"<tr><td><b>Telefone:</b></td><td>{cliente.GetTelefone()}</td></tr>");
-        sb.AppendLine($"<tr><td><b>E-mail:</b></td><td>{cliente.GetEmail()}</td></tr>");
-        sb.AppendLine("</table>");
-
-        sb.AppendLine("<h3>Veículo</h3><table cellpadding='4'>");
-        sb.AppendLine($"<tr><td><b>Modelo:</b></td><td>{veiculo.GetMarca()} {veiculo.GetModelo()}</td></tr>");
-        sb.AppendLine($"<tr><td><b>Ano:</b></td><td>{veiculo.GetAno()}</td></tr>");
-        sb.AppendLine($"<tr><td><b>Placa:</b></td><td>{veiculo.Placa}</td></tr>");
-        sb.AppendLine($"<tr><td><b>Renavam:</b></td><td>{veiculo.Renavam}</td></tr>");
-        sb.AppendLine("</table>");
-
-        sb.AppendLine("<h3>Valores da operação</h3><table cellpadding='4'>");
-        sb.AppendLine($"<tr><td><b>Valor do veículo:</b></td><td>{proposta.GetValorFinal().ToString("C", ci)}</td></tr>");
-        sb.AppendLine($"<tr><td><b>Entrada:</b></td><td>{proposta.GetEntrada().ToString("C", ci)}</td></tr>");
-        sb.AppendLine($"<tr><td><b>Valor a financiar:</b></td><td><b>{proposta.ValorLiquidoFinanciamento().ToString("C", ci)}</b></td></tr>");
-        sb.AppendLine("</table>");
-
-        sb.AppendLine($"<p>Proposta interna: <code>{proposta.Id}</code></p>");
-        sb.AppendLine("<p>Aguardamos retorno com simulação de parcelas, taxa e demais condições.</p>");
-        sb.AppendLine("<p>Atenciosamente,<br/>Equipe CarStore</p>");
-        sb.AppendLine("</body></html>");
-        return sb.ToString();
     }
 }

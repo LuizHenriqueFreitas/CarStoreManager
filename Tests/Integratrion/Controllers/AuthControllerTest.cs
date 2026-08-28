@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,10 @@ namespace CarStoreManager.Tests.Web.Controllers
             _authServiceMock = new Mock<IAuthService>();
             _factory = factory.WithWebHostBuilder(builder =>
             {
+                // "Testing" faz o Program.cs pular migrate/seed do banco real —
+                // esses testes mockam o service, nunca tocam o AppDbContext de verdade.
+                builder.UseEnvironment("Testing");
+
                 builder.ConfigureTestServices(services =>
                 {
                     // Remove a implementação real e injeta o mock

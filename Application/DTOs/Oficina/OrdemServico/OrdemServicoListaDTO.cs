@@ -11,4 +11,5 @@ public class OrdemServicoListaDTO
     public string Status { get; set; } = null!;
     public DateTime PrazoEstimado { get; set; }
     public decimal ValorTotal { get; set; }
+    public DateTime DataCriacao { get; set; }
 }

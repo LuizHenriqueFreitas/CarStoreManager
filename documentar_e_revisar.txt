@@ -1,0 +1,17 @@
+Domain:
+    VOs
+        Sku.cs
+        Renavam.cs
+        PartNumber.cs
+        Ncm.cs
+        Endereco.cs
+        ComissaoConsignacao.cs
+        CodigoOEM.cs
+        CodigoBarras.cs
+        Cnpj.cs
+        Cest.cs
+
+    Interfaces
+        ...
+
+    

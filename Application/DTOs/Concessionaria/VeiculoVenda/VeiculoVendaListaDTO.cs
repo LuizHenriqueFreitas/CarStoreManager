@@ -15,4 +15,5 @@ public class VeiculoVendaListaDTO
     public List<string> Acessorios { get; set; } = new();
     public decimal Valor { get; set; }
     public string? FotoPrincipal { get; set; }
+    public DateTime DataCriacao { get; set; }
 }

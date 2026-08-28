@@ -5,14 +5,11 @@ using FluentAssertions;
 using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda;
 using CarStoreManager.Application.Interfaces;
-using CarStoreManager.Application.Interfaces.Sistema;
 using CarStoreManager.Application.Mappings.Concessionaria;
 using CarStoreManager.Application.Services;
 using CarStoreManager.Domain.Entities.Concessionaria;
-using CarStoreManager.Domain.Entities.Sistema;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Interfaces.Repositories.Concessionaria;
-using CarStoreManager.Domain.Interfaces.Repositories.Sistema;
 using CarStoreManager.Domain.Repositories;
 using CarStoreManager.Domain.ValueObjects;
 
@@ -22,9 +19,8 @@ public class PropostaVendaServiceTests
 {
     private readonly Mock<IPropostaVendaRepository> _propostaRepoMock;
     private readonly Mock<IVeiculoVendaRepository> _veiculoRepoMock;
+    private readonly Mock<IVeiculoConsignacaoRepository> _consignacaoRepoMock;
     private readonly Mock<IClienteRepository> _clienteRepoMock;
-    private readonly Mock<IConfiguracaoSistemaRepository> _configRepoMock;
-    private readonly Mock<IEmailService> _emailServiceMock;
     private readonly Mock<IVistoriaRepository> _vistoriaRepoMock;
     private readonly Mock<ITermoEntregaRepository> _termoRepoMock;
     private readonly PropostaVendaService _service;
@@ -33,18 +29,15 @@ public class PropostaVendaServiceTests
     {
         _propostaRepoMock = new Mock<IPropostaVendaRepository>();
         _veiculoRepoMock = new Mock<IVeiculoVendaRepository>();
+        _consignacaoRepoMock = new Mock<IVeiculoConsignacaoRepository>();
         _clienteRepoMock = new Mock<IClienteRepository>();
-        _configRepoMock = new Mock<IConfiguracaoSistemaRepository>();
-        _emailServiceMock = new Mock<IEmailService>();
         _vistoriaRepoMock = new Mock<IVistoriaRepository>();
         _termoRepoMock = new Mock<ITermoEntregaRepository>();
-        _configRepoMock.Setup(r => r.ObterAsync()).ReturnsAsync(new ConfiguracaoSistema(true));
         _service = new PropostaVendaService(
             _propostaRepoMock.Object,
             _veiculoRepoMock.Object,
+            _consignacaoRepoMock.Object,
             _clienteRepoMock.Object,
-            _configRepoMock.Object,
-            _emailServiceMock.Object,
             _vistoriaRepoMock.Object,
             _termoRepoMock.Object);
     }
@@ -129,7 +122,7 @@ public class PropostaVendaServiceTests
         var veiculo = new VeiculoVenda("Marca", "Modelo", "Cor", "1.0", 2020, 10000, "ABC1234", "12345678900",
             TipoCambio.Manual, TipoCombustivel.Gasolina, 50000);
         var proposta = new PropostaVenda(Guid.NewGuid(), veiculo.Id, Guid.NewGuid(), 50000, 0);
-        proposta.DefinirModoPagamento(ModoPagamento.Dinheiro);
+        proposta.DefinirModoPagamento(ModoPagamento.Pix);
         _propostaRepoMock.Setup(r => r.GetByIdAsync(proposta.Id)).ReturnsAsync(proposta);
         _veiculoRepoMock.Setup(r => r.GetByIdAsync(veiculo.Id)).ReturnsAsync(veiculo);
         _propostaRepoMock.Setup(r => r.Update(It.IsAny<PropostaVenda>())).Verifiable();

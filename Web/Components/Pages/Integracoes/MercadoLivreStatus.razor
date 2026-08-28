@@ -1,0 +1,206 @@
+@page "/integracoes/mercadolivre"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@inject IMercadoLivreSincronizacaoService SincronizacaoService
+@inject NavigationManager Nav
+
+@using CarStoreManager.Application.Common
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Integracoes.MercadoLivre
+
+<div class="form-page">
+    <div class="page-header">
+        <h1 class="page-titulo">Integração — Mercado Livre</h1>
+    </div>
+
+    <p class="tipo-cadastro-nav">
+        <a href="/integracoes/mercadolivre/anuncios" data-tour="ml-link-anuncios">Ver anúncios publicados →</a>
+    </p>
+
+    @if (mensagemErroOAuth is not null)
+    {
+        <div class="erro-banner">@mensagemErroOAuth</div>
+    }
+    @if (mostrarSucessoConexao)
+    {
+        <div class="sucesso-banner">Conectado ao Mercado Livre com sucesso!</div>
+    }
+
+    @if (carregando)
+    {
+        <p class="loading">Carregando...</p>
+    }
+    else if (config is not null)
+    {
+        <div class="form-card" data-tour="ml-status-badge">
+            <h2 class="secao-titulo">Status da conexão</h2>
+            <div class="form-grid">
+                <div class="form-campo">
+                    <label class="campo-label">Status</label>
+                    <span class="badge @(config.Conectado ? "badge-verde" : "badge-cinza")">
+                        @(config.Conectado ? "Conectado" : "Desconectado")
+                    </span>
+                </div>
+                @if (config.Conectado)
+                {
+                    <div class="form-campo">
+                        <label class="campo-label">Conta conectada</label>
+                        <span>@config.EmailContaConectada</span>
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Conectado em</label>
+                        <span>@config.DataConexao?.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Token expira em</label>
+                        <span>@config.DataExpiracaoToken?.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="form-card" data-tour="ml-modo-operacao">
+            <h2 class="secao-titulo">Modo de operação</h2>
+            <p class="secao-sub">Definido em appsettings.json — alterar exige reiniciar a aplicação.</p>
+            <div class="form-grid">
+                <div class="form-campo">
+                    <label class="campo-label">Ambiente</label>
+                    <span class="badge badge-azul">@config.Ambiente</span>
+                </div>
+            </div>
+        </div>
+
+        @if (erro is not null)
+        {
+            <div class="erro-banner">@erro</div>
+        }
+
+        <div class="form-acoes">
+            @if (config.Conectado)
+            {
+                <button class="btn-cancelar" data-tour="ml-btn-desconectar" @onclick="Desconectar" disabled="@processando">Desconectar</button>
+            }
+            else
+            {
+                <button class="btn-salvar" data-tour="ml-btn-conectar" @onclick="Conectar" disabled="@processando">
+                    @(processando ? "Conectando..." : "Conectar ao Mercado Livre")
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private ConfiguracaoMercadoLivreDTO? config;
+    private bool carregando = true;
+    private bool processando = false;
+    private string? erro;
+    private string? mensagemErroOAuth;
+    private bool mostrarSucessoConexao;
+
+    protected override async Task OnInitializedAsync()
+    {
+        LerParametrosDeRetornoOAuth();
+        await CarregarConfiguracaoAsync();
+    }
+
+    private void LerParametrosDeRetornoOAuth()
+    {
+        var uri = new Uri(Nav.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        if (query["conectado"] == "1") mostrarSucessoConexao = true;
+        if (!string.IsNullOrWhiteSpace(query["erro"])) mensagemErroOAuth = query["erro"];
+    }
+
+    private async Task CarregarConfiguracaoAsync()
+    {
+        carregando = true;
+        var r = await SincronizacaoService.ObterConfiguracaoAsync();
+        config = r.IsSuccess ? r.Value : null;
+        carregando = false;
+    }
+
+    private async Task Conectar()
+    {
+        if (config is null) return;
+        processando = true;
+        erro = null;
+
+        var r = await SincronizacaoService.ObterUrlConexaoAsync(Guid.NewGuid().ToString("N"));
+        if (!r.IsSuccess)
+        {
+            erro = r.Error;
+            processando = false;
+            return;
+        }
+        Nav.NavigateTo(r.Value!, forceLoad: true);
+    }
+
+    private async Task Desconectar()
+    {
+        processando = true;
+        erro = null;
+        var r = await SincronizacaoService.DesconectarAsync();
+        if (!r.IsSuccess) erro = r.Error;
+        processando = false;
+        await CarregarConfiguracaoAsync();
+    }
+}
+
+<style>
+    .form-page { max-width: 800px; margin: 0 auto; padding: 24px; }
+    .page-header { margin-bottom: 8px; }
+    .page-titulo { font-size: 22px; font-weight: 500; }
+    .tipo-cadastro-nav { font-size: 12px; color: #888; margin: 0 0 20px; }
+    .tipo-cadastro-nav a { color: #e02020; text-decoration: none; }
+    .tipo-cadastro-nav a:hover { text-decoration: underline; }
+
+    .form-card {
+        background: #fff; border: 0.5px solid #e0e0e0; border-radius: 12px;
+        padding: 20px; margin-bottom: 16px;
+    }
+    .secao-titulo {
+        font-size: 14px; font-weight: 500; color: #1a1a1a;
+        margin-bottom: 6px; padding-bottom: 10px; border-bottom: 0.5px solid #eee;
+    }
+    .secao-sub { font-size: 12px; color: #888; margin-bottom: 12px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-campo { display: flex; flex-direction: column; gap: 6px; }
+    .campo-label { font-size: 12px; color: #555; font-weight: 500; }
+
+    .badge { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; width: fit-content; }
+    .badge-verde { background: #dcfce7; color: #166534; }
+    .badge-amarelo { background: #fef9c3; color: #854d0e; }
+    .badge-azul { background: #eff6ff; color: #1d4ed8; }
+    .badge-cinza { background: #f1f1f1; color: #666; }
+
+    .erro-banner {
+        background: #fff5f5; border: 0.5px solid #fca5a5; border-radius: 8px;
+        padding: 12px 16px; font-size: 13px; color: #e02020; margin-bottom: 16px;
+    }
+    .sucesso-banner {
+        background: #f0fdf4; border: 0.5px solid #86efac; border-radius: 8px;
+        padding: 12px 16px; font-size: 13px; color: #166534; margin-bottom: 16px;
+    }
+
+    .form-acoes { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+    .btn-cancelar {
+        background: #fff; border: 0.5px solid #ccc; border-radius: 8px;
+        padding: 10px 20px; font-size: 14px; cursor: pointer; color: #444;
+    }
+    .btn-salvar {
+        background: #e02020; color: #fff; border: none; border-radius: 8px;
+        padding: 10px 24px; font-size: 14px; font-weight: 500; cursor: pointer;
+    }
+    .btn-salvar:hover:not(:disabled) { background: #c01818; }
+    .btn-salvar:disabled, .btn-cancelar:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .loading { padding: 40px; text-align: center; color: #888; }
+
+    @@media (max-width: 800px) {
+        .form-grid { grid-template-columns: 1fr; }
+    }
+</style>

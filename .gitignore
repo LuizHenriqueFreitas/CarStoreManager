@@ -1,7 +1,6 @@
 # Build
 bin/
 obj/
-Properties/
 
 # Visual Studio
 .vs/
@@ -10,15 +9,19 @@ Properties/
 *.userosscache
 *.sln.docstates
 
-# VS Code
+# VS Code / Claude
 .vscode/
 .claude/
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
 
 # Logs
 *.log
 logs/
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
 
@@ -26,7 +29,6 @@ Thumbs.db
 *.cache
 *.pdb
 *.mdb
-.github
 
 # Publish
 publish/
@@ -35,16 +37,21 @@ publish/
 # Node (caso use libs JS no futuro)
 node_modules/
 
-# Local configs sensíveis
-appsettings.Development.json
+# Banco de dados local (SQLite) — recriado automaticamente no primeiro boot
+*.db
+*.db-shm
+*.db-wal
 
-# Rider / JetBrains
-.idea/
-*.sln.iml
+# Chaves do DataProtection — SEGREDO, nunca versionar.
+# Criptografam os tokens do Mercado Livre e os cookies de autenticação.
+Web/keys/
 
-# outros
+# Uploads de usuário — conteúdo de runtime, não código
+Web/wwwroot/uploads/*
+
+# Outros
 /Web/teste.http
-/Infrastructure/Migrations
-*.db*
-
 coverage.info
+/Geradores
+
+need_to_do.txt

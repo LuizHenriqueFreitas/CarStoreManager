@@ -130,7 +130,7 @@ namespace CarStoreManager.Tests.Integration.Repositories
         public async Task ObterPorStatusAsync_StatusExistente_RetornaFiltradas()
         {
             var aprovada = await SalvarProposta();
-            aprovada.DefinirModoPagamento(ModoPagamento.Dinheiro);
+            aprovada.DefinirModoPagamento(ModoPagamento.Pix);
             aprovada.Aprovar();
             await _context.SaveChangesAsync();
 

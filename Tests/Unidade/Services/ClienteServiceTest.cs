@@ -258,7 +258,7 @@ namespace CarStoreManager.Tests.Unidade.Services
                 "cliente@teste.com",
                 "11999999999",
                 "52998224725", // CPF válido
-                new CarStoreManager.Domain.ValueObjects.Endereco(
+                new CarStoreManager.Domain.Entities.Endereco(
                     "Rua das Flores", "100", null, "Centro", "São Paulo", "SP", "01001000")
             );
             typeof(Cliente).BaseType?.GetProperty("Id")?.SetValue(cliente, Guid.NewGuid());

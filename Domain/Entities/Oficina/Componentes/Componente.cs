@@ -60,7 +60,6 @@ public class Componente : Entity
     public decimal ValorVenda { get; private set; }
 
     // RELACIONAMENTOS
-    public ICollection<LoteComponente> Lotes { get; private set; } = new List<LoteComponente>();
     public ICollection<ComponenteEquivalente> EquivalenciasOriginais { get; private set; } = new List<ComponenteEquivalente>();
     public ICollection<ComponenteEquivalente> EquivalenciasRelacionadas { get; private set; } = new List<ComponenteEquivalente>();
 
@@ -270,22 +269,6 @@ public class Componente : Entity
     public void Desativar() => Ativo = false;
 
     // Métodos auxiliares para relacionamentos
-    public void AdicionarLote(LoteComponente lote)
-    {
-        if (lote == null) throw new ArgumentNullException(nameof(lote));
-        if (Lotes.Any(l => l.Id == lote.Id))
-            throw new InvalidOperationException("Este lote já está associado ao componente.");
-        Lotes.Add(lote);
-    }
-
-    public void RemoverLote(LoteComponente lote)
-    {
-        if (lote == null) throw new ArgumentNullException(nameof(lote));
-        if (!Lotes.Contains(lote))
-            throw new InvalidOperationException("O lote não pertence a este componente.");
-        Lotes.Remove(lote);
-    }
-
     public void AdicionarEquivalencia(Componente componenteEquivalente, TipoEquivalencia tipo)
     {
         if (componenteEquivalente == null) throw new ArgumentNullException(nameof(componenteEquivalente));

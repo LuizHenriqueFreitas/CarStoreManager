@@ -15,15 +15,17 @@ public class Despesa : Entity
     public Dinheiro Valor { get; private set; } = null!;
     public bool Ativa { get; private set; }
     public SetorDespesa Setor { get; private set; } = SetorDespesa.Geral;
+    public TipoDespesa Tipo { get; private set; } = TipoDespesa.Outros;
     public DateTime? DataUltimaAtualizacao { get; private set; }
 
     protected Despesa() { }
 
-    public Despesa(string nome, decimal valor, SetorDespesa setor = SetorDespesa.Geral)
+    public Despesa(string nome, decimal valor, SetorDespesa setor = SetorDespesa.Geral, TipoDespesa tipo = TipoDespesa.Outros)
     {
         AtualizarNome(nome);
         Valor = new Dinheiro(valor);
         Setor = setor;
+        Tipo = tipo;
         Ativa = true;
     }
 
@@ -51,6 +53,12 @@ public class Despesa : Entity
     public void AtualizarSetor(SetorDespesa setor)
     {
         Setor = setor;
+        DataUltimaAtualizacao = DateTime.UtcNow;
+    }
+
+    public void AtualizarTipo(TipoDespesa tipo)
+    {
+        Tipo = tipo;
         DataUltimaAtualizacao = DateTime.UtcNow;
     }
 

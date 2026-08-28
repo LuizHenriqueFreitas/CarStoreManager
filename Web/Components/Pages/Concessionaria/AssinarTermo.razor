@@ -44,9 +44,9 @@
         @RenderResumoPagamento(termo)
 
         <h2>Leia atentamente</h2>
-        <pre class="termo-texto">@termo.TextoTermo</pre>
+        <pre class="termo-texto" data-tour="assinar-texto-termo">@termo.TextoTermo</pre>
 
-        <div class="form-assinar">
+        <div class="form-assinar" data-tour="assinar-form">
             <h2>Assinatura eletrônica</h2>
             <p class="muted">
                 Conforme a Lei 14.063/2020, sua assinatura eletrônica simples
@@ -66,7 +66,7 @@
                     o documento e tenho ciência de que esta operação tem validade jurídica.</span>
             </label>
 
-            <button class="btn-assinar" @onclick="Assinar"
+            <button class="btn-assinar" data-tour="assinar-btn" @onclick="Assinar"
                     disabled="@(processando || !dto.Aceite || string.IsNullOrWhiteSpace(dto.NomeCliente) || string.IsNullOrWhiteSpace(dto.CpfCliente))">
                 @(processando ? "Registrando assinatura..." : "✍ Assinar termo")
             </button>

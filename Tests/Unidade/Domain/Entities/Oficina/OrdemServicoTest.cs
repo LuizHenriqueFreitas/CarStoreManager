@@ -136,12 +136,12 @@ public class OrdemServicoTest
     }
 
     [Fact]
-    public void Finalizar_StatusEmAndamento_AlteraParaFinalizada()
+    public void Finalizar_StatusEmAndamento_AlteraParaPagamentoPendente()
     {
         var ordem = CriarOrdemServicoValida();
         ordem.Iniciar(); // pendente -> em andamento
         ordem.Finalizar();
-        ordem.Status.Should().Be(StatusOrdemServico.Finalizada);
+        ordem.Status.Should().Be(StatusOrdemServico.PagamentoPendente);
     }
 
     [Theory]
@@ -154,6 +154,30 @@ public class OrdemServicoTest
         ordem.GetType().GetProperty(nameof(ordem.Status))!.SetValue(ordem, statusInicial);
 
         Action act = () => ordem.Finalizar();
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Status*");
+    }
+
+    [Fact]
+    public void ConfirmarPagamentoCompleto_StatusPagamentoPendente_AlteraParaFinalizada()
+    {
+        var ordem = CriarOrdemServicoValida();
+        ordem.Iniciar();
+        ordem.Finalizar(); // em andamento -> pagamento pendente
+        ordem.ConfirmarPagamentoCompleto();
+        ordem.Status.Should().Be(StatusOrdemServico.Finalizada);
+    }
+
+    [Theory]
+    [InlineData(StatusOrdemServico.Pendente)]
+    [InlineData(StatusOrdemServico.EmAndamento)]
+    [InlineData(StatusOrdemServico.Finalizada)]
+    [InlineData(StatusOrdemServico.Cancelada)]
+    public void ConfirmarPagamentoCompleto_StatusDiferenteDePagamentoPendente_LancaInvalidOperationException(StatusOrdemServico statusInicial)
+    {
+        var ordem = CriarOrdemServicoValida();
+        ordem.GetType().GetProperty(nameof(ordem.Status))!.SetValue(ordem, statusInicial);
+
+        Action act = () => ordem.ConfirmarPagamentoCompleto();
         act.Should().Throw<InvalidOperationException>().WithMessage("*Status*");
     }
 

@@ -22,6 +22,7 @@ public class Cliente : Entity
     public Email Email { get; private set; } = null!;
     public Telefone Telefone { get; private set; } = null!;
     public Cpf Cpf { get; private set; } = null!;
+    public Guid EnderecoId { get; private set; }
     public Endereco Endereco { get; private set; } = null!;
 
     protected Cliente() { }
@@ -33,6 +34,7 @@ public class Cliente : Entity
         Telefone = new Telefone(telefone);
         Cpf = new Cpf(cpf);
         Endereco = endereco ?? throw new ArgumentNullException(nameof(endereco), "Endereço é obrigatório");
+        EnderecoId = Endereco.Id;
     }
 
     //metodos getters de cada atributo
@@ -77,8 +79,15 @@ public class Cliente : Entity
         AtualizarClienteEmail(email);
     }
 
-    public void AtualizarClienteEndereco(Endereco endereco)
+    public void AtualizarClienteEndereco(
+        string logradouro,
+        string numero,
+        string? complemento,
+        string bairro,
+        string cidade,
+        string uf,
+        string cep)
     {
-        Endereco = endereco ?? throw new ArgumentNullException(nameof(endereco), "Endereço é obrigatório");
+        Endereco.AtualizarDados(logradouro, numero, complemento, bairro, cidade, uf, cep);
     }
 }

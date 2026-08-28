@@ -29,7 +29,8 @@ public static class MecanicoMapping
             Id = entity.Id,
             Nome = entity.GetNome(),
             Especialidade = entity.GetEspecialidade(),
-            Nivel = entity.GetNivelExperiencia()
+            Nivel = entity.GetNivelExperiencia(),
+            DataCriacao = entity.DataCriacao
         };
     }
 

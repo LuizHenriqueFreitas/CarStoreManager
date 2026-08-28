@@ -28,13 +28,6 @@ public class ConfiguracoesController : ControllerBase
         return r.IsSuccess ? NoContent() : BadRequest(r.Error);
     }
 
-    [HttpPost("testar-email")]
-    public async Task<IActionResult> TestarEmail([FromBody] TestarEmailDTO dto)
-    {
-        var r = await _service.TestarEnvioAsync(dto.EmailDestino);
-        return r.IsSuccess ? NoContent() : BadRequest(r.Error);
-    }
-
     [HttpGet("margens")]
     public async Task<IActionResult> ObterMargens()
     {
@@ -46,6 +39,20 @@ public class ConfiguracoesController : ControllerBase
     public async Task<IActionResult> AtualizarMargens([FromBody] MargensDTO dto)
     {
         var r = await _service.AtualizarMargensAsync(dto);
+        return r.IsSuccess ? NoContent() : BadRequest(r.Error);
+    }
+
+    [HttpGet("templates")]
+    public async Task<IActionResult> ObterTemplates()
+    {
+        var r = await _service.ObterTemplatesAsync();
+        return r.IsSuccess ? Ok(r.Value) : BadRequest(r.Error);
+    }
+
+    [HttpPut("templates")]
+    public async Task<IActionResult> AtualizarTemplates([FromBody] TemplatesDocumentosDTO dto)
+    {
+        var r = await _service.AtualizarTemplatesAsync(dto);
         return r.IsSuccess ? NoContent() : BadRequest(r.Error);
     }
 }

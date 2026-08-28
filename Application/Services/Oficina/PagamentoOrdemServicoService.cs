@@ -45,6 +45,19 @@ public class PagamentoOrdemServicoService : IPagamentoOrdemServicoService
                 dto.ReferenciaExterna, dto.Observacoes);
 
             await _pagamentoRepo.AddAsync(pagamento);
+
+            // Saldo zerou com esse pagamento — confirma a OS como paga (sai de
+            // "Pagamento Pendente" pra "Finalizada", liberando a entrega). Só
+            // mexe no Status se ela realmente estiver esperando pagamento; se
+            // já foi confirmada por outro caminho ou está em outro status, não
+            // reabre nem força transição indevida.
+            var totalPago = pagosAtuais + dto.Valor;
+            if (totalPago >= ordem.GetValorTotal() && ordem.Status == StatusOrdemServico.PagamentoPendente)
+            {
+                ordem.ConfirmarPagamentoCompleto();
+                _ordemRepo.Update(ordem);
+            }
+
             await _pagamentoRepo.SaveChangesAsync();
 
             return Result<PagamentoDTO>.Ok(MapToDto(pagamento));

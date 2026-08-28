@@ -8,6 +8,7 @@
 
 @inject IOrdemServicoService OrdemService
 @inject NavigationManager Nav
+@inject CarStoreManager.Web.Tours.TourEstadoService TourEstado
 
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Oficina.OrdemServico
@@ -15,16 +16,23 @@
 
 <PageTitle>Consultar ordem de serviço</PageTitle>
 
+<CarStoreManager.Web.Components.Shared.TourGuiado />
+
 <div class="consulta-page">
     <div class="consulta-topo">
         <div class="logo-topo">
             <span class="logo-texto">AUTO</span><span class="logo-destaque">STORE</span>
         </div>
-        <a class="link-login" href="/login">Acesso interno →</a>
+        <div class="topo-acoes">
+            <button class="tour-btn-ajuda" @onclick="AbrirTourAsync" title="Ajuda desta tela" aria-label="Ajuda desta tela">
+                ?
+            </button>
+            <a class="link-login" href="/login">Acesso interno →</a>
+        </div>
     </div>
 
     <div class="consulta-container">
-        <div class="busca-card">
+        <div class="busca-card" data-tour="consulta-busca">
             <h1 class="busca-titulo">Acompanhe sua ordem de serviço</h1>
             <p class="busca-sub">
                 Digite o código de 8 caracteres que você recebeu da oficina
@@ -62,7 +70,7 @@
                 </div>
 
                 <!-- Trilha visual do andamento -->
-                <div class="trilha">
+                <div class="trilha" data-tour="consulta-trilha">
                     @foreach (var etapa in trilha)
                     {
                         <div class="trilha-etapa @TrilhaClass(etapa.status)">
@@ -76,7 +84,7 @@
                 </div>
 
                 <!-- Informações da OS -->
-                <div class="info-card">
+                <div class="info-card" data-tour="consulta-info">
                     <h2 class="card-titulo">Informações do serviço</h2>
                     <div class="info-grid">
                         <div class="info-item">
@@ -93,7 +101,7 @@
                         </div>
                         <div class="info-item">
                             <span class="info-label">Prazo estimado</span>
-                            <span class="info-val @(os.PrazoEstimado < DateTime.Now && os.Status != "Finalizada" && os.Status != "Entregue" && os.Status != "Cancelada" ? "prazo-vencido" : "")">
+                            <span class="info-val @(os.PrazoEstimado < DateTime.Now && os.Status != "PagamentoPendente" && os.Status != "Finalizada" && os.Status != "Entregue" && os.Status != "Cancelada" ? "prazo-vencido" : "")">
                                 @os.PrazoEstimado.ToLocalTime().ToString("dd/MM/yyyy")
                             </span>
                         </div>
@@ -107,7 +115,7 @@
                 </div>
 
                 <!-- Checklist do serviço -->
-                <div class="info-card">
+                <div class="info-card" data-tour="consulta-checklist">
                     <div class="card-header-row">
                         <h2 class="card-titulo">Etapas do serviço</h2>
                         @if (os.Checklist.Count > 0)
@@ -208,6 +216,8 @@
         if (e.Key == "Enter") await Buscar();
     }
 
+    private async Task AbrirTourAsync() => await TourEstado.SolicitarTourAsync();
+
     private void AtualizarTrilha()
     {
         if (os is null) return;
@@ -221,6 +231,7 @@
             "Aprovada"                     => 4,
             "EmAndamento"                  => 5,
             "Pausada"                      => 5,
+            "PagamentoPendente"            => 6,
             "Finalizada"                   => 6,
             "Entregue"                     => 6,
             "Cancelada"                    => 0,
@@ -269,6 +280,7 @@
         "Aprovada"                   => "Aprovada — pronta para iniciar",
         "EmAndamento"                => "Em andamento",
         "Pausada"                    => "Pausada — aguardando você",
+        "PagamentoPendente"          => "Serviço concluído — pagamento pendente",
         "Finalizada"                 => "Serviço concluído",
         "Entregue"                   => "Entregue",
         "Cancelada"                  => "Cancelada",
@@ -282,6 +294,7 @@
         "AguardandoCliente" or "Pausada"           => "status-aguardando",
         "Aprovada"                                 => "status-aprovada",
         "EmAndamento"                              => "status-andamento",
+        "PagamentoPendente"                        => "status-pagamento-pendente",
         "Finalizada" or "Entregue"                 => "status-finalizada",
         "Cancelada"                                => "status-cancelada",
         _                                          => "status-pendente"
@@ -341,6 +354,24 @@
         transition: color 0.2s;
     }
     .link-login:hover { color: #fff; }
+
+    .topo-acoes { display: flex; align-items: center; gap: 14px; }
+
+    /* Botão de ajuda — página sem NavBar (usa LoginLayout), então o botão e
+       o TourGuiado ficam embutidos aqui mesmo, junto do topo escuro. */
+    .tour-btn-ajuda {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 0.5px solid #555;
+        background: transparent;
+        color: #ccc;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .tour-btn-ajuda:hover { background: #2a2a2a; color: #fff; border-color: #888; }
+    .tour-btn-ajuda:focus { outline: 2px solid #e02020; outline-offset: 2px; }
 
     .consulta-container {
         max-width: 860px;
@@ -466,6 +497,7 @@
     .status-aprovada   { background: #ddd6fe; color: #5b21b6; }
     .status-andamento  { background: #dbeafe; color: #1d4ed8; }
     .status-finalizada { background: #dcfce7; color: #15803d; }
+    .status-pagamento-pendente { background: #fff7ed; color: #c2410c; font-weight: 600; }
     .status-cancelada  { background: #fff5f5; color: #e02020; }
 
     .trilha {

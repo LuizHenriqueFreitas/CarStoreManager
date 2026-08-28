@@ -1,0 +1,413 @@
+@namespace CarStoreManager.Web.Components.Shared
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject TourEstadoService TourEstado
+@using CarStoreManager.Web.Tours
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.JSInterop
+
+@* Instanciado uma vez em MainLayout, e mais uma vez, embutido diretamente na
+   própria página, em Login/Consulta/AssinarTermo (que não usam MainLayout).
+   Cada instância escuta o mesmo TourEstadoService — ver comentário na classe
+   de serviço para o porquê de não ser CascadingValue. *@
+
+@if (_avisoSemTour)
+{
+    <div class="tour-aviso-sem-tour" role="status">Esta tela ainda não tem um tour guiado cadastrado.</div>
+}
+
+@if (_visivel && _tour is not null && _passosValidos.Count > 0)
+{
+    <div class="tour-bloqueio-clique" @onclick="EncerrarAsync"></div>
+
+    @if (!_centralizado)
+    {
+        <div class="tour-destaque" style="@EstiloDestaque()"></div>
+    }
+
+    <div class="@(_centralizado ? "tour-balao-centralizado" : "tour-balao")"
+         style="@(_centralizado ? "" : EstiloBalao())"
+         role="dialog" aria-modal="true" aria-label="@PassoAtual.Titulo"
+         tabindex="-1" @ref="_balaoRef">
+        <div class="tour-balao-header">
+            <span class="tour-contador">@(_indice + 1) de @_passosValidos.Count</span>
+            <button class="tour-fechar" @onclick="EncerrarAsync" aria-label="Fechar tour" title="Fechar (Esc)">×</button>
+        </div>
+        <h3 class="tour-titulo">@PassoAtual.Titulo</h3>
+        <p class="tour-texto">@PassoAtual.Texto</p>
+        <div class="tour-acoes">
+            <button class="tour-btn-pular" @onclick="PularAsync">Pular</button>
+            <div class="tour-acoes-nav">
+                @if (_indice > 0)
+                {
+                    <button class="tour-btn-anterior" @onclick="AnteriorAsync">Anterior</button>
+                }
+                <button class="tour-btn-proximo" @onclick="ProximoAsync">
+                    @(_indice == _passosValidos.Count - 1 ? "Concluir" : "Próximo")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _visivel;
+    private bool _avisoSemTour;
+    private TourDaPagina? _tour;
+    private List<PassoTour> _passosValidos = new();
+    private int _indice;
+    private MedidaElemento? _medida;
+    private double _top;
+    private double _left;
+    private bool _centralizado;
+    private ElementReference _balaoRef;
+    private DotNetObjectReference<TourGuiado>? _dotNetRef;
+
+    private PassoTour PassoAtual => _passosValidos[_indice];
+
+    protected override void OnInitialized()
+    {
+        _dotNetRef = DotNetObjectReference.Create(this);
+        TourEstado.OnSolicitarTour += HandleSolicitarTourAsync;
+        Navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    private Task HandleSolicitarTourAsync() => IniciarAsync();
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // Navegar com o tour aberto encerra ele — o usuário não terminou nem
+        // pulou, só foi pra outro lugar.
+        if (_visivel)
+            _ = InvokeAsync(() => EncerrarInternoAsync());
+    }
+
+    /// <summary>Inicia o tour da rota atual — chamado pelo botão de ajuda (via TourEstadoService).</summary>
+    public async Task IniciarAsync()
+    {
+        var tour = RegistroDeTours.ObterPorRota(CaminhoAtual());
+
+        if (tour is null)
+        {
+            // Defesa: todas as rotas deveriam ter tour registrado, mas se uma
+            // ficar de fora, avisa em vez de travar numa tela vazia.
+            _avisoSemTour = true;
+            StateHasChanged();
+            await Task.Delay(2500);
+            _avisoSemTour = false;
+            StateHasChanged();
+            return;
+        }
+
+        _tour = tour;
+        _passosValidos = await FiltrarPassosValidosAsync(tour.Passos);
+        if (_passosValidos.Count == 0) return; // não deveria acontecer — todo tour tem ao menos a introdução (sem seletor)
+
+        _indice = 0;
+        _visivel = true;
+        await JS.InvokeVoidAsync("tourGuiado.travarScroll", true);
+        await JS.InvokeVoidAsync("tourGuiado.registrarTeclado", _dotNetRef);
+        await JS.InvokeVoidAsync("tourGuiado.registrarResize", _dotNetRef);
+        await AtualizarPassoAsync();
+    }
+
+    /// <summary>
+    /// Mede cada passo com seletor uma vez, no início do tour, e descarta os
+    /// que não existem no DOM agora (botão só de admin, seção que só aparece
+    /// com dados, etc.) — a numeração já sai certa desde o primeiro passo.
+    /// </summary>
+    private async Task<List<PassoTour>> FiltrarPassosValidosAsync(IReadOnlyList<PassoTour> passos)
+    {
+        var validos = new List<PassoTour>();
+        foreach (var p in passos)
+        {
+            if (p.Seletor is null) { validos.Add(p); continue; }
+            var m = await JS.InvokeAsync<MedidaElemento>("tourGuiado.medir", p.Seletor);
+            if (m.Existe) validos.Add(p);
+        }
+        return validos;
+    }
+
+    private async Task AtualizarPassoAsync()
+    {
+        var passo = PassoAtual;
+        _centralizado = passo.Seletor is null;
+
+        if (!_centralizado)
+        {
+            var medida = await JS.InvokeAsync<MedidaElemento>("tourGuiado.medir", passo.Seletor);
+            if (!medida.Existe)
+            {
+                // Defensivo: já filtramos no início do tour, mas se o elemento
+                // sumiu entre então e agora (dado condicional mudou no meio do
+                // tour), pula pro próximo em vez de destacar o vazio.
+                if (_indice < _passosValidos.Count - 1) { _indice++; await AtualizarPassoAsync(); }
+                else await EncerrarInternoAsync();
+                return;
+            }
+
+            // Destrava só pra rolar até o alvo — com o scroll travado o tempo
+            // todo, scrollIntoView não teria overflow nenhum pra mover.
+            await JS.InvokeVoidAsync("tourGuiado.travarScroll", false);
+            await JS.InvokeVoidAsync("tourGuiado.rolarAte", passo.Seletor);
+            await JS.InvokeVoidAsync("tourGuiado.travarScroll", true);
+
+            _medida = await JS.InvokeAsync<MedidaElemento>("tourGuiado.medir", passo.Seletor);
+            (_top, _left) = CalcularPosicaoBalao(_medida, passo.Posicao);
+        }
+
+        StateHasChanged();
+        await Task.Delay(30);
+        await FocarBalaoAsync();
+    }
+
+    private async Task FocarBalaoAsync()
+    {
+        try { await _balaoRef.FocusAsync(); }
+        catch { /* balão pode não estar montado ainda num re-render raro — sem risco, só perde o foco automático desta vez */ }
+    }
+
+    private Task ProximoAsync()
+    {
+        if (_indice >= _passosValidos.Count - 1)
+            return EncerrarInternoAsync();
+
+        _indice++;
+        return AtualizarPassoAsync();
+    }
+
+    private Task AnteriorAsync()
+    {
+        if (_indice <= 0) return Task.CompletedTask;
+        _indice--;
+        return AtualizarPassoAsync();
+    }
+
+    private Task PularAsync() => EncerrarInternoAsync();
+
+    private Task EncerrarAsync() => EncerrarInternoAsync();
+
+    private async Task EncerrarInternoAsync()
+    {
+        if (!_visivel) return;
+        _visivel = false;
+
+        await JS.InvokeVoidAsync("tourGuiado.travarScroll", false);
+        await JS.InvokeVoidAsync("tourGuiado.pararTeclado");
+        await JS.InvokeVoidAsync("tourGuiado.pararResize");
+        await JS.InvokeVoidAsync("tourGuiado.focarBotaoAjuda");
+
+        _tour = null;
+        _passosValidos = new();
+        _indice = 0;
+        _medida = null;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public Task TratarTeclaJs(string tecla)
+    {
+        if (!_visivel) return Task.CompletedTask;
+        return tecla switch
+        {
+            "Escape" => EncerrarAsync(),
+            "ArrowRight" => ProximoAsync(),
+            "ArrowLeft" => AnteriorAsync(),
+            _ => Task.CompletedTask
+        };
+    }
+
+    [JSInvokable]
+    public async Task RemedirPassoAtual()
+    {
+        if (!_visivel || _centralizado) return;
+        var m = await JS.InvokeAsync<MedidaElemento>("tourGuiado.medir", PassoAtual.Seletor);
+        if (m.Existe)
+        {
+            _medida = m;
+            (_top, _left) = CalcularPosicaoBalao(m, PassoAtual.Posicao);
+            StateHasChanged();
+        }
+    }
+
+    private string CaminhoAtual()
+    {
+        var relativo = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var semQuery = relativo.Split('?')[0].Split('#')[0];
+        return "/" + semQuery;
+    }
+
+    /// <summary>
+    /// Escolhe o lado com mais espaço livre no viewport quando a posição é
+    /// "auto" (dá preferência a abaixo/acima, mais comum em formulários
+    /// verticais), depois recorta (clamp) pra nunca deixar o balão sair da
+    /// tela, com 12px de margem das bordas.
+    /// </summary>
+    private static (double top, double left) CalcularPosicaoBalao(MedidaElemento m, string posicaoPreferida)
+    {
+        const double larguraBalao = 360;
+        const double alturaBalaoEstimada = 280; // CSS usa max-width, altura varia com o texto — 3 frases podem quebrar em várias linhas, estimativa generosa pro clamp
+        const double margem = 12;
+        const double folga = 10;
+
+        var posicao = posicaoPreferida;
+        if (posicao == "auto")
+        {
+            var espacoAbaixo = m.ScrollY + m.ViewportHeight - (m.Top + m.Height);
+            var espacoAcima = m.Top - m.ScrollY;
+            var espacoDireita = m.ViewportWidth - (m.Left + m.Width);
+            var espacoEsquerda = m.Left;
+
+            if (espacoAbaixo >= alturaBalaoEstimada + folga) posicao = "abaixo";
+            else if (espacoAcima >= alturaBalaoEstimada + folga) posicao = "acima";
+            else if (espacoDireita >= larguraBalao + folga) posicao = "direita";
+            else if (espacoEsquerda >= larguraBalao + folga) posicao = "esquerda";
+            else
+            {
+                // Elemento ocupa quase a tela toda — nenhum lado tem espaço
+                // suficiente. Escolhe o lado com mais espaço livre em vez de
+                // cair sempre em "abaixo"; o clamp final ainda garante que o
+                // balão não saia da tela.
+                posicao = "abaixo";
+                var maiorEspaco = espacoAbaixo;
+                if (espacoAcima > maiorEspaco) { maiorEspaco = espacoAcima; posicao = "acima"; }
+                if (espacoDireita > maiorEspaco) { maiorEspaco = espacoDireita; posicao = "direita"; }
+                if (espacoEsquerda > maiorEspaco) { maiorEspaco = espacoEsquerda; posicao = "esquerda"; }
+            }
+        }
+
+        double top, left;
+        switch (posicao)
+        {
+            case "acima":
+                top = m.Top - alturaBalaoEstimada - folga;
+                left = m.Left + m.Width / 2 - larguraBalao / 2;
+                break;
+            case "esquerda":
+                top = m.Top + m.Height / 2 - alturaBalaoEstimada / 2;
+                left = m.Left - larguraBalao - folga;
+                break;
+            case "direita":
+                top = m.Top + m.Height / 2 - alturaBalaoEstimada / 2;
+                left = m.Left + m.Width + folga;
+                break;
+            default: // abaixo
+                top = m.Top + m.Height + folga;
+                left = m.Left + m.Width / 2 - larguraBalao / 2;
+                break;
+        }
+
+        left = Math.Max(margem, Math.Min(left, m.ViewportWidth - larguraBalao - margem));
+        top = Math.Max(m.ScrollY + margem, Math.Min(top, m.ScrollY + m.ViewportHeight - alturaBalaoEstimada - margem));
+
+        return (top, left);
+    }
+
+    private string EstiloDestaque()
+    {
+        if (_medida is null || !_medida.Existe) return "display:none;";
+        const double folga = 4;
+        var top = _medida.Top - folga;
+        var left = _medida.Left - folga;
+        var width = _medida.Width + folga * 2;
+        var height = _medida.Height + folga * 2;
+        return $"top:{Fmt(top)}px; left:{Fmt(left)}px; width:{Fmt(width)}px; height:{Fmt(height)}px;";
+    }
+
+    private string EstiloBalao() => $"top:{Fmt(_top)}px; left:{Fmt(_left)}px;";
+
+    private static string Fmt(double v) => v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    public async ValueTask DisposeAsync()
+    {
+        TourEstado.OnSolicitarTour -= HandleSolicitarTourAsync;
+        Navigation.LocationChanged -= HandleLocationChanged;
+        try
+        {
+            await JS.InvokeVoidAsync("tourGuiado.pararTeclado");
+            await JS.InvokeVoidAsync("tourGuiado.pararResize");
+            await JS.InvokeVoidAsync("tourGuiado.travarScroll", false);
+        }
+        catch { /* circuito pode já estar encerrando */ }
+        _dotNetRef?.Dispose();
+    }
+}
+
+<style>
+    .tour-bloqueio-clique {
+        position: fixed;
+        inset: 0;
+        z-index: 9990;
+        background: transparent;
+    }
+
+    .tour-destaque {
+        position: absolute;
+        z-index: 9991;
+        border: 2px solid #e02020;
+        border-radius: 6px;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+        pointer-events: none;
+        transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+    }
+
+    .tour-balao, .tour-balao-centralizado {
+        position: absolute;
+        z-index: 9992;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+        max-width: 360px;
+        padding: 18px 20px;
+    }
+    .tour-balao { transition: top 0.25s ease, left 0.25s ease; }
+    .tour-balao-centralizado {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    .tour-balao:focus, .tour-balao-centralizado:focus {
+        outline: 2px solid #0a84ff;
+        outline-offset: 2px;
+    }
+
+    .tour-balao-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .tour-contador { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+    .tour-fechar { background: none; border: none; font-size: 18px; color: #888; cursor: pointer; line-height: 1; padding: 0 4px; }
+    .tour-fechar:hover { color: #1a1a1a; }
+
+    .tour-titulo { font-size: 15px; font-weight: 600; margin: 0 0 8px; color: #1a1a1a; }
+    .tour-texto { font-size: 13px; color: #444; line-height: 1.5; margin: 0 0 16px; }
+
+    .tour-acoes { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .tour-btn-pular { background: none; border: none; color: #888; font-size: 13px; cursor: pointer; padding: 6px 4px; }
+    .tour-btn-pular:hover { color: #444; text-decoration: underline; }
+    .tour-acoes-nav { display: flex; gap: 8px; }
+    .tour-btn-anterior { background: #fff; border: 0.5px solid #ccc; border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; color: #444; }
+    .tour-btn-anterior:hover { background: #f5f5f5; }
+    .tour-btn-proximo { background: #e02020; color: #fff; border: none; border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 500; cursor: pointer; }
+    .tour-btn-proximo:hover { background: #c01818; }
+
+    .tour-aviso-sem-tour {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+        background: #fff7ed;
+        border: 0.5px solid #fed7aa;
+        color: #9a3412;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    @@media (max-width: 480px) {
+        .tour-balao, .tour-balao-centralizado {
+            max-width: calc(100vw - 24px);
+        }
+        .tour-balao { left: 12px !important; }
+    }
+</style>

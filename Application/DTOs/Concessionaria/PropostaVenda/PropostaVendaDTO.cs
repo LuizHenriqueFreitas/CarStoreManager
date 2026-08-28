@@ -5,6 +5,7 @@ public class PropostaVendaDTO
     public Guid Id { get; set; }
     public Guid VendedorId { get; set; }
     public Guid VeiculoVendaId { get; set; }
+    public string VeiculoEntidadeTipo { get; set; } = "VeiculoVenda";
     public Guid ClienteId { get; set; }
     public decimal ValorBase { get; set; }
     public decimal DescontoPercentual { get; set; }

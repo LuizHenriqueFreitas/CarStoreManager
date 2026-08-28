@@ -5,12 +5,14 @@
 
 @inject IVeiculoVendaService VeiculoService
 @inject IFotoService FotoService
+@inject IConfiguracaoSistemaService ConfigService
 @inject NavigationManager Nav
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthState
 
 @using CarStoreManager.Application.Common
 @using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.Interfaces.Sistema
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
 @using CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
@@ -20,13 +22,15 @@
 
 <div class="form-page">
     <div class="page-header">
-        <button class="btn-voltar" @onclick='() => Nav.NavigateTo("/concessionaria")'>
-            ← Voltar
-        </button>
         <h1 class="page-titulo">Cadastrar veículo</h1>
     </div>
 
-    <div class="form-card">
+    <p class="tipo-cadastro-nav">
+        Veículo da loja ·
+        <a href="/concessionaria/veiculo-consignado/novo">cadastrar veículo consignado</a>
+    </p>
+
+    <div class="form-card" data-tour="veiculo-novo-identificacao">
         <h2 class="secao-titulo">Identificação do veículo</h2>
         <div class="form-grid">
             <div class="form-campo">
@@ -73,7 +77,7 @@
         </div>
     </div>
 
-    <div class="form-card">
+    <div class="form-card" data-tour="veiculo-novo-caracteristicas">
         <h2 class="secao-titulo">Características</h2>
         <div class="form-grid">
             <div class="form-campo">
@@ -97,7 +101,7 @@
         </div>
     </div>
 
-    <div class="form-card">
+    <div class="form-card" data-tour="veiculo-novo-acessorios">
         <h2 class="secao-titulo">Acessórios</h2>
         <div class="acessorios-grid">
             @foreach (var acc in todosAcessorios)
@@ -112,7 +116,7 @@
         </div>
     </div>
 
-    <div class="form-card">
+    <div class="form-card" data-tour="veiculo-novo-termo">
         <h2 class="secao-titulo">Termo de entrega preliminar</h2>
         <p class="secao-sub">
             Esboce aqui o texto do termo de entrega — quando uma proposta for gerada,
@@ -124,7 +128,7 @@
                   placeholder="Ex: A concessionária declara que o veículo X foi entregue em perfeitas condições mecânicas, com documentação regularizada..."></textarea>
     </div>
 
-    <div class="form-card">
+    <div class="form-card" data-tour="veiculo-novo-fotos">
         <h2 class="secao-titulo">Fotos do anúncio</h2>
         <p class="secao-sub">JPEG ou PNG, até 5MB cada. Você poderá reordenar depois.</p>
 
@@ -162,7 +166,7 @@
                 @onclick='() => Nav.NavigateTo("/concessionaria")'>
             Cancelar
         </button>
-        <button class="btn-salvar" @onclick="IniciarSalvamento" disabled="@salvando">
+        <button class="btn-salvar" data-tour="veiculo-novo-salvar-btn" @onclick="IniciarSalvamento" disabled="@salvando">
             @(salvando ? "Salvando..." : "Cadastrar veículo")
         </button>
     </div>
@@ -183,6 +187,15 @@
         Combustivel = "Flex",
         Acessorios = new List<string>()
     };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Pré-preenche com o template configurado em Configurações > Documentos
+        // — o vendedor ajusta as lacunas em vez de partir de um campo em branco.
+        var r = await ConfigService.ObterTemplatesAsync();
+        if (r.IsSuccess && r.Value is not null)
+            form.TextoTermoPreliminar = r.Value.TemplateTermoEntrega;
+    }
 
     private List<string> acessoriosSelecionados = new();
     // Carrega o byte[] na memória já no momento da seleção, porque o stream
@@ -348,18 +361,11 @@
         margin-bottom: 24px;
     }
 
-    .btn-voltar {
-        background: none;
-        border: none;
-        color: #888;
-        font-size: 14px;
-        cursor: pointer;
-        padding: 0;
-    }
-
-    .btn-voltar:hover { color: #1a1a1a; }
-
     .page-titulo { font-size: 22px; font-weight: 500; }
+
+    .tipo-cadastro-nav { font-size: 12px; color: #888; margin: -12px 0 20px; }
+    .tipo-cadastro-nav a { color: #e02020; text-decoration: none; }
+    .tipo-cadastro-nav a:hover { text-decoration: underline; }
 
     .form-card {
         background: #fff;

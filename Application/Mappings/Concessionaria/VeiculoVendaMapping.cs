@@ -59,7 +59,8 @@ public static class VeiculoVendaMapping
             Valor = entity.GetValor(),
             FotoPrincipal = entity.Fotos
                 .OrderBy(f => f.Ordem)
-                .FirstOrDefault()?.Url
+                .FirstOrDefault()?.Url,
+            DataCriacao = entity.DataCriacao
         };
     }
 

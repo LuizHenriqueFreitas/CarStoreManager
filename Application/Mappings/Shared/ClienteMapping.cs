@@ -1,6 +1,5 @@
 using CarStoreManager.Application.DTOs.Shared.Cliente;
 using CarStoreManager.Domain.Entities;
-using CarStoreManager.Domain.ValueObjects;
 
 namespace CarStoreManager.Application.Mappings.Shared;
 
@@ -33,7 +32,8 @@ public static class ClienteMapping
             Nome = entity.Nome,
             Cpf = entity.GetCpf(),
             Telefone = entity.GetTelefone(),
-            Email = entity.GetEmail()
+            Email = entity.GetEmail(),
+            DataCriacao = entity.DataCriacao
         };
     }
 
@@ -61,7 +61,15 @@ public static class ClienteMapping
             dto.Email,
             dto.Telefone
         );
-        entity.AtualizarClienteEndereco(ToEnderecoEntity(dto.Endereco));
+        entity.AtualizarClienteEndereco(
+            dto.Endereco.Logradouro,
+            dto.Endereco.Numero,
+            dto.Endereco.Complemento,
+            dto.Endereco.Bairro,
+            dto.Endereco.Cidade,
+            dto.Endereco.Uf,
+            dto.Endereco.Cep
+        );
     }
 
     // =========================

@@ -4,14 +4,10 @@
 @namespace CarStoreManager.Web.Components.Pages
 
 @rendermode Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer
-@inject IVendedorService VendedorService
-@inject IMecanicoService MecanicoService
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthState
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Auth
-@using CarStoreManager.Application.DTOs.Concessionaria.Vendedor
-@using CarStoreManager.Application.DTOs.Oficina.Mecanico
 @using CarStoreManager.Domain.Enums
 @using CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
@@ -24,170 +20,43 @@
             <h1 class="page-titulo">Usuários</h1>
             <p class="page-sub">Gerenciamento de funcionários do sistema</p>
         </div>
-        <button class="btn-novo" @onclick="AbrirModalNovoUsuario">+ Novo usuário</button>
+        <button class="btn-novo" data-tour="usuarios-btn-novo" @onclick="AbrirModalNovoUsuario">+ Novo usuário</button>
     </div>
 
-    <div class="abas">
-        <button class="@AbaClass("Vendedor")" @onclick='() => abaAtiva = "Vendedor"'>
-            Vendedores (@vendedores.Count)
-        </button>
-        <button class="@AbaClass("Mecanico")" @onclick='() => abaAtiva = "Mecanico"'>
-            Mecânicos (@mecanicos.Count)
-        </button>
-        <button class="@AbaClass("Recepcionista")" @onclick='() => abaAtiva = "Recepcionista"'>
-            Recepcionistas (@recepcionistas.Count)
-        </button>
-        <button class="@AbaClass("ChefeOficina")" @onclick='() => abaAtiva = "ChefeOficina"'>
-            Chefe de oficina (@chefesOficina.Count)
-        </button>
-        <button class="@AbaClass("GerenteVendas")" @onclick='() => abaAtiva = "GerenteVendas"'>
-            Gerente de vendas (@gerentesVendas.Count)
-        </button>
-        <button class="@AbaClass("Admin")" @onclick='() => abaAtiva = "Admin"'>
-            Administradores (@admins.Count)
-        </button>
+    <div class="toolbar">
+        <input class="campo-input busca-input" data-tour="usuarios-busca" placeholder="Buscar por nome ou telefone..."
+               @bind="termoBusca" @bind:event="oninput" @bind:after="AplicarFiltro" />
+        <select class="campo-input filtro-select" data-tour="usuarios-filtro-tipo" @bind="filtroTipo" @bind:after="AplicarFiltro">
+            <option value="Todos">Todos os tipos</option>
+            <option value="Vendedor">Vendedor</option>
+            <option value="Mecanico">Mecânico</option>
+            <option value="Recepcionista">Recepcionista</option>
+            <option value="ChefeOficina">Chefe de oficina</option>
+            <option value="GerenteVendas">Gerente de vendas</option>
+            <option value="Admin">Administrador</option>
+        </select>
     </div>
 
     @if (carregando)
     {
         <div class="loading">Carregando...</div>
     }
-    else if (abaAtiva == "Vendedor")
-    {
-        <div class="usuarios-lista">
-            @foreach (var v in vendedores)
-            {
-                <div class="usuario-card">
-                    <div class="usuario-avatar vendedor">@v.Nome[0].ToString().ToUpper()</div>
-                    <div class="usuario-info">
-                        <span class="usuario-nome">@v.Nome</span>
-                        <span class="usuario-detalhe">@v.Telefone · @v.Nivel</span>
-                    </div>
-                    <span class="usuario-role vendedor-badge">Vendedor</span>
-                    <button class="btn-desativar"
-                            @onclick="() => ConfirmarDesativar(v.Id, v.Nome)">
-                        Desativar
-                    </button>
-                </div>
-            }
-            @if (!vendedores.Any())
-            {
-                <div class="vazio-aba">Nenhum vendedor cadastrado.</div>
-            }
-        </div>
-    }
-    else if (abaAtiva == "Mecanico")
-    {
-        <div class="usuarios-lista">
-            @foreach (var m in mecanicos)
-            {
-                <div class="usuario-card">
-                    <div class="usuario-avatar mecanico">@m.Nome[0].ToString().ToUpper()</div>
-                    <div class="usuario-info">
-                        <span class="usuario-nome">@m.Nome</span>
-                        <span class="usuario-detalhe">@m.Especialidade · @m.Nivel</span>
-                    </div>
-                    <span class="usuario-role mecanico-badge">Mecânico</span>
-                    <button class="btn-desativar"
-                            @onclick="() => ConfirmarDesativar(m.Id, m.Nome)">
-                        Desativar
-                    </button>
-                </div>
-            }
-            @if (!mecanicos.Any())
-            {
-                <div class="vazio-aba">Nenhum mecânico cadastrado.</div>
-            }
-        </div>
-    }
-    else if (abaAtiva == "Recepcionista")
-    {
-        <div class="usuarios-lista">
-            @foreach (var r in recepcionistas)
-            {
-                <div class="usuario-card">
-                    <div class="usuario-avatar recepcionista">@r.Nome[0].ToString().ToUpper()</div>
-                    <div class="usuario-info">
-                        <span class="usuario-nome">@r.Nome</span>
-                        <span class="usuario-detalhe">@r.Telefone · @r.Email</span>
-                    </div>
-                    <span class="usuario-role recepcionista-badge">Recepcionista</span>
-                    <button class="btn-desativar"
-                            @onclick="() => ConfirmarDesativar(r.Id, r.Nome)">
-                        Desativar
-                    </button>
-                </div>
-            }
-            @if (!recepcionistas.Any())
-            {
-                <div class="vazio-aba">Nenhum recepcionista cadastrado.</div>
-            }
-        </div>
-    }
-    else if (abaAtiva == "ChefeOficina")
-    {
-        <div class="usuarios-lista">
-            @foreach (var c in chefesOficina)
-            {
-                <div class="usuario-card">
-                    <div class="usuario-avatar chefe-oficina">@c.Nome[0].ToString().ToUpper()</div>
-                    <div class="usuario-info">
-                        <span class="usuario-nome">@c.Nome</span>
-                        <span class="usuario-detalhe">@c.Telefone · @c.Email</span>
-                    </div>
-                    <span class="usuario-role chefe-oficina-badge">Chefe de oficina</span>
-                    <button class="btn-desativar"
-                            @onclick="() => ConfirmarDesativar(c.Id, c.Nome)">
-                        Desativar
-                    </button>
-                </div>
-            }
-            @if (!chefesOficina.Any())
-            {
-                <div class="vazio-aba">Nenhum chefe de oficina cadastrado.</div>
-            }
-        </div>
-    }
-    else if (abaAtiva == "GerenteVendas")
-    {
-        <div class="usuarios-lista">
-            @foreach (var g in gerentesVendas)
-            {
-                <div class="usuario-card">
-                    <div class="usuario-avatar gerente-vendas">@g.Nome[0].ToString().ToUpper()</div>
-                    <div class="usuario-info">
-                        <span class="usuario-nome">@g.Nome</span>
-                        <span class="usuario-detalhe">@g.Telefone · @g.Email</span>
-                    </div>
-                    <span class="usuario-role gerente-vendas-badge">Gerente de vendas</span>
-                    <button class="btn-desativar"
-                            @onclick="() => ConfirmarDesativar(g.Id, g.Nome)">
-                        Desativar
-                    </button>
-                </div>
-            }
-            @if (!gerentesVendas.Any())
-            {
-                <div class="vazio-aba">Nenhum gerente de vendas cadastrado.</div>
-            }
-        </div>
-    }
     else
     {
         <div class="usuarios-lista">
-            @foreach (var a in admins)
+            @foreach (var u in usuariosFiltrados)
             {
-                <div class="usuario-card">
-                    <div class="usuario-avatar admin">@a.Nome[0].ToString().ToUpper()</div>
+                <div class="usuario-card" data-tour="usuarios-card-exemplo">
+                    <div class="usuario-avatar @RoleSlug(u.Role)">@u.Nome[0].ToString().ToUpper()</div>
                     <div class="usuario-info">
-                        <span class="usuario-nome">@a.Nome</span>
-                        <span class="usuario-detalhe">@a.Telefone · @a.Email</span>
+                        <span class="usuario-nome">@u.Nome</span>
+                        <span class="usuario-detalhe">@u.Telefone · @u.Email</span>
                     </div>
-                    <span class="usuario-role admin-badge">Admin</span>
-                    @if (a.Id != usuarioAtualId)
+                    <span class="usuario-role @(RoleSlug(u.Role))-badge">@RoleLabel(u.Role)</span>
+                    @if (u.Id != usuarioAtualId)
                     {
-                        <button class="btn-desativar"
-                                @onclick="() => ConfirmarDesativar(a.Id, a.Nome)">
+                        <button class="btn-desativar" data-tour="usuarios-btn-desativar"
+                                @onclick="() => ConfirmarDesativar(u.Id, u.Nome)">
                             Desativar
                         </button>
                     }
@@ -197,9 +66,9 @@
                     }
                 </div>
             }
-            @if (!admins.Any())
+            @if (!usuariosFiltrados.Any())
             {
-                <div class="vazio-aba">Nenhum administrador cadastrado.</div>
+                <div class="vazio-aba">Nenhum usuário encontrado.</div>
             }
         </div>
     }
@@ -219,6 +88,7 @@
                 <div class="form-campo span-2">
                     <label class="campo-label">Tipo *</label>
                     <select class="campo-input" @bind="novoUsuario.Role">
+                        <option value="" disabled>Selecione o tipo...</option>
                         <option value="Vendedor">Vendedor</option>
                         <option value="Mecanico">Mecânico</option>
                         <option value="Recepcionista">Recepcionista</option>
@@ -245,16 +115,8 @@
                     <input type="password" class="campo-input" @bind="novoUsuario.Senha" />
                 </div>
 
-                @if (novoUsuario.Role != "Admin")
+                @if (novoUsuario.Role != "Admin" && novoUsuario.Role != "")
                 {
-                    <div class="form-campo">
-                        <label class="campo-label">Nível *</label>
-                        <select class="campo-input" @bind="novoUsuario.Nivel">
-                            <option value="Junior">Júnior</option>
-                            <option value="Pleno">Pleno</option>
-                            <option value="Senior">Sênior</option>
-                        </select>
-                    </div>
                     <div class="form-campo">
                         <label class="campo-label">Data de contratação *</label>
                         <input type="date" class="campo-input" @bind="novoUsuario.DataContratacao" />
@@ -307,13 +169,10 @@
     @ref="modalDesativarRef" />
 
 @code {
-    private List<VendedorListaDTO> vendedores = new();
-    private List<MecanicoListaDTO> mecanicos = new();
-    private List<UsuarioDTO> recepcionistas = new();
-    private List<UsuarioDTO> chefesOficina = new();
-    private List<UsuarioDTO> gerentesVendas = new();
-    private List<UsuarioDTO> admins = new();
-    private string abaAtiva = "Vendedor";
+    private List<UsuarioDTO> todosUsuarios = new();
+    private List<UsuarioDTO> usuariosFiltrados = new();
+    private string termoBusca = string.Empty;
+    private string filtroTipo = "Todos";
     private bool carregando = true;
     private bool modalNovoUsuarioVisivel = false;
     private bool modalDesativarVisivel = false;
@@ -340,25 +199,30 @@
     {
         carregando = true;
 
-        var rv = await VendedorService.GetAllAsync();
-        vendedores = rv.IsSuccess ? rv.Value?.ToList() ?? new() : new();
+        var r = await AuthService.ListarUsuariosAsync();
+        todosUsuarios = r.IsSuccess ? r.Value?.ToList() ?? new() : new();
 
-        var rm = await MecanicoService.GetAllAsync();
-        mecanicos = rm.IsSuccess ? rm.Value?.ToList() ?? new() : new();
-
-        var rRec = await AuthService.ListarUsuariosAsync("Recepcionista");
-        recepcionistas = rRec.IsSuccess ? rRec.Value?.ToList() ?? new() : new();
-
-        var rCh = await AuthService.ListarUsuariosAsync("ChefeOficina");
-        chefesOficina = rCh.IsSuccess ? rCh.Value?.ToList() ?? new() : new();
-
-        var rGer = await AuthService.ListarUsuariosAsync("GerenteVendas");
-        gerentesVendas = rGer.IsSuccess ? rGer.Value?.ToList() ?? new() : new();
-
-        var rAdm = await AuthService.ListarUsuariosAsync("Admin");
-        admins = rAdm.IsSuccess ? rAdm.Value?.ToList() ?? new() : new();
-
+        AplicarFiltro();
         carregando = false;
+    }
+
+    private void AplicarFiltro()
+    {
+        var baseLista = filtroTipo == "Todos"
+            ? todosUsuarios.AsEnumerable()
+            : todosUsuarios.Where(u => u.Role == filtroTipo);
+
+        if (!string.IsNullOrWhiteSpace(termoBusca))
+        {
+            var termo = termoBusca.Trim();
+            baseLista = baseLista.Where(u =>
+                u.Nome.Contains(termo, StringComparison.OrdinalIgnoreCase)
+                || u.Telefone.Contains(termo, StringComparison.OrdinalIgnoreCase));
+        }
+
+        usuariosFiltrados = baseLista
+            .OrderBy(u => u.Nome, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private void AbrirModalNovoUsuario()
@@ -370,6 +234,12 @@
 
     private async Task CriarUsuario()
     {
+        if (string.IsNullOrWhiteSpace(novoUsuario.Role))
+        {
+            erroNovo = "Selecione o tipo de usuário.";
+            return;
+        }
+
         salvando = true;
         erroNovo = null;
 
@@ -429,13 +299,32 @@
         }
     }
 
-    private string AbaClass(string aba) =>
-        aba == abaAtiva ? "aba aba-ativa" : "aba";
+    private static string RoleLabel(string role) => role switch
+    {
+        "Vendedor" => "Vendedor",
+        "Mecanico" => "Mecânico",
+        "Recepcionista" => "Recepcionista",
+        "ChefeOficina" => "Chefe de oficina",
+        "GerenteVendas" => "Gerente de vendas",
+        "Admin" => "Administrador",
+        _ => role
+    };
+
+    private static string RoleSlug(string role) => role switch
+    {
+        "Vendedor" => "vendedor",
+        "Mecanico" => "mecanico",
+        "Recepcionista" => "recepcionista",
+        "ChefeOficina" => "chefe-oficina",
+        "GerenteVendas" => "gerente-vendas",
+        "Admin" => "admin",
+        _ => "vendedor"
+    };
 
     private static CriarUsuarioDTO NovoFormPadrao() => new()
     {
-        Role = "Vendedor",
-        Nivel = "Junior",
+        Role = "",
+        Nivel = "Pleno",
         Especialidade = nameof(EspecialidadeMecanico.Motor),
         DataContratacao = DateTime.Today
     };
@@ -486,33 +375,14 @@
 
     .btn-novo:hover { background: #c01818; }
 
-    .abas {
+    .toolbar {
         display: flex;
-        gap: 4px;
-        border-bottom: 0.5px solid #e0e0e0;
+        gap: 10px;
         margin-bottom: 20px;
-        overflow-x: auto;
     }
 
-    .aba {
-        background: none;
-        border: none;
-        padding: 10px 16px;
-        font-size: 14px;
-        color: #888;
-        cursor: pointer;
-        border-bottom: 2px solid transparent;
-        margin-bottom: -1px;
-        white-space: nowrap;
-    }
-
-    .aba:hover { color: #1a1a1a; }
-
-    .aba-ativa {
-        color: #e02020 !important;
-        border-bottom-color: #e02020 !important;
-        font-weight: 500;
-    }
+    .busca-input { flex: 1; }
+    .filtro-select { max-width: 220px; }
 
     .usuarios-lista {
         display: flex;

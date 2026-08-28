@@ -21,12 +21,12 @@
             <h1 class="page-titulo">Recepção</h1>
             <p class="page-sub">Atendimento e abertura de ordens de serviço</p>
         </div>
-        <button class="btn-novo" @onclick='() => Nav.NavigateTo("/oficina/os/nova")'>
+        <button class="btn-novo" data-tour="recepcao-btn-nova" @onclick='() => Nav.NavigateTo("/oficina/os/nova")'>
             + Nova ordem de serviço
         </button>
     </div>
 
-    <div class="metricas-grid">
+    <div class="metricas-grid" data-tour="recepcao-metricas">
         <div class="metrica-card">
             <span class="metrica-label">Pendentes</span>
             <span class="metrica-valor pendentes">@pendentes</span>
@@ -47,7 +47,7 @@
 
     @if (prontasParaCobrar.Any())
     {
-        <div class="secao">
+        <div class="secao" data-tour="recepcao-cobranca">
             <div class="secao-header">
                 <h2 class="secao-titulo">🔔 Prontas para cobrança e entrega</h2>
                 <span class="muted">Mecânico concluiu o serviço — receba o pagamento e marque como entregue</span>
@@ -89,7 +89,7 @@
         </div>
     }
 
-    <div class="secao">
+    <div class="secao" data-tour="recepcao-ordens-recentes">
         <div class="secao-header">
             <h2 class="secao-titulo">Ordens recentes</h2>
             <button class="link-link" @onclick='() => Nav.NavigateTo("/oficina")'>
@@ -198,14 +198,16 @@
         entreguesMes = todas.Count(o => o.Status == "Entregue"
             && o.PrazoEstimado >= inicioMes);
 
-        // Finalizadas = mecânico concluiu, falta cobrança/entrega pela recepção
+        // PagamentoPendente = mecânico concluiu, falta cobrança pela recepção.
+        // "Finalizada" agora só significa trabalho pronto E já pago (ver
+        // OrdemServico.ConfirmarPagamentoCompleto) — não entra mais aqui.
         prontasParaCobrar = todas
-            .Where(o => o.Status == "Finalizada")
+            .Where(o => o.Status == "PagamentoPendente")
             .OrderBy(o => o.PrazoEstimado)
             .ToList();
 
         recentes = todas
-            .Where(o => o.Status != "Finalizada") // já estão em destaque acima
+            .Where(o => o.Status != "PagamentoPendente") // já estão em destaque acima
             .OrderByDescending(o => o.PrazoEstimado)
             .Take(8)
             .ToList();
@@ -240,7 +242,8 @@
     {
         "Pendente"                    => "status-pendente",
         "EmAndamento"                 => "status-andamento",
-        "Finalizada"                  => "status-pronta",
+        "PagamentoPendente"           => "status-pronta",
+        "Finalizada"                  => "status-finalizada",
         "Entregue"                    => "status-finalizada",
         "Cancelada"                   => "status-cancelada",
         "Pausada"                     => "status-pausada",
@@ -252,7 +255,8 @@
     {
         "EmAndamento"                 => "Em andamento",
         "BuscandoPecasParaOrcamento"  => "Buscando peças",
-        "Finalizada"                  => "Aguardando cobrança",
+        "PagamentoPendente"           => "Aguardando cobrança",
+        "Finalizada"                  => "Pronta para entrega",
         _                             => status
     };
 }

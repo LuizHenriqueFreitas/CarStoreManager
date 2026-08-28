@@ -6,6 +6,7 @@
 @rendermode InteractiveServer
 
 @inject IVeiculoVendaService VeiculoService
+@inject IVeiculoConsignacaoService ConsignacaoService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IAuthService AuthService
 @inject NavigationManager Nav
@@ -16,7 +17,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 <div class="conc-layout">
-    <aside class="conc-sidebar">
+    <aside class="conc-sidebar" data-tour="conc-sidebar-filtros">
         <h2 class="sb-titulo">Filtros</h2>
 
         <section class="sb-secao">
@@ -35,6 +36,11 @@
                 <input type="radio" name="disp" checked="@(filtroDisp == "Vendido")"
                        @onchange='() => SetDisp("Vendido")' />
                 Vendidos
+            </label>
+            <label class="sb-opcao">
+                <input type="radio" name="disp" checked="@(filtroDisp == "Consignado")"
+                       @onchange='() => SetDisp("Consignado")' />
+                Consignados
             </label>
         </section>
 
@@ -57,6 +63,17 @@
                 <span class="sb-sep">—</span>
                 <input type="number" class="sb-input" placeholder="Até" min="1900" max="2100"
                        @bind="filtroAnoMax" @bind:after="AplicarFiltro" />
+            </div>
+        </section>
+
+        <section class="sb-secao">
+            <h3>Valor</h3>
+            <div class="sb-row">
+                <input type="number" class="sb-input" placeholder="Mín." min="0" step="1000"
+                       @bind="filtroValorMin" @bind:after="AplicarFiltro" />
+                <span class="sb-sep">—</span>
+                <input type="number" class="sb-input" placeholder="Máx." min="0" step="1000"
+                       @bind="filtroValorMax" @bind:after="AplicarFiltro" />
             </div>
         </section>
 
@@ -122,8 +139,33 @@
                 <h1>Estoque de veículos</h1>
                 <p class="conc-sub">@veiculosFiltrados.Count de @veiculos.Count veículos</p>
             </div>
-            <button class="btn-novo" @onclick="AbrirModalCadastro">+ Cadastrar veículo</button>
+            <div class="conc-toolbar" data-tour="conc-toolbar">
+                <input type="text" class="conc-busca" placeholder="Buscar por modelo ou placa..."
+                       @bind="buscaTexto" @bind:after="AplicarFiltro" />
+                <select class="conc-ordenar" @bind="ordenacao" @bind:after="AplicarFiltro">
+                    <option value="DataDesc">Mais recentes</option>
+                    <option value="DataAsc">Mais antigos</option>
+                    <option value="PrecoDesc">Maior preço</option>
+                    <option value="PrecoAsc">Menor preço</option>
+                    <option value="AlfaAsc">Nome A-Z</option>
+                    <option value="AlfaDesc">Nome Z-A</option>
+                </select>
+            </div>
+            <div class="conc-header-acoes">
+                <button class="btn-novo" data-tour="conc-btn-cadastrar" @onclick="AbrirModalCadastro">+ Cadastrar veículo</button>
+                <button class="btn-novo-secundario" data-tour="conc-btn-cadastrar-consignado" @onclick='() => Nav.NavigateTo("/concessionaria/veiculo-consignado/novo")'>
+                    + Cadastrar consignação
+                </button>
+            </div>
         </header>
+
+        @if (consignacoesVencendoEmBreve.Any())
+        {
+            <div class="banner-vencimento" data-tour="conc-banner-vencimento">
+                ⚠ @consignacoesVencendoEmBreve.Count consignação(ões) vencendo em breve:
+                @string.Join(", ", consignacoesVencendoEmBreve.Select(c => $"{c.Marca} {c.Modelo} ({(c.EstaVencido ? "vencida" : $"{c.DiasRestantes}d")})"))
+            </div>
+        }
 
         @if (carregando)
         {
@@ -197,15 +239,38 @@
 
     .conc-main { min-width: 0; }
     .conc-header {
-        display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px;
+        display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+        gap: 14px; margin-bottom: 20px;
     }
     .conc-header h1 { margin: 0; font-size: 1.6rem; }
     .conc-sub { margin: 4px 0 0; color: #666; font-size: 0.9em; }
+    .conc-toolbar {
+        display: flex; align-items: center; gap: 8px; flex: 1 1 320px; min-width: 260px;
+    }
+    .conc-busca {
+        flex: 1; min-width: 160px; padding: 8px 12px; border: 1px solid #ccc;
+        border-radius: 6px; font-size: 0.9em;
+    }
+    .conc-ordenar {
+        padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px;
+        font-size: 0.9em; background: #fff; white-space: nowrap;
+    }
     .btn-novo {
         background: #e02020; color: #fff; padding: 10px 18px;
         border-radius: 6px; border: 0; cursor: pointer; font-weight: 500;
     }
     .btn-novo:hover { background: #c01818; }
+    .conc-header-acoes { display: flex; align-items: center; gap: 10px; }
+    .btn-novo-secundario {
+        background: #fff; color: #1a1a1a; padding: 10px 18px;
+        border-radius: 6px; border: 0.5px solid #ccc; cursor: pointer; font-weight: 500;
+        white-space: nowrap;
+    }
+    .btn-novo-secundario:hover { background: #f5f5f5; }
+    .banner-vencimento {
+        background: #fff7ed; border: 0.5px solid #fed7aa; color: #9a3412;
+        border-radius: 8px; padding: 12px 16px; font-size: 0.85em; margin-bottom: 16px;
+    }
     .estoque-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -220,8 +285,9 @@
 </style>
 
 @code {
-    private List<VeiculoVendaListaDTO> veiculos = new();
-    private List<VeiculoVendaListaDTO> veiculosFiltrados = new();
+    private List<VeiculoListaUnificadoDTO> veiculos = new();
+    private List<VeiculoListaUnificadoDTO> veiculosFiltrados = new();
+    private List<VeiculoListaUnificadoDTO> consignacoesVencendoEmBreve = new();
     private List<string> marcasDisponiveis = new();
     private List<string> combustiveisDisponiveis = new();
     private List<string> acessoriosDisponiveis = new();
@@ -237,6 +303,12 @@
     private bool filtroIpvaAtualPago;
     private HashSet<string> filtroAcessoriosTem = new(StringComparer.OrdinalIgnoreCase);
     private HashSet<string> filtroAcessoriosNao = new(StringComparer.OrdinalIgnoreCase);
+    private decimal? filtroValorMin;
+    private decimal? filtroValorMax;
+
+    // === Busca e ordenação (barra acima dos cards) ===
+    private string buscaTexto = "";
+    private string ordenacao = "DataDesc";
 
     private bool carregando = true;
     private bool modalCadastroVisivel;
@@ -253,8 +325,55 @@
 
         try
         {
-            var resultado = await VeiculoService.GetAllAsync();
-            veiculos = resultado.IsSuccess ? resultado.Value?.ToList() ?? new() : new();
+            var resultadoVenda = await VeiculoService.GetAllAsync();
+            var veiculosVenda = resultadoVenda.IsSuccess ? resultadoVenda.Value?.ToList() ?? new() : new();
+
+            var resultadoConsignacao = await ConsignacaoService.GetAllAsync();
+            var veiculosConsignados = resultadoConsignacao.IsSuccess ? resultadoConsignacao.Value?.ToList() ?? new() : new();
+
+            veiculos = veiculosVenda.Select(v => new VeiculoListaUnificadoDTO
+                {
+                    Id = v.Id,
+                    IsConsignado = false,
+                    Marca = v.Marca,
+                    Modelo = v.Modelo,
+                    Ano = v.Ano,
+                    Quilometragem = v.Quilometragem,
+                    Motorizacao = v.Motorizacao,
+                    Combustivel = v.Combustivel,
+                    Placa = v.Placa,
+                    Acessorios = v.Acessorios,
+                    Valor = v.Valor,
+                    FotoPrincipal = v.FotoPrincipal,
+                    AnoUltimoIpvaPago = v.AnoUltimoIpvaPago,
+                    StatusLabel = v.Disponibilidade,
+                    DataCriacao = v.DataCriacao
+                })
+                .Concat(veiculosConsignados.Select(c => new VeiculoListaUnificadoDTO
+                {
+                    Id = c.Id,
+                    IsConsignado = true,
+                    Marca = c.Marca,
+                    Modelo = c.Modelo,
+                    Ano = c.Ano,
+                    Quilometragem = c.Quilometragem,
+                    Motorizacao = c.Motorizacao,
+                    Combustivel = c.Combustivel,
+                    Placa = c.Placa,
+                    Acessorios = new(),
+                    Valor = c.ValorVendaEsperado,
+                    FotoPrincipal = c.FotoPrincipal,
+                    StatusLabel = c.Status,
+                    EstaVencido = c.EstaVencido,
+                    DiasRestantes = c.DiasRestantes,
+                    DataCriacao = c.DataCriacao
+                }))
+                .ToList();
+
+            consignacoesVencendoEmBreve = veiculos
+                .Where(v => v.IsConsignado && v.StatusLabel == "Ativa" && (v.EstaVencido || v.DiasRestantes <= 7))
+                .OrderBy(v => v.DiasRestantes)
+                .ToList();
 
             // Extrai metadados para alimentar dropdowns/checkboxes
             marcasDisponiveis = veiculos
@@ -319,6 +438,9 @@
         filtroIpvaAtualPago = false;
         filtroAcessoriosTem.Clear();
         filtroAcessoriosNao.Clear();
+        filtroValorMin = filtroValorMax = null;
+        buscaTexto = "";
+        ordenacao = "DataDesc";
         AplicarFiltro();
     }
 
@@ -326,8 +448,20 @@
     {
         var q = veiculos.AsEnumerable();
 
-        if (filtroDisp != "Todos")
-            q = q.Where(v => v.Disponibilidade == filtroDisp);
+        // "Consignados" mostra toda consignação, qualquer status. "Disponivel"/
+        // "Vendido" casam com o status equivalente tanto em veículo próprio
+        // quanto em consignação — do ponto de vista do estoque, uma consignação
+        // Ativa é tão "disponível" quanto um veículo próprio Disponivel.
+        q = filtroDisp switch
+        {
+            "Todos" => q,
+            "Consignado" => q.Where(v => v.IsConsignado),
+            "Disponivel" => q.Where(v => v.IsConsignado ? v.StatusLabel == "Ativa" : v.StatusLabel == "Disponivel"),
+            "Vendido" => q.Where(v => v.IsConsignado
+                ? v.StatusLabel is "Concluida" or "VendidoAguardandoPagamento"
+                : v.StatusLabel == "Vendido"),
+            _ => q
+        };
 
         if (!string.IsNullOrWhiteSpace(filtroMarca))
             q = q.Where(v => string.Equals(v.Marca, filtroMarca, StringComparison.OrdinalIgnoreCase));
@@ -360,6 +494,30 @@
         if (filtroAcessoriosNao.Any())
             q = q.Where(v => filtroAcessoriosNao.All(req =>
                 v.Acessorios?.Any(a => string.Equals(a, req, StringComparison.OrdinalIgnoreCase)) != true));
+
+        if (filtroValorMin.HasValue)
+            q = q.Where(v => v.Valor >= filtroValorMin.Value);
+        if (filtroValorMax.HasValue)
+            q = q.Where(v => v.Valor <= filtroValorMax.Value);
+
+        // Busca livre — casa por nome do modelo OU placa, em qualquer parte do texto.
+        if (!string.IsNullOrWhiteSpace(buscaTexto))
+        {
+            var termo = buscaTexto.Trim();
+            q = q.Where(v =>
+                (!string.IsNullOrEmpty(v.Modelo) && v.Modelo.Contains(termo, StringComparison.OrdinalIgnoreCase))
+                || (!string.IsNullOrEmpty(v.Placa) && v.Placa.Contains(termo, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        q = ordenacao switch
+        {
+            "PrecoDesc" => q.OrderByDescending(v => v.Valor),
+            "PrecoAsc" => q.OrderBy(v => v.Valor),
+            "AlfaAsc" => q.OrderBy(v => $"{v.Marca} {v.Modelo}", StringComparer.OrdinalIgnoreCase),
+            "AlfaDesc" => q.OrderByDescending(v => $"{v.Marca} {v.Modelo}", StringComparer.OrdinalIgnoreCase),
+            "DataAsc" => q.OrderBy(v => v.DataCriacao),
+            _ => q.OrderByDescending(v => v.DataCriacao) // "DataDesc" — mais recentes primeiro
+        };
 
         veiculosFiltrados = q.ToList();
     }

@@ -13,12 +13,18 @@ public class PropostaVenda : Entity
     public Guid VeiculoVendaId { get; private set; }
     public Guid ClienteId { get; private set; }
 
+    /// <summary>
+    /// Discriminador polimórfico pro veículo referenciado por VeiculoVendaId —
+    /// "VeiculoVenda" (padrão, estoque próprio) ou "VeiculoConsignacao" (mesmo
+    /// fluxo de proposta, mas o veículo pertence a um terceiro consignante).
+    /// Mesmo padrão já usado por Foto/AnuncioMercadoLivre (EntidadeTipo).
+    /// </summary>
+    public string VeiculoEntidadeTipo { get; private set; } = "VeiculoVenda";
+
     public Dinheiro ValorBase { get; private set; } = null!;
     public Percentual Desconto { get; private set; } = null!;
     public Dinheiro ValorFinal { get; private set; } = null!;
     public Dinheiro Entrada { get; private set; } = null!;
-
-    public DateTime DataCriacao { get; private set; }
     public StatusPropostaVenda Status { get; private set; }
 
     /// <summary>Modo de pagamento escolhido pelo cliente.</summary>
@@ -45,10 +51,12 @@ public class PropostaVenda : Entity
         Guid veiculoVendaId,
         Guid clienteId,
         decimal valorBase,
-        decimal desconto)
+        decimal desconto,
+        string veiculoEntidadeTipo = "VeiculoVenda")
     {
         VendedorId = vendedorId;
         VeiculoVendaId = veiculoVendaId;
+        VeiculoEntidadeTipo = veiculoEntidadeTipo;
         ClienteId = clienteId;
         ValorBase = new Dinheiro(valorBase);
         Desconto = new Percentual(desconto);
@@ -64,6 +72,7 @@ public class PropostaVenda : Entity
      ================================*/
     public Guid GetVendedorId() => VendedorId;
     public Guid GetVeiculoId() => VeiculoVendaId;
+    public bool IsConsignado => VeiculoEntidadeTipo == "VeiculoConsignacao";
     public Guid GetClienteId() => ClienteId;
     public decimal GetValorBase() => ValorBase.GetValorDinheiro();
     public decimal GetDesconto() => Desconto.GetDescontoValor();
@@ -104,9 +113,27 @@ public class PropostaVenda : Entity
         Entrada = new Dinheiro(entrada);
     }
 
+    /// <summary>
+    /// Formas de pagamento aceitas na compra de veículo. Dinheiro e cartão
+    /// (débito/crédito) ficam de fora por decisão comercial — valor alto
+    /// demais pra dinheiro em espécie, e cartão de crédito costuma ter limite
+    /// insuficiente pra um veículo completo (ver comentário no enum
+    /// ModoPagamento, que é compartilhado com OrdemServico — lá Dinheiro
+    /// continua permitido).
+    /// </summary>
+    private static readonly ModoPagamento[] ModosAceitos =
+    {
+        ModoPagamento.Financiamento, ModoPagamento.Pix,
+        ModoPagamento.Transferencia, ModoPagamento.Boleto
+    };
+
     public void DefinirModoPagamento(ModoPagamento modo)
     {
         BloquearSeTerminal();
+        if (!ModosAceitos.Contains(modo))
+            throw new ArgumentException(
+                $"Forma de pagamento não aceita para compra de veículo: {modo}. " +
+                $"Aceitas: {string.Join(", ", ModosAceitos)}.", nameof(modo));
         ModoPagamento = modo;
     }
 
@@ -287,16 +314,6 @@ public class PropostaVenda : Entity
         if (EhTerminal())
             throw new InvalidOperationException(
                 $"Operação não permitida: proposta está em estado terminal ({Status}).");
-    }
-
-    // === stubs legados — métodos antigos do código de financiamento "todo" ===
-
-    public void GerarFinanciamento(decimal valorBase, int parcelas, decimal entrada)
-    {
-        // Mantido por retrocompatibilidade — não use; prefira
-        // SolicitarFinanciamento + RegistrarRespostaFinanciadora.
-        throw new NotSupportedException(
-            "Use DefinirModoPagamento(Financiamento) + SolicitarFinanciamento + RegistrarRespostaFinanciadora.");
     }
 
     public void RemoverFinanciamento()

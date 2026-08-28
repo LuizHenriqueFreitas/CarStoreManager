@@ -7,6 +7,7 @@
 @inject NavigationManager Nav
 @inject JwtAuthStateProvider AuthProvider
 @inject IJSRuntime JS
+@inject CarStoreManager.Web.Tours.TourEstadoService TourEstado
 @using CarStoreManager.Application.DTOs.Auth
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Domain.Enums
@@ -16,6 +17,11 @@
 @using Microsoft.JSInterop
 @using System.Text.Json
 
+<button class="tour-btn-ajuda tour-btn-ajuda-canto" @onclick="AbrirTourAsync" title="Ajuda desta tela" aria-label="Ajuda desta tela">
+    ?
+</button>
+<CarStoreManager.Web.Components.Shared.TourGuiado />
+
 <div class="login-page">
     <div class="login-card">
         <div class="login-logo">
@@ -23,7 +29,7 @@
         </div>
         <p class="login-sub">Sistema de gestão interno</p>
 
-        <div class="login-form">
+        <div class="login-form" data-tour="login-form">
             <div class="campo">
                 <label class="campo-label">E-mail</label>
                 <input class="campo-input @(erro is not null ? "campo-erro" : "")"
@@ -54,7 +60,7 @@
             </button>
         </div>
 
-        <div class="login-rodape">
+        <div class="login-rodape" data-tour="login-rodape">
             <span class="rodape-texto">É cliente? </span>
             <a class="rodape-link" href="/consulta">Consultar ordem de serviço</a>
         </div>
@@ -142,6 +148,8 @@
     {
         if (e.Key == "Enter") await Entrar();
     }
+
+    private async Task AbrirTourAsync() => await TourEstado.SolicitarTourAsync();
 }
 
 <style>
@@ -252,4 +260,24 @@
         transition: color 0.2s;
     }
     .rodape-link:hover { color: #ff4040; }
+
+    /* Botão de ajuda — página sem NavBar (usa LoginLayout), então o botão e
+       o TourGuiado ficam embutidos aqui mesmo, num canto fixo da tela. */
+    .tour-btn-ajuda-canto {
+        position: fixed;
+        top: 20px;
+        right: 24px;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: 0.5px solid #444;
+        background: #1a1a1a;
+        color: #ccc;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        z-index: 10;
+    }
+    .tour-btn-ajuda-canto:hover { background: #2a2a2a; color: #fff; border-color: #888; }
+    .tour-btn-ajuda-canto:focus { outline: 2px solid #e02020; outline-offset: 2px; }
 </style>

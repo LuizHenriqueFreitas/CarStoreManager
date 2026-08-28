@@ -52,7 +52,8 @@ public static class OrdemServicoMapping
             NumeroPublico = entity.GetNumeroPublico(),
             Status = entity.GetStatus(),
             PrazoEstimado = entity.GetPrazoEstimado(),
-            ValorTotal = entity.GetValorTotal()
+            ValorTotal = entity.GetValorTotal(),
+            DataCriacao = entity.DataCriacao
         };
     }
 

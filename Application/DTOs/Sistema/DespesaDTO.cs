@@ -7,6 +7,7 @@ public class DespesaDTO
     public decimal Valor { get; set; }
     public bool Ativa { get; set; }
     public string Setor { get; set; } = "Geral";
+    public string Tipo { get; set; } = "Outros";
     public DateTime? DataUltimaAtualizacao { get; set; }
 }
 
@@ -15,6 +16,7 @@ public class CriarDespesaDTO
     public string Nome { get; set; } = "";
     public decimal Valor { get; set; }
     public string Setor { get; set; } = "Geral";
+    public string Tipo { get; set; } = "Outros";
 }
 
 public class AtualizarDespesaDTO
@@ -24,4 +26,5 @@ public class AtualizarDespesaDTO
     public decimal Valor { get; set; }
     public bool Ativa { get; set; } = true;
     public string Setor { get; set; } = "Geral";
+    public string Tipo { get; set; } = "Outros";
 }

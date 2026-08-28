@@ -23,6 +23,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{0AB3BF05
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarStoreManager.Tests", "Tests\CarStoreManager.Tests.csproj", "{53D6F77B-0AE0-4330-AFB3-51A016DEE3AC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Geradores", "Geradores\Geradores.csproj", "{ED42232A-F20B-4877-A018-BC047FA30BBD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -93,6 +95,18 @@ Global
 		{53D6F77B-0AE0-4330-AFB3-51A016DEE3AC}.Release|x64.Build.0 = Release|Any CPU
 		{53D6F77B-0AE0-4330-AFB3-51A016DEE3AC}.Release|x86.ActiveCfg = Release|Any CPU
 		{53D6F77B-0AE0-4330-AFB3-51A016DEE3AC}.Release|x86.Build.0 = Release|Any CPU
+		{ED42232A-F20B-4877-A018-BC047FA30BBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED42232A-F20B-4877-A018-BC047FA30BBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED42232A-F20B-4877-A018-BC047FA30BBD}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{ED42232A-F20B-4877-A018-BC047FA30BBD}.Debug|x64.Build.0 = Debug|Any CPU
+		{ED42232A-F20B-4877-A018-BC047FA30BBD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{ED42232A-F20B-4877-A018-BC047FA30BBD}.Debug|x86.Build.0 = Debug|Any CPU
+		{ED42232A-F20B-4877-A018-BC047FA30BBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED42232A-F20B-4877-A018-BC047FA30BBD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ED42232A-F20B-4877-A018-BC047FA30BBD}.Release|x64.ActiveCfg = Release|Any CPU
+		{ED42232A-F20B-4877-A018-BC047FA30BBD}.Release|x64.Build.0 = Release|Any CPU
+		{ED42232A-F20B-4877-A018-BC047FA30BBD}.Release|x86.ActiveCfg = Release|Any CPU
+		{ED42232A-F20B-4877-A018-BC047FA30BBD}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

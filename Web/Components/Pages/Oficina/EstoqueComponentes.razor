@@ -5,10 +5,12 @@
 
 @inject IComponenteService ComponenteService
 @inject IEstoqueService EstoqueService
+@inject IMercadoLivrePublicacaoService MercadoLivreService
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Oficina.Componente
+@using CarStoreManager.Application.DTOs.Integracoes.MercadoLivre
 @using Microsoft.AspNetCore.Components.Authorization
 
 @using Microsoft.AspNetCore.Components.Web
@@ -21,13 +23,13 @@
         </div>
         @if (ehAdmin)
         {
-            <button class="btn-novo" @onclick="AbrirModalNovo">+ Novo componente</button>
+            <button class="btn-novo" data-tour="comp-btn-novo" @onclick="AbrirModalNovo">+ Novo componente</button>
         }
     </div>
 
     @if (estoquesBaixo.Any())
     {
-        <div class="alerta-estoque">
+        <div class="alerta-estoque" data-tour="comp-alerta-estoque">
             <span class="alerta-icone">⚠</span>
             <span>@estoquesBaixo.Count peça(s) com estoque abaixo do mínimo</span>
             <button class="alerta-btn" @onclick='() => FiltrarPor("EstoqueBaixo")'>
@@ -36,7 +38,7 @@
         </div>
     }
 
-    <div class="filtros-row">
+    <div class="filtros-row" data-tour="comp-filtros">
         <div class="filtros-status">
             <button class="@FiltroClass("Todos")"
                     @onclick='() => FiltrarPor("Todos")'>Todos</button>
@@ -64,7 +66,7 @@
     }
     else
     {
-        <div class="comp-tabela">
+        <div class="comp-tabela" data-tour="comp-tabela">
             <div class="tabela-header">
                 <span>Nome</span>
                 <span>Part Number</span>
@@ -90,7 +92,7 @@
                     <span class="comp-min">@(est?.QuantidadeMinima ?? 0)</span>
                     @if (ehAdmin)
                     {
-                        <div class="comp-acoes">
+                        <div class="comp-acoes" data-tour="comp-row-acoes">
                             <button class="btn-mini verde"
                                     @onclick="() => AbrirModalEntrada(c)">
                                 + Entrada
@@ -158,10 +160,6 @@
                 <div class="form-campo">
                     <label class="campo-label">CEST (7 dígitos)</label>
                     <input class="campo-input" @bind="formComp.CEST" />
-                </div>
-                <div class="form-campo">
-                    <label class="campo-label">Categoria *</label>
-                    <input class="campo-input" @bind="formComp.Categoria" />
                 </div>
                 <div class="form-campo">
                     <label class="campo-label">Unidade *</label>
@@ -341,7 +339,17 @@
                 <button class="btn-confirmar" @onclick="BuscarEquivalentes" disabled="@buscandoEquivalentes">
                     @(buscandoEquivalentes ? "Buscando..." : "🔎 Buscar equivalentes (OEM)")
                 </button>
+                @if (ehAdmin)
+                {
+                    <button class="btn-confirmar" @onclick="PublicarNoMercadoLivre" disabled="@publicandoMl">
+                        @(publicandoMl ? "Publicando..." : "Publicar no Mercado Livre")
+                    </button>
+                }
             </div>
+            @if (erroPublicacaoMl is not null)
+            {
+                <p class="vazio" style="color: #e02020;">@erroPublicacaoMl</p>
+            }
 
             @if (equivalentesCarregados)
             {
@@ -526,6 +534,24 @@
         if (r.IsSuccess) componenteDetalheCompleto = r.Value;
     }
 
+    private bool publicandoMl = false;
+    private string? erroPublicacaoMl;
+
+    private async Task PublicarNoMercadoLivre()
+    {
+        if (componenteDetalhe is null) return;
+
+        publicandoMl = true;
+        erroPublicacaoMl = null;
+        var r = await MercadoLivreService.PublicarAsync(new PublicarAnuncioDTO { EntidadeTipo = "Componente", EntidadeId = componenteDetalhe.Id });
+        publicandoMl = false;
+
+        if (r.IsSuccess)
+            Nav.NavigateTo("/integracoes/mercadolivre/anuncios");
+        else
+            erroPublicacaoMl = r.Error;
+    }
+
     private async Task BuscarEquivalentes()
     {
         if (componenteDetalhe is null) return;
@@ -546,6 +572,9 @@
 
         try
         {
+            // Categoria não é mais um campo do formulário — Sistema já cobre
+            // a mesma classificação, então reaproveitamos o valor aqui.
+            formComp.Categoria = formComp.Sistema;
             var r = await ComponenteService.AddAsync(formComp);
             if (r.IsSuccess)
             {

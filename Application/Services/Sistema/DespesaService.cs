@@ -32,7 +32,8 @@ public class DespesaService : IDespesaService
         try
         {
             var setor = ParseSetor(dto.Setor);
-            var despesa = new Despesa(dto.Nome, dto.Valor, setor);
+            var tipo = ParseTipo(dto.Tipo);
+            var despesa = new Despesa(dto.Nome, dto.Valor, setor, tipo);
             await _repo.AddAsync(despesa);
             await _repo.SaveChangesAsync();
             return Result<Guid>.Ok(despesa.Id);
@@ -49,6 +50,7 @@ public class DespesaService : IDespesaService
         {
             despesa.Atualizar(dto.Nome, dto.Valor);
             despesa.AtualizarSetor(ParseSetor(dto.Setor));
+            despesa.AtualizarTipo(ParseTipo(dto.Tipo));
             if (dto.Ativa && !despesa.Ativa) despesa.Reativar();
             else if (!dto.Ativa && despesa.Ativa) despesa.Desativar();
 
@@ -63,6 +65,12 @@ public class DespesaService : IDespesaService
     {
         if (string.IsNullOrWhiteSpace(setor)) return SetorDespesa.Geral;
         return Enum.TryParse<SetorDespesa>(setor, true, out var s) ? s : SetorDespesa.Geral;
+    }
+
+    private static TipoDespesa ParseTipo(string? tipo)
+    {
+        if (string.IsNullOrWhiteSpace(tipo)) return TipoDespesa.Outros;
+        return Enum.TryParse<TipoDespesa>(tipo, true, out var t) ? t : TipoDespesa.Outros;
     }
 
     public async Task<Result> RemoveAsync(Guid id)
@@ -88,6 +96,7 @@ public class DespesaService : IDespesaService
         Valor = d.GetValor(),
         Ativa = d.Ativa,
         Setor = d.Setor.ToString(),
+        Tipo = d.Tipo.ToString(),
         DataUltimaAtualizacao = d.DataUltimaAtualizacao
     };
 }

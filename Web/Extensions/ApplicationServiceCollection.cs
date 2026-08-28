@@ -1,8 +1,10 @@
 using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Application.Services;
+using CarStoreManager.Application.Services.Integracoes;
 using CarStoreManager.Domain.Repositories;
 using CarStoreManager.Infrastructure.Repositories;
 using CarStoreManager.Infrastructure.Services;
+using CarStoreManager.Web.Tours;
 
 namespace CarStoreManager.Web.Extensions;
 
@@ -16,6 +18,7 @@ public static class ApplicationServiceCollection
 
         // Concessionaria
         services.AddScoped<IVeiculoVendaService, VeiculoVendaService>();
+        services.AddScoped<IVeiculoConsignacaoService, VeiculoConsignacaoService>();
         services.AddScoped<IVendedorService, VendedorService>();
         services.AddScoped<IPropostaVendaService, PropostaVendaService>();
 
@@ -29,6 +32,14 @@ public static class ApplicationServiceCollection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+
+        // Integrações — Mercado Livre
+        services.AddScoped<MercadoLivreTokenHelper>();
+        services.AddScoped<IMercadoLivrePublicacaoService, MercadoLivrePublicacaoService>();
+        services.AddScoped<IMercadoLivreSincronizacaoService, MercadoLivreSincronizacaoService>();
+
+        // Tour guiado (manual do usuário embutido)
+        services.AddScoped<TourEstadoService>();
 
         return services;
     }

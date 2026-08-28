@@ -1,0 +1,568 @@
+@page "/concessionaria/veiculo-consignado/novo"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@inject IVeiculoConsignacaoService ConsignacaoService
+@inject IClienteService ClienteService
+@inject IVendedorService VendedorService
+@inject IFotoService FotoService
+@inject IConfiguracaoSistemaService ConfigService
+@inject NavigationManager Nav
+@inject IAuthService AuthService
+@inject AuthenticationStateProvider AuthState
+
+@using CarStoreManager.Application.Common
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.Interfaces.Sistema
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoConsignacao
+@using CarStoreManager.Application.DTOs.Shared.Cliente
+@using CarStoreManager.Application.DTOs.Concessionaria.Vendedor
+@using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+
+@using Microsoft.AspNetCore.Components.Web
+
+<div class="form-page">
+    <div class="page-header">
+        <h1 class="page-titulo">Cadastrar veículo consignado</h1>
+    </div>
+
+    <p class="tipo-cadastro-nav">
+        Veículo consignado ·
+        <a href="/concessionaria/veiculo/novo">cadastrar veículo da loja</a>
+    </p>
+
+    <div class="form-card" data-tour="consig-novo-identificacao">
+        <h2 class="secao-titulo">Identificação do veículo</h2>
+        <div class="form-grid">
+            <div class="form-campo">
+                <label class="campo-label">Marca *</label>
+                <input class="campo-input" @bind="form.Marca" placeholder="Ex: Honda" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Modelo *</label>
+                <input class="campo-input" @bind="form.Modelo" placeholder="Ex: Civic" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Ano *</label>
+                <input type="number" class="campo-input" @bind="form.Ano" placeholder="2024" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Cor *</label>
+                <input class="campo-input" @bind="form.Cor" placeholder="Ex: Prata" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Placa *</label>
+                <input class="campo-input" @bind="form.Placa" placeholder="ABC1D23 ou ABC1234" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">RENAVAM *</label>
+                <input class="campo-input" @bind="form.Renavam" placeholder="9 a 11 dígitos com DV" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Motorização *</label>
+                <input class="campo-input" @bind="form.Motorizacao" placeholder="Ex: 1.5 Turbo" />
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Quilometragem *</label>
+                <input type="number" class="campo-input" @bind="form.Quilometragem" placeholder="0" />
+            </div>
+        </div>
+    </div>
+
+    <div class="form-card" data-tour="consig-novo-caracteristicas">
+        <h2 class="secao-titulo">Características</h2>
+        <div class="form-grid">
+            <div class="form-campo">
+                <label class="campo-label">Câmbio</label>
+                <select class="campo-input" @bind="form.Cambio">
+                    <option value="Manual">Manual</option>
+                    <option value="Automatico">Automático</option>
+                </select>
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Combustível</label>
+                <select class="campo-input" @bind="form.Combustivel">
+                    <option value="Flex">Flex</option>
+                    <option value="Gasolina">Gasolina</option>
+                    <option value="Alcool">Álcool</option>
+                    <option value="Diesel">Diesel</option>
+                    <option value="Eletrico">Elétrico</option>
+                    <option value="Hibrido">Híbrido</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-card" data-tour="consig-novo-proprietario-vendedor">
+        <h2 class="secao-titulo">Proprietário e vendedor</h2>
+        <div class="form-grid">
+            <div class="form-campo">
+                <label class="campo-label">Proprietário (cliente) *</label>
+                <input class="campo-input" @bind="termoClienteBusca" @bind:event="oninput" @bind:after="BuscarClientes"
+                       @onfocus="() => mostrarResultadosCliente = true"
+                       placeholder="Buscar por nome ou CPF..." />
+                @if (clienteSelecionado is not null)
+                {
+                    <span class="selecao-atual">✓ @clienteSelecionado.Nome (@clienteSelecionado.Cpf)</span>
+                }
+                @if (mostrarResultadosCliente && resultadosCliente.Any())
+                {
+                    <ul class="lista-busca">
+                        @foreach (var c in resultadosCliente)
+                        {
+                            <li @onclick="() => SelecionarCliente(c)">@c.Nome — @c.Cpf</li>
+                        }
+                    </ul>
+                }
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Vendedor responsável *</label>
+                <select class="campo-input" @bind="form.VendedorResponsavelId">
+                    <option value="">Selecione...</option>
+                    @foreach (var v in vendedores)
+                    {
+                        <option value="@v.Id">@v.Nome</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-card" data-tour="consig-novo-comissao-prazo">
+        <h2 class="secao-titulo">Comissão e prazo</h2>
+        <div class="form-grid">
+            <div class="form-campo">
+                <label class="campo-label">Tipo de comissão</label>
+                <select class="campo-input" @bind="form.TipoComissao">
+                    <option value="Fixo">Valor fixo para o proprietário</option>
+                    <option value="Porcentagem">Porcentagem para o proprietário</option>
+                </select>
+            </div>
+            <div class="form-campo">
+                <label class="campo-label">Valor de venda esperado (R$) *</label>
+                <input type="number" step="0.01" class="campo-input" @bind="form.ValorVendaEsperado" placeholder="0,00" />
+            </div>
+            @if (form.TipoComissao == "Fixo")
+            {
+                <div class="form-campo">
+                    <label class="campo-label">Valor a repassar ao proprietário (R$) *</label>
+                    <input type="number" step="0.01" class="campo-input" @bind="form.ValorFixoProprietario" placeholder="0,00" />
+                </div>
+            }
+            else
+            {
+                <div class="form-campo">
+                    <label class="campo-label">% do proprietário sobre o valor de venda *</label>
+                    <input type="number" step="0.01" min="0" max="100" class="campo-input" @bind="form.PorcentagemProprietario" placeholder="Ex: 85" />
+                </div>
+            }
+            <div class="form-campo">
+                <label class="campo-label">Prazo da consignação (dias)</label>
+                <input type="number" class="campo-input" @bind="form.PrazoDias" placeholder="90" />
+            </div>
+        </div>
+    </div>
+
+    <div class="form-card" data-tour="consig-novo-contrato">
+        <h2 class="secao-titulo">Contrato</h2>
+        <p class="secao-sub">Termos do acordo de consignação com o proprietário.</p>
+        <textarea class="campo-input" rows="6" @bind="form.TextoContrato"
+                  placeholder="Ex: O proprietário consigna o veículo acima descrito à concessionária pelo prazo de..."></textarea>
+        <div class="form-campo" style="margin-top: 10px;">
+            <label class="campo-label">URL do contrato em PDF (opcional)</label>
+            <input class="campo-input" @bind="form.UrlContratoPdf" placeholder="https://..." />
+        </div>
+    </div>
+
+    <div class="form-card" data-tour="consig-novo-fotos">
+        <h2 class="secao-titulo">Fotos do veículo</h2>
+        <p class="secao-sub">JPEG ou PNG, até 5MB cada. Você poderá reordenar depois.</p>
+
+        <InputFile OnChange="OnFotosSelecionadas" multiple
+                   accept="image/jpeg,image/png" class="file-input" />
+
+        @if (previewsNovasFotos.Any())
+        {
+            <div class="previews">
+                @for (int i = 0; i < previewsNovasFotos.Count; i++)
+                {
+                    var idx = i;
+                    <div class="preview-item">
+                        <img src="@previewsNovasFotos[idx]" alt="prévia" />
+                        <button type="button" class="preview-remove"
+                                @onclick="() => RemoverFotoSelecionada(idx)">×</button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (erro is not null)
+    {
+        <div class="erro-banner">@erro</div>
+    }
+
+    @if (sucesso)
+    {
+        <div class="sucesso-banner">Veículo consignado cadastrado com sucesso!</div>
+    }
+
+    <div class="form-acoes">
+        <button class="btn-cancelar"
+                @onclick='() => Nav.NavigateTo("/concessionaria")'>
+            Cancelar
+        </button>
+        <button class="btn-salvar" data-tour="consig-novo-salvar-btn" @onclick="IniciarSalvamento" disabled="@salvando">
+            @(salvando ? "Salvando..." : "Cadastrar consignação")
+        </button>
+    </div>
+</div>
+
+<ConfirmacaoSenhaModal Visivel="modalSenhaVisivel"
+                       Titulo="Confirmar cadastro da consignação"
+                       Descricao="Esta ação registrará um novo veículo consignado. Digite sua senha para confirmar."
+                       TextoBotao="Cadastrar consignação"
+                       OnConfirmar="OnSenhaConfirmada"
+                       OnCancelar="() => modalSenhaVisivel = false"
+                       @ref="modalSenhaRef" />
+
+@code {
+    private CriarVeiculoConsignacaoDTO form = new()
+    {
+        Cambio = "Manual",
+        Combustivel = "Flex",
+        TipoComissao = "Fixo",
+        PrazoDias = 90,
+        Acessorios = new List<string>()
+    };
+
+    private List<VendedorListaDTO> vendedores = new();
+
+    private string termoClienteBusca = "";
+    private List<ClienteListaDTO> resultadosCliente = new();
+    private ClienteListaDTO? clienteSelecionado;
+    private bool mostrarResultadosCliente;
+
+    private record FotoEmMemoria(string Nome, string ContentType, byte[] Conteudo);
+    private List<FotoEmMemoria> arquivosSelecionados = new();
+    private List<string> previewsNovasFotos = new();
+    private bool salvando = false;
+    private bool sucesso = false;
+    private string? erro;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var rVendedores = await VendedorService.GetAllAsync();
+        if (rVendedores.IsSuccess && rVendedores.Value is not null)
+            vendedores = rVendedores.Value.ToList();
+
+        // Pré-preenche com o template configurado em Configurações > Documentos
+        // — o vendedor ajusta as lacunas em vez de partir de um campo em branco.
+        var rTemplates = await ConfigService.ObterTemplatesAsync();
+        if (rTemplates.IsSuccess && rTemplates.Value is not null)
+            form.TextoContrato = rTemplates.Value.TemplateContratoConsignacao;
+    }
+
+    private async Task BuscarClientes()
+    {
+        clienteSelecionado = null;
+        form.ClienteProprietarioId = Guid.Empty;
+
+        if (termoClienteBusca.Length < 2)
+        {
+            resultadosCliente = new();
+            return;
+        }
+        var r = await ClienteService.PesquisarAsync(termoClienteBusca);
+        resultadosCliente = r.IsSuccess && r.Value is not null ? r.Value.Take(8).ToList() : new();
+        mostrarResultadosCliente = true;
+    }
+
+    private void SelecionarCliente(ClienteListaDTO c)
+    {
+        clienteSelecionado = c;
+        form.ClienteProprietarioId = c.Id;
+        termoClienteBusca = c.Nome;
+        mostrarResultadosCliente = false;
+    }
+
+    private async Task OnFotosSelecionadas(InputFileChangeEventArgs e)
+    {
+        const long max = 5 * 1024 * 1024;
+        foreach (var file in e.GetMultipleFiles(20))
+        {
+            if (file.Size > max) continue;
+            if (file.ContentType != "image/jpeg" && file.ContentType != "image/png") continue;
+
+            using var ms = new MemoryStream();
+            await file.OpenReadStream(maxAllowedSize: max).CopyToAsync(ms);
+            var bytes = ms.ToArray();
+
+            arquivosSelecionados.Add(new FotoEmMemoria(file.Name, file.ContentType, bytes));
+
+            var base64 = Convert.ToBase64String(bytes);
+            previewsNovasFotos.Add($"data:{file.ContentType};base64,{base64}");
+        }
+
+        StateHasChanged();
+    }
+
+    private void RemoverFotoSelecionada(int indice)
+    {
+        if (indice < 0 || indice >= arquivosSelecionados.Count) return;
+        arquivosSelecionados.RemoveAt(indice);
+        previewsNovasFotos.RemoveAt(indice);
+    }
+
+    private bool modalSenhaVisivel;
+    private ConfirmacaoSenhaModal? modalSenhaRef;
+
+    private void IniciarSalvamento()
+    {
+        if (string.IsNullOrWhiteSpace(form.Marca) ||
+            string.IsNullOrWhiteSpace(form.Modelo) ||
+            string.IsNullOrWhiteSpace(form.Placa) ||
+            string.IsNullOrWhiteSpace(form.Renavam) ||
+            clienteSelecionado is null ||
+            form.VendedorResponsavelId == Guid.Empty ||
+            form.ValorVendaEsperado <= 0)
+        {
+            erro = "Preencha todos os campos obrigatórios, incluindo proprietário, vendedor e valor de venda esperado.";
+            return;
+        }
+        if (form.TipoComissao == "Fixo" && (form.ValorFixoProprietario is null || form.ValorFixoProprietario <= 0))
+        {
+            erro = "Informe o valor fixo a repassar ao proprietário.";
+            return;
+        }
+        if (form.TipoComissao == "Porcentagem" && (form.PorcentagemProprietario is null || form.PorcentagemProprietario <= 0 || form.PorcentagemProprietario > 100))
+        {
+            erro = "Informe uma porcentagem válida (entre 0 e 100) para o proprietário.";
+            return;
+        }
+        erro = null;
+        modalSenhaVisivel = true;
+    }
+
+    private async Task OnSenhaConfirmada(string senha)
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var idClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (idClaim is null || !Guid.TryParse(idClaim.Value, out var usuarioId))
+        {
+            modalSenhaRef?.MostrarErro();
+            return;
+        }
+        var verif = await AuthService.VerificarSenhaAsync(usuarioId, senha);
+        if (!verif.IsSuccess)
+        {
+            modalSenhaRef?.MostrarErro();
+            return;
+        }
+        await ExecutarSalvamento();
+    }
+
+    private async Task ExecutarSalvamento()
+    {
+        modalSenhaVisivel = false;
+
+        salvando = true;
+        erro = null;
+        sucesso = false;
+
+        try
+        {
+            var resultado = await ConsignacaoService.AddAsync(form);
+            if (!resultado.IsSuccess)
+            {
+                erro = resultado.Error;
+                return;
+            }
+
+            var veiculoId = resultado.Value;
+
+            if (arquivosSelecionados.Count > 0)
+            {
+                var arquivos = arquivosSelecionados
+                    .Select(f => new ArquivoUpload(
+                        f.Nome, f.Conteudo.Length, f.ContentType,
+                        () => new MemoryStream(f.Conteudo)))
+                    .ToList();
+
+                var rUpload = await FotoService.UploadFotosAsync("VeiculoConsignacao", veiculoId, arquivos);
+                if (!rUpload.IsSuccess)
+                {
+                    erro = $"Consignação cadastrada, mas falhou o upload de fotos: {rUpload.Error}";
+                    Nav.NavigateTo($"/concessionaria/veiculo/{veiculoId}");
+                    return;
+                }
+            }
+
+            sucesso = true;
+            await Task.Delay(900);
+            Nav.NavigateTo($"/concessionaria/veiculo/{veiculoId}");
+        }
+        catch (Exception ex)
+        {
+            erro = $"Erro ao cadastrar consignação: {ex.Message}";
+        }
+        finally { salvando = false; }
+    }
+}
+
+<style>
+    .form-page { max-width: 800px; margin: 0 auto; padding: 24px; }
+    .page-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+    .page-titulo { font-size: 22px; font-weight: 500; }
+
+    .tipo-cadastro-nav { font-size: 12px; color: #888; margin: -12px 0 20px; }
+    .tipo-cadastro-nav a { color: #e02020; text-decoration: none; }
+    .tipo-cadastro-nav a:hover { text-decoration: underline; }
+
+    .form-card {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+    }
+
+    .secao-titulo {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1a1a1a;
+        margin-bottom: 6px;
+        padding-bottom: 10px;
+        border-bottom: 0.5px solid #eee;
+    }
+
+    .secao-sub { font-size: 12px; color: #888; margin-bottom: 12px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-campo { display: flex; flex-direction: column; gap: 6px; position: relative; }
+    .campo-label { font-size: 12px; color: #555; font-weight: 500; }
+
+    .campo-input {
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 14px;
+        outline: none;
+        width: 100%;
+        transition: border-color 0.2s;
+    }
+
+    .campo-input:focus { border-color: #e02020; }
+
+    .selecao-atual { font-size: 12px; color: #166534; }
+
+    .lista-busca {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        list-style: none;
+        margin: 4px 0 0;
+        padding: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .lista-busca li {
+        padding: 8px 10px;
+        font-size: 13px;
+        cursor: pointer;
+        border-radius: 6px;
+    }
+
+    .lista-busca li:hover { background: #fafafa; }
+
+    .file-input { display: block; margin-bottom: 12px; font-size: 13px; }
+
+    .previews {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 8px;
+    }
+
+    .preview-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        aspect-ratio: 4/3;
+        background: #f4f4f4;
+    }
+
+    .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+
+    .preview-remove {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.6);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .erro-banner {
+        background: #fff5f5;
+        border: 0.5px solid #fca5a5;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: #e02020;
+        margin-bottom: 16px;
+    }
+
+    .sucesso-banner {
+        background: #f0fdf4;
+        border: 0.5px solid #86efac;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: #166534;
+        margin-bottom: 16px;
+    }
+
+    .form-acoes { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+
+    .btn-cancelar {
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-size: 14px;
+        cursor: pointer;
+        color: #444;
+    }
+
+    .btn-salvar {
+        background: #e02020;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 24px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .btn-salvar:hover:not(:disabled) { background: #c01818; }
+    .btn-salvar:disabled { opacity: 0.6; cursor: not-allowed; }
+</style>
