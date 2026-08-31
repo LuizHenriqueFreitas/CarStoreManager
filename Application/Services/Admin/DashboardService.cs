@@ -6,6 +6,7 @@ using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Interfaces.Repositories.Sistema;
 using CarStoreManager.Domain.Repositories;
+using Microsoft.Extensions.Logging;
 
 namespace CarStoreManager.Application.Services.Dashboards;
 
@@ -16,11 +17,13 @@ namespace CarStoreManager.Application.Services.Dashboards;
 /// </summary>
 public class DashboardService : IDashboardService
 {
-    private const int JANELA_MESES = 6;
+    private const int JANELA_MESES_PADRAO = 6;
+    private static readonly int[] JANELAS_MESES_PERMITIDAS = { 3, 6, 12 };
     private const int JANELA_MESES_ACUMULADA = 12;
     private const int TOP_CATEGORIAS = 6;
 
     private readonly IDespesaRepository _despesas;
+    private readonly IClienteRepository _clientes;
     private readonly IOrdemServicoRepository _ordens;
     private readonly IPropostaVendaRepository _propostas;
     private readonly IVeiculoVendaRepository _veiculos;
@@ -31,9 +34,11 @@ public class DashboardService : IDashboardService
     private readonly IComponenteRepository _componentes;
     private readonly IEstoqueRepository _estoque;
     private readonly IVendaMercadoLivreRepository _vendasMercadoLivre;
+    private readonly ILogger<DashboardService> _logger;
 
     public DashboardService(
         IDespesaRepository despesas,
+        IClienteRepository clientes,
         IOrdemServicoRepository ordens,
         IPropostaVendaRepository propostas,
         IVeiculoVendaRepository veiculos,
@@ -43,9 +48,11 @@ public class DashboardService : IDashboardService
         IVeiculoClienteRepository veiculosCliente,
         IComponenteRepository componentes,
         IEstoqueRepository estoque,
-        IVendaMercadoLivreRepository vendasMercadoLivre)
+        IVendaMercadoLivreRepository vendasMercadoLivre,
+        ILogger<DashboardService> logger)
     {
         _despesas = despesas;
+        _clientes = clientes;
         _ordens = ordens;
         _propostas = propostas;
         _veiculos = veiculos;
@@ -56,13 +63,37 @@ public class DashboardService : IDashboardService
         _componentes = componentes;
         _estoque = estoque;
         _vendasMercadoLivre = vendasMercadoLivre;
+        _logger = logger;
     }
 
-    public async Task<Result<DashboardMetricasDTO>> ObterMetricasAsync()
+    /// <summary>
+    /// Métricas do mês atual — a agregação de verdade fica em ObterMetricasInternoAsync;
+    /// aqui só blinda contra exceção inesperada em qualquer um dos ~10 repositórios agregados.
+    /// </summary>
+    /// <param name="meses">
+    /// Janela (em meses) usada pelas séries temporais dos gráficos (receitas/despesas,
+    /// comparativo oficina x concessionária, timeline de propostas). Aceita 3, 6 ou 12 —
+    /// qualquer outro valor cai no padrão de 6.
+    /// </param>
+    public async Task<Result<DashboardMetricasDTO>> ObterMetricasAsync(int meses = JANELA_MESES_PADRAO)
+    {
+        var janela = JANELAS_MESES_PERMITIDAS.Contains(meses) ? meses : JANELA_MESES_PADRAO;
+        try
+        {
+            return await ObterMetricasInternoAsync(janela);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao calcular métricas do dashboard");
+            return Result<DashboardMetricasDTO>.Fail("Não foi possível carregar as métricas do dashboard. Tente novamente em instantes.");
+        }
+    }
+
+    private async Task<Result<DashboardMetricasDTO>> ObterMetricasInternoAsync(int janelaMeses)
     {
         var hoje = DateTime.Today;
         var inicioMes = new DateTime(hoje.Year, hoje.Month, 1);
-        var janelaInicio = inicioMes.AddMonths(-(JANELA_MESES - 1));
+        var janelaInicio = inicioMes.AddMonths(-(janelaMeses - 1));
 
         var dto = new DashboardMetricasDTO();
 
@@ -98,7 +129,7 @@ public class DashboardService : IDashboardService
             ordensFinalizadas
                 .Where(o => o.DataCriacao >= janelaInicio)
                 .Select(o => (Data: o.DataCriacao, Valor: o.GetValorTotal())),
-            janelaInicio);
+            janelaInicio, janelaMeses);
 
         // === Receita de serviços acumulada (12 meses) ===
         var janelaInicio12m = inicioMes.AddMonths(-(JANELA_MESES_ACUMULADA - 1));
@@ -143,9 +174,9 @@ public class DashboardService : IDashboardService
             propostasFechadas
                 .Where(p => p.DataAprovacao!.Value >= janelaInicio)
                 .Select(p => (Data: p.DataAprovacao!.Value, Valor: p.GetValorFinal())),
-            janelaInicio);
+            janelaInicio, janelaMeses);
 
-        // === Propostas aprovadas vs rejeitadas (últimos 6 meses) ===
+        // === Propostas aprovadas vs rejeitadas (janela selecionada) ===
         // "Aprovadas" conta qualquer proposta que já passou pelo status Aprovada
         // (DataAprovacao preenchida), mesmo que tenha avançado no fluxo depois.
         // PropostaVenda não guarda data de rejeição, então rejeitadas são
@@ -162,7 +193,7 @@ public class DashboardService : IDashboardService
 
         var ciProp = CultureInfo.GetCultureInfo("pt-BR");
         var timeline = new List<PropostaTimelineDTO>();
-        for (int i = 0; i < JANELA_MESES; i++)
+        for (int i = 0; i < janelaMeses; i++)
         {
             var mes = janelaInicio.AddMonths(i);
             var chave = (mes.Year, mes.Month);
@@ -180,6 +211,9 @@ public class DashboardService : IDashboardService
         dto.CapitalEstoqueVeiculos = veiculos
             .Where(v => v.Disponibilidade == DisponibilidadeVeiculo.Disponivel)
             .Sum(v => v.Valor.GetValorDinheiro());
+        dto.CapitalAquisicaoVeiculosDisponiveis = veiculos
+            .Where(v => v.Disponibilidade == DisponibilidadeVeiculo.Disponivel)
+            .Sum(v => v.ValorAquisicao.GetValorDinheiro());
 
         // === Veículos por status ===
         dto.VeiculosPorStatus = veiculos
@@ -204,11 +238,17 @@ public class DashboardService : IDashboardService
         var componentesPorId = todosComponentes.ToDictionary(c => c.Id);
         var todoEstoque = (await _estoque.GetAllAsync()).ToList();
         var todasVendasML = (await _vendasMercadoLivre.GetAllAsync()).ToList();
+        var todosClientes = (await _clientes.GetAllAsync()).ToList();
+        var clientesPorId = todosClientes.ToDictionary(c => c.Id, c => c.Nome);
+
+        dto.CapitalEstoqueComponentes = todoEstoque
+            .Where(e => e.Componente is not null)
+            .Sum(e => e.Componente.CustoUnitario * e.QuantidadeAtual);
 
         dto.Graficos = MontarGraficos(
             despesasAtivas, todasOrdens, todasPropostas, propostasFechadas, veiculos,
             todosUsuarios, todasConsignacoes, todosVeiculosCliente, veiculosClientePorId,
-            componentesPorId, todoEstoque, todasVendasML, mecanicosLista);
+            componentesPorId, todoEstoque, todasVendasML, mecanicosLista, clientesPorId);
 
         // Composição financeira do mês — inserida na frente da lista para ser
         // a opção padrão do seletor ("dados financeiros básicos por padrão").
@@ -231,11 +271,25 @@ public class DashboardService : IDashboardService
         return Result<DashboardMetricasDTO>.Ok(dto);
     }
 
+    /// <summary>Mesma ideia de ObterMetricasAsync, mas recalculada pro período [dataInicio, dataFim] — usada pelos relatórios exportáveis.</summary>
     public async Task<Result<DashboardMetricasDTO>> ObterMetricasPeriodoAsync(DateTime dataInicio, DateTime dataFim)
     {
         if (dataFim.Date < dataInicio.Date)
             return Result<DashboardMetricasDTO>.Fail("Data final não pode ser anterior à data inicial.");
 
+        try
+        {
+            return await ObterMetricasPeriodoInternoAsync(dataInicio, dataFim);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao calcular métricas do dashboard para o período {Inicio:yyyy-MM-dd} a {Fim:yyyy-MM-dd}", dataInicio, dataFim);
+            return Result<DashboardMetricasDTO>.Fail("Não foi possível carregar as métricas do período. Tente novamente em instantes.");
+        }
+    }
+
+    private async Task<Result<DashboardMetricasDTO>> ObterMetricasPeriodoInternoAsync(DateTime dataInicio, DateTime dataFim)
+    {
         var inicioPeriodo = dataInicio.Date;
         var fimPeriodo = dataFim.Date.AddDays(1).AddTicks(-1); // fim do dia, inclusive
         var mesesNoPeriodo = (fimPeriodo.Year - inicioPeriodo.Year) * 12 + fimPeriodo.Month - inicioPeriodo.Month + 1;
@@ -342,9 +396,17 @@ public class DashboardService : IDashboardService
         dto.CapitalEstoqueVeiculos = veiculos
             .Where(v => v.Disponibilidade == DisponibilidadeVeiculo.Disponivel)
             .Sum(v => v.Valor.GetValorDinheiro());
+        dto.CapitalAquisicaoVeiculosDisponiveis = veiculos
+            .Where(v => v.Disponibilidade == DisponibilidadeVeiculo.Disponivel)
+            .Sum(v => v.ValorAquisicao.GetValorDinheiro());
         dto.VeiculosPorStatus = veiculos
             .GroupBy(v => v.Disponibilidade.ToString())
             .ToDictionary(g => g.Key, g => g.Count());
+
+        var todoEstoque = (await _estoque.GetAllAsync()).ToList();
+        dto.CapitalEstoqueComponentes = todoEstoque
+            .Where(e => e.Componente is not null)
+            .Sum(e => e.Componente.CustoUnitario * e.QuantidadeAtual);
 
         // === Vendas por marca — veículos das propostas concluídas no período ===
         dto.VendasPorMarca = propostasFechadasPeriodo
@@ -393,7 +455,8 @@ public class DashboardService : IDashboardService
         Dictionary<Guid, Componente> componentesPorId,
         List<EstoqueComponente> todoEstoque,
         List<Domain.Entities.Integracoes.VendaMercadoLivre> todasVendasML,
-        List<Domain.Entities.Oficina.Mecanico> mecanicosLista)
+        List<Domain.Entities.Oficina.Mecanico> mecanicosLista,
+        Dictionary<Guid, string> clientesPorId)
     {
         var graficos = new List<GraficoAnaliseDTO>();
         var veiculosVendidos = veiculos.Where(v => v.Disponibilidade == DisponibilidadeVeiculo.Vendido).ToList();
@@ -566,6 +629,34 @@ public class DashboardService : IDashboardService
             }
         });
 
+        graficos.Add(new GraficoAnaliseDTO
+        {
+            Id = "top-clientes-compradores",
+            Titulo = "Top 5 clientes que mais compraram veículos",
+            Categoria = "Concessionária",
+            TipoGrafico = "bar",
+            Dados = propostasFechadas
+                .GroupBy(p => p.ClienteId)
+                .Select(g => new CategoriaValorDTO { Rotulo = NomeCliente(clientesPorId, g.Key), Valor = g.Count() })
+                .OrderByDescending(c => c.Valor)
+                .Take(5)
+                .ToList()
+        });
+
+        graficos.Add(new GraficoAnaliseDTO
+        {
+            Id = "top-clientes-consignantes",
+            Titulo = "Top 5 clientes com mais veículos consignados",
+            Categoria = "Concessionária",
+            TipoGrafico = "bar",
+            Dados = todasConsignacoes
+                .GroupBy(c => c.ClienteProprietarioId)
+                .Select(g => new CategoriaValorDTO { Rotulo = NomeCliente(clientesPorId, g.Key), Valor = g.Count() })
+                .OrderByDescending(c => c.Valor)
+                .Take(5)
+                .ToList()
+        });
+
         // ===================== OFICINA =====================
 
         // "sistemas-consertados" (agrupava OrdemServico.Itens por Componente.Sistema)
@@ -655,6 +746,20 @@ public class DashboardService : IDashboardService
                 .ToList()
         });
 
+        graficos.Add(new GraficoAnaliseDTO
+        {
+            Id = "top-clientes-oficina",
+            Titulo = "Top 5 clientes que mais levaram veículos à oficina",
+            Categoria = "Oficina",
+            TipoGrafico = "bar",
+            Dados = todasOrdens
+                .GroupBy(o => o.ClienteId)
+                .Select(g => new CategoriaValorDTO { Rotulo = NomeCliente(clientesPorId, g.Key), Valor = g.Count() })
+                .OrderByDescending(c => c.Valor)
+                .Take(5)
+                .ToList()
+        });
+
         // ===================== ESTOQUE =====================
 
         var estoquePorSistema = todoEstoque
@@ -705,6 +810,9 @@ public class DashboardService : IDashboardService
         _ => role
     };
 
+    private static string NomeCliente(Dictionary<Guid, string> clientesPorId, Guid clienteId)
+        => clientesPorId.TryGetValue(clienteId, out var nome) ? nome : "Cliente removido";
+
     /// <summary>
     /// Reduz uma distribuição para as N maiores categorias, somando o resto
     /// em "Outros" — evita gráfico de pizza com dezenas de fatias minúsculas.
@@ -730,7 +838,7 @@ public class DashboardService : IDashboardService
     private static List<MesValorDTO> AgruparPorMes(
         IEnumerable<(DateTime Data, decimal Valor)> lancamentos,
         DateTime janelaInicio,
-        int meses = JANELA_MESES)
+        int meses = JANELA_MESES_PADRAO)
     {
         var ci = CultureInfo.GetCultureInfo("pt-BR");
         var serie = new List<MesValorDTO>();

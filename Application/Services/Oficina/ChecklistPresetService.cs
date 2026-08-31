@@ -51,6 +51,7 @@ public class ChecklistPresetService : IChecklistPresetService
             return Result<Guid>.Ok(preset.Id);
         }
         catch (ArgumentException ex) { return Result<Guid>.Fail(ex.Message); }
+        catch (Exception) { return Result<Guid>.Fail("Não foi possível criar o preset. Tente novamente em instantes."); }
     }
 
     public async Task<Result> UpdateAsync(SalvarChecklistPresetDTO dto)
@@ -70,6 +71,7 @@ public class ChecklistPresetService : IChecklistPresetService
             return Result.Ok();
         }
         catch (ArgumentException ex) { return Result.Fail(ex.Message); }
+        catch (Exception) { return Result.Fail("Não foi possível salvar o preset. Tente novamente em instantes."); }
     }
 
     public async Task<Result> RemoveAsync(Guid id)
@@ -77,9 +79,17 @@ public class ChecklistPresetService : IChecklistPresetService
         var preset = await _repo.GetByIdAsync(id);
         if (preset is null) return Result.Fail("Preset não encontrado.");
 
-        _repo.Remove(preset);
-        await _repo.SaveChangesAsync();
-        return Result.Ok();
+        try
+        {
+            _repo.Remove(preset);
+            await _repo.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception)
+        {
+            // Provável violação de FK — o preset já foi usado numa OS.
+            return Result.Fail("Não foi possível excluir o preset. Ele pode já estar em uso em alguma ordem de serviço.");
+        }
     }
 
     private static ChecklistPresetDTO MapToDto(ChecklistPreset p) => new()

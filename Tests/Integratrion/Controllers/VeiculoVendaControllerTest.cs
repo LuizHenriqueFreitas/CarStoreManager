@@ -146,7 +146,8 @@ public class VeiculoVendaControllerTests : IClassFixture<WebApplicationFactory<P
         {
             Marca = "Fiat", Modelo = "Uno", Cor = "Branco", Motorizacao = "1.0",
             Ano = 2020, Quilometragem = 1000, Placa = "ABC1D23", Renavam = "12345678901",
-            Cambio = "Manual", Combustivel = "Flex", Valor = 35000m
+            Cambio = "Manual", Combustivel = "Flex", Valor = 35000m,
+            ValorAquisicao = 28000m, AnoUltimoIpvaPago = 2024
         });
 
         r.StatusCode.Should().Be(HttpStatusCode.Created);

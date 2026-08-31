@@ -63,7 +63,8 @@
                                max="@resumo.ValorRestante" />
                         <input type="text" @bind="novo.ReferenciaExterna"
                                placeholder="NSU/end-to-end (opc)" />
-                        <button class="btn-receber" @onclick="Registrar"
+                        <button class="btn-receber"
+                                @onclick='() => PedirConfirmacao("Registrar pagamento", $"Deseja registrar um pagamento de {FmtBRL(novo.Valor)}?", Registrar)'
                                 disabled="@(processando || string.IsNullOrEmpty(novo.ModoPagamento) || novo.Valor <= 0)">
                             @(processando ? "..." : "Registrar")
                         </button>
@@ -93,7 +94,7 @@
                                     <AuthorizeView Roles="Admin,ChefeOficina" Context="adminAcao">
                                         <Authorized>
                                             <td>
-                                                <button class="btn-estorno" @onclick="() => Estornar(p.Id)">↩</button>
+                                                <button class="btn-estorno" @onclick='() => PedirConfirmacao("Estornar pagamento", $"Deseja estornar o pagamento de {FmtBRL(p.Valor)}? Essa ação não pode ser desfeita.", () => Estornar(p.Id), destrutivo: true)'>↩</button>
                                             </td>
                                         </Authorized>
                                     </AuthorizeView>
@@ -108,6 +109,13 @@
                 }
             }
         </div>
+
+        <ConfirmacaoModal Visivel="confirmVisivel"
+                           Titulo="@confirmTitulo"
+                           Mensagem="@confirmMensagem"
+                           Destrutivo="confirmDestrutivo"
+                           OnConfirmar="ExecutarAcaoConfirmada"
+                           OnCancelar="CancelarConfirmacao" />
     </Authorized>
 </AuthorizeView>
 
@@ -140,6 +148,11 @@
     .tbl-pagamentos th, .tbl-pagamentos td { padding:6px 8px; border-bottom:1px solid #eee; text-align:left; font-size:0.9em; }
     .tbl-pagamentos th { background:#f7f7f7; font-weight:500; font-size:0.8em; }
     .btn-estorno { background:none; border:0; color:#a72020; cursor:pointer; font-size:1.1em; }
+
+    @@media (max-width: 560px) {
+        .pag-resumo { grid-template-columns: repeat(2, 1fr); }
+        .tbl-pagamentos { display: block; overflow-x: auto; white-space: nowrap; }
+    }
 </style>
 
 @code {
@@ -150,6 +163,35 @@
     private bool processando;
     private string mensagem = "";
     private bool mensagemErro;
+
+    private bool confirmVisivel;
+    private string confirmTitulo = "Confirmar envio";
+    private string confirmMensagem = "Deseja enviar o formulário como está?";
+    private bool confirmDestrutivo;
+    private Func<Task>? acaoConfirmada;
+
+    private void PedirConfirmacao(string titulo, string mensagemConfirm, Func<Task> acao, bool destrutivo = false)
+    {
+        confirmTitulo = titulo;
+        confirmMensagem = mensagemConfirm;
+        confirmDestrutivo = destrutivo;
+        acaoConfirmada = acao;
+        confirmVisivel = true;
+    }
+
+    private async Task ExecutarAcaoConfirmada()
+    {
+        confirmVisivel = false;
+        var acao = acaoConfirmada;
+        acaoConfirmada = null;
+        if (acao is not null) await acao();
+    }
+
+    private void CancelarConfirmacao()
+    {
+        confirmVisivel = false;
+        acaoConfirmada = null;
+    }
     private Guid usuarioLogadoId;
 
     protected override async Task OnInitializedAsync()
@@ -194,7 +236,7 @@
         }
     }
 
-    private async Task ReceberRestante()
+    private void ReceberRestante()
     {
         if (resumo is null) return;
         novo.Valor = resumo.ValorRestante;
@@ -204,7 +246,7 @@
             mensagemErro = true;
             return;
         }
-        await Registrar();
+        PedirConfirmacao("Registrar pagamento", $"Deseja registrar o pagamento do valor restante ({FmtBRL(novo.Valor)})?", Registrar);
     }
 
     private async Task Estornar(Guid pagamentoId)

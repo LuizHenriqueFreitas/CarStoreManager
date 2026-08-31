@@ -1,0 +1,101 @@
+/*
+    Camada global de responsividade — carregada depois de app.css e antes do
+    <style> de cada página (que fica embutido no corpo do documento). Cobre
+    dois tipos de regra:
+
+    1. Uma rede de segurança sem media query (nunca deixa a página abrir
+       scroll horizontal, imagem/tabela/canvas estourando a viewport, etc).
+
+    2. Overrides com @media para os nomes de classe reaproveitados em várias
+       telas (page-header, toolbar, form-grid, modal-form, campo-input...).
+       Como cada página já define essas classes sem media query, o override
+       aqui só "ganha" a mesma especificidade com !important — é o motivo
+       de existir: um único lugar pra ajustar o padrão repetido em ~15 telas
+       em vez de duplicar a mesma regra em cada arquivo .razor.
+
+    Ajustes bem específicos de uma tela só (tabela larga, grid com nome
+    próprio) continuam no <style> da própria página.
+*/
+
+/* ============ 1. Rede de segurança (todas as larguras) ============ */
+
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+img, svg, video, canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+table {
+    max-width: 100%;
+}
+
+/* Utilitário: envolve uma <table> larga (muitas colunas) pra ela rolar na
+   horizontal em vez de espremer texto ou vazar da tela. Usar assim:
+   <div class="table-scroll"><table>...</table></div> */
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ============ 2. Overrides para os padrões repetidos ============ */
+
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px;
+    }
+
+    .toolbar {
+        flex-direction: column !important;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .span-2 {
+        grid-column: span 1 !important;
+    }
+
+    .modal-overlay {
+        padding: 12px;
+    }
+
+    .modal-form {
+        max-width: 100% !important;
+        width: 100%;
+    }
+
+    .modal-acoes {
+        flex-wrap: wrap;
+    }
+
+    .modal-acoes > button {
+        flex: 1 1 auto;
+    }
+
+    .btn-novo {
+        width: 100%;
+        text-align: center;
+    }
+
+    .filtro-select,
+    .busca-input {
+        max-width: 100% !important;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    /* 16px evita o zoom automático do Safari/iOS ao focar um input menor que isso */
+    .campo-input,
+    .busca-input,
+    .filtro-select {
+        font-size: 16px;
+    }
+}

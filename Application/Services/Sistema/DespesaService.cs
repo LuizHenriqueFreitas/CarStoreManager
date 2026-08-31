@@ -78,9 +78,16 @@ public class DespesaService : IDespesaService
         var despesa = await _repo.GetByIdAsync(id);
         if (despesa is null) return Result.Fail("Despesa não encontrada.");
 
-        _repo.Remove(despesa);
-        await _repo.SaveChangesAsync();
-        return Result.Ok();
+        try
+        {
+            _repo.Remove(despesa);
+            await _repo.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível excluir a despesa. Tente novamente em instantes.");
+        }
     }
 
     public async Task<Result<decimal>> ObterTotalMensalAsync()

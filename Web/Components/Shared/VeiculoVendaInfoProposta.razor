@@ -64,4 +64,9 @@
     .resumo-label { color: #888; }
     .resumo-valor { font-weight: 700; color: #1a1a1a; }
     .sem-veiculo { color: #888; font-size: 13px; }
+
+    @@media (max-width: 380px) {
+        .resumo-detalhes { grid-template-columns: 1fr; }
+        .resumo-principal { flex-direction: column; align-items: flex-start; gap: 2px; }
+    }
 </style>

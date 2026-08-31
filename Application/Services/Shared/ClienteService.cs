@@ -153,9 +153,15 @@ public class ClienteService : IClienteService
         if (cliente is null)
             return Result.Fail("Cliente não encontrado");
 
-        _repository.Remove(cliente);
-        await _repository.SaveChangesAsync();
-
-        return Result.Ok();
+        try
+        {
+            _repository.Remove(cliente);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível excluir o cliente. Ele pode ter veículos, ordens de serviço ou propostas vinculadas.");
+        }
     }
 }

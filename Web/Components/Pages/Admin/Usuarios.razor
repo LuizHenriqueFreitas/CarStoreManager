@@ -568,4 +568,10 @@
 
     .btn-confirmar:disabled { opacity: 0.5; cursor: not-allowed; }
     .loading { text-align: center; padding: 60px; color: #888; font-size: 14px; }
+
+    @@media (max-width: 640px) {
+        .usuario-card { flex-wrap: wrap; }
+        .usuario-info { min-width: 55%; }
+        .btn-desativar { flex-basis: 100%; text-align: center; }
+    }
 </style>

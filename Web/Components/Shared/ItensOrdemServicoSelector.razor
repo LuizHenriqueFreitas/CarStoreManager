@@ -11,6 +11,7 @@
 
     @if (itens.Any())
     {
+        <div class="table-scroll">
         <table class="tabela-itens">
             <thead>
                 <tr>
@@ -38,6 +39,7 @@
                 }
             </tbody>
         </table>
+        </div>
     }
 
     <div class="adicionar-bloco">
@@ -301,6 +303,10 @@
 
 <style>
     .tabela-itens { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+
+    @@media (max-width: 640px) {
+        .tabela-itens { min-width: 560px; }
+    }
     .tabela-itens th, .tabela-itens td { text-align: left; padding: 8px 6px; border-bottom: 0.5px solid #eee; font-size: 13px; }
     .btn-remover-pequeno { background: none; border: none; color: #e02020; font-size: 16px; cursor: pointer; }
 

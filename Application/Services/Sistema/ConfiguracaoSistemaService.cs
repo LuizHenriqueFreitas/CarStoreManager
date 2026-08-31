@@ -35,6 +35,10 @@ public class ConfiguracaoSistemaService : IConfiguracaoSistemaService
         {
             return Result.Fail(ex.Message);
         }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível salvar a configuração. Tente novamente em instantes.");
+        }
     }
 
     public async Task<Result<MargensDTO>> ObterMargensAsync()
@@ -66,6 +70,7 @@ public class ConfiguracaoSistemaService : IConfiguracaoSistemaService
             return Result.Ok();
         }
         catch (ArgumentException ex) { return Result.Fail(ex.Message); }
+        catch (Exception) { return Result.Fail("Não foi possível salvar as margens. Tente novamente em instantes."); }
     }
 
     public async Task<Result<TemplatesDocumentosDTO>> ObterTemplatesAsync()
@@ -80,10 +85,17 @@ public class ConfiguracaoSistemaService : IConfiguracaoSistemaService
 
     public async Task<Result> AtualizarTemplatesAsync(TemplatesDocumentosDTO dto)
     {
-        var cfg = await _repo.ObterAsync();
-        cfg.AtualizarTemplates(dto.TemplateTermoEntrega, dto.TemplateContratoConsignacao);
-        await _repo.SaveChangesAsync();
-        return Result.Ok();
+        try
+        {
+            var cfg = await _repo.ObterAsync();
+            cfg.AtualizarTemplates(dto.TemplateTermoEntrega, dto.TemplateContratoConsignacao);
+            await _repo.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível salvar os templates. Tente novamente em instantes.");
+        }
     }
 
     private static ConfiguracaoSistemaDTO MapToDto(ConfiguracaoSistema cfg) => new()

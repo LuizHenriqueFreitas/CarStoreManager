@@ -16,6 +16,23 @@ public class DashboardMetricasDTO
     public decimal TotalDespesasConcessionariaMensal { get; set; }
 
     public decimal CapitalEstoqueVeiculos { get; set; }
+
+    /// <summary>
+    /// Quanto a concessionária pagou (valor de aquisição) pelos veículos ainda
+    /// não vendidos — comparado com <see cref="CapitalEstoqueVeiculos"/> (valor
+    /// de venda) dá a margem potencial do estoque atual. Não é despesa
+    /// recorrente nem entra no fluxo de caixa mensal, é só um retrato do
+    /// capital investido, igual a CapitalEstoqueVeiculos.
+    /// </summary>
+    public decimal CapitalAquisicaoVeiculosDisponiveis { get; set; }
+
+    /// <summary>
+    /// Custo unitário × quantidade atual, somado por todos os componentes em
+    /// estoque — quanto a oficina tem investido em peças agora. Mesma lógica
+    /// de "retrato do capital", não de despesa mensal.
+    /// </summary>
+    public decimal CapitalEstoqueComponentes { get; set; }
+
     public decimal ReceitaServicosMesAtual { get; set; }
     public decimal ReceitaVendasMesAtual { get; set; }
 

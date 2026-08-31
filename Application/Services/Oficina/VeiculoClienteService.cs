@@ -155,9 +155,15 @@ public class VeiculoClienteService : IVeiculoClienteService
         if (veiculo is null)
             return Result.Fail("Veículo não encontrado");
 
-        _repository.Remove(veiculo);
-        await _repository.SaveChangesAsync();
-
-        return Result.Ok();
+        try
+        {
+            _repository.Remove(veiculo);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível excluir o veículo. Ele pode ter ordens de serviço vinculadas.");
+        }
     }
 }

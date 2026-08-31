@@ -242,12 +242,19 @@ public class OrdemServicoService : IOrdemServicoService
         if (ordem is null)
             return Result.Fail("OS não encontrada");
 
-        ordem.RemoverItem(itemId);
+        try
+        {
+            ordem.RemoverItem(itemId);
 
-        _repository.Update(ordem);
-        await _repository.SaveChangesAsync();
+            _repository.Update(ordem);
+            await _repository.SaveChangesAsync();
 
-        return Result.Ok();
+            return Result.Ok();
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível remover o item da ordem de serviço. Tente novamente em instantes.");
+        }
     }
 
     /*
@@ -563,11 +570,17 @@ public class OrdemServicoService : IOrdemServicoService
         var ordem = await _repository.GetByIdAsync(id);
 
         if (ordem is null)
-            return Result.Fail("Mecânico não encontrado");
+            return Result.Fail("Ordem de serviço não encontrada");
 
-        _repository.Remove(ordem);
-        await _repository.SaveChangesAsync();
-
-        return Result.Ok();
+        try
+        {
+            _repository.Remove(ordem);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível excluir a ordem de serviço. Ela pode ter pagamentos ou peças vinculadas.");
+        }
     }
 }

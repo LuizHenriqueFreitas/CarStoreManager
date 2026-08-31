@@ -503,7 +503,7 @@ namespace CarStoreManager.Tests.Unidade.Services
             var result = await _service.RemoveAsync(Guid.NewGuid());
 
             result.IsSuccess.Should().BeFalse();
-            result.Error.Should().Contain("Mecânico não encontrado"); // bug de mensagem original
+            result.Error.Should().Contain("Ordem de serviço não encontrada");
         }
 
         // ==================== MÉTODOS AUXILIARES ====================
@@ -528,7 +528,7 @@ namespace CarStoreManager.Tests.Unidade.Services
             var componente = new Componente(
                 "FIL-001", "Filtro", "Filtro de óleo", "Bosch", "PN-FIL-1",
                 "OEM-1", "7891234567890", "87083010", "0102000",
-                "Motor", "UN", 0.3m, 90);
+                "Motor", "UN", 0.3m, 90, Guid.NewGuid());
             typeof(Componente).BaseType?.GetProperty("Id")?.SetValue(componente, Guid.NewGuid());
             return componente;
         }

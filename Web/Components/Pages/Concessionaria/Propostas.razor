@@ -59,6 +59,7 @@
     }
     else
     {
+        <div class="table-scroll">
         <table class="prop-table">
             <thead>
                 <tr>
@@ -102,6 +103,7 @@
                 }
             </tbody>
         </table>
+        </div>
     }
 </div>
 
@@ -138,6 +140,12 @@
     .prop-table {
         width: 100%; border-collapse: collapse; background: #fff;
         border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden;
+    }
+
+    @@media (max-width: 900px) {
+        .prop-header { flex-wrap: wrap; }
+        .busca-prop { width: 100%; min-width: 0; }
+        .prop-table { min-width: 760px; }
     }
     .prop-table th, .prop-table td { padding: 11px 14px; text-align: left; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
     .prop-table th { background: #fafafa; font-size: 0.82em; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.3px; }

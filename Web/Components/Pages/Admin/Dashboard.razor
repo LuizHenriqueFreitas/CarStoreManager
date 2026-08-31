@@ -33,12 +33,28 @@
             <h1 class="dash-titulo">Dashboard</h1>
             <p class="dash-sub">Visão geral · @DateTime.Now.ToString("dd/MM/yyyy")</p>
         </div>
-        @if (PodeGerenciarUsuarios)
-        {
-            <button class="btn-usuarios" @onclick='() => Nav.NavigateTo("/admin/usuarios")'>
-                Usuários
-            </button>
-        }
+        <div class="dash-header-acoes">
+            <div class="periodo-seletor" data-tour="dashboard-periodo">
+                <label for="periodoMeses">Período dos gráficos</label>
+                <select id="periodoMeses" class="periodo-select" value="@janelaMesesSelecionada" @onchange="OnJanelaMesesAlterada">
+                    <option value="3">Últimos 3 meses</option>
+                    <option value="6">Últimos 6 meses</option>
+                    <option value="12">Últimos 12 meses</option>
+                </select>
+            </div>
+            @if (PodeVerOficina || PodeVerConcessionaria)
+            {
+                <button class="btn-usuarios" @onclick='() => Nav.NavigateTo("/admin/clientes")'>
+                    Clientes
+                </button>
+            }
+            @if (PodeGerenciarUsuarios)
+            {
+                <button class="btn-usuarios" @onclick='() => Nav.NavigateTo("/admin/usuarios")'>
+                    Usuários
+                </button>
+            }
+        </div>
     </div>
 
     <div class="dash-abas" data-tour="dashboard-abas">
@@ -100,7 +116,7 @@
 
             <div class="grafico-row">
                 <div class="grafico-card grafico-largo">
-                    <h3 class="grafico-titulo">Receitas e despesas — últimos 6 meses</h3>
+                    <h3 class="grafico-titulo">Receitas e despesas — últimos @janelaMesesSelecionada meses</h3>
                     <div class="grafico-area"><canvas id="chartFaturamento6m"></canvas></div>
                 </div>
             </div>
@@ -127,7 +143,7 @@
 
             <div class="grafico-row">
                 <div class="grafico-card grafico-largo">
-                    <h3 class="grafico-titulo">Receita Oficina vs Concessionária — últimos 6 meses</h3>
+                    <h3 class="grafico-titulo">Receita Oficina vs Concessionária — últimos @janelaMesesSelecionada meses</h3>
                     <div class="grafico-area"><canvas id="chartComparacaoReceita"></canvas></div>
                 </div>
             </div>
@@ -179,9 +195,20 @@
                 </div>
             </div>
 
+            <div class="capital-imobilizado-bloco">
+                <div class="capital-card">
+                    <div class="capital-titulo">🔩 Capital investido em estoque de peças</div>
+                    <div class="capital-valor">@FormatBRL(metricas.CapitalEstoqueComponentes)</div>
+                    <div class="capital-nota">
+                        Custo de aquisição × quantidade atual de todos os componentes cadastrados.
+                        <strong>Não entra no fluxo de caixa</strong> — é dinheiro parado em peças até serem usadas numa OS.
+                    </div>
+                </div>
+            </div>
+
             <div class="grafico-row">
                 <div class="grafico-card grafico-largo">
-                    <h3 class="grafico-titulo">Oficina — receitas vs gastos com peças (6 meses)</h3>
+                    <h3 class="grafico-titulo">Oficina — receitas vs gastos com peças (@janelaMesesSelecionada meses)</h3>
                     <div class="grafico-area"><canvas id="chartOficina6m"></canvas></div>
                 </div>
             </div>
@@ -229,6 +256,21 @@
                 <div class="grafico-card grafico-largo">
                     <h3 class="grafico-titulo">Prazo médio estimado por tipo de serviço (dias)</h3>
                     <div class="grafico-area"><canvas id="chartPrazoMedioServico"></canvas></div>
+                </div>
+            </div>
+
+            <div class="grafico-row">
+                <div class="grafico-card grafico-largo" data-tour="dashboard-analises-oficina">
+                    <div class="analise-header">
+                        <h3 class="grafico-titulo">Mais análises da oficina</h3>
+                        <select class="analise-select" value="@graficoSelecionadoOficinaId" @onchange="OnGraficoSelecionadoOficina">
+                            @foreach (var g in GraficosOficina)
+                            {
+                                <option value="@g.Id">@g.Titulo</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="grafico-area"><canvas id="chartAnaliseSelecionadaOficina"></canvas></div>
                 </div>
             </div>
         }
@@ -336,13 +378,15 @@
                     <div class="capital-nota">
                         Valor dos veículos disponíveis no pátio. <strong>Não entra no fluxo de caixa</strong> —
                         é dinheiro investido aguardando a venda para virar receita.
+                        <br />Custo de aquisição desses veículos: <strong>@FormatBRL(metricas.CapitalAquisicaoVeiculosDisponiveis)</strong>
+                        (margem potencial de @FormatBRL(metricas.CapitalEstoqueVeiculos - metricas.CapitalAquisicaoVeiculosDisponiveis) se vendidos pelo preço anunciado).
                     </div>
                 </div>
             </div>
 
             <div class="grafico-row">
                 <div class="grafico-card grafico-largo">
-                    <h3 class="grafico-titulo">Receita de vendas — últimos 6 meses</h3>
+                    <h3 class="grafico-titulo">Receita de vendas — últimos @janelaMesesSelecionada meses</h3>
                     <div class="grafico-area"><canvas id="chartConcessionaria6m"></canvas></div>
                 </div>
             </div>
@@ -382,8 +426,23 @@
 
             <div class="grafico-row">
                 <div class="grafico-card grafico-largo">
-                    <h3 class="grafico-titulo">Propostas aprovadas vs rejeitadas — últimos 6 meses</h3>
+                    <h3 class="grafico-titulo">Propostas aprovadas vs rejeitadas — últimos @janelaMesesSelecionada meses</h3>
                     <div class="grafico-area"><canvas id="chartPropostasTimeline"></canvas></div>
+                </div>
+            </div>
+
+            <div class="grafico-row">
+                <div class="grafico-card grafico-largo" data-tour="dashboard-analises-concessionaria">
+                    <div class="analise-header">
+                        <h3 class="grafico-titulo">Mais análises da concessionária</h3>
+                        <select class="analise-select" value="@graficoSelecionadoConcessionariaId" @onchange="OnGraficoSelecionadoConcessionaria">
+                            @foreach (var g in GraficosConcessionaria)
+                            {
+                                <option value="@g.Id">@g.Titulo</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="grafico-area"><canvas id="chartAnaliseSelecionadaConcessionaria"></canvas></div>
                 </div>
             </div>
         }
@@ -500,6 +559,14 @@
             </div>
             <span class="modulo-seta">→</span>
         </div>
+        <div class="modulo-card" @onclick='() => Nav.NavigateTo("/admin/clientes")'>
+            <div class="modulo-icone clientes">🧑</div>
+            <div>
+                <div class="modulo-titulo">Clientes</div>
+                <div class="modulo-sub">Cadastro e veículos vinculados</div>
+            </div>
+            <span class="modulo-seta">→</span>
+        </div>
         <div class="modulo-card" @onclick='() => Nav.NavigateTo("/admin/usuarios")'>
             <div class="modulo-icone usuarios">👥</div>
             <div>
@@ -549,6 +616,21 @@
     // do catálogo modular (ver DashboardService.MontarGraficos).
     private string graficoSelecionadoId = "financeiro-composicao";
 
+    // Abas Oficina/Concessionária: mesmo catálogo modular, mas cada seletor só
+    // lista gráficos do próprio setor — oficina não pode ver/escolher gráficos
+    // da concessionária e vice-versa.
+    private string graficoSelecionadoOficinaId = "modelos-visitam-oficina";
+    private string graficoSelecionadoConcessionariaId = "combustivel-vendido";
+
+    private IEnumerable<GraficoAnaliseDTO> GraficosOficina =>
+        metricas?.Graficos.Where(g => g.Categoria is "Oficina" or "Estoque") ?? Enumerable.Empty<GraficoAnaliseDTO>();
+    private IEnumerable<GraficoAnaliseDTO> GraficosConcessionaria =>
+        metricas?.Graficos.Where(g => g.Categoria == "Concessionária") ?? Enumerable.Empty<GraficoAnaliseDTO>();
+
+    // Período (em meses) das séries temporais — compartilhado entre as 3 abas,
+    // já que todas derivam da mesma janela calculada em DashboardService.
+    private int janelaMesesSelecionada = 6;
+
     // === Modal de exportação de relatório (data início/fim + formato) ===
     private bool modalExportVisivel;
     private string modalExportTitulo = "";
@@ -592,6 +674,32 @@
     {
         graficoSelecionadoId = e.Value?.ToString() ?? "financeiro-composicao";
         await RenderizarGraficoSelecionado();
+    }
+
+    private async Task OnGraficoSelecionadoOficina(ChangeEventArgs e)
+    {
+        graficoSelecionadoOficinaId = e.Value?.ToString() ?? graficoSelecionadoOficinaId;
+        await RenderizarGraficoPorId(graficoSelecionadoOficinaId, "chartAnaliseSelecionadaOficina");
+    }
+
+    private async Task OnGraficoSelecionadoConcessionaria(ChangeEventArgs e)
+    {
+        graficoSelecionadoConcessionariaId = e.Value?.ToString() ?? graficoSelecionadoConcessionariaId;
+        await RenderizarGraficoPorId(graficoSelecionadoConcessionariaId, "chartAnaliseSelecionadaConcessionaria");
+    }
+
+    private async Task OnJanelaMesesAlterada(ChangeEventArgs e)
+    {
+        janelaMesesSelecionada = int.TryParse(e.Value?.ToString(), out var meses) ? meses : 6;
+
+        var rMetricas = await DashboardService.ObterMetricasAsync(janelaMesesSelecionada);
+        if (rMetricas.IsSuccess) metricas = rMetricas.Value;
+
+        StateHasChanged();
+        // Canvases dependem do StateHasChanged já ter aplicado os novos
+        // labels/valores antes de renderizar (mesmo padrão de SetAba).
+        await Task.Yield();
+        await RenderizarGraficos();
     }
 
     protected override async Task OnInitializedAsync()
@@ -656,7 +764,7 @@
                 .OrderBy(c => c.DiasRestantes)
                 .ToList();
 
-        var rMetricas = await DashboardService.ObterMetricasAsync();
+        var rMetricas = await DashboardService.ObterMetricasAsync(janelaMesesSelecionada);
         if (rMetricas.IsSuccess) metricas = rMetricas.Value;
     }
 
@@ -792,6 +900,7 @@
             await RenderizarGraficoPorId("marcas-visitam-oficina", "chartMarcasVisitamOficina");
             await RenderizarGraficoPorId("estoque-por-sistema", "chartEstoquePorSistema");
             await RenderizarGraficoPorId("prazo-medio-servico", "chartPrazoMedioServico");
+            await RenderizarGraficoPorId(graficoSelecionadoOficinaId, "chartAnaliseSelecionadaOficina");
         }
 
         // ========== ABA CONCESSIONÁRIA ==========
@@ -850,6 +959,8 @@
             };
             await JS.InvokeVoidAsync("carstoreChart.render",
                 "chartPropostasTimeline", "line", labelsTimeline, datasetsTimeline, commonOpts);
+
+            await RenderizarGraficoPorId(graficoSelecionadoConcessionariaId, "chartAnaliseSelecionadaConcessionaria");
         }
     }
 
@@ -950,9 +1061,10 @@
                 "chartFaturamento6m", "chartAnaliseSelecionada", "chartComparacaoReceita",
                 "chartOficina6m", "chartOSStatusOf", "chartReceitaMecanico", "chartReceitaAcumulada12m",
                 "chartMecanicosEspecializacao", "chartServicosTipo", "chartMarcasVisitamOficina",
-                "chartEstoquePorSistema", "chartPrazoMedioServico",
+                "chartEstoquePorSistema", "chartPrazoMedioServico", "chartAnaliseSelecionadaOficina",
                 "chartConcessionaria6m", "chartVeiculosStatus", "chartVendasMarca", "chartPropostasTimeline",
-                "chartModelosVendidos", "chartCoresVendidas", "chartConsignacaoLoja", "chartModosPagamento"
+                "chartModelosVendidos", "chartCoresVendidas", "chartConsignacaoLoja", "chartModosPagamento",
+                "chartAnaliseSelecionadaConcessionaria"
             })
             {
                 await JS.InvokeVoidAsync("carstoreChart.destroy", id);
@@ -980,6 +1092,18 @@
     .dash-header { margin-bottom: 24px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .dash-titulo { font-size: 24px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px; }
     .dash-sub { font-size: 14px; color: #888; }
+    .dash-header-acoes { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .periodo-seletor { display: flex; align-items: center; gap: 8px; }
+    .periodo-seletor label { font-size: 12px; color: #666; white-space: nowrap; }
+    .periodo-select {
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 7px 10px;
+        font-size: 13px;
+        color: #1a1a1a;
+        background: #fff;
+    }
+    .periodo-select:focus { border-color: #0a84ff; outline: none; }
     .btn-usuarios {
         background: #1a1a1a; color: #fff; padding: 9px 18px; border-radius: 6px;
         border: 0; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap;
@@ -989,6 +1113,7 @@
     .dash-abas {
         display: flex; gap: 4px; border-bottom: 1px solid #ddd;
         margin: 0 0 24px;
+        overflow-x: auto;
     }
     .dash-aba {
         padding: 10px 22px; background: transparent; border: 0; cursor: pointer;
@@ -1171,6 +1296,7 @@
     .modulo-icone.concessionaria { background: #fff0f0; color: #e02020; }
     .modulo-icone.oficina        { background: #f0f4ff; color: #3b5bdb; }
     .modulo-icone.estoque        { background: #fff7ed; color: #ea580c; }
+    .modulo-icone.clientes       { background: #eef6ff; color: #0a84ff; }
     .modulo-icone.usuarios       { background: #f0fdf4; color: #2f9e44; }
 
     .modulo-titulo { font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 1px; }
@@ -1233,5 +1359,15 @@
         .metricas-grid { grid-template-columns: repeat(2, 1fr); }
         .duas-colunas  { grid-template-columns: 1fr; }
         .grafico-row   { grid-template-columns: 1fr; }
+    }
+
+    @@media (max-width: 480px) {
+        .metricas-grid { grid-template-columns: 1fr; }
+        .grafico-area { height: 220px; }
+        .dash-aba { padding: 10px 14px; }
+    }
+
+    @@media (max-width: 640px) {
+        .dash-header { flex-direction: column; align-items: stretch; }
     }
 </style>

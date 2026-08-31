@@ -11,9 +11,10 @@ public class VeiculoVendaListaDTO
     public string Combustivel { get; set; } = null!;
     public string Disponibilidade { get; set; } = null!;
     public string Placa { get; set; } = "";
-    public int? AnoUltimoIpvaPago { get; set; }
+    public int AnoUltimoIpvaPago { get; set; }
     public List<string> Acessorios { get; set; } = new();
     public decimal Valor { get; set; }
+    public decimal ValorAquisicao { get; set; }
     public string? FotoPrincipal { get; set; }
     public DateTime DataCriacao { get; set; }
 }

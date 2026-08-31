@@ -38,7 +38,7 @@ publish/
 node_modules/
 
 # Banco de dados local (SQLite) — recriado automaticamente no primeiro boot
-*.db
+*.db*
 *.db-shm
 *.db-wal
 
@@ -52,6 +52,5 @@ Web/wwwroot/uploads/*
 # Outros
 /Web/teste.http
 coverage.info
-/Geradores
 
 need_to_do.txt

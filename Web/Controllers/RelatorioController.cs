@@ -245,12 +245,19 @@ public class RelatorioController : ControllerBase
         if (formato is not ("csv" or "xml"))
             return BadRequest($"Formato não suportado: {formato}. Use 'csv' ou 'xml'.");
 
-        var bytes = formato == "xml"
-            ? await _xmlFormatter.FormatAsync(data)
-            : await _csvFormatter.FormatAsync(data);
+        try
+        {
+            var bytes = formato == "xml"
+                ? await _xmlFormatter.FormatAsync(data)
+                : await _csvFormatter.FormatAsync(data);
 
-        var contentType = formato == "xml" ? "application/xml; charset=utf-8" : "text/csv; charset=utf-8";
-        var fileName = $"{nomeArquivoBase}-{DateTime.Now:yyyyMMdd-HHmm}.{formato}";
-        return File(bytes, contentType, fileName);
+            var contentType = formato == "xml" ? "application/xml; charset=utf-8" : "text/csv; charset=utf-8";
+            var fileName = $"{nomeArquivoBase}-{DateTime.Now:yyyyMMdd-HHmm}.{formato}";
+            return File(bytes, contentType, fileName);
+        }
+        catch (Exception)
+        {
+            return BadRequest("Não foi possível gerar o relatório. Tente novamente em instantes.");
+        }
     }
 }

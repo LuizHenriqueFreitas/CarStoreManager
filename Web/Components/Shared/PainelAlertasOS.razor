@@ -36,7 +36,7 @@
                             <label>Descreva o problema/avaria encontrado</label>
                             <textarea rows="3" @bind="novoDescricao"
                                       placeholder="O que você encontrou? Por que precisa de novo orçamento?"></textarea>
-                            <button class="al-btn-primary" @onclick="Emitir" disabled="@processando">
+                            <button class="al-btn-primary" @onclick='() => PedirConfirmacao("Emitir alerta", "Deseja emitir este alerta? A OS será pausada até o cliente decidir.", Emitir, destrutivo: true)' disabled="@processando">
                                 🚨 Emitir alerta (pausa a OS)
                             </button>
                             <p class="al-muted">A OS será pausada até o cliente decidir (via recepção) se aprova ou recusa o novo escopo.</p>
@@ -89,10 +89,10 @@
                                 <div class="al-acoes-rec">
                                     <input type="text" @bind="obsCliente"
                                            placeholder="O que o cliente disse (opc)" class="al-obs" />
-                                    <button class="al-btn-ok" @onclick="() => Resolver(a.Id, true)" disabled="@processando">
+                                    <button class="al-btn-ok" @onclick='() => PedirConfirmacao("Registrar decisão", "Confirma que o cliente APROVOU o novo orçamento?", () => Resolver(a.Id, true))' disabled="@processando">
                                         ✓ Cliente APROVOU novo orçamento
                                     </button>
-                                    <button class="al-btn-recusa" @onclick="() => Resolver(a.Id, false)" disabled="@processando">
+                                    <button class="al-btn-recusa" @onclick='() => PedirConfirmacao("Registrar decisão", "Confirma que o cliente decidiu manter o escopo original?", () => Resolver(a.Id, false))' disabled="@processando">
                                         ↩ Cliente decidiu manter o original
                                     </button>
                                 </div>
@@ -106,6 +106,13 @@
         </ul>
     }
 </div>
+
+<ConfirmacaoModal Visivel="confirmVisivel"
+                   Titulo="@confirmTitulo"
+                   Mensagem="@confirmMensagem"
+                   Destrutivo="confirmDestrutivo"
+                   OnConfirmar="ExecutarAcaoConfirmada"
+                   OnCancelar="CancelarConfirmacao" />
 
 <style>
     .al-card { background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:16px; margin-top:16px; }
@@ -145,6 +152,10 @@
     .al-btn-ok { background:#1f7a3a; color:#fff; padding:6px 14px; border-radius:4px; border:0; cursor:pointer; }
     .al-btn-recusa { background:#854d0e; color:#fff; padding:6px 14px; border-radius:4px; border:0; cursor:pointer; }
     .al-btn-ok:disabled, .al-btn-recusa:disabled { background:#ccc; cursor:not-allowed; }
+
+    @@media (max-width: 480px) {
+        .al-header, .al-item-head { flex-wrap: wrap; gap: 6px; }
+    }
 </style>
 
 @code {
@@ -159,6 +170,35 @@
     private bool processando;
     private string mensagem = "";
     private bool mensagemErro;
+
+    private bool confirmVisivel;
+    private string confirmTitulo = "Confirmar envio";
+    private string confirmMensagem = "Deseja enviar o formulário como está?";
+    private bool confirmDestrutivo;
+    private Func<Task>? acaoConfirmada;
+
+    private void PedirConfirmacao(string titulo, string mensagemConfirm, Func<Task> acao, bool destrutivo = false)
+    {
+        confirmTitulo = titulo;
+        confirmMensagem = mensagemConfirm;
+        confirmDestrutivo = destrutivo;
+        acaoConfirmada = acao;
+        confirmVisivel = true;
+    }
+
+    private async Task ExecutarAcaoConfirmada()
+    {
+        confirmVisivel = false;
+        var acao = acaoConfirmada;
+        acaoConfirmada = null;
+        if (acao is not null) await acao();
+    }
+
+    private void CancelarConfirmacao()
+    {
+        confirmVisivel = false;
+        acaoConfirmada = null;
+    }
 
     protected override async Task OnInitializedAsync() => await Carregar();
 

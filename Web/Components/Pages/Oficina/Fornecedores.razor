@@ -1,0 +1,692 @@
+@page "/oficina/fornecedores"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer
+@inject IFornecedorService FornecedorService
+@inject AuthenticationStateProvider AuthState
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Oficina.Fornecedor
+@using CarStoreManager.Application.DTOs.Shared.Cliente
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+
+<div class="forn-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-titulo">Fornecedores</h1>
+            <p class="page-sub">Cadastro de fornecedores de peças e componentes</p>
+        </div>
+        @if (ehAdmin)
+        {
+            <button class="btn-novo" data-tour="forn-btn-novo" @onclick="AbrirModalNovo">+ Novo fornecedor</button>
+        }
+    </div>
+
+    <div class="toolbar">
+        <input class="campo-input busca-input" placeholder="Buscar por nome ou CNPJ..."
+               @bind="termoBusca" @bind:event="oninput" @bind:after="AplicarFiltro" />
+        <select class="campo-input filtro-select" @bind="filtroStatus" @bind:after="AplicarFiltro">
+            <option value="Todos">Todos</option>
+            <option value="Ativos">Ativos</option>
+            <option value="Inativos">Inativos</option>
+        </select>
+    </div>
+
+    @if (carregando)
+    {
+        <div class="loading">Carregando fornecedores...</div>
+    }
+    else
+    {
+        <div class="forn-lista">
+            @foreach (var f in fornecedoresFiltrados)
+            {
+                <div class="forn-card @(f.Ativo ? "" : "inativo")">
+                    <div class="forn-avatar">@f.Nome[0].ToString().ToUpper()</div>
+                    <div class="forn-info">
+                        <span class="forn-nome">@f.Nome</span>
+                        <span class="forn-detalhe">
+                            @f.Cnpj
+                            @if (!string.IsNullOrWhiteSpace(f.Telefone)) { <text> · @FormatarTelefone(f.Telefone)</text> }
+                            @if (!string.IsNullOrWhiteSpace(f.Email)) { <text> · @f.Email</text> }
+                        </span>
+                    </div>
+                    <span class="forn-status @(f.Ativo ? "ativo-badge" : "inativo-badge")">@(f.Ativo ? "Ativo" : "Inativo")</span>
+                    @if (ehAdmin)
+                    {
+                        <div class="forn-acoes">
+                            <button class="btn-mini" @onclick="() => AbrirModalEditar(f)">Editar contato</button>
+                            <button class="btn-mini" @onclick="() => AlternarAtivo(f)">@(f.Ativo ? "Desativar" : "Ativar")</button>
+                            <button class="btn-mini btn-remover" @onclick="() => ConfirmarExcluir(f.Id, f.Nome)">Excluir</button>
+                        </div>
+                    }
+                </div>
+            }
+            @if (!fornecedoresFiltrados.Any())
+            {
+                <div class="vazio-aba">Nenhum fornecedor encontrado.</div>
+            }
+        </div>
+    }
+</div>
+
+@if (modalNovoVisivel)
+{
+    <div class="modal-overlay" @onclick="() => modalNovoVisivel = false">
+        <div class="modal-form" @onclick:stopPropagation>
+            <div class="modal-header">
+                <span class="modal-titulo">Novo fornecedor</span>
+                <button class="modal-fechar" @onclick="() => modalNovoVisivel = false">×</button>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-campo span-2">
+                    <label class="campo-label">Nome / razão social *</label>
+                    <input class="campo-input" @bind="novoFornecedor.Nome" placeholder="Nome do fornecedor" />
+                </div>
+                <div class="form-campo span-2">
+                    <label class="campo-label">CNPJ *</label>
+                    <input class="campo-input" @bind="novoFornecedor.Cnpj" placeholder="00.000.000/0000-00" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">E-mail</label>
+                    <input type="email" class="campo-input" @bind="novoFornecedor.Email" placeholder="contato@fornecedor.com" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Telefone</label>
+                    <input class="campo-input" @bind="novoFornecedor.Telefone" placeholder="(11) 90000-0000" />
+                </div>
+            </div>
+
+            <h3 class="subsecao-titulo">Endereço (opcional)</h3>
+            @if (novoFornecedor.Endereco is not null)
+            {
+                <div class="form-grid">
+                    <div class="form-campo">
+                        <label class="campo-label">CEP</label>
+                        <input class="campo-input" @bind="novoFornecedor.Endereco.Cep" placeholder="00000-000" />
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">UF</label>
+                        <input class="campo-input" @bind="novoFornecedor.Endereco.Uf" placeholder="SP" maxlength="2" />
+                    </div>
+                    <div class="form-campo span-2">
+                        <label class="campo-label">Logradouro</label>
+                        <input class="campo-input" @bind="novoFornecedor.Endereco.Logradouro" placeholder="Rua, Avenida, etc." />
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Número</label>
+                        <input class="campo-input" @bind="novoFornecedor.Endereco.Numero" placeholder="123" />
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Complemento</label>
+                        <input class="campo-input" @bind="novoFornecedor.Endereco.Complemento" placeholder="Sala, bloco..." />
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Bairro</label>
+                        <input class="campo-input" @bind="novoFornecedor.Endereco.Bairro" placeholder="Bairro" />
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Cidade</label>
+                        <input class="campo-input" @bind="novoFornecedor.Endereco.Cidade" placeholder="Cidade" />
+                    </div>
+                </div>
+            }
+
+            @if (erroNovo is not null)
+            {
+                <div class="erro-banner">@erroNovo</div>
+            }
+
+            <div class="modal-acoes">
+                <button class="btn-cancelar" @onclick="() => modalNovoVisivel = false">Cancelar</button>
+                <button class="btn-confirmar" @onclick="CriarFornecedor" disabled="@salvandoNovo">
+                    @(salvandoNovo ? "Criando..." : "Criar fornecedor")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (modalEditarVisivel && fornecedorEditando is not null)
+{
+    <div class="modal-overlay" @onclick="() => modalEditarVisivel = false">
+        <div class="modal-form" @onclick:stopPropagation>
+            <div class="modal-header">
+                <span class="modal-titulo">Editar contato — @fornecedorEditando.Nome</span>
+                <button class="modal-fechar" @onclick="() => modalEditarVisivel = false">×</button>
+            </div>
+
+            <p class="muted">CNPJ @fornecedorEditando.Cnpj</p>
+
+            <div class="form-grid">
+                <div class="form-campo">
+                    <label class="campo-label">E-mail</label>
+                    <input type="email" class="campo-input" @bind="fornecedorEditando.Email" placeholder="contato@fornecedor.com" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Telefone</label>
+                    <input class="campo-input" @bind="fornecedorEditando.Telefone" placeholder="(11) 90000-0000" />
+                </div>
+            </div>
+
+            <h3 class="subsecao-titulo">Endereço</h3>
+            <div class="form-grid">
+                <div class="form-campo">
+                    <label class="campo-label">CEP</label>
+                    <input class="campo-input" @bind="fornecedorEditando.Endereco!.Cep" placeholder="00000-000" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">UF</label>
+                    <input class="campo-input" @bind="fornecedorEditando.Endereco!.Uf" placeholder="SP" maxlength="2" />
+                </div>
+                <div class="form-campo span-2">
+                    <label class="campo-label">Logradouro</label>
+                    <input class="campo-input" @bind="fornecedorEditando.Endereco!.Logradouro" placeholder="Rua, Avenida, etc." />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Número</label>
+                    <input class="campo-input" @bind="fornecedorEditando.Endereco!.Numero" placeholder="123" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Complemento</label>
+                    <input class="campo-input" @bind="fornecedorEditando.Endereco!.Complemento" placeholder="Sala, bloco..." />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Bairro</label>
+                    <input class="campo-input" @bind="fornecedorEditando.Endereco!.Bairro" placeholder="Bairro" />
+                </div>
+                <div class="form-campo">
+                    <label class="campo-label">Cidade</label>
+                    <input class="campo-input" @bind="fornecedorEditando.Endereco!.Cidade" placeholder="Cidade" />
+                </div>
+            </div>
+
+            @if (erroEdicao is not null)
+            {
+                <div class="erro-banner">@erroEdicao</div>
+            }
+
+            <div class="modal-acoes">
+                <button class="btn-cancelar" @onclick="() => modalEditarVisivel = false">Cancelar</button>
+                <button class="btn-confirmar" @onclick="SalvarEdicao" disabled="@salvandoEdicao">
+                    @(salvandoEdicao ? "Salvando..." : "Salvar contato")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (modalExcluirVisivel)
+{
+    <div class="modal-overlay" @onclick="() => modalExcluirVisivel = false">
+        <div class="modal-form modal-confirmacao" @onclick:stopPropagation>
+            <div class="modal-header">
+                <span class="modal-titulo">Excluir fornecedor</span>
+                <button class="modal-fechar" @onclick="() => modalExcluirVisivel = false">×</button>
+            </div>
+            <p>Excluir <strong>@nomeParaExcluir</strong>? Essa ação não pode ser desfeita.</p>
+
+            @if (erroExclusao is not null)
+            {
+                <div class="erro-banner">@erroExclusao</div>
+            }
+
+            <div class="modal-acoes">
+                <button class="btn-cancelar" @onclick="() => modalExcluirVisivel = false">Cancelar</button>
+                <button class="btn-confirmar btn-perigo" @onclick="ExecutarExclusao" disabled="@excluindo">
+                    @(excluindo ? "Excluindo..." : "Excluir")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<FornecedorListaDTO> todosFornecedores = new();
+    private List<FornecedorListaDTO> fornecedoresFiltrados = new();
+    private string termoBusca = string.Empty;
+    private string filtroStatus = "Todos";
+    private bool carregando = true;
+    private bool ehAdmin;
+
+    private bool modalNovoVisivel;
+    private bool salvandoNovo;
+    private string? erroNovo;
+    private CriarFornecedorDTO novoFornecedor = NovoFormPadrao();
+
+    private bool modalEditarVisivel;
+    private bool salvandoEdicao;
+    private string? erroEdicao;
+    private FornecedorDTO? fornecedorEditando;
+
+    private bool modalExcluirVisivel;
+    private bool excluindo;
+    private string? erroExclusao;
+    private Guid idParaExcluir;
+    private string nomeParaExcluir = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        ehAdmin = state.User.IsInRole("Admin");
+
+        await CarregarFornecedores();
+    }
+
+    private async Task CarregarFornecedores()
+    {
+        carregando = true;
+
+        var r = await FornecedorService.GetAllAsync();
+        todosFornecedores = r.IsSuccess ? r.Value?.ToList() ?? new() : new();
+
+        AplicarFiltro();
+        carregando = false;
+    }
+
+    private void AplicarFiltro()
+    {
+        var baseLista = filtroStatus switch
+        {
+            "Ativos" => todosFornecedores.Where(f => f.Ativo),
+            "Inativos" => todosFornecedores.Where(f => !f.Ativo),
+            _ => todosFornecedores.AsEnumerable()
+        };
+
+        if (!string.IsNullOrWhiteSpace(termoBusca))
+        {
+            var termo = termoBusca.Trim();
+            baseLista = baseLista.Where(f =>
+                f.Nome.Contains(termo, StringComparison.OrdinalIgnoreCase)
+                || f.Cnpj.Contains(termo, StringComparison.OrdinalIgnoreCase));
+        }
+
+        fornecedoresFiltrados = baseLista
+            .OrderBy(f => f.Nome, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private void AbrirModalNovo()
+    {
+        novoFornecedor = NovoFormPadrao();
+        erroNovo = null;
+        modalNovoVisivel = true;
+    }
+
+    private async Task CriarFornecedor()
+    {
+        if (string.IsNullOrWhiteSpace(novoFornecedor.Nome) || string.IsNullOrWhiteSpace(novoFornecedor.Cnpj))
+        {
+            erroNovo = "Nome e CNPJ são obrigatórios.";
+            return;
+        }
+
+        salvandoNovo = true;
+        erroNovo = null;
+
+        try
+        {
+            var resultado = await FornecedorService.AddAsync(novoFornecedor);
+            if (resultado.IsSuccess)
+            {
+                modalNovoVisivel = false;
+                await CarregarFornecedores();
+            }
+            else
+            {
+                erroNovo = resultado.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            erroNovo = $"Erro ao criar fornecedor: {ex.Message}";
+        }
+        finally { salvandoNovo = false; }
+    }
+
+    private async Task AbrirModalEditar(FornecedorListaDTO item)
+    {
+        var r = await FornecedorService.GetByIdAsync(item.Id);
+        if (!r.IsSuccess || r.Value is null) return;
+
+        fornecedorEditando = r.Value;
+        fornecedorEditando.Endereco ??= new EnderecoDTO();
+        erroEdicao = null;
+        modalEditarVisivel = true;
+    }
+
+    private async Task SalvarEdicao()
+    {
+        if (fornecedorEditando is null) return;
+
+        salvandoEdicao = true;
+        erroEdicao = null;
+
+        try
+        {
+            var dto = new AtualizarFornecedorDTO
+            {
+                Id = fornecedorEditando.Id,
+                Email = fornecedorEditando.Email,
+                Telefone = fornecedorEditando.Telefone,
+                Endereco = fornecedorEditando.Endereco
+            };
+
+            var resultado = await FornecedorService.UpdateAsync(dto);
+            if (resultado.IsSuccess)
+            {
+                modalEditarVisivel = false;
+                await CarregarFornecedores();
+            }
+            else
+            {
+                erroEdicao = resultado.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            erroEdicao = $"Erro ao salvar contato: {ex.Message}";
+        }
+        finally { salvandoEdicao = false; }
+    }
+
+    private async Task AlternarAtivo(FornecedorListaDTO item)
+    {
+        var resultado = item.Ativo
+            ? await FornecedorService.DesativarAsync(item.Id)
+            : await FornecedorService.AtivarAsync(item.Id);
+
+        if (resultado.IsSuccess)
+            await CarregarFornecedores();
+    }
+
+    private void ConfirmarExcluir(Guid id, string nome)
+    {
+        idParaExcluir = id;
+        nomeParaExcluir = nome;
+        erroExclusao = null;
+        modalExcluirVisivel = true;
+    }
+
+    private async Task ExecutarExclusao()
+    {
+        excluindo = true;
+        erroExclusao = null;
+
+        var resultado = await FornecedorService.RemoveAsync(idParaExcluir);
+        if (resultado.IsSuccess)
+        {
+            modalExcluirVisivel = false;
+            await CarregarFornecedores();
+        }
+        else
+        {
+            erroExclusao = resultado.Error;
+        }
+
+        excluindo = false;
+    }
+
+    private static string FormatarTelefone(string tel)
+    {
+        var digitos = new string(tel.Where(char.IsDigit).ToArray());
+        if (digitos.Length == 11)
+            return $"({digitos[..2]}) {digitos[2..7]}-{digitos[7..]}";
+        if (digitos.Length == 10)
+            return $"({digitos[..2]}) {digitos[2..6]}-{digitos[6..]}";
+        return tel;
+    }
+
+    private static CriarFornecedorDTO NovoFormPadrao() => new()
+    {
+        Endereco = new EnderecoDTO()
+    };
+}
+
+<style>
+    .forn-page {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 32px 24px;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 24px;
+    }
+
+    .page-titulo { font-size: 24px; font-weight: 500; margin-bottom: 4px; }
+    .page-sub { font-size: 14px; color: #888; }
+
+    .btn-novo {
+        background: #e02020;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .btn-novo:hover { background: #c01818; }
+
+    .toolbar {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .busca-input { flex: 1; }
+    .filtro-select { max-width: 180px; }
+
+    .forn-lista {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .vazio-aba {
+        text-align: center;
+        padding: 40px;
+        color: #888;
+        font-size: 14px;
+    }
+
+    .forn-card {
+        background: #fff;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .forn-card.inativo { opacity: 0.6; }
+
+    .forn-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        font-weight: 500;
+        flex-shrink: 0;
+        background: #f0f4ff;
+        color: #3b5bdb;
+    }
+
+    .forn-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .forn-nome { font-size: 14px; font-weight: 500; }
+    .forn-detalhe { font-size: 12px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .forn-status {
+        font-size: 11px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-weight: 500;
+        flex-shrink: 0;
+    }
+
+    .ativo-badge   { background: #f0fdf4; color: #16a34a; }
+    .inativo-badge { background: #f5f5f5; color: #888; }
+
+    .forn-acoes {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .btn-mini {
+        background: none;
+        border: 0.5px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 12px;
+        color: #555;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .btn-mini:hover { border-color: #1a1a1a; color: #1a1a1a; }
+    .btn-mini.btn-remover:hover { border-color: #e02020; color: #e02020; }
+
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .modal-form {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        width: 100%;
+        max-width: 580px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-confirmacao { max-width: 420px; }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .modal-titulo { font-size: 16px; font-weight: 500; }
+
+    .modal-fechar {
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: #888;
+        cursor: pointer;
+    }
+
+    .muted { font-size: 12px; color: #888; margin: -12px 0 16px; }
+
+    .subsecao-titulo { font-size: 13px; font-weight: 500; margin: 4px 0 10px; color: #555; }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .form-campo { display: flex; flex-direction: column; gap: 6px; }
+    .span-2 { grid-column: span 2; }
+
+    .campo-label { font-size: 12px; color: #555; font-weight: 500; }
+
+    .campo-input {
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 14px;
+        outline: none;
+        width: 100%;
+    }
+
+    .campo-input:focus { border-color: #e02020; }
+
+    .erro-banner {
+        background: #fff5f5;
+        border: 0.5px solid #fca5a5;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        color: #e02020;
+        margin-bottom: 12px;
+    }
+
+    .modal-acoes {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 16px;
+    }
+
+    .btn-cancelar {
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        cursor: pointer;
+    }
+
+    .btn-confirmar {
+        background: #1a1a1a;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #fff;
+        cursor: pointer;
+    }
+
+    .btn-confirmar.btn-perigo { background: #e02020; }
+    .btn-confirmar.btn-perigo:hover { background: #c01818; }
+
+    .btn-confirmar:disabled { opacity: 0.5; cursor: not-allowed; }
+    .loading { text-align: center; padding: 60px; color: #888; font-size: 14px; }
+
+    @@media (max-width: 640px) {
+        .forn-card {
+            flex-wrap: wrap;
+        }
+
+        .forn-info {
+            min-width: 55%;
+        }
+
+        .forn-acoes {
+            flex-basis: 100%;
+            justify-content: flex-end;
+        }
+    }
+</style>

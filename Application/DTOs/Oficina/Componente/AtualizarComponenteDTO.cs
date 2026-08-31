@@ -17,4 +17,5 @@ public class AtualizarComponenteDTO
     public decimal Peso { get; set; }
     public int GarantiaDias { get; set; }
     public bool Ativo { get; set; }
+    public Guid FornecedorId { get; set; }
 }

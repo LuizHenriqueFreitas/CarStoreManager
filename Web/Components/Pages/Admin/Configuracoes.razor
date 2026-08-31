@@ -8,11 +8,14 @@
 @inject IConfiguracaoSistemaService ConfigService
 @inject IDespesaService DespesaService
 @inject IChecklistPresetService PresetService
+@inject IImportacaoDadosService ImportacaoService
 
 @using CarStoreManager.Application.Interfaces.Sistema
 @using CarStoreManager.Application.Interfaces.Oficina
 @using CarStoreManager.Application.DTOs.Sistema
+@using CarStoreManager.Application.DTOs.Sistema.Importacao
 @using CarStoreManager.Application.DTOs.Oficina.ChecklistPreset
+@using Microsoft.AspNetCore.Components.Forms
 
 <div class="cfg-page">
     <h1 class="page-titulo">Configurações do sistema</h1>
@@ -29,6 +32,7 @@
         <button class="@AbaClass("checklists")" @onclick='() => abaAtiva = "checklists"'>Checklists</button>
         <button class="@AbaClass("operacao")" @onclick='() => abaAtiva = "operacao"'>Modo operante</button>
         <button class="@AbaClass("documentos")" @onclick='() => abaAtiva = "documentos"'>Documentos</button>
+        <button class="@AbaClass("importar")" @onclick='() => abaAtiva = "importar"'>Importar dados</button>
     </div>
 
     @if (carregando)
@@ -67,6 +71,7 @@
                     funcionário, etc. A soma destas linhas compõe o total de despesas exibido no dashboard.
                 </p>
 
+                <div class="table-scroll">
                 <table class="tabela" data-tour="cfg-despesas-tabela">
                     <thead>
                         <tr>
@@ -131,6 +136,7 @@
                         </tr>
                     </tbody>
                 </table>
+                </div>
 
                 <div class="resumo">
                     <strong>Total ativo:</strong> R$ @despesas.Where(d => d.Ativa).Sum(d => d.Valor).ToString("N2")
@@ -274,6 +280,71 @@
             </section>
         }
 
+        @if (abaAtiva == "importar")
+        {
+            <section class="cfg-card-full" data-tour="cfg-importar-dados">
+                <h2>Importar dados</h2>
+                <p class="muted">
+                    Sobe um arquivo JSON com clientes, veículos, propostas de venda, consignações
+                    e ordens de serviço, e cria tudo no banco passando pelas mesmas regras de
+                    negócio da aplicação — inclusive levando cada registro pelo cenário pedido no
+                    arquivo (concluído com sucesso, cancelado, pendente, em andamento etc.) e
+                    redatando pro histórico, se uma data for informada. Pensado para popular o
+                    sistema com uma base de demonstração pronta, sem precisar cadastrar tudo na mão.
+                </p>
+
+                <div class="importar-upload">
+                    <InputFile OnChange="OnArquivoSelecionado" accept=".json" disabled="@importando" />
+                    @if (!string.IsNullOrEmpty(nomeArquivoSelecionado))
+                    {
+                        <span class="importar-arquivo-nome">@nomeArquivoSelecionado</span>
+                    }
+                </div>
+
+                @if (erroImportacao is not null)
+                {
+                    <div class="erro-banner">@erroImportacao</div>
+                }
+
+                <div class="acoes">
+                    <button class="btn-salvar" @onclick="ImportarArquivo" disabled="@(importando || arquivoSelecionado is null)">
+                        @(importando ? "Importando..." : "Importar")
+                    </button>
+                </div>
+
+                @if (resultadoImportacao is not null)
+                {
+                    <div class="importar-resultado">
+                        <h3>Importação concluída — @resultadoImportacao.TotalCriado registro(s) criado(s)</h3>
+                        <ul class="importar-resumo">
+                            @if (resultadoImportacao.UsuariosCriados > 0) { <li>@resultadoImportacao.UsuariosCriados usuário(s)</li> }
+                            @if (resultadoImportacao.ClientesCriados > 0) { <li>@resultadoImportacao.ClientesCriados cliente(s)</li> }
+                            @if (resultadoImportacao.FornecedoresCriados > 0) { <li>@resultadoImportacao.FornecedoresCriados fornecedor(es)</li> }
+                            @if (resultadoImportacao.ComponentesCriados > 0) { <li>@resultadoImportacao.ComponentesCriados componente(s) de estoque</li> }
+                            @if (resultadoImportacao.ChecklistPresetsCriados > 0) { <li>@resultadoImportacao.ChecklistPresetsCriados preset(s) de checklist</li> }
+                            @if (resultadoImportacao.DespesasCriadas > 0) { <li>@resultadoImportacao.DespesasCriadas despesa(s) fixa(s)</li> }
+                            @if (resultadoImportacao.VeiculosVendaCriados > 0) { <li>@resultadoImportacao.VeiculosVendaCriados veículo(s) de venda</li> }
+                            @if (resultadoImportacao.VeiculosConsignadosCriados > 0) { <li>@resultadoImportacao.VeiculosConsignadosCriados veículo(s) consignado(s)</li> }
+                            @if (resultadoImportacao.VeiculosClienteCriados > 0) { <li>@resultadoImportacao.VeiculosClienteCriados veículo(s) de cliente</li> }
+                            @if (resultadoImportacao.PropostasVendaCriadas > 0) { <li>@resultadoImportacao.PropostasVendaCriadas proposta(s) de venda</li> }
+                            @if (resultadoImportacao.OrdensServicoCriadas > 0) { <li>@resultadoImportacao.OrdensServicoCriadas ordem(ns) de serviço</li> }
+                        </ul>
+
+                        @if (resultadoImportacao.Avisos.Count > 0)
+                        {
+                            <h3>Avisos (@resultadoImportacao.Avisos.Count)</h3>
+                            <ul class="importar-avisos">
+                                @foreach (var aviso in resultadoImportacao.Avisos)
+                                {
+                                    <li>@aviso</li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                }
+            </section>
+        }
+
         @if (config.DataUltimaAtualizacao.HasValue)
         {
             <p class="muted ultima">Última atualização: @config.DataUltimaAtualizacao.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
@@ -339,6 +410,10 @@
 
     /* Despesas */
     .tabela { width:100%; border-collapse:collapse; margin-top:14px; }
+
+    @@media (max-width: 700px) {
+        .tabela { min-width: 640px; }
+    }
     .tabela th, .tabela td { padding:8px; border-bottom:1px solid #eee; text-align:left; }
     .tabela th { background:#fafafa; font-weight:500; color:#444; font-size:0.9em; }
     .tabela input { width:100%; padding:6px 8px; border:1px solid #ddd; border-radius:4px; }
@@ -373,6 +448,15 @@
     .entrada-bloco { margin-top:16px; padding:14px; background:#fafafa; border-radius:6px; }
     .entrada-bloco.disabled { opacity:0.55; }
 
+    /* Importar dados */
+    .importar-upload { display:flex; align-items:center; gap:12px; margin:16px 0; }
+    .importar-arquivo-nome { font-size:0.9em; color:#555; }
+    .importar-resultado { margin-top:20px; padding:16px; background:#fafafa; border-radius:6px; border:1px solid #e0e0e0; }
+    .importar-resultado h3 { margin:0 0 8px; font-size:1em; }
+    .importar-resumo { list-style:disc; padding-left:20px; margin:0 0 12px; color:#166534; }
+    .importar-avisos { list-style:disc; padding-left:20px; margin:0; color:#9a3412; font-size:0.9em; max-height:260px; overflow-y:auto; }
+    .importar-avisos li { margin-bottom:4px; }
+
     @@media (max-width: 800px) { .cfg-grid { grid-template-columns:1fr; } }
 </style>
 
@@ -399,6 +483,14 @@
     // Templates de documentos
     private TemplatesDocumentosDTO templates = new();
     private bool salvandoTemplates;
+
+    // Importar dados
+    private IBrowserFile? arquivoSelecionado;
+    private string? nomeArquivoSelecionado;
+    private bool importando;
+    private string? erroImportacao;
+    private ImportacaoResultadoDTO? resultadoImportacao;
+    private const long TamanhoMaximoArquivoImportacao = 10 * 1024 * 1024; // 10 MB — documento é texto puro, bem generoso
 
     protected override async Task OnInitializedAsync()
     {
@@ -554,6 +646,66 @@
             await CarregarTudo();
         }
         else MostrarErro(r.Error);
+    }
+
+    // ===================== IMPORTAR DADOS =====================
+    private void OnArquivoSelecionado(InputFileChangeEventArgs e)
+    {
+        arquivoSelecionado = e.File;
+        nomeArquivoSelecionado = e.File?.Name;
+        erroImportacao = null;
+        resultadoImportacao = null;
+    }
+
+    private async Task ImportarArquivo()
+    {
+        if (arquivoSelecionado is null) return;
+
+        importando = true;
+        erroImportacao = null;
+        resultadoImportacao = null;
+
+        try
+        {
+            ImportacaoDadosDTO? dados;
+            try
+            {
+                await using var stream = arquivoSelecionado.OpenReadStream(TamanhoMaximoArquivoImportacao);
+                dados = await System.Text.Json.JsonSerializer.DeserializeAsync<ImportacaoDadosDTO>(
+                    stream, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch (IOException)
+            {
+                erroImportacao = "O arquivo passa de 10MB — confira se é o arquivo certo.";
+                return;
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                erroImportacao = "O arquivo não é um JSON válido no formato esperado. Confira a formatação.";
+                return;
+            }
+
+            if (dados is null)
+            {
+                erroImportacao = "Não foi possível ler o arquivo.";
+                return;
+            }
+
+            var r = await ImportacaoService.ImportarAsync(dados);
+            if (r.IsSuccess)
+            {
+                resultadoImportacao = r.Value;
+                MostrarOk("Importação concluída.");
+            }
+            else
+            {
+                erroImportacao = r.Error;
+            }
+        }
+        finally
+        {
+            importando = false;
+        }
     }
 
     private void MostrarOk(string? msg) { mensagem = msg ?? ""; mensagemErro = false; }

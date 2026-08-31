@@ -16,6 +16,7 @@ public class CriarComponenteDTO
     public string Sistema { get; set; } = string.Empty;
     public decimal Peso { get; set; }
     public int GarantiaDias { get; set; }
+    public Guid FornecedorId { get; set; }
 
     /// <summary>Custo unitário inicial — pode vir 0; NFs de entrada atualizam.</summary>
     public decimal CustoUnitario { get; set; }

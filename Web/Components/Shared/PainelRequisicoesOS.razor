@@ -48,7 +48,7 @@
                                     <label>Quantidade</label>
                                     <input type="number" min="1" @bind="formNovo.Quantidade" />
                                 </div>
-                                <button class="rq-btn-primary" @onclick="Abrir" disabled="@processando">
+                                <button class="rq-btn-primary" @onclick='() => PedirConfirmacao("Enviar requisição", "Deseja enviar esta requisição de peça ao admin? A OS ficará pausada até ser atendida.", Abrir)' disabled="@processando">
                                     Enviar requisição
                                 </button>
                             </div>
@@ -133,14 +133,14 @@
                                     }
                                     <input type="text" @bind="atenderObs" placeholder="Observação (opc)" class="rq-obs" />
                                     <button class="rq-btn-ok"
-                                            @onclick="() => Atender(r.Id)"
+                                            @onclick='() => PedirConfirmacao("Atender requisição", "Deseja atender esta requisição e adicionar o componente à OS como Encomenda?", () => Atender(r.Id))'
                                             disabled="@(componenteSelecionado is null || processando)">
                                         ✓ Atender e adicionar à OS
                                     </button>
 
                                     <input type="text" @bind="rejeitarMotivo" placeholder="Motivo da rejeição" class="rq-obs" />
                                     <button class="rq-btn-recusa"
-                                            @onclick="() => Rejeitar(r.Id)"
+                                            @onclick='() => PedirConfirmacao("Rejeitar requisição", "Deseja rejeitar esta requisição de peça?", () => Rejeitar(r.Id), destrutivo: true)'
                                             disabled="@(string.IsNullOrWhiteSpace(rejeitarMotivo) || processando)">
                                         ✗ Rejeitar
                                     </button>
@@ -156,7 +156,7 @@
             <Authorized>
                 @if (StatusOrdem == "BuscandoPecasParaOrcamento" && requisicoes.All(r => r.Status != "Pendente"))
                 {
-                    <button class="rq-btn-primary rq-liberar" @onclick="Liberar" disabled="@processando">
+                    <button class="rq-btn-primary rq-liberar" @onclick='() => PedirConfirmacao("Liberar OS", "Deseja liberar esta OS para continuar a montagem do orçamento?", Liberar)' disabled="@processando">
                         ▶ Liberar OS para continuar montagem do orçamento
                     </button>
                 }
@@ -164,6 +164,13 @@
         </AuthorizeView>
     }
 </div>
+
+<ConfirmacaoModal Visivel="confirmVisivel"
+                   Titulo="@confirmTitulo"
+                   Mensagem="@confirmMensagem"
+                   Destrutivo="confirmDestrutivo"
+                   OnConfirmar="ExecutarAcaoConfirmada"
+                   OnCancelar="CancelarConfirmacao" />
 
 <style>
     .rq-card { background:#fff; border:1px solid #e5e5e5; border-radius:8px; padding:16px; margin-top:16px; }
@@ -224,6 +231,12 @@
     .rq-btn-ok { background:#1f7a3a; color:#fff; padding:6px 12px; border-radius:4px; border:0; cursor:pointer; }
     .rq-btn-recusa { background:#a72020; color:#fff; padding:6px 12px; border-radius:4px; border:0; cursor:pointer; }
     .rq-btn-ok:disabled, .rq-btn-recusa:disabled { background:#ccc; cursor:not-allowed; }
+
+    @@media (max-width: 560px) {
+        .rq-header { flex-wrap: wrap; gap: 8px; }
+        .rq-form-row { flex-wrap: wrap; }
+        .rq-sel-mini, .rq-obs { width: 100%; min-width: 0; }
+    }
 </style>
 
 @code {
@@ -239,6 +252,35 @@
     private bool processando;
     private string mensagem = "";
     private bool mensagemErro;
+
+    private bool confirmVisivel;
+    private string confirmTitulo = "Confirmar envio";
+    private string confirmMensagem = "Deseja enviar o formulário como está?";
+    private bool confirmDestrutivo;
+    private Func<Task>? acaoConfirmada;
+
+    private void PedirConfirmacao(string titulo, string mensagemConfirm, Func<Task> acao, bool destrutivo = false)
+    {
+        confirmTitulo = titulo;
+        confirmMensagem = mensagemConfirm;
+        confirmDestrutivo = destrutivo;
+        acaoConfirmada = acao;
+        confirmVisivel = true;
+    }
+
+    private async Task ExecutarAcaoConfirmada()
+    {
+        confirmVisivel = false;
+        var acao = acaoConfirmada;
+        acaoConfirmada = null;
+        if (acao is not null) await acao();
+    }
+
+    private void CancelarConfirmacao()
+    {
+        confirmVisivel = false;
+        acaoConfirmada = null;
+    }
 
     private string termoBusca = "";
     private List<ComponenteBuscaDTO> resultadosBusca = new();

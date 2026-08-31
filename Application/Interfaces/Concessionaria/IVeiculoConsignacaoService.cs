@@ -10,6 +10,7 @@ public interface IVeiculoConsignacaoService : IService<
     AtualizarVeiculoConsignacaoDTO>
 {
     Task<Result<IEnumerable<VeiculoConsignacaoListaDTO>>> ObterAtivasAsync();
+    Task<Result<IEnumerable<VeiculoConsignacaoListaDTO>>> ObterPorClienteProprietarioAsync(Guid clienteProprietarioId);
     Task<Result> RenovarAsync(Guid id, int diasAdicionais = 90);
     Task<Result> MarcarComoVendidaAsync(Guid id);
     Task<Result> ConcluirVendaAsync(Guid id);

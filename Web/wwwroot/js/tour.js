@@ -7,7 +7,19 @@ window.tourGuiado = {
     // e o tamanho do viewport — usados em C# pra posicionar o destaque e o
     // balão sem nunca deixar o balão sair da tela.
     medir: function (seletor) {
-        var el = document.querySelector("[data-tour='" + seletor + "']");
+        return this._medirElemento(document.querySelector("[data-tour='" + seletor + "']"));
+    },
+
+    // Mede o próprio balão do tour já renderizado — usado em C# pra
+    // reajustar a posição com a ALTURA REAL (o cálculo inicial só estima a
+    // altura, já que ela varia com o tamanho do texto; textos maiores ou
+    // telas mais baixas, tipo um monitor 1366x768/1280x720, podiam deixar o
+    // balão vazando por baixo da viewport antes desse reajuste existir).
+    medirBalao: function () {
+        return this._medirElemento(document.querySelector('.tour-balao, .tour-balao-centralizado'));
+    },
+
+    _medirElemento: function (el) {
         var vw = window.innerWidth;
         var vh = window.innerHeight;
         var sy = window.scrollY;

@@ -121,5 +121,5 @@ public class ComponenteRepositoryTests : IDisposable
         string partNumber = "PN-12345")
         => new(
             sku, nome, "Descrição", "Bosch", partNumber, "OEM-1", "7891234567890",
-            "87083010", "0102000", "Freios", "UN", 0.5m, 180);
+            "87083010", "0102000", "Freios", "UN", 0.5m, 180, Guid.NewGuid());
 }

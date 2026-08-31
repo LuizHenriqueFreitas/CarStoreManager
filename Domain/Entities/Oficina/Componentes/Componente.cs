@@ -39,6 +39,9 @@ public class Componente : Entity
     public int GarantiaDias { get; private set; }
     public bool Ativo { get; private set; } = true;
 
+    // FORNECEDOR — todo componente tem exatamente um fornecedor vinculado.
+    public Guid FornecedorId { get; private set; }
+
     // SISTEMA do veículo a que pertence (Motor, Freios, etc) — usado para
     // aplicar margem de lucro padrão do segmento.
     public Domain.Enums.SistemaComponente? Sistema { get; private set; }
@@ -80,7 +83,8 @@ public class Componente : Entity
         string categoria,
         string unidade,
         decimal peso,
-        int garantiaDias)
+        int garantiaDias,
+        Guid fornecedorId)
     {
         SetSKUInterno(skuInterno);
         SetNome(nome);
@@ -95,6 +99,7 @@ public class Componente : Entity
         SetUnidade(unidade);
         SetPeso(peso);
         SetGarantiaDias(garantiaDias);
+        DefinirFornecedor(fornecedorId);
         // Ativo já é true por padrão
     }
 
@@ -115,6 +120,14 @@ public class Componente : Entity
     public decimal GetPeso() => Peso;
     public int GetGarantiaDias() => GarantiaDias;
     public bool GetAtivo() => Ativo;
+    public Guid GetFornecedorId() => FornecedorId;
+
+    public void DefinirFornecedor(Guid fornecedorId)
+    {
+        if (fornecedorId == Guid.Empty)
+            throw new ArgumentException("Fornecedor é obrigatório.", nameof(fornecedorId));
+        FornecedorId = fornecedorId;
+    }
 
     /// <summary>
     /// Define o custo (vindo da NF de entrada ou cadastro inicial) e recalcula

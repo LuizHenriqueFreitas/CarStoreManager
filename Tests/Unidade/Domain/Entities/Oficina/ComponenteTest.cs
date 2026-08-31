@@ -156,10 +156,11 @@ public class ComponenteTest
         string categoria = "Freios",
         string unidade = "UN",
         decimal peso = 0.500m,
-        int garantiaDias = 180)
+        int garantiaDias = 180,
+        Guid? fornecedorId = null)
     {
         return new Componente(
             sku, nome, descricao, marca, partNumber, codigoOEM, codigoBarras,
-            ncm, cest, categoria, unidade, peso, garantiaDias);
+            ncm, cest, categoria, unidade, peso, garantiaDias, fornecedorId ?? Guid.NewGuid());
     }
 }

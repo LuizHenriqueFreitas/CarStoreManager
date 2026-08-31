@@ -15,7 +15,8 @@ public class VeiculoVendaDTO
     public string Combustivel { get; set; } = null!;
     public string Disponibilidade { get; set; } = null!;
     public decimal Valor { get; set; }
-    public int? AnoUltimoIpvaPago { get; set; }
+    public decimal ValorAquisicao { get; set; }
+    public int AnoUltimoIpvaPago { get; set; }
     public List<string> Acessorios { get; set; } = new();
     public List<string> Fotos { get; set; } = new();
     public string TextoTermoPreliminar { get; set; } = "";

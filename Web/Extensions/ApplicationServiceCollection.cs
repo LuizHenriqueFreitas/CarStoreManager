@@ -26,6 +26,7 @@ public static class ApplicationServiceCollection
         services.AddScoped<IVeiculoClienteService, VeiculoClienteService>();
         services.AddScoped<IMecanicoService, MecanicoService>();
         services.AddScoped<IComponenteService, ComponenteService>();
+        services.AddScoped<IFornecedorService, FornecedorService>();
         services.AddScoped<IOrdemServicoService, OrdemServicoService>();
 
         // Auth

@@ -284,7 +284,7 @@ namespace CarStoreManager.Infrastructure.Migrations
                     b.Property<int>("Acessorios")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("AnoUltimoIpvaPago")
+                    b.Property<int>("AnoUltimoIpvaPago")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Cambio")
@@ -740,6 +740,9 @@ namespace CarStoreManager.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid>("FornecedorId")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("GarantiaDias")
                         .HasColumnType("INTEGER");
 
@@ -782,6 +785,8 @@ namespace CarStoreManager.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("FornecedorId");
 
                     b.ToTable("Componentes");
                 });
@@ -837,6 +842,39 @@ namespace CarStoreManager.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("EstoqueComponentes");
+                });
+
+            modelBuilder.Entity("CarStoreManager.Domain.Entities.Oficina.Fornecedor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("EnderecoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Telefone")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnderecoId")
+                        .IsUnique();
+
+                    b.ToTable("Fornecedores");
                 });
 
             modelBuilder.Entity("CarStoreManager.Domain.Entities.Oficina.ItemOrdemServico", b =>
@@ -1663,6 +1701,23 @@ namespace CarStoreManager.Infrastructure.Migrations
                                 .HasForeignKey("VeiculoVendaId");
                         });
 
+                    b.OwnsOne("CarStoreManager.Domain.ValueObjects.Dinheiro", "ValorAquisicao", b1 =>
+                        {
+                            b1.Property<Guid>("VeiculoVendaId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<decimal>("Valor")
+                                .HasColumnType("TEXT")
+                                .HasColumnName("ValorAquisicao");
+
+                            b1.HasKey("VeiculoVendaId");
+
+                            b1.ToTable("VeiculosVenda");
+
+                            b1.WithOwner()
+                                .HasForeignKey("VeiculoVendaId");
+                        });
+
                     b.Navigation("Ano")
                         .IsRequired();
 
@@ -1676,6 +1731,9 @@ namespace CarStoreManager.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Valor")
+                        .IsRequired();
+
+                    b.Navigation("ValorAquisicao")
                         .IsRequired();
                 });
 
@@ -1702,6 +1760,15 @@ namespace CarStoreManager.Infrastructure.Migrations
                         .WithMany("Itens")
                         .HasForeignKey("ChecklistPresetId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CarStoreManager.Domain.Entities.Oficina.Componente", b =>
+                {
+                    b.HasOne("CarStoreManager.Domain.Entities.Oficina.Fornecedor", null)
+                        .WithMany()
+                        .HasForeignKey("FornecedorId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -1733,6 +1800,36 @@ namespace CarStoreManager.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Componente");
+                });
+
+            modelBuilder.Entity("CarStoreManager.Domain.Entities.Oficina.Fornecedor", b =>
+                {
+                    b.HasOne("CarStoreManager.Domain.Entities.Endereco", "Endereco")
+                        .WithOne()
+                        .HasForeignKey("CarStoreManager.Domain.Entities.Oficina.Fornecedor", "EnderecoId");
+
+                    b.OwnsOne("CarStoreManager.Domain.ValueObjects.Cnpj", "Cnpj", b1 =>
+                        {
+                            b1.Property<Guid>("FornecedorId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<string>("Numero")
+                                .IsRequired()
+                                .HasColumnType("TEXT")
+                                .HasColumnName("CNPJ");
+
+                            b1.HasKey("FornecedorId");
+
+                            b1.ToTable("Fornecedores");
+
+                            b1.WithOwner()
+                                .HasForeignKey("FornecedorId");
+                        });
+
+                    b.Navigation("Cnpj")
+                        .IsRequired();
+
+                    b.Navigation("Endereco");
                 });
 
             modelBuilder.Entity("CarStoreManager.Domain.Entities.Oficina.ItemOrdemServico", b =>

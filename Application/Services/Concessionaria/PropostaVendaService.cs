@@ -119,8 +119,19 @@ public class PropostaVendaService : IPropostaVendaService
             var consignacao = await _consignacaoRepository.GetByIdAsync(dto.VeiculoVendaId);
             if (consignacao is null)
                 return Result<Guid>.Fail("Veículo consignado não encontrado");
+
+            // Lazy-expire: sem isso, um contrato vencido que ninguém abriu
+            // recentemente (nada chamou TentarExpirar) ainda mostraria
+            // Status=Ativa aqui e deixaria passar uma proposta pra um
+            // contrato de fato vencido.
+            if (consignacao.TentarExpirar())
+            {
+                _consignacaoRepository.Update(consignacao);
+                await _consignacaoRepository.SaveChangesAsync();
+            }
+
             if (consignacao.Status != Domain.Enums.StatusConsignacao.Ativa)
-                return Result<Guid>.Fail("Consignação não está ativa — não é possível gerar proposta.");
+                return Result<Guid>.Fail("O prazo dessa consignação está vencido — renove o contrato antes de gerar uma proposta.");
         }
         else
         {
@@ -561,9 +572,16 @@ public class PropostaVendaService : IPropostaVendaService
         var proposta = await _repository.GetByIdAsync(propostaVendaId);
         if (proposta is null) return Result.Fail("Proposta não encontrada");
 
-        _repository.Remove(proposta);
-        await _repository.SaveChangesAsync();
-        return Result.Ok();
+        try
+        {
+            _repository.Remove(proposta);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível excluir a proposta. Ela pode ter pagamentos ou documentos vinculados.");
+        }
     }
 
     // ============================================================

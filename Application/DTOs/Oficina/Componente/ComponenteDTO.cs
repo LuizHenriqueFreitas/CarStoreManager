@@ -39,6 +39,10 @@ public class ComponenteDTO
     // Status
     public bool Ativo { get; set; }
 
+    // Fornecedor
+    public Guid FornecedorId { get; set; }
+    public string FornecedorNome { get; set; } = string.Empty;
+
     // Precificação
     public decimal CustoUnitario { get; set; }
     public decimal? MargemLucroPct { get; set; }

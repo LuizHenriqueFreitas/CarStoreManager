@@ -26,6 +26,7 @@ public static class VeiculoVendaMapping
             Combustivel = entity.Combustivel.ToString(),
             Disponibilidade = entity.Disponibilidade.ToString(),
             Valor = entity.GetValor(),
+            ValorAquisicao = entity.GetValorAquisicao(),
             AnoUltimoIpvaPago = entity.AnoUltimoIpvaPago,
             Acessorios = entity.GetAcessoriosLista(),
             Fotos = entity.Fotos
@@ -57,6 +58,7 @@ public static class VeiculoVendaMapping
                 .Select(a => a.ToString())
                 .ToList(),
             Valor = entity.GetValor(),
+            ValorAquisicao = entity.GetValorAquisicao(),
             FotoPrincipal = entity.Fotos
                 .OrderBy(f => f.Ordem)
                 .FirstOrDefault()?.Url,
@@ -78,8 +80,9 @@ public static class VeiculoVendaMapping
             ConverterEnum<TipoCambio>(dto.Cambio, "Câmbio"),
             ConverterEnum<TipoCombustivel>(dto.Combustivel, "Combustível"),
             dto.Valor,
-            ConverterAcessorios(dto.Acessorios),
-            dto.AnoUltimoIpvaPago
+            dto.ValorAquisicao,
+            dto.AnoUltimoIpvaPago,
+            ConverterAcessorios(dto.Acessorios)
         );
 
         if (!string.IsNullOrWhiteSpace(dto.TextoTermoPreliminar))

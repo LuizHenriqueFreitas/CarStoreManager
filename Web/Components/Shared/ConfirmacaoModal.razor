@@ -1,0 +1,108 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@if (Visivel)
+{
+    <div class="confirm-overlay" @onclick="Cancelar">
+        <div class="confirm-box" @onclick:stopPropagation>
+            <div class="confirm-icone @(Destrutivo ? "destrutivo" : "")">@(Destrutivo ? "⚠" : "❓")</div>
+            <h3 class="confirm-titulo">@Titulo</h3>
+            <p class="confirm-mensagem">@Mensagem</p>
+            <div class="confirm-acoes">
+                <button class="confirm-btn-nao" @onclick="Cancelar" disabled="@processando">@TextoCancelar</button>
+                <button class="confirm-btn-sim @(Destrutivo ? "destrutivo" : "")" @onclick="Confirmar" disabled="@processando">
+                    @(processando ? "..." : TextoConfirmar)
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .confirm-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1100;
+        padding: 20px;
+    }
+    .confirm-box {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        width: 100%;
+        max-width: 380px;
+        text-align: center;
+    }
+    .confirm-icone {
+        font-size: 28px;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 12px;
+        background: #eff6ff;
+    }
+    .confirm-icone.destrutivo { background: #fff5f5; }
+    .confirm-titulo { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .confirm-mensagem { font-size: 13px; color: #666; line-height: 1.4; margin-bottom: 20px; }
+    .confirm-acoes { display: flex; gap: 8px; justify-content: center; }
+    .confirm-btn-nao {
+        background: #fff;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 20px;
+        font-size: 13px;
+        cursor: pointer;
+        flex: 1;
+    }
+    .confirm-btn-sim {
+        background: #2563eb;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 20px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #fff;
+        cursor: pointer;
+        flex: 1;
+    }
+    .confirm-btn-sim.destrutivo { background: #e02020; }
+    .confirm-btn-nao:disabled, .confirm-btn-sim:disabled { opacity: 0.6; cursor: not-allowed; }
+</style>
+
+@code {
+    [Parameter] public bool Visivel { get; set; }
+    [Parameter] public string Titulo { get; set; } = "Confirmar envio";
+    [Parameter] public string Mensagem { get; set; } = "Deseja enviar o formulário como está?";
+    [Parameter] public string TextoConfirmar { get; set; } = "Sim";
+    [Parameter] public string TextoCancelar { get; set; } = "Não";
+    [Parameter] public bool Destrutivo { get; set; } = false;
+    [Parameter] public EventCallback OnConfirmar { get; set; }
+    [Parameter] public EventCallback OnCancelar { get; set; }
+
+    private bool processando = false;
+
+    private async Task Confirmar()
+    {
+        processando = true;
+        try
+        {
+            await OnConfirmar.InvokeAsync();
+        }
+        finally
+        {
+            processando = false;
+        }
+    }
+
+    private async Task Cancelar()
+    {
+        if (processando) return;
+        await OnCancelar.InvokeAsync();
+    }
+}

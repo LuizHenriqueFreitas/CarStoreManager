@@ -3,6 +3,7 @@ using CarStoreManager.Application.DTOs;
 using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Application.Interfaces.Repositories;
 using CarStoreManager.Domain.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace CarStoreManager.Application.Services;
 
@@ -14,11 +15,13 @@ public class FotoService : IFotoService
 
     private readonly IFotoRepository _fotoRepo;
     private readonly IArquivoStorage _storage;
+    private readonly ILogger<FotoService> _logger;
 
-    public FotoService(IFotoRepository fotoRepo, IArquivoStorage storage)
+    public FotoService(IFotoRepository fotoRepo, IArquivoStorage storage, ILogger<FotoService> logger)
     {
         _fotoRepo = fotoRepo;
         _storage = storage;
+        _logger = logger;
     }
 
     public async Task<Result<List<FotoDto>>> UploadFotosAsync(
@@ -27,51 +30,68 @@ public class FotoService : IFotoService
         if (arquivos is null || arquivos.Count == 0)
             return Result<List<FotoDto>>.Fail("Nenhum arquivo enviado.");
 
-        var ordemAtual = await _fotoRepo.GetNextOrdemAsync(entidadeTipo, entidadeId);
-        var fotosSalvas = new List<Foto>();
-
-        foreach (var arquivo in arquivos)
+        try
         {
-            if (arquivo.Tamanho > TamanhoMaximoBytes)
-                return Result<List<FotoDto>>.Fail($"Arquivo {arquivo.NomeArquivo} excede 5MB.");
+            var ordemAtual = await _fotoRepo.GetNextOrdemAsync(entidadeTipo, entidadeId);
+            var fotosSalvas = new List<Foto>();
 
-            if (!ContentTypesPermitidos.Contains(arquivo.ContentType))
-                return Result<List<FotoDto>>.Fail($"Formato não suportado: {arquivo.NomeArquivo}. Use JPEG ou PNG.");
+            foreach (var arquivo in arquivos)
+            {
+                if (arquivo.Tamanho > TamanhoMaximoBytes)
+                    return Result<List<FotoDto>>.Fail($"Arquivo {arquivo.NomeArquivo} excede 5MB.");
 
-            var url = await _storage.SalvarAsync(arquivo, entidadeTipo.ToLowerInvariant());
+                if (!ContentTypesPermitidos.Contains(arquivo.ContentType))
+                    return Result<List<FotoDto>>.Fail($"Formato não suportado: {arquivo.NomeArquivo}. Use JPEG ou PNG.");
 
-            var foto = new Foto(
-                entidadeTipo,
-                entidadeId,
-                url,
-                arquivo.NomeArquivo,
-                arquivo.Tamanho,
-                arquivo.ContentType,
-                ordemAtual++
-            );
-            await _fotoRepo.AddAsync(foto);
-            fotosSalvas.Add(foto);
+                // Gravação em disco — pode falhar por permissão, disco cheio, etc.
+                var url = await _storage.SalvarAsync(arquivo, entidadeTipo.ToLowerInvariant());
+
+                var foto = new Foto(
+                    entidadeTipo,
+                    entidadeId,
+                    url,
+                    arquivo.NomeArquivo,
+                    arquivo.Tamanho,
+                    arquivo.ContentType,
+                    ordemAtual++
+                );
+                await _fotoRepo.AddAsync(foto);
+                fotosSalvas.Add(foto);
+            }
+
+            await _fotoRepo.SaveChangesAsync();
+
+            var dtos = fotosSalvas.Select(MapToDto).ToList();
+            return Result<List<FotoDto>>.Ok(dtos);
         }
-
-        await _fotoRepo.SaveChangesAsync();
-
-        var dtos = fotosSalvas.Select(MapToDto).ToList();
-        return Result<List<FotoDto>>.Ok(dtos);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao enviar fotos para {EntidadeTipo}/{EntidadeId}", entidadeTipo, entidadeId);
+            return Result<List<FotoDto>>.Fail("Não foi possível enviar as fotos. Tente novamente em instantes.");
+        }
     }
 
     public async Task<Result> RemoverFotoAsync(Guid fotoId)
     {
-        var foto = await _fotoRepo.GetByIdAsync(fotoId);
-        if (foto is null)
-            return Result.Fail("Foto não encontrada.");
+        try
+        {
+            var foto = await _fotoRepo.GetByIdAsync(fotoId);
+            if (foto is null)
+                return Result.Fail("Foto não encontrada.");
 
-        await _storage.RemoverAsync(foto.Url);
-        await _fotoRepo.DeleteAsync(foto);
-        await _fotoRepo.SaveChangesAsync();
+            await _storage.RemoverAsync(foto.Url);
+            await _fotoRepo.DeleteAsync(foto);
+            await _fotoRepo.SaveChangesAsync();
 
-        await ReordenarAposRemocao(foto.EntidadeTipo, foto.EntidadeId);
+            await ReordenarAposRemocao(foto.EntidadeTipo, foto.EntidadeId);
 
-        return Result.Ok();
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao remover foto {FotoId}", fotoId);
+            return Result.Fail("Não foi possível remover a foto. Tente novamente em instantes.");
+        }
     }
 
     private async Task ReordenarAposRemocao(string entidadeTipo, Guid entidadeId)
@@ -90,27 +110,43 @@ public class FotoService : IFotoService
 
     public async Task<Result> ReordenarFotosAsync(string entidadeTipo, Guid entidadeId, List<Guid> ordemIds)
     {
-        var fotos = await _fotoRepo.GetByEntidadeAsync(entidadeTipo, entidadeId);
-        if (fotos.Count != ordemIds.Count)
-            return Result.Fail("Número de IDs não corresponde à quantidade de fotos.");
-
-        var ordem = 0;
-        foreach (var id in ordemIds)
+        try
         {
-            var foto = fotos.FirstOrDefault(f => f.Id == id);
-            if (foto is null)
-                return Result.Fail($"Foto com ID {id} não pertence a esta entidade.");
-            foto.AtualizarOrdem(ordem++);
-            await _fotoRepo.UpdateAsync(foto);
+            var fotos = await _fotoRepo.GetByEntidadeAsync(entidadeTipo, entidadeId);
+            if (fotos.Count != ordemIds.Count)
+                return Result.Fail("Número de IDs não corresponde à quantidade de fotos.");
+
+            var ordem = 0;
+            foreach (var id in ordemIds)
+            {
+                var foto = fotos.FirstOrDefault(f => f.Id == id);
+                if (foto is null)
+                    return Result.Fail($"Foto com ID {id} não pertence a esta entidade.");
+                foto.AtualizarOrdem(ordem++);
+                await _fotoRepo.UpdateAsync(foto);
+            }
+            await _fotoRepo.SaveChangesAsync();
+            return Result.Ok();
         }
-        await _fotoRepo.SaveChangesAsync();
-        return Result.Ok();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao reordenar fotos de {EntidadeTipo}/{EntidadeId}", entidadeTipo, entidadeId);
+            return Result.Fail("Não foi possível reordenar as fotos. Tente novamente em instantes.");
+        }
     }
 
     public async Task<Result<List<FotoDto>>> GetFotosByEntidadeAsync(string entidadeTipo, Guid entidadeId)
     {
-        var fotos = await _fotoRepo.GetByEntidadeAsync(entidadeTipo, entidadeId);
-        return Result<List<FotoDto>>.Ok(fotos.Select(MapToDto).ToList());
+        try
+        {
+            var fotos = await _fotoRepo.GetByEntidadeAsync(entidadeTipo, entidadeId);
+            return Result<List<FotoDto>>.Ok(fotos.Select(MapToDto).ToList());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao carregar fotos de {EntidadeTipo}/{EntidadeId}", entidadeTipo, entidadeId);
+            return Result<List<FotoDto>>.Fail("Não foi possível carregar as fotos. Tente novamente em instantes.");
+        }
     }
 
     private static FotoDto MapToDto(Foto f) => new()

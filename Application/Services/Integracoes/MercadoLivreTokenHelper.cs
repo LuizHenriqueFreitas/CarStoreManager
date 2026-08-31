@@ -32,23 +32,40 @@ public class MercadoLivreTokenHelper
         if (!cfg.Conectado || string.IsNullOrEmpty(cfg.AccessTokenCriptografado))
             return Result<string>.Fail("Mercado Livre não conectado. Acesse Integrações > Mercado Livre para conectar.");
 
-        if (cfg.TokenExpirado())
+        try
         {
-            if (string.IsNullOrEmpty(cfg.RefreshTokenCriptografado))
-                return Result<string>.Fail("Token expirado e sem refresh token disponível. Reconecte o Mercado Livre.");
+            if (cfg.TokenExpirado())
+            {
+                if (string.IsNullOrEmpty(cfg.RefreshTokenCriptografado))
+                    return Result<string>.Fail("Token expirado e sem refresh token disponível. Reconecte o Mercado Livre.");
 
-            var refreshToken = _cripto.Desproteger(cfg.RefreshTokenCriptografado);
-            var novoToken = await _apiClient.RenovarTokenAsync(refreshToken);
+                var refreshToken = _cripto.Desproteger(cfg.RefreshTokenCriptografado);
+                var novoToken = await _apiClient.RenovarTokenAsync(refreshToken);
 
-            cfg.AtualizarTokens(
-                _cripto.Proteger(novoToken.AccessToken),
-                _cripto.Proteger(novoToken.RefreshToken),
-                DateTime.UtcNow.AddSeconds(novoToken.ExpiresIn));
-            await _configRepo.SaveChangesAsync();
+                cfg.AtualizarTokens(
+                    _cripto.Proteger(novoToken.AccessToken),
+                    _cripto.Proteger(novoToken.RefreshToken),
+                    DateTime.UtcNow.AddSeconds(novoToken.ExpiresIn));
+                await _configRepo.SaveChangesAsync();
 
-            return Result<string>.Ok(novoToken.AccessToken);
+                return Result<string>.Ok(novoToken.AccessToken);
+            }
+
+            return Result<string>.Ok(_cripto.Desproteger(cfg.AccessTokenCriptografado));
         }
-
-        return Result<string>.Ok(_cripto.Desproteger(cfg.AccessTokenCriptografado));
+        catch (System.Security.Cryptography.CryptographicException)
+        {
+            // Chave de criptografia local mudou (ex.: pasta Web/keys foi
+            // recriada) — o token salvo não abre mais, só reconectando de novo.
+            return Result<string>.Fail("Não foi possível validar a conexão com o Mercado Livre. Reconecte em Integrações > Mercado Livre.");
+        }
+        catch (HttpRequestException)
+        {
+            return Result<string>.Fail("Não foi possível falar com o Mercado Livre agora. Verifique sua conexão e tente novamente.");
+        }
+        catch (Exception)
+        {
+            return Result<string>.Fail("Não foi possível renovar a conexão com o Mercado Livre. Tente novamente em instantes.");
+        }
     }
 }

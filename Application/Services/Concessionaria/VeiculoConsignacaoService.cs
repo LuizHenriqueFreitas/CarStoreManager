@@ -64,6 +64,12 @@ public class VeiculoConsignacaoService : IVeiculoConsignacaoService
         return Result<IEnumerable<VeiculoConsignacaoListaDTO>>.Ok(await MapListaAsync(ativas));
     }
 
+    public async Task<Result<IEnumerable<VeiculoConsignacaoListaDTO>>> ObterPorClienteProprietarioAsync(Guid clienteProprietarioId)
+    {
+        var veiculos = await _repository.ObterPorClienteAsync(clienteProprietarioId);
+        return Result<IEnumerable<VeiculoConsignacaoListaDTO>>.Ok(await MapListaAsync(veiculos));
+    }
+
     public async Task<Result<Guid>> AddAsync(CriarVeiculoConsignacaoDTO dto)
     {
         try
@@ -127,9 +133,16 @@ public class VeiculoConsignacaoService : IVeiculoConsignacaoService
         if (veiculo is null)
             return Result.Fail("Veículo consignado não encontrado");
 
-        _repository.Remove(veiculo);
-        await _repository.SaveChangesAsync();
-        return Result.Ok();
+        try
+        {
+            _repository.Remove(veiculo);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível excluir o veículo consignado. Ele pode ter histórico ou propostas vinculadas.");
+        }
     }
 
     private async Task<Result> ExecutarTransicaoAsync(Guid id, Action<Domain.Entities.Concessionaria.VeiculoConsignacao> transicao)

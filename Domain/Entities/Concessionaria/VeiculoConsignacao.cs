@@ -11,6 +11,9 @@ namespace CarStoreManager.Domain.Entities.Concessionaria;
 /// </summary>
 public class VeiculoConsignacao : Entity
 {
+    /// <summary>Janela de renovação: só fica disponível nos últimos N dias antes do vencimento (ou já vencida).</summary>
+    public const int DiasParaHabilitarRenovacao = 10;
+
     public string Marca { get; private set; } = null!;
     public string Modelo { get; private set; } = null!;
     public string Cor { get; private set; } = null!;
@@ -171,6 +174,10 @@ public class VeiculoConsignacao : Entity
         BloquearSeTerminal();
         if (Status is not (StatusConsignacao.Ativa or StatusConsignacao.Expirada))
             throw new InvalidOperationException($"Só é possível renovar consignações ativas ou expiradas (atual: {Status}).");
+
+        if (Status == StatusConsignacao.Ativa && DiasRestantes > DiasParaHabilitarRenovacao)
+            throw new InvalidOperationException(
+                $"A renovação só fica disponível a partir de {DiasParaHabilitarRenovacao} dias antes do vencimento (faltam {DiasRestantes} dia(s)).");
 
         var dias = diasAdicionais <= 0 ? 90 : diasAdicionais;
         DataVencimento = DataVencimento.AddDays(dias);

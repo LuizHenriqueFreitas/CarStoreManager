@@ -1,17 +1,21 @@
 @page "/oficina/componentes"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
+@implements IDisposable
 
 @namespace CarStoreManager.Web.Components.Pages
 
 @inject IComponenteService ComponenteService
 @inject IEstoqueService EstoqueService
+@inject IFornecedorService FornecedorService
 @inject IMercadoLivrePublicacaoService MercadoLivreService
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Oficina.Componente
+@using CarStoreManager.Application.DTOs.Oficina.Fornecedor
 @using CarStoreManager.Application.DTOs.Integracoes.MercadoLivre
 @using Microsoft.AspNetCore.Components.Authorization
+@using System.Timers
 
 @using Microsoft.AspNetCore.Components.Web
 
@@ -21,10 +25,15 @@
             <h1 class="page-titulo">Componentes</h1>
             <p class="page-sub">Cadastro de peças e controle de estoque</p>
         </div>
-        @if (ehAdmin)
-        {
-            <button class="btn-novo" data-tour="comp-btn-novo" @onclick="AbrirModalNovo">+ Novo componente</button>
-        }
+        <div class="header-acoes">
+            <button class="btn-secundario" data-tour="comp-btn-fornecedores" @onclick='() => Nav.NavigateTo("/oficina/fornecedores")'>
+                Gerenciar fornecedores
+            </button>
+            @if (ehAdmin)
+            {
+                <button class="btn-novo" data-tour="comp-btn-novo" @onclick="AbrirModalNovo">+ Novo componente</button>
+            }
+        </div>
     </div>
 
     @if (estoquesBaixo.Any())
@@ -127,6 +136,53 @@
                 <div class="form-campo span-2">
                     <label class="campo-label">Descrição</label>
                     <input class="campo-input" @bind="formComp.Descricao" />
+                </div>
+                <div class="form-campo span-2">
+                    <label class="campo-label">Fornecedor *</label>
+                    <div class="forn-busca-wrapper">
+                        <input type="text"
+                               class="campo-input"
+                               placeholder="Buscar fornecedor por nome ou CNPJ..."
+                               value="@fornecedorBuscaTermo"
+                               @oninput="OnFornecedorBuscaChanged"
+                               @onfocus="OnFornecedorBuscaFocus"
+                               disabled="@(fornecedorSelecionado is not null)" />
+
+                        @if (fornecedorSelecionado is not null)
+                        {
+                            <button type="button" class="forn-busca-limpar" @onclick="LimparFornecedorSelecionado">Trocar</button>
+                        }
+
+                        @if (mostrarResultadosFornecedor && fornecedorSelecionado is null)
+                        {
+                            @if (resultadosFornecedor.Any())
+                            {
+                                <div class="forn-busca-dropdown">
+                                    @foreach (var f in resultadosFornecedor)
+                                    {
+                                        <div class="forn-busca-item" @onclick="() => SelecionarFornecedor(f)">
+                                            <div class="forn-busca-nome">@f.Nome</div>
+                                            <div class="forn-busca-cnpj">@f.Cnpj</div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (!buscandoFornecedor)
+                            {
+                                <div class="forn-busca-dropdown">
+                                    <div class="forn-busca-vazio">
+                                        Nenhum fornecedor ativo encontrado
+                                        @(string.IsNullOrWhiteSpace(fornecedorBuscaTermo) ? "" : $"para \"{fornecedorBuscaTermo}\"").
+                                        Cadastre em Estoque → Gerenciar fornecedores.
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                    @if (fornecedorSelecionado is not null)
+                    {
+                        <span class="forn-busca-selecionado">@fornecedorSelecionado.Nome — @fornecedorSelecionado.Cnpj</span>
+                    }
                 </div>
                 <div class="form-campo">
                     <label class="campo-label">SKU interno *</label>
@@ -414,6 +470,15 @@
 
     private CriarComponenteDTO formComp = NovoForm();
 
+    // Busca de fornecedor (autocomplete) — só aceita um fornecedor
+    // realmente cadastrado, selecionado da lista de sugestões.
+    private string fornecedorBuscaTermo = "";
+    private bool mostrarResultadosFornecedor;
+    private bool buscandoFornecedor;
+    private List<FornecedorBuscaDTO> resultadosFornecedor = new();
+    private FornecedorBuscaDTO? fornecedorSelecionado;
+    private Timer? debounceFornecedorTimer;
+
     private readonly List<string> todosSistemas = new()
     {
         "Motor", "Suspensao", "Direcao", "Freios", "Eletrica",
@@ -501,7 +566,54 @@
     {
         formComp = NovoForm();
         erroForm = null;
+        LimparFornecedorSelecionado();
         modalNovoVisivel = true;
+    }
+
+    private void OnFornecedorBuscaFocus()
+    {
+        mostrarResultadosFornecedor = true;
+        if (resultadosFornecedor.Count == 0 && string.IsNullOrWhiteSpace(fornecedorBuscaTermo))
+            _ = ExecutarBuscaFornecedorAsync(); // foco sem digitar nada = sugere os cadastrados
+    }
+
+    private void OnFornecedorBuscaChanged(ChangeEventArgs e)
+    {
+        fornecedorBuscaTermo = e.Value?.ToString() ?? "";
+        mostrarResultadosFornecedor = true;
+
+        debounceFornecedorTimer?.Stop();
+        debounceFornecedorTimer?.Dispose();
+        debounceFornecedorTimer = new Timer(220) { AutoReset = false };
+        debounceFornecedorTimer.Elapsed += async (_, _) => await InvokeAsync(ExecutarBuscaFornecedorAsync);
+        debounceFornecedorTimer.Start();
+    }
+
+    private async Task ExecutarBuscaFornecedorAsync()
+    {
+        buscandoFornecedor = true;
+        var r = await FornecedorService.BuscarAsync(fornecedorBuscaTermo, 15);
+        resultadosFornecedor = r.IsSuccess ? r.Value!.ToList() : new();
+        buscandoFornecedor = false;
+        StateHasChanged();
+    }
+
+    private void SelecionarFornecedor(FornecedorBuscaDTO f)
+    {
+        fornecedorSelecionado = f;
+        formComp.FornecedorId = f.Id;
+        mostrarResultadosFornecedor = false;
+        fornecedorBuscaTermo = "";
+        resultadosFornecedor.Clear();
+    }
+
+    private void LimparFornecedorSelecionado()
+    {
+        fornecedorSelecionado = null;
+        formComp.FornecedorId = Guid.Empty;
+        fornecedorBuscaTermo = "";
+        resultadosFornecedor.Clear();
+        mostrarResultadosFornecedor = false;
     }
 
     private void AbrirModalEntrada(ComponenteListaDTO c)
@@ -567,6 +679,12 @@
 
     private async Task SalvarComponente()
     {
+        if (formComp.FornecedorId == Guid.Empty)
+        {
+            erroForm = "Selecione um fornecedor já cadastrado na lista de sugestões.";
+            return;
+        }
+
         salvando = true;
         erroForm = null;
 
@@ -651,6 +769,12 @@
         Sistema = "Motor",
         Unidade = "UN"
     };
+
+    public void Dispose()
+    {
+        debounceFornecedorTimer?.Stop();
+        debounceFornecedorTimer?.Dispose();
+    }
 }
 
 <style>
@@ -682,6 +806,21 @@
     }
 
     .btn-novo:hover { background: #1d4ed8; }
+
+    .header-acoes { display: flex; align-items: center; gap: 10px; }
+
+    .btn-secundario {
+        background: #fff;
+        color: #333;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 9px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .btn-secundario:hover { border-color: #2563eb; color: #2563eb; }
 
     .alerta-estoque {
         background: #fff7ed;
@@ -986,5 +1125,39 @@
         padding: 1px 6px;
         border-radius: 3px;
         font-size: 12px;
+    }
+
+    .forn-busca-wrapper { position: relative; display: flex; gap: 8px; align-items: center; }
+    .forn-busca-wrapper .campo-input { flex: 1; }
+    .forn-busca-wrapper .campo-input:disabled { background: #f4f4f4; color: #555; }
+    .forn-busca-limpar {
+        background: none; border: 0.5px solid #ccc; border-radius: 6px;
+        padding: 8px 12px; font-size: 12px; cursor: pointer; white-space: nowrap;
+    }
+    .forn-busca-limpar:hover { border-color: #2563eb; color: #2563eb; }
+    .forn-busca-dropdown {
+        position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+        background: #fff; border: 1px solid #ccc; border-top: 0;
+        max-height: 260px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border-radius: 0 0 8px 8px;
+    }
+    .forn-busca-item { padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+    .forn-busca-item:hover { background: #f7fafc; }
+    .forn-busca-nome { font-weight: 500; font-size: 13px; }
+    .forn-busca-cnpj { font-size: 11px; color: #888; }
+    .forn-busca-vazio { padding: 12px; text-align: center; color: #888; font-size: 0.85em; }
+    .forn-busca-selecionado { display: block; margin-top: 6px; font-size: 12px; color: #16a34a; }
+
+    @@media (max-width: 768px) {
+        .header-acoes { flex-wrap: wrap; }
+        .header-acoes button { flex: 1 1 auto; }
+        .detalhe-grid { grid-template-columns: 1fr; }
+    }
+
+    @@media (max-width: 700px) {
+        /* Tabela larga (6 colunas) — em vez de espremer/cortar, rola por
+           dentro; min-width mantém cada coluna legível. */
+        .comp-tabela { overflow-x: auto; }
+        .tabela-header, .tabela-row { min-width: 640px; }
     }
 </style>

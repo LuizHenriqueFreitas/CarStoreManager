@@ -58,6 +58,7 @@ public static class InfrastructureServiceCollection
         // =========================
         services.AddScoped<IOrdemServicoRepository, OrdemServicoRepository>();
         services.AddScoped<IComponenteRepository, ComponenteRepository>();
+        services.AddScoped<IFornecedorRepository, FornecedorRepository>();
         services.AddScoped<IEstoqueRepository, EstoqueRepository>();
         services.AddScoped<IEstoqueService, EstoqueService>();
         services.AddScoped<IMecanicoRepository, MecanicoRepository>();
@@ -112,6 +113,8 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IConfiguracaoSistemaService, ConfiguracaoSistemaService>();
         services.AddScoped<IDespesaRepository, DespesaRepository>();
         services.AddScoped<IDespesaService, DespesaService>();
+        services.AddScoped<IBackdateService, BackdateService>();
+        services.AddScoped<IImportacaoDadosService, ImportacaoDadosService>();
 
         // =========================
         // DASHBOARD (admin)

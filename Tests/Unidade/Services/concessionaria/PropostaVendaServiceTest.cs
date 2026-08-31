@@ -69,7 +69,7 @@ public class PropostaVendaServiceTests
     public async Task AddAsync_VeiculoNaoDisponivel_RetornaFalha()
     {
         var veiculo = new VeiculoVenda("Marca", "Modelo", "Cor", "1.0", 2020, 10000, "ABC1234", "12345678900",
-            TipoCambio.Manual, TipoCombustivel.Gasolina, 50000, AcessoriosVeiculo.Nenhum);
+            TipoCambio.Manual, TipoCombustivel.Gasolina, 50000, 40000, 2024, AcessoriosVeiculo.Nenhum);
         typeof(VeiculoVenda).GetProperty("Disponibilidade")?.SetValue(veiculo, DisponibilidadeVeiculo.Vendido);
         _veiculoRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync(veiculo);
         var dto = new CriarPropostaVendaDTO { VeiculoVendaId = veiculo.Id };
@@ -82,7 +82,7 @@ public class PropostaVendaServiceTests
     public async Task AddAsync_VeiculoDisponivel_CriaPropostaERetornaId()
     {
         var veiculo = new VeiculoVenda("Marca", "Modelo", "Cor", "1.0", 2020, 10000, "ABC1234", "12345678900",
-            TipoCambio.Manual, TipoCombustivel.Gasolina, 50000, AcessoriosVeiculo.Nenhum);
+            TipoCambio.Manual, TipoCombustivel.Gasolina, 50000, 40000, 2024, AcessoriosVeiculo.Nenhum);
         // Veículo nasce EmPreparacao — precisa liberar para o teste de proposta.
         veiculo.LiberarParaVenda();
         _veiculoRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync(veiculo);
@@ -105,6 +105,69 @@ public class PropostaVendaServiceTests
         _propostaRepoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
     }
 
+    [Fact]
+    public async Task AddAsync_ConsignacaoNaoEncontrada_RetornaFalha()
+    {
+        _consignacaoRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((VeiculoConsignacao?)null);
+        var dto = new CriarPropostaVendaDTO { VeiculoVendaId = Guid.NewGuid(), VeiculoEntidadeTipo = "VeiculoConsignacao" };
+        var result = await _service.AddAsync(dto);
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Veículo consignado não encontrado");
+    }
+
+    [Fact]
+    public async Task AddAsync_ConsignacaoAtivaMasVencida_ExpiraEBloqueiaProposta()
+    {
+        var comissao = ComissaoConsignacao.CriarFixo(50000, 2000);
+        var consignacao = new VeiculoConsignacao("Marca", "Modelo", "Cor", "1.0", 2020, 10000, "ABC1234", "12345678900",
+            TipoCambio.Manual, TipoCombustivel.Gasolina, Guid.NewGuid(), Guid.NewGuid(), comissao, "Contrato de teste", prazoDias: 30);
+        // Força o vencimento pro passado sem passar pelo TentarExpirar, simulando
+        // um contrato que venceu mas cujo Status ainda não foi reavaliado.
+        typeof(VeiculoConsignacao).GetProperty("DataVencimento")?.SetValue(consignacao, DateTime.UtcNow.AddDays(-1));
+
+        _consignacaoRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync(consignacao);
+        _consignacaoRepoMock.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+
+        var dto = new CriarPropostaVendaDTO { VeiculoVendaId = consignacao.Id, VeiculoEntidadeTipo = "VeiculoConsignacao" };
+        var result = await _service.AddAsync(dto);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("vencido");
+        consignacao.Status.Should().Be(StatusConsignacao.Expirada);
+        _consignacaoRepoMock.Verify(r => r.Update(consignacao), Times.Once);
+        _consignacaoRepoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
+        _propostaRepoMock.Verify(r => r.AddAsync(It.IsAny<PropostaVenda>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AddAsync_ConsignacaoAtivaDentroDoPrazo_CriaPropostaERetornaId()
+    {
+        var comissao = ComissaoConsignacao.CriarFixo(50000, 2000);
+        var consignacao = new VeiculoConsignacao("Marca", "Modelo", "Cor", "1.0", 2020, 10000, "ABC1234", "12345678900",
+            TipoCambio.Manual, TipoCombustivel.Gasolina, Guid.NewGuid(), Guid.NewGuid(), comissao, "Contrato de teste", prazoDias: 90);
+
+        _consignacaoRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync(consignacao);
+        _propostaRepoMock.Setup(r => r.AddAsync(It.IsAny<PropostaVenda>())).Returns(Task.CompletedTask);
+        _propostaRepoMock.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+
+        var dto = new CriarPropostaVendaDTO
+        {
+            VeiculoVendaId = consignacao.Id,
+            VeiculoEntidadeTipo = "VeiculoConsignacao",
+            VendedorId = Guid.NewGuid(),
+            ClienteId = Guid.NewGuid(),
+            ValorBase = 100000,
+            DescontoPercentual = 5
+        };
+
+        var result = await _service.AddAsync(dto);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeEmpty();
+        _consignacaoRepoMock.Verify(r => r.Update(It.IsAny<VeiculoConsignacao>()), Times.Never);
+        _propostaRepoMock.Verify(r => r.AddAsync(It.IsAny<PropostaVenda>()), Times.Once);
+    }
+
     // ==================== AprovarAsync ====================
 
     [Fact]
@@ -120,7 +183,7 @@ public class PropostaVendaServiceTests
     public async Task AprovarAsync_PropostaValida_AprovaEMarcaVeiculoComoVendido()
     {
         var veiculo = new VeiculoVenda("Marca", "Modelo", "Cor", "1.0", 2020, 10000, "ABC1234", "12345678900",
-            TipoCambio.Manual, TipoCombustivel.Gasolina, 50000);
+            TipoCambio.Manual, TipoCombustivel.Gasolina, 50000, 40000, 2024);
         var proposta = new PropostaVenda(Guid.NewGuid(), veiculo.Id, Guid.NewGuid(), 50000, 0);
         proposta.DefinirModoPagamento(ModoPagamento.Pix);
         _propostaRepoMock.Setup(r => r.GetByIdAsync(proposta.Id)).ReturnsAsync(proposta);

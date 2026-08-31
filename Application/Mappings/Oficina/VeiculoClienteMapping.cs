@@ -16,6 +16,7 @@ public static class VeiculoClienteMapping
             Modelo = entity.GetModelo(),
             Cor = entity.GetCor(),
             Ano = entity.GetAno(),
+            Placa = entity.Placa.GetPlaca(),
             HistoricoServicos = entity.GetHistorico()
         };
     }
@@ -29,7 +30,8 @@ public static class VeiculoClienteMapping
             Marca = entity.GetMarca(),
             Modelo = entity.GetModelo(),
             Cor = entity.GetCor(),
-            Ano = entity.GetAno()
+            Ano = entity.GetAno(),
+            Placa = entity.Placa.GetPlaca()
         };
     }
 

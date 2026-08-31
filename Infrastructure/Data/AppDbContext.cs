@@ -38,6 +38,7 @@ public class AppDbContext : DbContext
     public DbSet<PagamentoOrdemServico> PagamentosOrdemServico { get; set; }
     public DbSet<RequisicaoPecaOS> RequisicoesPeca { get; set; }
     public DbSet<AlertaOS> AlertasOS { get; set; }
+    public DbSet<Fornecedor> Fornecedores { get; set; }
 
     // =========================
     // CONCESSIONÁRIA
@@ -272,6 +273,16 @@ public class AppDbContext : DbContext
         // SKUInterno, PartNumber, CodigoOEM, CodigoBarras, NCM, CEST
         // são strings simples — EF mapeia automaticamente.
 
+        // Sem navigation property (o service resolve o nome do fornecedor via
+        // repositório, não via Include) — só a FK mesmo. Restrict: excluir um
+        // fornecedor com componentes vinculados deve falhar (o admin desativa
+        // em vez de excluir), não apagar em cascata nem deixar componente órfão.
+        modelBuilder.Entity<Componente>()
+            .HasOne<Fornecedor>()
+            .WithMany()
+            .HasForeignKey(c => c.FornecedorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Equivalências bidirecionais — duas navigations para a mesma tabela.
         modelBuilder.Entity<ComponenteEquivalente>().HasKey(e => e.Id);
 
@@ -297,6 +308,23 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AlertaOS>().HasKey(a => a.Id);
         modelBuilder.Entity<AlertaOS>().HasIndex(a => a.OrdemServicoId);
         modelBuilder.Entity<AlertaOS>().HasIndex(a => a.Status);
+
+        // =========================
+        // FORNECEDOR
+        // =========================
+        modelBuilder.Entity<Fornecedor>().HasKey(f => f.Id);
+
+        modelBuilder.Entity<Fornecedor>()
+            .OwnsOne(f => f.Cnpj, c =>
+                c.Property(x => x.Numero)
+                    .HasColumnName("CNPJ")
+                    .IsRequired());
+
+        modelBuilder.Entity<Fornecedor>()
+            .HasOne(f => f.Endereco)
+            .WithOne()
+            .HasForeignKey<Fornecedor>(f => f.EnderecoId)
+            .IsRequired(false);
 
         // =========================
         // PAGAMENTO ORDEM SERVICO
@@ -341,6 +369,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<VeiculoVenda>()
             .OwnsOne(v => v.Valor, d =>
                 d.Property("Valor").HasColumnName("Valor"));
+
+        modelBuilder.Entity<VeiculoVenda>()
+            .OwnsOne(v => v.ValorAquisicao, d =>
+                d.Property("Valor").HasColumnName("ValorAquisicao"));
 
         modelBuilder.Entity<VeiculoVenda>()
             .HasMany(v => v.Fotos)

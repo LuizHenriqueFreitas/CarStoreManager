@@ -24,9 +24,9 @@ public class VeiculoVenda : Entity
     public PlacaVeiculo Placa { get; private set; } = null!;
     public Renavam Renavam { get; private set; } = null!;
 
-    // IPVA — controle do imposto anual.
-    // AnoUltimoIpvaPago null indica que nunca foi pago via sistema.
-    public int? AnoUltimoIpvaPago { get; private set; }
+    // IPVA — controle do imposto anual. Obrigatório: todo veículo precisa
+    // entrar no estoque com o ano do último IPVA pago já registrado.
+    public int AnoUltimoIpvaPago { get; private set; }
 
     public TipoCambio Cambio { get; private set; }
     public TipoCombustivel Combustivel { get; private set; }
@@ -34,6 +34,14 @@ public class VeiculoVenda : Entity
     public AcessoriosVeiculo Acessorios { get; private set; }
 
     public Dinheiro Valor { get; private set; } = null!;
+
+    /// <summary>
+    /// Valor de aquisição: quanto a concessionária pagou para comprar este
+    /// veículo (fornecedor/leilão/particular), distinto de <see cref="Valor"/>
+    /// (preço de venda ao cliente). Usado nos relatórios financeiros para
+    /// medir capital investido em estoque, não entra em despesa recorrente.
+    /// </summary>
+    public Dinheiro ValorAquisicao { get; private set; } = null!;
 
     /// <summary>
     /// Texto preliminar do termo de entrega, redigido pelo admin no
@@ -59,8 +67,9 @@ public class VeiculoVenda : Entity
         TipoCambio cambio,
         TipoCombustivel combustivel,
         decimal valor,
-        AcessoriosVeiculo acessorios = AcessoriosVeiculo.Nenhum,
-        int? anoUltimoIpvaPago = null)
+        decimal valorAquisicao,
+        int anoUltimoIpvaPago,
+        AcessoriosVeiculo acessorios = AcessoriosVeiculo.Nenhum)
     {
         AlterarMarca(marca);
         AlterarModelo(modelo);
@@ -81,8 +90,9 @@ public class VeiculoVenda : Entity
         // confirma que o veículo está pronto para venda.
         Disponibilidade = DisponibilidadeVeiculo.EmPreparacao;
         Valor = new Dinheiro(valor);
+        ValorAquisicao = new Dinheiro(valorAquisicao);
         Acessorios = acessorios;
-        AnoUltimoIpvaPago = anoUltimoIpvaPago;
+        DefinirAnoUltimoIpvaPago(anoUltimoIpvaPago);
     }
 
     /*
@@ -97,10 +107,11 @@ public class VeiculoVenda : Entity
     public int GetQuilometragem() => Quilometragem.GetQuilometragem();
     public string GetPlacaCarro() => Placa.GetPlaca();
     public string GetRenavam() => Renavam.GetNumeroRenavam();
-    public bool IpvaEmDia(int anoReferencia) => AnoUltimoIpvaPago.HasValue && AnoUltimoIpvaPago.Value >= anoReferencia;
+    public bool IpvaEmDia(int anoReferencia) => AnoUltimoIpvaPago >= anoReferencia;
     public string GetCambio() => Cambio.ToString();
     public string GetCombustivel() => Combustivel.ToString();
     public decimal GetValor() => Valor.GetValorDinheiro();
+    public decimal GetValorAquisicao() => ValorAquisicao.GetValorDinheiro();
 
     public AcessoriosVeiculo GetAcessoriosVeiculo() => Acessorios;
 
@@ -172,12 +183,18 @@ public class VeiculoVenda : Entity
     {
         if (ano < 1900 || ano > DateTime.UtcNow.Year + 1)
             throw new ArgumentException("Ano de IPVA inválido.", nameof(ano));
-        if (AnoUltimoIpvaPago.HasValue && ano < AnoUltimoIpvaPago.Value)
+        if (ano < AnoUltimoIpvaPago)
             throw new InvalidOperationException("Não é possível registrar IPVA de ano anterior ao último pago.");
         AnoUltimoIpvaPago = ano;
     }
 
-    public void LimparPagamentoIpva() => AnoUltimoIpvaPago = null;
+    /// <summary>Validação usada só pelo construtor (não há "último ano" ainda para comparar).</summary>
+    private void DefinirAnoUltimoIpvaPago(int ano)
+    {
+        if (ano < 1900 || ano > DateTime.UtcNow.Year + 1)
+            throw new ArgumentException("Ano de IPVA inválido.", nameof(ano));
+        AnoUltimoIpvaPago = ano;
+    }
 
     /// <summary>
     /// Atualiza o texto preliminar do termo de entrega. Pode ser editado a

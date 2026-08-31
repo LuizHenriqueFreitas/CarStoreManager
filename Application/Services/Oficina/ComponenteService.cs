@@ -21,14 +21,17 @@ public class ComponenteService : IComponenteService
     private readonly IComponenteRepository _repository;
     private readonly Domain.Interfaces.Repositories.Sistema.IConfiguracaoSistemaRepository _configRepo;
     private readonly IEstoqueRepository? _estoqueRepo;
+    private readonly IFornecedorRepository _fornecedorRepo;
 
     public ComponenteService(
         IComponenteRepository repository,
         Domain.Interfaces.Repositories.Sistema.IConfiguracaoSistemaRepository configRepo,
+        IFornecedorRepository fornecedorRepo,
         IEstoqueRepository? estoqueRepo = null)
     {
         _repository = repository;
         _configRepo = configRepo;
+        _fornecedorRepo = fornecedorRepo;
         _estoqueRepo = estoqueRepo;
     }
 
@@ -48,9 +51,12 @@ public class ComponenteService : IComponenteService
         if (componente is null)
             return Result<ComponenteDTO>.Fail("Componente não encontrado");
 
-        return Result<ComponenteDTO>.Ok(
-            ComponenteMapping.ToDto(componente)
-        );
+        var dto = ComponenteMapping.ToDto(componente);
+
+        var fornecedor = await _fornecedorRepo.GetByIdAsync(componente.FornecedorId);
+        dto.FornecedorNome = fornecedor?.Nome ?? "";
+
+        return Result<ComponenteDTO>.Ok(dto);
     }
 
     //busca todos os componentes
@@ -116,6 +122,10 @@ public class ComponenteService : IComponenteService
 
     public async Task<Result<Guid>> AddAsync(CriarComponenteDTO dto)
     {
+        var fornecedor = await _fornecedorRepo.GetByIdAsync(dto.FornecedorId);
+        if (fornecedor is null)
+            return Result<Guid>.Fail("Selecione um fornecedor já cadastrado na lista de sugestões.");
+
         try
         {
             var componente = ComponenteMapping.FromCriarDto(dto);
@@ -180,6 +190,10 @@ public class ComponenteService : IComponenteService
 
         if (componente is null)
             return Result.Fail("Componente não encontrado");
+
+        var fornecedor = await _fornecedorRepo.GetByIdAsync(dto.FornecedorId);
+        if (fornecedor is null)
+            return Result.Fail("Selecione um fornecedor já cadastrado na lista de sugestões.");
 
         try
         {
@@ -247,9 +261,15 @@ public class ComponenteService : IComponenteService
         if (componente is null)
             return Result.Fail("Componente não encontrado");
 
-        _repository.Remove(componente);
-        await _repository.SaveChangesAsync();
-
-        return Result.Ok();
+        try
+        {
+            _repository.Remove(componente);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível excluir o componente. Ele pode estar em uso em alguma ordem de serviço — considere desativá-lo em vez de excluir.");
+        }
     }
 }

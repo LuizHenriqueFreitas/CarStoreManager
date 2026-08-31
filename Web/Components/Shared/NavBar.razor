@@ -12,73 +12,80 @@
 <nav class="navbar">
     <a href="/" class="navbar-logo">AUTOSTORE</a>
 
-    <div class="navbar-links">
+    <div class="navbar-links @(mostrarMenuMobile ? "aberto" : "")">
         <AuthorizeView Roles="Admin,GerenteVendas,Vendedor">
-            <NavLink href="/concessionaria" class="nav-link" ActiveClass="nav-link-active">
+            <NavLink href="/concessionaria" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
                 Concessionária
             </NavLink>
-            <NavLink href="/concessionaria/propostas" class="nav-link" ActiveClass="nav-link-active">
+            <NavLink href="/concessionaria/propostas" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
                 Propostas
             </NavLink>
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin,ChefeOficina,Mecanico,Recepcionista">
-            <NavLink href="/oficina" class="nav-link" ActiveClass="nav-link-active">
+            <NavLink href="/oficina" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
                 Oficina
             </NavLink>
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin,ChefeOficina,Recepcionista">
-            <NavLink href="/recepcao" class="nav-link" ActiveClass="nav-link-active">
+            <NavLink href="/recepcao" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
                 Recepção
             </NavLink>
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin,ChefeOficina,Mecanico">
-            <NavLink href="/oficina/componentes" class="nav-link" ActiveClass="nav-link-active">
+            <NavLink href="/oficina/componentes" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
                 Estoque
             </NavLink>
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin,ChefeOficina,GerenteVendas" Context="ctxDash">
-            <NavLink href="/dashboard" class="nav-link" ActiveClass="nav-link-active">
+            <NavLink href="/dashboard" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
                 Dashboard
             </NavLink>
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin" Context="ctxAdmin">
-            <NavLink href="/admin/configuracoes" class="nav-link" ActiveClass="nav-link-active">
+            <NavLink href="/admin/configuracoes" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
                 Configurações
             </NavLink>
         </AuthorizeView>
     </div>
 
-    <button class="tour-btn-ajuda" @onclick="AbrirTourAsync" title="Ajuda desta tela" aria-label="Ajuda desta tela">
-        ?
-    </button>
+    <div class="navbar-direita">
+        <button class="tour-btn-ajuda" @onclick="AbrirTourAsync" title="Ajuda desta tela" aria-label="Ajuda desta tela">
+            ?
+        </button>
 
-    <div class="navbar-user" @onclick="ToggleDropdown">
-        <div class="navbar-avatar">
-            @(NomeUsuario.Length > 0 ? NomeUsuario[0].ToString().ToUpper() : "?")
-        </div>
-        <span>@NomeUsuario</span>
-        <span class="dropdown-seta">▾</span>
-
-        @if (mostrarDropdown)
-        {
-            <div class="dropdown-menu" @onclick:stopPropagation>
-                <div class="dropdown-header">
-                    <div class="dropdown-nome">@NomeUsuario</div>
-                    <div class="dropdown-role">@Role</div>
-                </div>
-                <button class="dropdown-item" @onclick="IrParaConfiguracoes">
-                    Configurações
-                </button>
-                <button class="dropdown-item" @onclick="Logout">
-                    Sair
-                </button>
+        <div class="navbar-user" @onclick="ToggleDropdown">
+            <div class="navbar-avatar">
+                @(NomeUsuario.Length > 0 ? NomeUsuario[0].ToString().ToUpper() : "?")
             </div>
-        }
+            <span class="navbar-user-nome">@NomeUsuario</span>
+            <span class="dropdown-seta">▾</span>
+
+            @if (mostrarDropdown)
+            {
+                <div class="dropdown-menu" @onclick:stopPropagation>
+                    <div class="dropdown-header">
+                        <div class="dropdown-nome">@NomeUsuario</div>
+                        <div class="dropdown-role">@Role</div>
+                    </div>
+                    <button class="dropdown-item" @onclick="IrParaConfiguracoes">
+                        Configurações
+                    </button>
+                    <button class="dropdown-item" @onclick="Logout">
+                        Sair
+                    </button>
+                </div>
+            }
+        </div>
+
+        <button class="navbar-hamburguer" @onclick="ToggleMenuMobile"
+                title="Menu" aria-label="Abrir menu" aria-expanded="@mostrarMenuMobile.ToString().ToLower()">
+            <span></span><span></span><span></span>
+        </button>
     </div>
 </nav>
 
@@ -87,8 +94,13 @@
     [Parameter] public string Role { get; set; } = string.Empty;
 
     private bool mostrarDropdown = false;
+    private bool mostrarMenuMobile = false;
 
     private void ToggleDropdown() => mostrarDropdown = !mostrarDropdown;
+
+    private void ToggleMenuMobile() => mostrarMenuMobile = !mostrarMenuMobile;
+
+    private void FecharMenuMobile() => mostrarMenuMobile = false;
 
     private async Task AbrirTourAsync() => await TourEstado.SolicitarTourAsync();
 
@@ -119,10 +131,11 @@
     .navbar {
         background: #1a1a1a;
         padding: 0 24px;
-        height: 56px;
+        min-height: 56px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 12px;
         position: sticky;
         top: 0;
         z-index: 100;
@@ -134,11 +147,41 @@
         font-weight: 600;
         letter-spacing: 1px;
         text-decoration: none;
+        flex-shrink: 0;
     }
 
     .navbar-links {
         display: flex;
         gap: 24px;
+        flex-wrap: wrap;
+    }
+
+    .navbar-direita {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .navbar-hamburguer {
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+        width: 32px;
+        height: 32px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .navbar-hamburguer span {
+        display: block;
+        width: 20px;
+        height: 2px;
+        background: #ccc;
+        margin: 0 auto;
     }
 
     .nav-link {
@@ -170,7 +213,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-right: 16px;
+        flex-shrink: 0;
     }
 
     .tour-btn-ajuda:hover { background: #2a2a2a; color: #fff; border-color: #888; }
@@ -239,4 +282,41 @@
     }
 
     .dropdown-item:hover { background: #f4f4f4; }
+
+    /* ============ Mobile: menu vira hambúrguer ============ */
+    @@media (max-width: 768px) {
+        .navbar { padding: 0 12px; flex-wrap: wrap; }
+
+        .navbar-hamburguer { display: flex; order: 3; }
+
+        .navbar-links {
+            order: 4;
+            display: none;
+            flex-direction: column;
+            gap: 0;
+            width: 100%;
+            background: #1a1a1a;
+            border-top: 0.5px solid #333;
+        }
+
+        .navbar-links.aberto {
+            display: flex;
+        }
+
+        .navbar-links .nav-link {
+            padding: 12px 4px;
+            border-bottom: 0.5px solid #2a2a2a;
+        }
+
+        .navbar-links .nav-link-active {
+            border-bottom: 0.5px solid #2a2a2a;
+            border-left: 3px solid #e02020;
+            padding-left: 12px;
+        }
+    }
+
+    @@media (max-width: 420px) {
+        .navbar-user-nome { display: none; }
+        .dropdown-menu { right: -12px; }
+    }
 </style>

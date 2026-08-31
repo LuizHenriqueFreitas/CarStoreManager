@@ -368,6 +368,16 @@
     .tag-vistoriaconcluida { background:#cffafe; color:#0e7490; }
     .tag-aguardandoassinaturatermo { background:#fef3c7; color:#854d0e; }
     .tag-concluida { background:#d1fae5; color:#065f46; }
+
+    @@media (max-width: 700px) {
+        .grid-2 { grid-template-columns: 1fr; }
+        .form-row { grid-template-columns: 1fr; }
+        .form-row label { margin-top: 6px; }
+        .entrada-edit { flex-wrap: wrap; }
+        .entrada-edit input { width: 100%; }
+        select { width: 100%; margin-right: 0; margin-bottom: 8px; }
+        .motivo-bloco, .vistoria-decisao { flex-wrap: wrap; }
+    }
 </style>
 
 @code {

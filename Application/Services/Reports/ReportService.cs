@@ -28,22 +28,27 @@ public class ReportService : IReportService
 
     public async Task<Result<byte[]>> ExportAsync(ReportType type, string format, DateTime dataInicio, DateTime dataFim)
     {
-        var rMetricas = await _dashboard.ObterMetricasPeriodoAsync(dataInicio, dataFim);
-        if (!rMetricas.IsSuccess || rMetricas.Value is null)
-            return Result<byte[]>.Fail(rMetricas.Error ?? "Não foi possível obter as métricas.");
-
-        var data = BuildReportData(type, rMetricas.Value);
-        data.Periodo = $"{dataInicio:dd/MM/yyyy} a {dataFim:dd/MM/yyyy}";
-
-        IReportFormatter formatter = format.ToLowerInvariant() switch
+        try
         {
-            "csv" => _csvFormatter,
-            "xml" => _xmlFormatter,
-            _ => throw new InvalidOperationException($"Formato '{format}' não suportado.")
-        };
+            var rMetricas = await _dashboard.ObterMetricasPeriodoAsync(dataInicio, dataFim);
+            if (!rMetricas.IsSuccess || rMetricas.Value is null)
+                return Result<byte[]>.Fail(rMetricas.Error ?? "Não foi possível obter as métricas.");
 
-        var bytes = await formatter.FormatAsync(data);
-        return Result<byte[]>.Ok(bytes);
+            var data = BuildReportData(type, rMetricas.Value);
+            data.Periodo = $"{dataInicio:dd/MM/yyyy} a {dataFim:dd/MM/yyyy}";
+
+            if (format.ToLowerInvariant() is not ("csv" or "xml"))
+                return Result<byte[]>.Fail($"Formato '{format}' não suportado. Use 'csv' ou 'xml'.");
+
+            IReportFormatter formatter = format.ToLowerInvariant() == "xml" ? _xmlFormatter : _csvFormatter;
+
+            var bytes = await formatter.FormatAsync(data);
+            return Result<byte[]>.Ok(bytes);
+        }
+        catch (Exception)
+        {
+            return Result<byte[]>.Fail("Não foi possível gerar o relatório. Tente novamente em instantes.");
+        }
     }
 
     private static ReportData BuildReportData(ReportType type, DashboardMetricasDTO m)

@@ -14,12 +14,15 @@ public class ComponenteServiceTests
 {
     private readonly Mock<IComponenteRepository> _repoMock = new();
     private readonly Mock<IConfiguracaoSistemaRepository> _configRepoMock = new();
+    private readonly Mock<IFornecedorRepository> _fornecedorRepoMock = new();
     private readonly ComponenteService _service;
 
     public ComponenteServiceTests()
     {
         _configRepoMock.Setup(r => r.ObterAsync()).ReturnsAsync(new ConfiguracaoSistema(true));
-        _service = new ComponenteService(_repoMock.Object, _configRepoMock.Object);
+        _fornecedorRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync((Guid id) => new Fornecedor("Fornecedor Teste", "11122233000183"));
+        _service = new ComponenteService(_repoMock.Object, _configRepoMock.Object, _fornecedorRepoMock.Object);
     }
 
     [Fact]
@@ -76,7 +79,8 @@ public class ComponenteServiceTests
             Unidade = "UN",
             Sistema = "Motor",
             Peso = 0.3m,
-            GarantiaDias = 90
+            GarantiaDias = 90,
+            FornecedorId = Guid.NewGuid()
         };
         _repoMock.Setup(r => r.AddAsync(It.IsAny<Componente>())).Returns(Task.CompletedTask);
         _repoMock.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
@@ -155,5 +159,5 @@ public class ComponenteServiceTests
     private static Componente CriarComponenteValido(string sku = "PFD-001")
         => new(sku, "Pastilha", "Pastilha de freio", "Bosch", "PN-12345",
                "OEM-1", "7891234567890", "87083010", "0102000", "Freios", "UN",
-               0.5m, 180);
+               0.5m, 180, Guid.NewGuid());
 }

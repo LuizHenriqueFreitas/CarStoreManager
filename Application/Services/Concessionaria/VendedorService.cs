@@ -98,8 +98,15 @@ public class VendedorService : IVendedorService
         if (vendedor is null)
             return Result.Fail("Vendedor não encontrado");
 
-        _repository.Remove(vendedor);
-        await _repository.SaveChangesAsync();
-        return Result.Ok();
+        try
+        {
+            _repository.Remove(vendedor);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível excluir o vendedor. Ele pode ter propostas vinculadas — considere desativá-lo em vez de excluir.");
+        }
     }
 }

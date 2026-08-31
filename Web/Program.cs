@@ -22,6 +22,22 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+// Circuito Blazor mais tolerante a instabilidade de rede/idle — evita que o
+// banner de "conexão perdida" (#blazor-error-ui) apareça por uma oscilação
+// passageira de wifi ou por a aba ficar parada um tempo durante uma
+// demonstração. Valores acima do padrão do framework (30s/15s de timeout de
+// hub, 3min/100 de retenção de circuito desconectado).
+builder.Services.Configure<Microsoft.AspNetCore.SignalR.HubOptions>(options =>
+{
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+    options.KeepAliveInterval = TimeSpan.FromSeconds(20);
+});
+builder.Services.Configure<Microsoft.AspNetCore.Components.Server.CircuitOptions>(options =>
+{
+    options.DisconnectedCircuitMaxRetained = 200;
+    options.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(10);
+});
+
 builder.Services.AddCascadingAuthenticationState();
 
 // =========================
@@ -198,9 +214,14 @@ async Task SeedChecklistPresetsAsync(AppDbContext context)
 // =========================
 // PIPELINE
 // =========================
+// Página de erro amigável sempre ativa — inclusive em Development. A stack
+// trace crua do meio termo padrão do ASP.NET Core não é algo que um usuário
+// leigo deva ver; o erro completo continua indo pro log (Console/ILogger)
+// via UseExceptionHandler, só não é mais devolvido na resposta HTTP.
+app.UseExceptionHandler("/Error");
+
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
 

@@ -61,7 +61,8 @@ public class VeiculoVendaServiceTests
         {
             Marca = "Honda", Modelo = "Fit", Cor = "Vermelho", Motorizacao = "1.4",
             Ano = 2021, Quilometragem = 12000, Placa = "XYZ1A23", Renavam = "12345678900",
-            Cambio = "Automatico", Combustivel = "Flex", Valor = 60000.00m
+            Cambio = "Automatico", Combustivel = "Flex", Valor = 60000.00m,
+            ValorAquisicao = 48000.00m, AnoUltimoIpvaPago = 2024
         };
 
         var result = await _service.AddAsync(dto);
@@ -262,7 +263,7 @@ public class VeiculoVendaServiceTests
             "Chevrolet", "Onix", "Branco", "1.0 Turbo",
             2022, 20000, "DEF5G67", "12345678900",
             TipoCambio.Manual, TipoCombustivel.Gasolina,
-            70000m, AcessoriosVeiculo.VidrosEletricos);
+            70000m, 55000m, 2024, AcessoriosVeiculo.VidrosEletricos);
         // Definir um Id para a entidade (simulado)
         typeof(Entity).GetProperty("Id")?.SetValue(veiculo, Guid.NewGuid());
         return veiculo;

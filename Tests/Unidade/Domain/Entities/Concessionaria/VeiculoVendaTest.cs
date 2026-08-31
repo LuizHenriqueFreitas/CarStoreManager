@@ -117,17 +117,17 @@ public class VeiculoVendaTest
     // ==================== IPVA ====================
 
     [Fact]
-    public void Construtor_SemAnoIpva_DefineAnoUltimoIpvaPagoComoNull()
-    {
-        var veiculo = CriarVeiculoValido();
-        veiculo.AnoUltimoIpvaPago.Should().BeNull();
-    }
-
-    [Fact]
     public void Construtor_ComAnoIpva_DefineAnoUltimoIpvaPago()
     {
         var veiculo = CriarVeiculo(anoIpva: 2024);
         veiculo.AnoUltimoIpvaPago.Should().Be(2024);
+    }
+
+    [Fact]
+    public void Construtor_AnoIpvaInvalido_LancaArgumentException()
+    {
+        Action act = () => CriarVeiculo(anoIpva: 1800);
+        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
@@ -169,11 +169,20 @@ public class VeiculoVendaTest
         veiculo.IpvaEmDia(2024).Should().BeFalse();
     }
 
+    // ==================== VALOR DE AQUISIÇÃO ====================
+
     [Fact]
-    public void IpvaEmDia_SemAnoUltimo_RetornaFalse()
+    public void Construtor_ValorAquisicaoValido_DefineCampo()
     {
-        var veiculo = CriarVeiculoValido();
-        veiculo.IpvaEmDia(2024).Should().BeFalse();
+        var veiculo = CriarVeiculo(valorAquisicao: 60000m);
+        veiculo.GetValorAquisicao().Should().Be(60000m);
+    }
+
+    [Fact]
+    public void Construtor_ValorAquisicaoNegativo_LancaArgumentException()
+    {
+        Action act = () => CriarVeiculo(valorAquisicao: -1);
+        act.Should().Throw<ArgumentException>();
     }
 
     // ==================== GETTERS ====================
@@ -445,11 +454,11 @@ public class VeiculoVendaTest
 
     private static VeiculoVenda CriarVeiculoValido(
         AcessoriosVeiculo acessorios = AcessoriosVeiculo.ArCondicionado,
-        int? anoIpva = null)
+        int anoIpva = 2024)
     {
         return new VeiculoVenda(
             "Honda", "Civic", "Preto", "2.0 Turbo", 2023, 15000, "ABC1D23", RenavamValido,
-            TipoCambio.Automatico, TipoCombustivel.Flex, 85000.00m, acessorios, anoIpva);
+            TipoCambio.Automatico, TipoCombustivel.Flex, 85000.00m, 65000.00m, anoIpva, acessorios);
     }
 
     private static VeiculoVenda CriarVeiculo(
@@ -464,10 +473,11 @@ public class VeiculoVendaTest
         TipoCambio cambio = TipoCambio.Manual,
         TipoCombustivel combustivel = TipoCombustivel.Gasolina,
         decimal valor = 10000m,
+        decimal valorAquisicao = 8000m,
         AcessoriosVeiculo acessorios = AcessoriosVeiculo.Nenhum,
-        int? anoIpva = null)
+        int anoIpva = 2024)
     {
         return new VeiculoVenda(marca, modelo, cor, motor, ano, km, placa, renavam,
-            cambio, combustivel, valor, acessorios, anoIpva);
+            cambio, combustivel, valor, valorAquisicao, anoIpva, acessorios);
     }
 }

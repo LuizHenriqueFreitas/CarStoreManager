@@ -1,5 +1,6 @@
 @page "/oficina/os/{Id:guid}"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
+@implements IDisposable
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -32,32 +33,32 @@ else
             <div class="header-acoes" data-tour="os-detalhe-acoes">
                 @if (PodeEnviarRevisao)
                 {
-                    <button class="btn-acao azul" @onclick="EnviarRevisao">Enviar para revisão</button>
+                    <button class="btn-acao azul" @onclick='() => PedirConfirmacao("Enviar para revisão", "Deseja enviar esta OS para revisão do mecânico?", EnviarRevisao)'>Enviar para revisão</button>
                 }
                 @if (PodeAprovarMecanico)
                 {
-                    <button class="btn-acao azul" @onclick="AprovarMecanico">Aprovar orçamento</button>
-                    <button class="btn-acao laranja" @onclick="Devolver">Pedir ajustes</button>
+                    <button class="btn-acao azul" @onclick='() => PedirConfirmacao("Aprovar orçamento", "Deseja aprovar este orçamento?", AprovarMecanico)'>Aprovar orçamento</button>
+                    <button class="btn-acao laranja" @onclick='() => PedirConfirmacao("Pedir ajustes", "Deseja devolver esta OS para ajustes no orçamento?", Devolver)'>Pedir ajustes</button>
                 }
                 @if (PodeMarcarClienteAprovou)
                 {
-                    <button class="btn-acao verde" @onclick="ClienteAprovou">Cliente aprovou</button>
+                    <button class="btn-acao verde" @onclick='() => PedirConfirmacao("Cliente aprovou", "Confirma que o cliente aprovou o orçamento?", ClienteAprovou)'>Cliente aprovou</button>
                 }
                 @if (PodeIniciar)
                 {
-                    <button class="btn-acao azul" @onclick="IniciarOS">Iniciar serviço</button>
+                    <button class="btn-acao azul" @onclick='() => PedirConfirmacao("Iniciar serviço", "Deseja iniciar o serviço desta OS?", IniciarOS)'>Iniciar serviço</button>
                 }
                 @if (PodeFinalizar)
                 {
-                    <button class="btn-acao verde" @onclick="FinalizarOS">Finalizar serviço</button>
+                    <button class="btn-acao verde" @onclick='() => PedirConfirmacao("Finalizar serviço", "Deseja finalizar o serviço desta OS?", FinalizarOS)'>Finalizar serviço</button>
                 }
                 @if (PodeEntregar)
                 {
-                    <button class="btn-acao verde" @onclick="EntregarOS">💰 Cobrar e entregar</button>
+                    <button class="btn-acao verde" @onclick='() => PedirConfirmacao("Cobrar e entregar", "Deseja marcar esta OS como entregue ao cliente?", EntregarOS)'>💰 Cobrar e entregar</button>
                 }
                 @if (PodeCancelar)
                 {
-                    <button class="btn-acao vermelho" @onclick="CancelarOS">Cancelar</button>
+                    <button class="btn-acao vermelho" @onclick='() => PedirConfirmacao("Cancelar OS", "Deseja cancelar esta ordem de serviço? Essa ação não pode ser desfeita.", CancelarOS, destrutivo: true)'>Cancelar</button>
                 }
             </div>
         </div>
@@ -129,7 +130,7 @@ else
                                    placeholder="Descrição do item..."
                                    @bind="novoItemDescricao"
                                    @onkeydown="TeclaAdicionarItem" />
-                            <button class="btn-mini azul" @onclick="AdicionarItemChecklist">
+                            <button class="btn-mini azul" @onclick='() => PedirConfirmacao("Adicionar item", "Deseja adicionar este item ao checklist?", AdicionarItemChecklist)'>
                                 Adicionar
                             </button>
                             <button class="btn-mini" @onclick="() => mostrarAdicionarItem = false">
@@ -142,8 +143,8 @@ else
                         @foreach (var item in os.Checklist)
                         {
                             <div class="checklist-item @(item.Status == "Concluido" ? "concluido" : "")">
-                                <div class="check-circle @CheckClass(item.Status)"
-                                     @onclick="() => AvancarStatusChecklist(item)">
+                                <div class="check-circle @CheckClass(item.Status) @(PodeEditarChecklist ? "" : "check-desabilitado")"
+                                     @onclick="() => CliqueCirculoChecklist(item)">
                                     @if (item.Status == "Concluido") { <span>✓</span> }
                                     else if (item.Status == "EmAndamento") { <span>●</span> }
                                 </div>
@@ -151,7 +152,7 @@ else
                                 {
                                     <input class="campo-input-inline" @bind="descricaoEdicao"
                                            @onkeydown="TeclaSalvarDescricao" />
-                                    <button class="btn-mini azul" @onclick="() => SalvarDescricaoItem(item)">Salvar</button>
+                                    <button class="btn-mini azul" @onclick='() => PedirConfirmacao("Salvar item", "Deseja salvar a nova descrição deste item?", () => SalvarDescricaoItem(item))'>Salvar</button>
                                     <button class="btn-mini" @onclick="() => itemEmEdicao = Guid.Empty">Cancelar</button>
                                 }
                                 else
@@ -164,7 +165,7 @@ else
                                     @if (PodeEditarChecklist)
                                     {
                                         <button class="btn-mini" @onclick="() => IniciarEdicaoItem(item)">Editar</button>
-                                        <button class="btn-mini btn-remover" @onclick="() => RemoverItemChecklist(item)">×</button>
+                                        <button class="btn-mini btn-remover" @onclick='() => PedirConfirmacao("Remover item", "Deseja remover este item do checklist?", () => RemoverItemChecklist(item), destrutivo: true)'>×</button>
                                     }
                                 }
                             </div>
@@ -215,7 +216,7 @@ else
                                 @if (PodeEditarItens)
                                 {
                                     <button class="btn-mini-icone" title="Remover"
-                                            @onclick="() => RemoverPeca(item.Id)">×</button>
+                                            @onclick='() => PedirConfirmacao("Remover peça", "Deseja remover esta peça da OS?", () => RemoverPeca(item.Id), destrutivo: true)'>×</button>
                                 }
                             </div>
                         }
@@ -257,13 +258,46 @@ else
 
             <div class="form-campo">
                 <label class="campo-label">Componente *</label>
-                <select class="campo-input" @bind="pecaComponenteId">
-                    <option value="">Selecione...</option>
-                    @foreach (var c in componentesDisponiveis)
+                <div class="peca-busca-wrapper">
+                    <input type="text" class="campo-input"
+                           placeholder="Buscar por nome, OEM, part number ou SKU..."
+                           value="@(componenteSelecionadoBusca?.Nome ?? termoBuscaComponente)"
+                           @oninput="OnTermoComponenteChanged"
+                           @onfocus="OnBuscaComponenteFocus"
+                           disabled="@(componenteSelecionadoBusca is not null)" />
+                    @if (componenteSelecionadoBusca is not null)
                     {
-                        <option value="@c.Id">@c.Nome (@c.PartNumber)</option>
+                        <button type="button" class="peca-busca-limpar" @onclick="LimparComponenteSelecionado">Trocar</button>
                     }
-                </select>
+                    @if (mostrarResultadosComponente && componenteSelecionadoBusca is null)
+                    {
+                        @if (resultadosBuscaComponente.Any())
+                        {
+                            <div class="peca-busca-dropdown">
+                                @foreach (var c in resultadosBuscaComponente)
+                                {
+                                    <div class="peca-busca-item" @onclick="() => SelecionarComponenteBusca(c)">
+                                        <div class="peca-busca-nome">@c.Nome</div>
+                                        <div class="peca-busca-meta">
+                                            @c.MarcaFabricante
+                                            @if (!string.IsNullOrWhiteSpace(c.PartNumber)) { <text> · P/N @c.PartNumber</text> }
+                                            <span class="peca-busca-estoque">@c.QuantidadeEmEstoque em estoque</span>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else if (!buscandoComponente)
+                        {
+                            <div class="peca-busca-dropdown">
+                                <div class="peca-busca-vazio">
+                                    Nenhum componente encontrado
+                                    @(string.IsNullOrWhiteSpace(termoBuscaComponente) ? "" : $"para \"{termoBuscaComponente}\"").
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
             </div>
 
             <div class="form-campo">
@@ -283,14 +317,10 @@ else
                         <span class="origem-nome">🧍 Cliente</span>
                         <span class="origem-desc">Cliente trouxe</span>
                     </label>
-                    <label class="origem-radio @(pecaOrigem == "Encomenda" ? "ativo" : "")">
-                        <input type="radio" name="origem" value="Encomenda"
-                               checked="@(pecaOrigem == "Encomenda")"
-                               @onchange='() => pecaOrigem = "Encomenda"' />
-                        <span class="origem-nome">🚚 Encomenda</span>
-                        <span class="origem-desc">A caminho</span>
-                    </label>
                 </div>
+                <span class="campo-ajuda">
+                    Peça sob encomenda? Use "Não achei a peça que preciso" no painel de requisições, mais abaixo.
+                </span>
             </div>
 
             <div class="form-grid">
@@ -313,7 +343,9 @@ else
 
             <div class="modal-acoes">
                 <button class="btn-cancelar" @onclick="() => modalPecaVisivel = false">Cancelar</button>
-                <button class="btn-confirmar" @onclick="AdicionarPeca" disabled="@salvandoPeca">
+                <button class="btn-confirmar"
+                        @onclick='() => PedirConfirmacao("Adicionar peça", "Deseja adicionar esta peça à OS?", AdicionarPeca)'
+                        disabled="@salvandoPeca">
                     @(salvandoPeca ? "Adicionando..." : "Adicionar")
                 </button>
             </div>
@@ -339,6 +371,13 @@ else
     <div class="toast @(erroToast ? "toast-erro" : "toast-ok")">@mensagem</div>
 }
 
+<ConfirmacaoModal Visivel="confirmVisivel"
+                   Titulo="@confirmTitulo"
+                   Mensagem="@confirmMensagem"
+                   Destrutivo="confirmDestrutivo"
+                   OnConfirmar="ExecutarAcaoConfirmada"
+                   OnCancelar="CancelarConfirmacao" />
+
 @code {
     [Parameter] public Guid Id { get; set; }
 
@@ -351,15 +390,31 @@ else
 
     // Adicionar peça
     private bool modalPecaVisivel = false;
-    private List<ComponenteListaDTO> componentesDisponiveis = new();
-    private Guid pecaComponenteId;
+    private List<ComponenteListaDTO> componentesDisponiveis = new(); // só pra exibir nome das peças já na OS
     private int pecaQuantidade = 1;
     private string pecaOrigem = "Estoque";
     private string? erroPeca;
     private bool salvandoPeca = false;
 
+    // Busca de componente (adicionar peça) — igual ao padrão de autocomplete
+    // usado em EstoqueComponentes/ItensOrdemServicoSelector.
+    private string termoBuscaComponente = "";
+    private bool mostrarResultadosComponente;
+    private bool buscandoComponente;
+    private List<ComponenteBuscaDTO> resultadosBuscaComponente = new();
+    private ComponenteBuscaDTO? componenteSelecionadoBusca;
+    private System.Timers.Timer? debouncePecaTimer;
+
+    // Confirmação de envio — genérica pra qualquer ação da página.
+    private bool confirmVisivel = false;
+    private string confirmTitulo = "Confirmar envio";
+    private string confirmMensagem = "Deseja enviar o formulário como está?";
+    private bool confirmDestrutivo = false;
+    private Func<Task>? acaoConfirmada;
+
     // Auth state
     private bool ehAdmin, ehMecanico, ehRecepcionista;
+    private Guid meuUsuarioId;
 
     private (int numero, string label, string status)[] trilha = Array.Empty<(int, string, string)>();
 
@@ -369,8 +424,20 @@ else
         ehAdmin = state.User.IsInRole("Admin");
         ehMecanico = state.User.IsInRole("Mecanico");
         ehRecepcionista = state.User.IsInRole("Recepcionista");
+        var claim = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (claim is not null) Guid.TryParse(claim.Value, out meuUsuarioId);
+
+        var rComp = await ComponenteService.GetAllAsync();
+        if (rComp.IsSuccess && rComp.Value is not null)
+            componentesDisponiveis = rComp.Value.Where(c => c.Ativo).ToList();
 
         await CarregarOS();
+    }
+
+    public void Dispose()
+    {
+        debouncePecaTimer?.Stop();
+        debouncePecaTimer?.Dispose();
     }
 
     private async Task CarregarOS()
@@ -455,7 +522,11 @@ else
         && os.Status != "Entregue"
         && os.Status != "Cancelada";
 
-    private bool PodeEditarChecklist => OsAberta;
+    // Checklist é de responsabilidade exclusiva do mecânico designado pra
+    // esta OS específica — nem Admin, nem ChefeOficina, nem Recepcionista
+    // editam (apenas visualizam).
+    private bool SouOMecanicoDaOS => os is not null && ehMecanico && os.MecanicoId == meuUsuarioId;
+    private bool PodeEditarChecklist => OsAberta && SouOMecanicoDaOS;
     private bool PodeEditarItens     => OsAberta && (ehAdmin || ehMecanico || ehRecepcionista);
 
     // ========== Transições ==========
@@ -486,15 +557,9 @@ else
 
     // ========== Itens da OS (peças) ==========
 
-    private async Task AbrirModalAdicionarPeca()
+    private void AbrirModalAdicionarPeca()
     {
-        if (componentesDisponiveis.Count == 0)
-        {
-            var r = await ComponenteService.GetAllAsync();
-            if (r.IsSuccess && r.Value is not null)
-                componentesDisponiveis = r.Value.Where(c => c.Ativo).ToList();
-        }
-        pecaComponenteId = Guid.Empty;
+        LimparComponenteSelecionado();
         pecaQuantidade = 1;
         pecaOrigem = "Estoque";
         erroPeca = null;
@@ -503,8 +568,8 @@ else
 
     private async Task AdicionarPeca()
     {
-        if (pecaComponenteId == Guid.Empty) { erroPeca = "Selecione um componente."; return; }
-        if (pecaQuantidade < 1)             { erroPeca = "Quantidade inválida.";   return; }
+        if (componenteSelecionadoBusca is null) { erroPeca = "Busque e selecione um componente."; return; }
+        if (pecaQuantidade < 1)                 { erroPeca = "Quantidade inválida."; return; }
 
         var statusAntes = os?.Status;
 
@@ -512,7 +577,7 @@ else
         var r = await OrdemService.AdicionarItemAsync(new AdicionarItemOrdemServicoDTO
         {
             OrdemServicoId = Id,
-            ComponenteId = pecaComponenteId,
+            ComponenteId = componenteSelecionadoBusca.Id,
             Quantidade = pecaQuantidade,
             ValorUnitario = 0, // ignorado pelo service — valor vem sempre do componente
             Origem = pecaOrigem
@@ -545,6 +610,52 @@ else
     private string NomeComponente(Guid id)
         => componentesDisponiveis.FirstOrDefault(c => c.Id == id)?.Nome ?? id.ToString()[..8];
 
+    // ---- Busca de componente (adicionar peça) ----
+
+    private void OnBuscaComponenteFocus()
+    {
+        mostrarResultadosComponente = true;
+        if (string.IsNullOrWhiteSpace(termoBuscaComponente) && !resultadosBuscaComponente.Any())
+            _ = ExecutarBuscaComponenteAsync();
+    }
+
+    private void OnTermoComponenteChanged(ChangeEventArgs e)
+    {
+        termoBuscaComponente = e.Value?.ToString() ?? "";
+        mostrarResultadosComponente = true;
+        componenteSelecionadoBusca = null;
+
+        debouncePecaTimer?.Stop();
+        debouncePecaTimer?.Dispose();
+        debouncePecaTimer = new System.Timers.Timer(220) { AutoReset = false };
+        debouncePecaTimer.Elapsed += async (_, _) => await InvokeAsync(ExecutarBuscaComponenteAsync);
+        debouncePecaTimer.Start();
+    }
+
+    private async Task ExecutarBuscaComponenteAsync()
+    {
+        buscandoComponente = true;
+        var r = await ComponenteService.BuscarAsync(termoBuscaComponente, 20);
+        resultadosBuscaComponente = r.IsSuccess && r.Value is not null ? r.Value.ToList() : new();
+        buscandoComponente = false;
+        StateHasChanged();
+    }
+
+    private void SelecionarComponenteBusca(ComponenteBuscaDTO c)
+    {
+        componenteSelecionadoBusca = c;
+        mostrarResultadosComponente = false;
+        resultadosBuscaComponente.Clear();
+    }
+
+    private void LimparComponenteSelecionado()
+    {
+        componenteSelecionadoBusca = null;
+        termoBuscaComponente = "";
+        mostrarResultadosComponente = false;
+        resultadosBuscaComponente.Clear();
+    }
+
     // ========== Checklist ==========
 
     private async Task AdicionarItemChecklist()
@@ -570,12 +681,23 @@ else
         }
     }
 
-    private async Task AvancarStatusChecklist(ChecklistItemDTO item)
+    private void CliqueCirculoChecklist(ChecklistItemDTO item)
     {
+        if (!PodeEditarChecklist) return;
         if (item.Status == "Concluido") return;
-        if (!OsAberta) return;
 
         var novoStatus = item.Status == "Pendente" ? "EmAndamento" : "Concluido";
+        PedirConfirmacao(
+            "Atualizar item",
+            $"Deseja marcar \"{item.Descricao}\" como {StatusChecklistLabel(novoStatus)}?",
+            () => AvancarStatusChecklist(item, novoStatus));
+    }
+
+    private async Task AvancarStatusChecklist(ChecklistItemDTO item, string novoStatus)
+    {
+        if (!PodeEditarChecklist) return;
+        if (item.Status == "Concluido") return;
+
         var resultado = await OrdemService.AtualizarStatusChecklistAsync(
             new AtualizarStatusChecklistDTO
             {
@@ -586,6 +708,13 @@ else
 
         if (resultado.IsSuccess) await CarregarOS();
     }
+
+    private static string StatusChecklistLabel(string status) => status switch
+    {
+        "EmAndamento" => "em andamento",
+        "Concluido" => "concluído",
+        _ => "pendente"
+    };
 
     private async Task TeclaAdicionarItem(KeyboardEventArgs e)
     {
@@ -620,6 +749,31 @@ else
         var r = await OrdemService.RemoverItemChecklistAsync(Id, item.Id);
         if (r.IsSuccess) await CarregarOS();
         else await MostrarMensagem(r.Error ?? "Erro ao remover.", erro: true);
+    }
+
+    // ========== Confirmação de envio ==========
+
+    private void PedirConfirmacao(string titulo, string mensagem, Func<Task> acao, bool destrutivo = false)
+    {
+        confirmTitulo = titulo;
+        confirmMensagem = mensagem;
+        confirmDestrutivo = destrutivo;
+        acaoConfirmada = acao;
+        confirmVisivel = true;
+    }
+
+    private async Task ExecutarAcaoConfirmada()
+    {
+        confirmVisivel = false;
+        var acao = acaoConfirmada;
+        acaoConfirmada = null;
+        if (acao is not null) await acao();
+    }
+
+    private void CancelarConfirmacao()
+    {
+        confirmVisivel = false;
+        acaoConfirmada = null;
     }
 
     private async Task TratarResultado(
@@ -902,6 +1056,7 @@ else
         flex-shrink: 0;
         transition: all 0.15s;
     }
+    .check-desabilitado { cursor: default; opacity: 0.65; }
     .check-pendente   { border-color: #ccc; }
     .check-andamento  { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
     .check-concluido  { border-color: #16a34a; color: #16a34a; background: #dcfce7; }
@@ -959,7 +1114,7 @@ else
 
     .origem-radios {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         gap: 8px;
     }
     .origem-radio {
@@ -1035,7 +1190,28 @@ else
     .campo-label { font-size: 12px; color: #555; font-weight: 500; }
     .campo-input { border: 0.5px solid #ccc; border-radius: 8px; padding: 9px 12px; font-size: 14px; outline: none; width: 100%; }
     .campo-input:focus { border-color: #2563eb; }
+    .campo-input:disabled { background: #f4f4f4; color: #555; }
+    .campo-ajuda { font-size: 11px; color: #888; }
     .erro-banner { background: #fff5f5; border: 0.5px solid #fca5a5; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #e02020; margin: 12px 0; }
+
+    .peca-busca-wrapper { position: relative; }
+    .peca-busca-limpar {
+        position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+        background: #f4f4f4; border: 0.5px solid #e0e0e0; border-radius: 6px;
+        padding: 4px 10px; font-size: 11px; cursor: pointer;
+    }
+    .peca-busca-dropdown {
+        position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 40;
+        background: #fff; border: 0.5px solid #ccc; border-radius: 8px;
+        max-height: 260px; overflow-y: auto; box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+    }
+    .peca-busca-item { padding: 9px 12px; cursor: pointer; border-bottom: 0.5px solid #f0f0f0; }
+    .peca-busca-item:last-child { border-bottom: none; }
+    .peca-busca-item:hover { background: #f7fafc; }
+    .peca-busca-nome { font-size: 13px; font-weight: 500; }
+    .peca-busca-meta { font-size: 11px; color: #888; margin-top: 2px; display: flex; gap: 6px; align-items: center; }
+    .peca-busca-estoque { margin-left: auto; }
+    .peca-busca-vazio { padding: 12px; font-size: 12px; color: #888; text-align: center; }
     .modal-acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
     .btn-cancelar { background: #fff; border: 0.5px solid #ccc; border-radius: 8px; padding: 9px 18px; font-size: 13px; cursor: pointer; }
     .btn-confirmar { background: #2563eb; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 500; color: #fff; cursor: pointer; }
@@ -1055,4 +1231,18 @@ else
     .toast-erro { background: #fff5f5; color: #e02020; border: 0.5px solid #fca5a5; }
 
     .loading { text-align: center; padding: 80px; color: #888; font-size: 14px; }
+
+    @@media (max-width: 900px) {
+        .detalhe-content { grid-template-columns: 1fr; }
+        .progresso-card { position: static; }
+    }
+
+    @@media (max-width: 640px) {
+        .info-grid { grid-template-columns: 1fr; }
+        .origem-radios { grid-template-columns: 1fr; }
+    }
+
+    @@media (max-width: 480px) {
+        .toast { left: 12px; right: 12px; bottom: 12px; text-align: center; }
+    }
 </style>

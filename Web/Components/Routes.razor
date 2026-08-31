@@ -3,28 +3,49 @@
 @using CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Routing
+@inject NavigationManager Navigation
+@inject ILogger<Routes> Logger
 
 <Router AppAssembly="typeof(App).Assembly">
     <Found Context="routeData">
-        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
-            <NotAuthorized>
-                @if (context.User.Identity?.IsAuthenticated ?? false)
-                {
-                    <div class="acesso-negado">
-                        <h2>Acesso negado</h2>
-                        <p>Você não tem permissão para acessar esta página.</p>
-                        <a href="/">Voltar ao início</a>
-                    </div>
-                }
-                else
-                {
-                    <RedirectToLogin />
-                }
-            </NotAuthorized>
-            <Authorizing>
-                <div class="autorizando">Verificando acesso...</div>
-            </Authorizing>
-        </AuthorizeRouteView>
+        @* Rede de segurança central: qualquer exceção não tratada dentro de
+           uma página ou componente (renderização, evento, ciclo de vida) cai
+           aqui em vez de derrubar o circuito inteiro ou vazar a stack crua —
+           só essa parte da tela mostra o aviso, o resto (NavBar etc.)
+           continua funcionando. Cobre tanto páginas com MainLayout quanto as
+           3 sem layout (Login/Consulta/AssinarTermo), por envolver a
+           AuthorizeRouteView inteira. *@
+        <ErrorBoundary @key="routeData">
+            <ChildContent>
+                <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+                    <NotAuthorized>
+                        @if (context.User.Identity?.IsAuthenticated ?? false)
+                        {
+                            <div class="acesso-negado">
+                                <h2>Acesso negado</h2>
+                                <p>Você não tem permissão para acessar esta página.</p>
+                                <a href="/">Voltar ao início</a>
+                            </div>
+                        }
+                        else
+                        {
+                            <RedirectToLogin />
+                        }
+                    </NotAuthorized>
+                    <Authorizing>
+                        <div class="autorizando">Verificando acesso...</div>
+                    </Authorizing>
+                </AuthorizeRouteView>
+            </ChildContent>
+            <ErrorContent Context="excecao">
+                @{ Logger.LogError(excecao, "Exceção não tratada capturada pelo ErrorBoundary em {Rota}", Navigation.Uri); }
+                <div class="erro-boundary">
+                    <h2>Ops, algo deu errado</h2>
+                    <p>Não foi possível carregar essa parte da tela. Tente novamente.</p>
+                    <button @onclick="RecarregarPaginaAtual">Tentar novamente</button>
+                </div>
+            </ErrorContent>
+        </ErrorBoundary>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
     <NotFound>
@@ -39,34 +60,41 @@
     </NotFound>
 </Router>
 
+@code {
+    private void RecarregarPaginaAtual() => Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
+}
+
 <style>
-    .acesso-negado, .nao-encontrado {
+    .acesso-negado, .nao-encontrado, .erro-boundary {
         max-width: 500px;
         margin: 80px auto;
         text-align: center;
         padding: 24px;
     }
 
-    .acesso-negado h2, .nao-encontrado h2 {
+    .acesso-negado h2, .nao-encontrado h2, .erro-boundary h2 {
         font-size: 22px;
         font-weight: 500;
         margin-bottom: 8px;
         color: #1a1a1a;
     }
 
-    .acesso-negado p, .nao-encontrado p {
+    .acesso-negado p, .nao-encontrado p, .erro-boundary p {
         font-size: 14px;
         color: #888;
         margin-bottom: 20px;
     }
 
-    .acesso-negado a, .nao-encontrado a {
+    .acesso-negado a, .nao-encontrado a, .erro-boundary button {
         background: #e02020;
         color: #fff;
+        border: none;
         border-radius: 8px;
         padding: 9px 20px;
         font-size: 14px;
         text-decoration: none;
+        cursor: pointer;
+        font-family: inherit;
     }
 
     .autorizando {

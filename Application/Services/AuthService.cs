@@ -67,21 +67,37 @@ public class AuthService : IAuthService
 
         var usuario = await _repository.ObterPorEmailAsync(dto.Email.ToLower());
 
-        if (usuario is null || !BCrypt.Net.BCrypt.Verify(dto.Senha, usuario.GetSenhaHash()))
+        try
+        {
+            if (usuario is null || !BCrypt.Net.BCrypt.Verify(dto.Senha, usuario.GetSenhaHash()))
+                return Result<LoginResultDTO>.Fail("Email ou senha inválidos");
+        }
+        catch (Exception)
+        {
+            // Hash salvo em formato inesperado — trata como credenciais
+            // inválidas em vez de vazar detalhe de criptografia pro usuário.
             return Result<LoginResultDTO>.Fail("Email ou senha inválidos");
+        }
 
         if (!usuario.Ativo)
             return Result<LoginResultDTO>.Fail("Usuário inativo");
 
-        var token = _jwtService.GerarToken(usuario);
-
-        return Result<LoginResultDTO>.Ok(new LoginResultDTO
+        try
         {
-            Token = token,
-            Nome = usuario.GetNome(),
-            Role = usuario.GetRole(),
-            Expiracao = DateTime.UtcNow.AddHours(_jwtSettings.ExpiracaoHoras)
-        });
+            var token = _jwtService.GerarToken(usuario);
+
+            return Result<LoginResultDTO>.Ok(new LoginResultDTO
+            {
+                Token = token,
+                Nome = usuario.GetNome(),
+                Role = usuario.GetRole(),
+                Expiracao = DateTime.UtcNow.AddHours(_jwtSettings.ExpiracaoHoras)
+            });
+        }
+        catch (Exception)
+        {
+            return Result<LoginResultDTO>.Fail("Não foi possível concluir o login. Tente novamente em instantes.");
+        }
     }
 
     /*
@@ -133,9 +149,16 @@ public class AuthService : IAuthService
         if (usuario is null)
             return Result.Fail("Usuário não encontrado");
 
-        return BCrypt.Net.BCrypt.Verify(senha, usuario.GetSenhaHash())
-            ? Result.Ok()
-            : Result.Fail("Senha incorreta");
+        try
+        {
+            return BCrypt.Net.BCrypt.Verify(senha, usuario.GetSenhaHash())
+                ? Result.Ok()
+                : Result.Fail("Senha incorreta");
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Senha incorreta");
+        }
     }
 
     /*
@@ -314,9 +337,13 @@ public class AuthService : IAuthService
             await _repository.SaveChangesAsync();
             return Result.Ok();
         }
-        catch (Exception ex)
+        catch (ArgumentException ex)
         {
-            return Result.Fail($"Erro ao atualizar: {ex.Message}");
+            return Result.Fail(ex.Message);
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível atualizar o usuário. Tente novamente em instantes.");
         }
     }
 
@@ -330,13 +357,24 @@ public class AuthService : IAuthService
         if (usuario is null)
             return Result.Fail("Usuário não encontrado");
 
-        if (!BCrypt.Net.BCrypt.Verify(senhaAtual, usuario.GetSenhaHash()))
-            return Result.Fail("Senha atual incorreta");
+        try
+        {
+            if (!BCrypt.Net.BCrypt.Verify(senhaAtual, usuario.GetSenhaHash()))
+                return Result.Fail("Senha atual incorreta");
 
-        usuario.AtualizarSenha(novaSenha);
-        _repository.Update(usuario);
-        await _repository.SaveChangesAsync();
-        return Result.Ok();
+            usuario.AtualizarSenha(novaSenha);
+            _repository.Update(usuario);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (ArgumentException ex)
+        {
+            return Result.Fail(ex.Message);
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível alterar a senha. Tente novamente em instantes.");
+        }
     }
 
     //o logout é client side, mas temos esse metodo para implementar quando necessaio

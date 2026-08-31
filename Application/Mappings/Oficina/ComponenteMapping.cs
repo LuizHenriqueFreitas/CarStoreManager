@@ -32,7 +32,8 @@ public static class ComponenteMapping
             Ativo = entity.Ativo,
             CustoUnitario = entity.CustoUnitario,
             MargemLucroPct = entity.MargemLucroPct,
-            ValorVenda = entity.ValorVenda
+            ValorVenda = entity.ValorVenda,
+            FornecedorId = entity.FornecedorId
         };
     }
 
@@ -72,7 +73,8 @@ public static class ComponenteMapping
             categoria: dto.Categoria,
             unidade: dto.Unidade,
             peso: dto.Peso,
-            garantiaDias: dto.GarantiaDias
+            garantiaDias: dto.GarantiaDias,
+            fornecedorId: dto.FornecedorId
         );
     }
 
@@ -93,6 +95,7 @@ public static class ComponenteMapping
         entity.SetUnidade(dto.Unidade);
         entity.SetPeso(dto.Peso);
         entity.SetGarantiaDias(dto.GarantiaDias);
+        entity.DefinirFornecedor(dto.FornecedorId);
 
         if (dto.Ativo && !entity.Ativo) entity.Ativar();
         else if (!dto.Ativo && entity.Ativo) entity.Desativar();
@@ -118,7 +121,8 @@ public static class ComponenteMapping
             categoria: dto.Categoria,
             unidade: dto.Unidade,
             peso: dto.Peso,
-            garantiaDias: dto.GarantiaDias
+            garantiaDias: dto.GarantiaDias,
+            fornecedorId: dto.FornecedorId
         );
     }
 
@@ -139,6 +143,7 @@ public static class ComponenteMapping
         entity.SetUnidade(dto.Unidade);
         entity.SetPeso(dto.Peso);
         entity.SetGarantiaDias(dto.GarantiaDias);
+        entity.DefinirFornecedor(dto.FornecedorId);
 
         if (dto.Ativo && !entity.Ativo) entity.Ativar();
         else if (!dto.Ativo && entity.Ativo) entity.Desativar();

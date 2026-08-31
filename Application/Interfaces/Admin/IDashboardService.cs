@@ -5,7 +5,8 @@ namespace CarStoreManager.Application.Interfaces;
 
 public interface IDashboardService
 {
-    Task<Result<DashboardMetricasDTO>> ObterMetricasAsync();
+    /// <summary>Janela (em meses) para as séries temporais: 3, 6 (padrão) ou 12.</summary>
+    Task<Result<DashboardMetricasDTO>> ObterMetricasAsync(int meses = 6);
 
     /// <summary>
     /// Recalcula as métricas financeiras/operacionais (sem o catálogo de

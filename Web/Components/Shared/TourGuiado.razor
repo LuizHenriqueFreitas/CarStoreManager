@@ -159,7 +159,34 @@
 
         StateHasChanged();
         await Task.Delay(30);
+
+        // A escolha de lado/posição acima usa uma ALTURA ESTIMADA (o texto só
+        // termina de quebrar linha depois de renderizado). Com o balão já na
+        // tela, reajusta com o tamanho de verdade — é o que evita ele vazar
+        // por baixo/pelas bordas em telas mais baixas (1280x720, notebook
+        // 1366x768) ou com passos de texto mais longo.
+        if (!_centralizado)
+            await AjustarParaTamanhoRealAsync();
+
         await FocarBalaoAsync();
+    }
+
+    private async Task AjustarParaTamanhoRealAsync()
+    {
+        if (_medida is null) return;
+
+        var tamanhoReal = await JS.InvokeAsync<MedidaElemento>("tourGuiado.medirBalao");
+        if (!tamanhoReal.Existe) return;
+
+        const double margem = 12;
+        var novoLeft = Math.Max(margem, Math.Min(_left, _medida.ViewportWidth - tamanhoReal.Width - margem));
+        var novoTop = Math.Max(_medida.ScrollY + margem, Math.Min(_top, _medida.ScrollY + _medida.ViewportHeight - tamanhoReal.Height - margem));
+
+        if (Math.Abs(novoLeft - _left) < 0.5 && Math.Abs(novoTop - _top) < 0.5) return;
+
+        _left = novoLeft;
+        _top = novoTop;
+        StateHasChanged();
     }
 
     private async Task FocarBalaoAsync()
@@ -228,6 +255,8 @@
             _medida = m;
             (_top, _left) = CalcularPosicaoBalao(m, PassoAtual.Posicao);
             StateHasChanged();
+            await Task.Delay(30);
+            await AjustarParaTamanhoRealAsync();
         }
     }
 
@@ -358,7 +387,17 @@
         background: #fff;
         border-radius: 12px;
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-        max-width: 360px;
+        /* min() em vez de um breakpoint fixo: cabe em qualquer largura de
+           tela sem depender de media query (celular, 720p, ultrawide...). */
+        width: min(360px, calc(100vw - 24px));
+        /* Trava de segurança de altura — nunca deixa o balão crescer além da
+           viewport (monitor 720p, notebook 1366x768, texto de passo mais
+           longo). Se o conteúdo não couber, rola por dentro em vez de vazar
+           por baixo da tela. O C# ainda reposiciona usando o tamanho real
+           renderizado (ver AjustarParaTamanhoRealAsync), isso aqui é só a
+           garantia de último caso. */
+        max-height: calc(100vh - 24px);
+        overflow-y: auto;
         padding: 18px 20px;
     }
     .tour-balao { transition: top 0.25s ease, left 0.25s ease; }
@@ -405,9 +444,9 @@
     }
 
     @@media (max-width: 480px) {
-        .tour-balao, .tour-balao-centralizado {
-            max-width: calc(100vw - 24px);
-        }
-        .tour-balao { left: 12px !important; }
+        .tour-balao-header { margin-bottom: 6px; }
+        .tour-titulo { font-size: 14px; }
+        .tour-texto { font-size: 12.5px; margin-bottom: 12px; }
+        .tour-acoes { flex-wrap: wrap; }
     }
 </style>

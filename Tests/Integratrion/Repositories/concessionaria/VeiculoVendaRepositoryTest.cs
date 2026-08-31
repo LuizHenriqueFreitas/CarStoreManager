@@ -150,7 +150,8 @@ namespace CarStoreManager.Tests.Integration.Repositories
         {
             var veiculo = new VeiculoVenda("Chevrolet", "Onix", "Prata", "1.4 Turbo",
                 2023, 0, "ONX2023", "12345678900",
-                TipoCambio.Automatico, TipoCombustivel.Flex, 72000.00m, AcessoriosVeiculo.BancoCouro);
+                TipoCambio.Automatico, TipoCombustivel.Flex, 72000.00m, 60000.00m, 2024,
+                AcessoriosVeiculo.BancoCouro);
             await _repository.AddAsync(veiculo);
             await _repository.SaveChangesAsync();
 
@@ -221,7 +222,8 @@ namespace CarStoreManager.Tests.Integration.Repositories
             TipoCambio cambio, TipoCombustivel combustivel,
             decimal valor, AcessoriosVeiculo acessorios)
         {
-            var veiculo = new VeiculoVenda(marca, modelo, cor, motorizacao, ano, quilometragem, placa, "12345678900", cambio, combustivel, valor, acessorios);
+            var veiculo = new VeiculoVenda(marca, modelo, cor, motorizacao, ano, quilometragem, placa, "12345678900",
+                cambio, combustivel, valor, valorAquisicao: valor * 0.8m, anoUltimoIpvaPago: 2024, acessorios: acessorios);
             await _repository.AddAsync(veiculo);
             await _repository.SaveChangesAsync();
             return veiculo;

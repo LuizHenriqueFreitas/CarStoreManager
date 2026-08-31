@@ -133,9 +133,15 @@ public class MecanicoService : IMecanicoService
         if (mecanico is null)
             return Result.Fail("Mecânico não encontrado");
 
-        _repository.Remove(mecanico);
-        await _repository.SaveChangesAsync();
-
-        return Result.Ok();
+        try
+        {
+            _repository.Remove(mecanico);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception)
+        {
+            return Result.Fail("Não foi possível excluir o mecânico. Ele pode ter ordens de serviço vinculadas — considere desativá-lo em vez de excluir.");
+        }
     }
 }
