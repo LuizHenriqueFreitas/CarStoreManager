@@ -262,6 +262,10 @@ else
                                 </button>
                             </Authorized>
                         </AuthorizeView>
+                        @if (erroMl is not null)
+                        {
+                            <div class="erro-banner">@erroMl</div>
+                        }
                     }
 
                     <button class="btn-secondary" @onclick="AbrirModalEdicao">
@@ -316,6 +320,10 @@ else
                                 </button>
                             </Authorized>
                         </AuthorizeView>
+                        @if (erroMl is not null)
+                        {
+                            <div class="erro-banner">@erroMl</div>
+                        }
                     }
                     @if (consignacao.Status == "VendidoAguardandoPagamento")
                     {
@@ -773,13 +781,18 @@ else
     }
 
     private bool publicandoMl = false;
+    private string? erroMl;
 
     private async Task PublicarNoMercadoLivre()
     {
         publicandoMl = true;
+        erroMl = null;
         var r = await MercadoLivreService.PublicarAsync(new PublicarAnuncioDTO { EntidadeTipo = EntidadeTipoAtual, EntidadeId = Id });
         publicandoMl = false;
-        if (r.IsSuccess) Nav.NavigateTo("/integracoes/mercadolivre/anuncios");
+        if (r.IsSuccess)
+            Nav.NavigateTo("/integracoes/mercadolivre/anuncios");
+        else
+            erroMl = r.Error;
     }
 
     // === Ações de decisão da consignação ===

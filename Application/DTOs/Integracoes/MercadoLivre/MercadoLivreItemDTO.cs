@@ -15,4 +15,19 @@ public class MercadoLivreItemDTO
     /// "classified"; enviar "buy_it_now" nelas causa item.buying_mode.invalid.
     /// </summary>
     public string BuyingMode { get; set; } = "buy_it_now";
+
+    /// <summary>
+    /// "new" ou "used" — obrigatório em toda publicação no ML (item.condition.required
+    /// se omitido). Toda a frota da concessionária já teve emplacamento/IPVA, então é
+    /// sempre "used" para veículo; componentes de estoque saem como "new".
+    /// </summary>
+    public string Condicao { get; set; } = "used";
+
+    /// <summary>
+    /// Atributos exigidos pela categoria ML (id -> value_name), ex.: BRAND, MODEL,
+    /// VEHICLE_YEAR, KILOMETERS para veículos. A lista completa de atributos
+    /// obrigatórios por categoria só pode ser confirmada consultando
+    /// GET /categories/{id}/attributes na API real do ML.
+    /// </summary>
+    public Dictionary<string, string> Atributos { get; set; } = new();
 }

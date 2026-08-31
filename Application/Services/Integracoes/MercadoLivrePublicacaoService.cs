@@ -145,7 +145,15 @@ public class MercadoLivrePublicacaoService : IMercadoLivrePublicacaoService
                         : veiculo.TextoTermoPreliminar,
                     UrlsFotos = fotos,
                     CategoriaML = "MLB1744", // placeholder — categoria real exige lookup na API de categorias do ML
-                    BuyingMode = "classified" // veículos são categoria de classificados no ML
+                    BuyingMode = "classified", // veículos são categoria de classificados no ML
+                    Condicao = "used",
+                    Atributos = new Dictionary<string, string>
+                    {
+                        ["BRAND"] = veiculo.GetMarca(),
+                        ["MODEL"] = veiculo.GetModelo(),
+                        ["VEHICLE_YEAR"] = veiculo.GetAno().ToString(),
+                        ["KILOMETERS"] = veiculo.GetQuilometragem().ToString()
+                    }
                 });
             }
 
@@ -165,7 +173,8 @@ public class MercadoLivrePublicacaoService : IMercadoLivrePublicacaoService
                     Quantidade = estoque.QuantidadeAtual,
                     Descricao = componente.GetDescricao(),
                     UrlsFotos = new List<string>(), // Componente não tem infraestrutura de fotos hoje
-                    CategoriaML = "MLB1747" // placeholder
+                    CategoriaML = "MLB1747", // placeholder
+                    Condicao = "new"
                 });
             }
 
@@ -185,7 +194,15 @@ public class MercadoLivrePublicacaoService : IMercadoLivrePublicacaoService
                         : veiculo.TextoContrato,
                     UrlsFotos = fotos,
                     CategoriaML = "MLB1744", // placeholder
-                    BuyingMode = "classified" // veículos são categoria de classificados no ML
+                    BuyingMode = "classified", // veículos são categoria de classificados no ML
+                    Condicao = "used",
+                    Atributos = new Dictionary<string, string>
+                    {
+                        ["BRAND"] = veiculo.GetMarca(),
+                        ["MODEL"] = veiculo.GetModelo(),
+                        ["VEHICLE_YEAR"] = veiculo.GetAno().ToString(),
+                        ["KILOMETERS"] = veiculo.GetQuilometragem().ToString()
+                    }
                 });
             }
 

@@ -97,9 +97,11 @@ public class MercadoLivreApiClientReal : IMercadoLivreApiClient
             currency_id = "BRL",
             available_quantity = item.Quantidade,
             buying_mode = item.BuyingMode,
+            condition = item.Condicao,
             description = new { plain_text = item.Descricao },
             pictures = item.UrlsFotos.Select(url => new { source = url }).ToList(),
-            listing_type_id = "gold_special"
+            listing_type_id = "gold_special",
+            attributes = item.Atributos.Select(kv => new { id = kv.Key, value_name = kv.Value }).ToList()
         };
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/items") { Content = JsonContent.Create(payload) };
