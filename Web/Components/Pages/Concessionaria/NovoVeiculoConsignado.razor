@@ -9,8 +9,6 @@
 @inject IFotoService FotoService
 @inject IConfiguracaoSistemaService ConfigService
 @inject NavigationManager Nav
-@inject IAuthService AuthService
-@inject AuthenticationStateProvider AuthState
 
 @using CarStoreManager.Application.Common
 @using CarStoreManager.Application.Interfaces
@@ -19,7 +17,6 @@
 @using CarStoreManager.Application.DTOs.Shared.Cliente
 @using CarStoreManager.Application.DTOs.Concessionaria.Vendedor
 @using CarStoreManager.Web.Components.Shared
-@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 
 @using Microsoft.AspNetCore.Components.Web
@@ -221,14 +218,6 @@
     </div>
 </div>
 
-<ConfirmacaoSenhaModal Visivel="modalSenhaVisivel"
-                       Titulo="Confirmar cadastro da consignação"
-                       Descricao="Esta ação registrará um novo veículo consignado. Digite sua senha para confirmar."
-                       TextoBotao="Cadastrar consignação"
-                       OnConfirmar="OnSenhaConfirmada"
-                       OnCancelar="() => modalSenhaVisivel = false"
-                       @ref="modalSenhaRef" />
-
 @code {
     private CriarVeiculoConsignacaoDTO form = new()
     {
@@ -317,10 +306,7 @@
         previewsNovasFotos.RemoveAt(indice);
     }
 
-    private bool modalSenhaVisivel;
-    private ConfirmacaoSenhaModal? modalSenhaRef;
-
-    private void IniciarSalvamento()
+    private Task IniciarSalvamento()
     {
         if (string.IsNullOrWhiteSpace(form.Marca) ||
             string.IsNullOrWhiteSpace(form.Modelo) ||
@@ -331,44 +317,24 @@
             form.ValorVendaEsperado <= 0)
         {
             erro = "Preencha todos os campos obrigatórios, incluindo proprietário, vendedor e valor de venda esperado.";
-            return;
+            return Task.CompletedTask;
         }
         if (form.TipoComissao == "Fixo" && (form.ValorFixoProprietario is null || form.ValorFixoProprietario <= 0))
         {
             erro = "Informe o valor fixo a repassar ao proprietário.";
-            return;
+            return Task.CompletedTask;
         }
         if (form.TipoComissao == "Porcentagem" && (form.PorcentagemProprietario is null || form.PorcentagemProprietario <= 0 || form.PorcentagemProprietario > 100))
         {
             erro = "Informe uma porcentagem válida (entre 0 e 100) para o proprietário.";
-            return;
+            return Task.CompletedTask;
         }
         erro = null;
-        modalSenhaVisivel = true;
-    }
-
-    private async Task OnSenhaConfirmada(string senha)
-    {
-        var state = await AuthState.GetAuthenticationStateAsync();
-        var idClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-        if (idClaim is null || !Guid.TryParse(idClaim.Value, out var usuarioId))
-        {
-            modalSenhaRef?.MostrarErro();
-            return;
-        }
-        var verif = await AuthService.VerificarSenhaAsync(usuarioId, senha);
-        if (!verif.IsSuccess)
-        {
-            modalSenhaRef?.MostrarErro();
-            return;
-        }
-        await ExecutarSalvamento();
+        return ExecutarSalvamento();
     }
 
     private async Task ExecutarSalvamento()
     {
-        modalSenhaVisivel = false;
-
         salvando = true;
         erro = null;
         sucesso = false;

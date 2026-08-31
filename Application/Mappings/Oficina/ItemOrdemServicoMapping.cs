@@ -20,7 +20,8 @@ public static class ItemOrdemServicoMapping
             ValorTotal = entity.GetValorTotal(),
             Origem = entity.GetOrigem(),
             StatusItem = entity.GetStatusItem(),
-            DataRecebimento = entity.DataRecebimento
+            DataRecebimento = entity.DataRecebimento,
+            DescricaoLivre = entity.DescricaoLivre
         };
     }
 

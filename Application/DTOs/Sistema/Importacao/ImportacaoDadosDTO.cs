@@ -222,7 +222,8 @@ public class PropostaVendaImportDTO
 /// <summary>
 /// Cenário: "pendente" (padrão, recém-aberta), "cancelada", "emAndamento"
 /// (iniciada, mecânico trabalhando), "finalizadaPendente" (serviço pronto,
-/// cobrança em aberto) ou "finalizadaPaga" (concluída com sucesso).
+/// cobrança em aberto), "finalizadaPaga" (paga, aguardando retirada) ou
+/// "entregue" (paga E retirada pelo cliente — conclusão real do fluxo).
 /// </summary>
 public class OrdemServicoImportDTO
 {

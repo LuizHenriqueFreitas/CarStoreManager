@@ -143,7 +143,7 @@ else
                         @foreach (var item in os.Checklist)
                         {
                             <div class="checklist-item @(item.Status == "Concluido" ? "concluido" : "")">
-                                <div class="check-circle @CheckClass(item.Status) @(PodeEditarChecklist ? "" : "check-desabilitado")"
+                                <div class="check-circle @CheckClass(item.Status) @(PodeMudarStatusChecklist ? "" : "check-desabilitado")"
                                      @onclick="() => CliqueCirculoChecklist(item)">
                                     @if (item.Status == "Concluido") { <span>✓</span> }
                                     else if (item.Status == "EmAndamento") { <span>●</span> }
@@ -191,7 +191,7 @@ else
                     <div class="itens-lista">
                         @foreach (var item in os.Itens)
                         {
-                            var nome = NomeComponente(item.ComponenteId);
+                            var nome = item.DescricaoLivre ?? NomeComponente(item.ComponenteId);
                             <div class="item-peca">
                                 <span class="item-qtd">@item.Quantidade×</span>
                                 <span class="item-nome">@nome</span>
@@ -257,63 +257,19 @@ else
             </div>
 
             <div class="form-campo">
-                <label class="campo-label">Componente *</label>
-                <div class="peca-busca-wrapper">
-                    <input type="text" class="campo-input"
-                           placeholder="Buscar por nome, OEM, part number ou SKU..."
-                           value="@(componenteSelecionadoBusca?.Nome ?? termoBuscaComponente)"
-                           @oninput="OnTermoComponenteChanged"
-                           @onfocus="OnBuscaComponenteFocus"
-                           disabled="@(componenteSelecionadoBusca is not null)" />
-                    @if (componenteSelecionadoBusca is not null)
-                    {
-                        <button type="button" class="peca-busca-limpar" @onclick="LimparComponenteSelecionado">Trocar</button>
-                    }
-                    @if (mostrarResultadosComponente && componenteSelecionadoBusca is null)
-                    {
-                        @if (resultadosBuscaComponente.Any())
-                        {
-                            <div class="peca-busca-dropdown">
-                                @foreach (var c in resultadosBuscaComponente)
-                                {
-                                    <div class="peca-busca-item" @onclick="() => SelecionarComponenteBusca(c)">
-                                        <div class="peca-busca-nome">@c.Nome</div>
-                                        <div class="peca-busca-meta">
-                                            @c.MarcaFabricante
-                                            @if (!string.IsNullOrWhiteSpace(c.PartNumber)) { <text> · P/N @c.PartNumber</text> }
-                                            <span class="peca-busca-estoque">@c.QuantidadeEmEstoque em estoque</span>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        }
-                        else if (!buscandoComponente)
-                        {
-                            <div class="peca-busca-dropdown">
-                                <div class="peca-busca-vazio">
-                                    Nenhum componente encontrado
-                                    @(string.IsNullOrWhiteSpace(termoBuscaComponente) ? "" : $"para \"{termoBuscaComponente}\"").
-                                </div>
-                            </div>
-                        }
-                    }
-                </div>
-            </div>
-
-            <div class="form-campo">
                 <label class="campo-label">Origem *</label>
                 <div class="origem-radios">
                     <label class="origem-radio @(pecaOrigem == "Estoque" ? "ativo" : "")">
                         <input type="radio" name="origem" value="Estoque"
                                checked="@(pecaOrigem == "Estoque")"
-                               @onchange='() => pecaOrigem = "Estoque"' />
+                               @onchange='() => { pecaOrigem = "Estoque"; nomePecaCliente = ""; }' />
                         <span class="origem-nome">📦 Estoque</span>
                         <span class="origem-desc">Oficina já tem</span>
                     </label>
                     <label class="origem-radio @(pecaOrigem == "Cliente" ? "ativo" : "")">
                         <input type="radio" name="origem" value="Cliente"
                                checked="@(pecaOrigem == "Cliente")"
-                               @onchange='() => pecaOrigem = "Cliente"' />
+                               @onchange='() => { pecaOrigem = "Cliente"; LimparComponenteSelecionado(); }' />
                         <span class="origem-nome">🧍 Cliente</span>
                         <span class="origem-desc">Cliente trouxe</span>
                     </label>
@@ -323,17 +279,78 @@ else
                 </span>
             </div>
 
+            @if (pecaOrigem == "Cliente")
+            {
+                <div class="form-campo">
+                    <label class="campo-label">Nome da peça *</label>
+                    <input type="text" class="campo-input" placeholder="Ex: farol dianteiro esquerdo"
+                           @bind="nomePecaCliente" @bind:event="oninput" />
+                    <span class="campo-ajuda">
+                        Peça trazida pelo cliente: sem valor, sem conexão com o estoque — fica registrada só pelo nome.
+                    </span>
+                </div>
+            }
+            else
+            {
+                <div class="form-campo">
+                    <label class="campo-label">Componente *</label>
+                    <div class="peca-busca-wrapper">
+                        <input type="text" class="campo-input"
+                               placeholder="Buscar por nome, OEM, part number ou SKU..."
+                               value="@(componenteSelecionadoBusca?.Nome ?? termoBuscaComponente)"
+                               @oninput="OnTermoComponenteChanged"
+                               @onfocus="OnBuscaComponenteFocus"
+                               disabled="@(componenteSelecionadoBusca is not null)" />
+                        @if (componenteSelecionadoBusca is not null)
+                        {
+                            <button type="button" class="peca-busca-limpar" @onclick="LimparComponenteSelecionado">Trocar</button>
+                        }
+                        @if (mostrarResultadosComponente && componenteSelecionadoBusca is null)
+                        {
+                            @if (resultadosBuscaComponente.Any())
+                            {
+                                <div class="peca-busca-dropdown">
+                                    @foreach (var c in resultadosBuscaComponente)
+                                    {
+                                        <div class="peca-busca-item" @onclick="() => SelecionarComponenteBusca(c)">
+                                            <div class="peca-busca-nome">@c.Nome</div>
+                                            <div class="peca-busca-meta">
+                                                @c.MarcaFabricante
+                                                @if (!string.IsNullOrWhiteSpace(c.PartNumber)) { <text> · P/N @c.PartNumber</text> }
+                                                <span class="peca-busca-estoque">@c.QuantidadeEmEstoque em estoque</span>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else if (!buscandoComponente)
+                            {
+                                <div class="peca-busca-dropdown">
+                                    <div class="peca-busca-vazio">
+                                        Nenhum componente encontrado
+                                        @(string.IsNullOrWhiteSpace(termoBuscaComponente) ? "" : $"para \"{termoBuscaComponente}\"").
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+
             <div class="form-grid">
                 <div class="form-campo">
                     <label class="campo-label">Quantidade *</label>
                     <input type="number" min="1" class="campo-input" @bind="pecaQuantidade" />
                 </div>
-                <div class="form-campo">
-                    <label class="campo-label">Valor unitário</label>
-                    <div class="info-auto">
-                        💡 O valor é carregado automaticamente do cadastro do componente.
+                @if (pecaOrigem != "Cliente")
+                {
+                    <div class="form-campo">
+                        <label class="campo-label">Valor unitário</label>
+                        <div class="info-auto">
+                            💡 O valor é carregado automaticamente do cadastro do componente.
+                        </div>
                     </div>
-                </div>
+                }
             </div>
 
             @if (erroPeca is not null)
@@ -393,6 +410,7 @@ else
     private List<ComponenteListaDTO> componentesDisponiveis = new(); // só pra exibir nome das peças já na OS
     private int pecaQuantidade = 1;
     private string pecaOrigem = "Estoque";
+    private string nomePecaCliente = "";
     private string? erroPeca;
     private bool salvandoPeca = false;
 
@@ -413,7 +431,7 @@ else
     private Func<Task>? acaoConfirmada;
 
     // Auth state
-    private bool ehAdmin, ehMecanico, ehRecepcionista;
+    private bool ehAdmin, ehMecanico, ehRecepcionista, ehChefeOficina;
     private Guid meuUsuarioId;
 
     private (int numero, string label, string status)[] trilha = Array.Empty<(int, string, string)>();
@@ -424,6 +442,7 @@ else
         ehAdmin = state.User.IsInRole("Admin");
         ehMecanico = state.User.IsInRole("Mecanico");
         ehRecepcionista = state.User.IsInRole("Recepcionista");
+        ehChefeOficina = state.User.IsInRole("ChefeOficina");
         var claim = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
         if (claim is not null) Guid.TryParse(claim.Value, out meuUsuarioId);
 
@@ -462,6 +481,7 @@ else
             "EmAndamento"        => 5,
             "PagamentoPendente"  => 6,
             "Finalizada"         => 7,
+            "Entregue"           => 8,
             "Cancelada"          => 0,
             _                    => 1
         };
@@ -474,7 +494,8 @@ else
             (4, "Aprovado", ""),
             (5, "Em andamento", ""),
             (6, "Pagamento pendente", ""),
-            (7, "Finalizada", "")
+            (7, "Finalizada", ""),
+            (8, "Entregue", "")
         };
 
         trilha = etapas.Select(e =>
@@ -522,11 +543,13 @@ else
         && os.Status != "Entregue"
         && os.Status != "Cancelada";
 
-    // Checklist é de responsabilidade exclusiva do mecânico designado pra
-    // esta OS específica — nem Admin, nem ChefeOficina, nem Recepcionista
-    // editam (apenas visualizam).
+    // Adicionar/remover/editar descrição do checklist é de responsabilidade
+    // exclusiva do mecânico designado pra esta OS específica — Recepcionista
+    // não mexe (só visualiza). Mudar o STATUS de um item já existente é mais
+    // permissivo: Admin e ChefeOficina também podem, além do mecânico responsável.
     private bool SouOMecanicoDaOS => os is not null && ehMecanico && os.MecanicoId == meuUsuarioId;
     private bool PodeEditarChecklist => OsAberta && SouOMecanicoDaOS;
+    private bool PodeMudarStatusChecklist => OsAberta && (SouOMecanicoDaOS || ehAdmin || ehChefeOficina);
     private bool PodeEditarItens     => OsAberta && (ehAdmin || ehMecanico || ehRecepcionista);
 
     // ========== Transições ==========
@@ -562,26 +585,38 @@ else
         LimparComponenteSelecionado();
         pecaQuantidade = 1;
         pecaOrigem = "Estoque";
+        nomePecaCliente = "";
         erroPeca = null;
         modalPecaVisivel = true;
     }
 
     private async Task AdicionarPeca()
     {
-        if (componenteSelecionadoBusca is null) { erroPeca = "Busque e selecione um componente."; return; }
-        if (pecaQuantidade < 1)                 { erroPeca = "Quantidade inválida."; return; }
+        if (pecaQuantidade < 1) { erroPeca = "Quantidade inválida."; return; }
+
+        var dto = new AdicionarItemOrdemServicoDTO
+        {
+            OrdemServicoId = Id,
+            Quantidade = pecaQuantidade,
+            Origem = pecaOrigem
+        };
+
+        if (pecaOrigem == "Cliente")
+        {
+            if (string.IsNullOrWhiteSpace(nomePecaCliente)) { erroPeca = "Informe o nome da peça trazida pelo cliente."; return; }
+            dto.DescricaoLivre = nomePecaCliente.Trim();
+        }
+        else
+        {
+            if (componenteSelecionadoBusca is null) { erroPeca = "Busque e selecione um componente."; return; }
+            dto.ComponenteId = componenteSelecionadoBusca.Id;
+            dto.ValorUnitario = 0; // ignorado pelo service — valor vem sempre do componente
+        }
 
         var statusAntes = os?.Status;
 
         salvandoPeca = true;
-        var r = await OrdemService.AdicionarItemAsync(new AdicionarItemOrdemServicoDTO
-        {
-            OrdemServicoId = Id,
-            ComponenteId = componenteSelecionadoBusca.Id,
-            Quantidade = pecaQuantidade,
-            ValorUnitario = 0, // ignorado pelo service — valor vem sempre do componente
-            Origem = pecaOrigem
-        });
+        var r = await OrdemService.AdicionarItemAsync(dto);
         salvandoPeca = false;
 
         if (r.IsSuccess)
@@ -607,8 +642,8 @@ else
         else await MostrarMensagem(r.Error ?? "Erro ao remover.", true);
     }
 
-    private string NomeComponente(Guid id)
-        => componentesDisponiveis.FirstOrDefault(c => c.Id == id)?.Nome ?? id.ToString()[..8];
+    private string NomeComponente(Guid? id)
+        => id is null ? "(peça trazida pelo cliente)" : componentesDisponiveis.FirstOrDefault(c => c.Id == id)?.Nome ?? id.Value.ToString()[..8];
 
     // ---- Busca de componente (adicionar peça) ----
 
@@ -683,7 +718,7 @@ else
 
     private void CliqueCirculoChecklist(ChecklistItemDTO item)
     {
-        if (!PodeEditarChecklist) return;
+        if (!PodeMudarStatusChecklist) return;
         if (item.Status == "Concluido") return;
 
         var novoStatus = item.Status == "Pendente" ? "EmAndamento" : "Concluido";
@@ -695,7 +730,7 @@ else
 
     private async Task AvancarStatusChecklist(ChecklistItemDTO item, string novoStatus)
     {
-        if (!PodeEditarChecklist) return;
+        if (!PodeMudarStatusChecklist) return;
         if (item.Status == "Concluido") return;
 
         var resultado = await OrdemService.AtualizarStatusChecklistAsync(
@@ -811,6 +846,7 @@ else
         "EmAndamento"       => "Em andamento",
         "PagamentoPendente" => "Pagamento pendente",
         "Finalizada"        => "Finalizada",
+        "Entregue"          => "Entregue",
         "Cancelada"         => "Cancelada",
         _                   => s
     };
@@ -824,6 +860,7 @@ else
         "EmAndamento"       => "status-andamento",
         "PagamentoPendente" => "status-pagamento-pendente",
         "Finalizada"        => "status-finalizada",
+        "Entregue"          => "status-entregue",
         "Cancelada"         => "status-cancelada",
         _                   => "status-pendente"
     };
@@ -1165,6 +1202,7 @@ else
     .status-aprovada   { background: #f0fdf4; color: #16a34a; }
     .status-andamento  { background: #eff6ff; color: #1d4ed8; }
     .status-finalizada { background: #dcfce7; color: #166534; }
+    .status-entregue   { background: #ccfbf1; color: #0d9488; }
     .status-pagamento-pendente { background: #fff7ed; color: #c2410c; font-weight: 600; }
     .status-cancelada  { background: #fff5f5; color: #e02020; }
 

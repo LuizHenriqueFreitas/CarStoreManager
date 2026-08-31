@@ -96,7 +96,7 @@ public class MercadoLivreApiClientReal : IMercadoLivreApiClient
             price = item.Preco,
             currency_id = "BRL",
             available_quantity = item.Quantidade,
-            buying_mode = "buy_it_now",
+            buying_mode = item.BuyingMode,
             description = new { plain_text = item.Descricao },
             pictures = item.UrlsFotos.Select(url => new { source = url }).ToList(),
             listing_type_id = "gold_special"

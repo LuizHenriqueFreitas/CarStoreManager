@@ -144,7 +144,8 @@ public class MercadoLivrePublicacaoService : IMercadoLivrePublicacaoService
                         ? "Veículo em perfeitas condições."
                         : veiculo.TextoTermoPreliminar,
                     UrlsFotos = fotos,
-                    CategoriaML = "MLB1744" // placeholder — categoria real exige lookup na API de categorias do ML
+                    CategoriaML = "MLB1744", // placeholder — categoria real exige lookup na API de categorias do ML
+                    BuyingMode = "classified" // veículos são categoria de classificados no ML
                 });
             }
 
@@ -183,7 +184,8 @@ public class MercadoLivrePublicacaoService : IMercadoLivrePublicacaoService
                         ? "Veículo consignado em perfeitas condições."
                         : veiculo.TextoContrato,
                     UrlsFotos = fotos,
-                    CategoriaML = "MLB1744" // placeholder
+                    CategoriaML = "MLB1744", // placeholder
+                    BuyingMode = "classified" // veículos são categoria de classificados no ML
                 });
             }
 

@@ -53,8 +53,14 @@ REPETICOES_OS_PENDENTE = 1
 # Repetições da parte CONCLUÍDA (proposta vendida, OS paga): alto de
 # propósito — dominam o volume total e são o que sustenta um fluxo de caixa
 # saudável no dashboard (ver DESPESAS_CATALOGO mais abaixo pra mais contexto).
+# A concessionária não tem um estágio "vendido mas não retirado" — "concluida"
+# já é o fim de fluxo. Pra nivelar a oficina com isso, a fatia "paga" da OS é
+# dividida: a maioria vira "entregue" (paga E retirada — fim de fluxo real,
+# equivalente a "concluida"), sobrando só uma minoria em "finalizadaPaga"
+# (paga, aguardando retirada) — mesma soma de antes, mesma densidade total.
 REPETICOES_PROPOSTA_CONCLUIDA = 10
-REPETICOES_OS_PAGA = 10
+REPETICOES_OS_PAGA = 3
+REPETICOES_OS_ENTREGUE = 7
 
 REPETICOES_CONSIGNACAO = 3
 
@@ -891,10 +897,13 @@ def gerar_ordens_servico(veiculos_cliente_chaves, clientes_por_veiculo, mecanico
     """5 tipos de serviço em cada status. Status pendente/cancelada/
     emAndamento/finalizadaPendente ("aguardando pagamento") repetem pouco
     (REPETICOES_OS_PENDENTE) — minoria de propósito, pra demonstração não
-    parecer cheia de OS travada esperando cobrança. finalizadaPaga repete
-    muito mais (REPETICOES_OS_PAGA) — maioria do volume e da receita. Cada OS
-    ganha de 1 a 4 componentes (estoque, cliente ou encomenda) e, na maioria
-    das vezes, um preset de checklist."""
+    parecer cheia de OS travada esperando cobrança. A parte paga se divide em
+    finalizadaPaga (paga, aguardando retirada — minoria, REPETICOES_OS_PAGA) e
+    entregue (paga E retirada pelo cliente — conclusão real do fluxo, maioria,
+    REPETICOES_OS_ENTREGUE), nivelando a oficina com o funil da concessionária
+    onde "concluida" já é o fim de fluxo. Cada OS ganha de 1 a 4 componentes
+    (estoque, cliente ou encomenda) e, na maioria das vezes, um preset de
+    checklist."""
     ordens = []
     seq = id_seq("os")
 
@@ -917,7 +926,7 @@ def gerar_ordens_servico(veiculos_cliente_chaves, clientes_por_veiculo, mecanico
         }
         if random.random() < 0.85:
             ordem["checklistPresetChave"] = random.choice(checklist_chaves)
-        if status == "finalizadaPaga":
+        if status in ("finalizadaPaga", "entregue"):
             ordem["modoPagamento"] = random.choice(MODOS_PAGAMENTO_OS)
         return ordem
 
@@ -929,11 +938,17 @@ def gerar_ordens_servico(veiculos_cliente_chaves, clientes_por_veiculo, mecanico
             for tipo in TIPOS_OS:
                 ordens.append(nova_ordem(status, tipo, next(ciclo_pendente)))
 
-    # ---- Paga: domina o volume ----
+    # ---- Paga mas ainda não retirada: minoria dentro da parte concluída ----
     ciclo_paga = iter(ciclo_meses(len(TIPOS_OS) * REPETICOES_OS_PAGA))
     for _ in range(REPETICOES_OS_PAGA):
         for tipo in TIPOS_OS:
             ordens.append(nova_ordem("finalizadaPaga", tipo, next(ciclo_paga)))
+
+    # ---- Entregue: paga E retirada — domina o volume, fim de fluxo real ----
+    ciclo_entregue = iter(ciclo_meses(len(TIPOS_OS) * REPETICOES_OS_ENTREGUE))
+    for _ in range(REPETICOES_OS_ENTREGUE):
+        for tipo in TIPOS_OS:
+            ordens.append(nova_ordem("entregue", tipo, next(ciclo_entregue)))
 
     return ordens
 

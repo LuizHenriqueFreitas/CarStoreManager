@@ -103,21 +103,31 @@ public class OrdemServicoService : IOrdemServicoService
             
             foreach (var itemDto in dto.Itens)
             {
-                var componente = await _componenteRepository.GetByIdAsync(itemDto.ComponenteId);
+                // Recepção só pode escolher Estoque ou Cliente — Encomenda
+                // só nasce via fluxo de RequisicaoPeca atendida.
+                var origem = OrigemItemOrdemServico.Estoque;
+                if (!string.IsNullOrWhiteSpace(itemDto.Origem) &&
+                    Enum.TryParse<OrigemItemOrdemServico>(itemDto.Origem, true, out var parsed) &&
+                    parsed != OrigemItemOrdemServico.Encomenda)
+                {
+                    origem = parsed;
+                }
+
+                if (origem == OrigemItemOrdemServico.Cliente)
+                {
+                    // Peça trazida pelo cliente: sem catálogo, sem estoque, sem
+                    // valor — só o nome digitado na hora, pra registro.
+                    if (string.IsNullOrWhiteSpace(itemDto.DescricaoLivre)) continue;
+                    ordem.AdicionarItem(new ItemOrdemServico(ordem.Id, itemDto.Quantidade, itemDto.DescricaoLivre));
+                    continue;
+                }
+
+                if (itemDto.ComponenteId is not Guid componenteId) continue;
+                var componente = await _componenteRepository.GetByIdAsync(componenteId);
                 if (componente != null)
                 {
-                    // Recepção só pode escolher Estoque ou Cliente — Encomenda
-                    // só nasce via fluxo de RequisicaoPeca atendida.
-                    var origem = OrigemItemOrdemServico.Estoque;
-                    if (!string.IsNullOrWhiteSpace(itemDto.Origem) &&
-                        Enum.TryParse<OrigemItemOrdemServico>(itemDto.Origem, true, out var parsed) &&
-                        parsed != OrigemItemOrdemServico.Encomenda)
-                    {
-                        origem = parsed;
-                    }
-
                     ordem.AdicionarItem(new ItemOrdemServico(
-                        itemDto.ComponenteId,
+                        componenteId,
                         ordem.Id,
                         itemDto.Quantidade,
                         itemDto.ValorUnitario,
@@ -165,9 +175,7 @@ public class OrdemServicoService : IOrdemServicoService
     public async Task<Result> AdicionarItemAsync(AdicionarItemOrdemServicoDTO dto)
     {
         var ordem = await _repository.GetByIdAsync(dto.OrdemServicoId);
-        var componente = await _componenteRepository.GetByIdAsync(dto.ComponenteId);
-
-        if (ordem is null || componente is null)
+        if (ordem is null)
             return Result.Fail("Dados inválidos");
 
         if (!Enum.TryParse<Domain.Enums.OrigemItemOrdemServico>(dto.Origem, true, out var origem))
@@ -180,17 +188,37 @@ public class OrdemServicoService : IOrdemServicoService
 
         try
         {
-            // Valor unitário SEMPRE vem do componente — mecânico não tem autonomia
-            // pra precificar peças (ver memory: política da oficina).
-            var valorUnit = componente.ValorVenda;
+            ItemOrdemServico item;
+            string descricaoAlerta;
+            decimal valorUnit = 0;
 
-            var item = new ItemOrdemServico(
-                dto.ComponenteId,
-                dto.OrdemServicoId,
-                dto.Quantidade,
-                valorUnit,
-                origem
-            );
+            if (origem == Domain.Enums.OrigemItemOrdemServico.Cliente)
+            {
+                // Peça trazida pelo cliente: sem catálogo, sem estoque, sem valor
+                // — só o nome digitado na hora, pra registro.
+                if (string.IsNullOrWhiteSpace(dto.DescricaoLivre))
+                    return Result.Fail("Informe o nome da peça trazida pelo cliente.");
+
+                item = new ItemOrdemServico(dto.OrdemServicoId, dto.Quantidade, dto.DescricaoLivre);
+                descricaoAlerta = $"Novo item trazido pelo cliente adicionado durante o serviço: " +
+                    $"{item.DescricaoLivre} ({dto.Quantidade}×). OS pausada — aguardando reaprovação do cliente.";
+            }
+            else
+            {
+                var componente = await _componenteRepository.GetByIdAsync(dto.ComponenteId);
+                if (componente is null)
+                    return Result.Fail("Componente não encontrado.");
+
+                // Valor unitário SEMPRE vem do componente — mecânico não tem autonomia
+                // pra precificar peças (ver memory: política da oficina).
+                valorUnit = componente.ValorVenda;
+                item = new ItemOrdemServico(dto.ComponenteId, dto.OrdemServicoId, dto.Quantidade, valorUnit, origem);
+                descricaoAlerta =
+                    $"Novo componente adicionado durante o serviço: {componente.Nome} " +
+                    $"({dto.Quantidade}× R$ {valorUnit:N2} = R$ {(valorUnit * dto.Quantidade):N2}). " +
+                    $"Novo valor total da OS: R$ {ordem.GetValorTotal():N2}. " +
+                    "OS pausada — aguardando reaprovação do cliente.";
+            }
 
             // Se a OS já está em andamento, isso é aumento de escopo — pausa e alerta
             // o cliente. O alerta precisa ser criado ANTES de Pausar(), porque Pausar()
@@ -201,17 +229,11 @@ public class OrdemServicoService : IOrdemServicoService
 
             if (precisaAlertar)
             {
-                var descricao =
-                    $"Novo componente adicionado durante o serviço: {componente.Nome} " +
-                    $"({dto.Quantidade}× R$ {valorUnit:N2} = R$ {(valorUnit * dto.Quantidade):N2}). " +
-                    $"Novo valor total da OS: R$ {ordem.GetValorTotal():N2}. " +
-                    "OS pausada — aguardando reaprovação do cliente.";
-
                 ordem.Pausar();
 
                 if (_alertaRepo is not null)
                 {
-                    var alerta = new AlertaOS(ordem.Id, ordem.GetMecacnicoId(), descricao);
+                    var alerta = new AlertaOS(ordem.Id, ordem.GetMecacnicoId(), descricaoAlerta);
                     await _alertaRepo.AddAsync(alerta);
                 }
             }

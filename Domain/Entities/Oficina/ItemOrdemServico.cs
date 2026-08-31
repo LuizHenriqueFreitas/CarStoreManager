@@ -11,7 +11,10 @@ namespace CarStoreManager.Domain.Entities.Oficina;
 */
 public class ItemOrdemServico : Entity
 {
-    public Guid ComponenteId { get; private set; }
+    // Null quando Origem=Cliente — peça trazida pelo cliente não tem cadastro
+    // no catálogo, não passa pelo estoque e não tem valor. Só existe pra
+    // registro (ver DescricaoLivre).
+    public Guid? ComponenteId { get; private set; }
     public Guid OrdemServicoId { get; private set; }
 
     public int Quantidade { get; private set; }
@@ -25,8 +28,12 @@ public class ItemOrdemServico : Entity
     // Quando o item foi recebido (transição AguardandoChegada → Recebido).
     public DateTime? DataRecebimento { get; private set; }
 
+    /// <summary>Nome digitado na hora — só preenchido quando Origem=Cliente (ComponenteId nulo).</summary>
+    public string? DescricaoLivre { get; private set; }
+
     protected ItemOrdemServico() { }
 
+    /// <summary>Peça do catálogo (Estoque ou Encomenda) — referencia um Componente real, com valor vindo do cadastro.</summary>
     public ItemOrdemServico(
         Guid componenteId,
         Guid ordemServicoId,
@@ -36,6 +43,12 @@ public class ItemOrdemServico : Entity
     {
         if (quantidade <= 0)
             throw new ArgumentException("Quantidade inválida");
+        if (componenteId == Guid.Empty)
+            throw new ArgumentException("Componente inválido.", nameof(componenteId));
+        if (origem == OrigemItemOrdemServico.Cliente)
+            throw new ArgumentException(
+                "Peça trazida pelo cliente não referencia um componente do catálogo — use o construtor de item avulso.",
+                nameof(origem));
 
         ComponenteId = componenteId;
         OrdemServicoId = ordemServicoId;
@@ -51,10 +64,32 @@ public class ItemOrdemServico : Entity
         CalcularTotal();
     }
 
+    /// <summary>
+    /// Peça trazida pelo cliente — sem catálogo, sem estoque, sem valor. Só
+    /// um nome digitado na hora da marcação na OS, pra fins de registro.
+    /// </summary>
+    public ItemOrdemServico(Guid ordemServicoId, int quantidade, string descricaoLivre)
+    {
+        if (quantidade <= 0)
+            throw new ArgumentException("Quantidade inválida");
+        if (string.IsNullOrWhiteSpace(descricaoLivre))
+            throw new ArgumentException("Descrição da peça é obrigatória.", nameof(descricaoLivre));
+
+        ComponenteId = null;
+        OrdemServicoId = ordemServicoId;
+        Quantidade = quantidade;
+        ValorUnitario = new Dinheiro(0);
+        Origem = OrigemItemOrdemServico.Cliente;
+        StatusItem = StatusItemOrdemServico.Disponivel;
+        DescricaoLivre = descricaoLivre.Trim();
+
+        CalcularTotal();
+    }
+
     /* ================================
         metodos GETTERS dos atributos
      ================================*/
-    public Guid GetComponentId() => ComponenteId;
+    public Guid? GetComponentId() => ComponenteId;
     public Guid GetOrdemServicoId() => OrdemServicoId;
     public int GetQuantidade() => Quantidade;
     public decimal GetValorUnitario() => ValorUnitario.GetValorDinheiro();

@@ -867,8 +867,10 @@ public class ImportacaoDadosService : IImportacaoDadosService
         });
 
         if (!rp.IsSuccess) return Parar("finalizadaPendente", "registrar o pagamento", rp.Error);
+        if (item.Cenario == "finalizadaPaga") return "finalizadaPaga";
 
-        return "finalizadaPaga";
+        var re = await _ordemServicoService.EntregarAsync(ordemId);
+        return re.IsSuccess ? "entregue" : Parar("finalizadaPaga", "marcar a OS como entregue", re.Error);
     }
 
     // ============================================================

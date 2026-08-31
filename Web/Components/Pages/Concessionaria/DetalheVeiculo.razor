@@ -373,14 +373,13 @@ else
         </div>
     </div>
 
-    <ConfirmacaoSenhaModal
+    <ConfirmacaoModal
         Visivel="modalSalvarEdicaoVisivel"
         Titulo="Confirmar alterações"
-        Descricao="@($"Salvar alterações em {Marca} {Modelo}? Confirme com sua senha.")"
-        TextoBotao="Salvar alterações"
-        OnConfirmar="ConfirmarSalvarEdicao"
-        OnCancelar="() => modalSalvarEdicaoVisivel = false"
-        @ref="modalSalvarEdicaoRef" />
+        Mensagem="@($"Deseja salvar as alterações em {Marca} {Modelo}?")"
+        TextoConfirmar="Salvar"
+        OnConfirmar="SalvarAlteracoes"
+        OnCancelar="() => modalSalvarEdicaoVisivel = false" />
 
     @if (IsConsignado)
     {
@@ -584,7 +583,6 @@ else
     private bool salvando = false;
     private string? erroEdicao;
 
-    private ConfirmacaoSenhaModal? modalSalvarEdicaoRef;
     private ConfirmacaoSenhaModal? modalExclusaoRef;
     private ConfirmacaoSenhaModal? modalRenovarRef;
 
@@ -706,11 +704,8 @@ else
         modalSalvarEdicaoVisivel = true;
     }
 
-    private async Task ConfirmarSalvarEdicao(string senha)
+    private async Task SalvarAlteracoes()
     {
-        var ok = await VerificarSenha(senha);
-        if (!ok) { modalSalvarEdicaoRef?.MostrarErro(); return; }
-
         modalSalvarEdicaoVisivel = false;
         salvando = true;
         try

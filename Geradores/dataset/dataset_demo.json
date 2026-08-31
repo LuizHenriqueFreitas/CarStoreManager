@@ -6766,7 +6766,7 @@
       "valorParcelaFinanciamento": 2700,
       "taxaJurosMensalFinanciamento": 1.5,
       "dataCriacao": "2026-08-20T16:00:00",
-      "dataAprovacao": "2026-08-29T10:00:00",
+      "dataAprovacao": "2026-08-31T10:00:00",
       "cenario": "concluidaFinanciada"
     },
     {
@@ -6964,7 +6964,7 @@
       "valorParcelaFinanciamento": 3400,
       "taxaJurosMensalFinanciamento": 1,
       "dataCriacao": "2026-08-26T14:00:00",
-      "dataAprovacao": "2026-08-29T10:00:00",
+      "dataAprovacao": "2026-08-31T10:00:00",
       "cenario": "concluidaFinanciada"
     },
     {
@@ -8137,54 +8137,116 @@
     },
     {
       "chave": "os-21",
-      "veiculoClienteChave": "vcli-34",
-      "clienteChave": "cli-39",
-      "mecanicoChave": "usr-12",
+      "veiculoClienteChave": "vcli-32",
+      "clienteChave": "cli-37",
+      "mecanicoChave": "usr-13",
       "tipo": "Manutencao",
       "descricao": "Barulho estranho ao frear",
-      "prazoDiasAPartirDaCriacao": 15,
-      "custoServico": 1020,
-      "dataCriacao": "2026-08-03T11:00:00",
+      "prazoDiasAPartirDaCriacao": 10,
+      "custoServico": 520,
+      "dataCriacao": "2026-08-15T10:00:00",
       "cenario": "finalizadaPaga",
       "itens": [
         {
-          "componenteChave": "comp-39",
-          "quantidade": 3,
-          "origem": "Encomenda"
+          "componenteChave": "comp-5",
+          "quantidade": 1,
+          "origem": "Cliente"
+        },
+        {
+          "componenteChave": "comp-33",
+          "quantidade": 1,
+          "origem": "Estoque"
+        }
+      ],
+      "checklistPresetChave": "chk-6",
+      "modoPagamento": "Dinheiro"
+    },
+    {
+      "chave": "os-22",
+      "veiculoClienteChave": "vcli-43",
+      "clienteChave": "cli-37",
+      "mecanicoChave": "usr-9",
+      "tipo": "Revisao",
+      "descricao": "Revisão pré-viagem",
+      "prazoDiasAPartirDaCriacao": 20,
+      "custoServico": 1170,
+      "dataCriacao": "2026-06-24T09:00:00",
+      "cenario": "finalizadaPaga",
+      "itens": [
+        {
+          "componenteChave": "comp-44",
+          "quantidade": 2,
+          "origem": "Estoque"
         },
         {
           "componenteChave": "comp-31",
+          "quantidade": 1,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-14",
           "quantidade": 3,
           "origem": "Estoque"
         },
         {
-          "componenteChave": "comp-11",
+          "componenteChave": "comp-38",
+          "quantidade": 3,
+          "origem": "Estoque"
+        }
+      ],
+      "checklistPresetChave": "chk-5",
+      "modoPagamento": "Pix"
+    },
+    {
+      "chave": "os-23",
+      "veiculoClienteChave": "vcli-4",
+      "clienteChave": "cli-35",
+      "mecanicoChave": "usr-8",
+      "tipo": "TrocaPecas",
+      "descricao": "Troca de amortecedores dianteiros",
+      "prazoDiasAPartirDaCriacao": 3,
+      "custoServico": 1770,
+      "dataCriacao": "2025-05-13T08:00:00",
+      "cenario": "finalizadaPaga",
+      "itens": [
+        {
+          "componenteChave": "comp-6",
+          "quantidade": 2,
+          "origem": "Cliente"
+        },
+        {
+          "componenteChave": "comp-14",
           "quantidade": 1,
           "origem": "Encomenda"
         },
         {
-          "componenteChave": "comp-15",
-          "quantidade": 3,
-          "origem": "Cliente"
+          "componenteChave": "comp-29",
+          "quantidade": 2,
+          "origem": "Estoque"
         }
       ],
-      "checklistPresetChave": "chk-6",
-      "modoPagamento": "CartaoDebito"
+      "checklistPresetChave": "chk-5",
+      "modoPagamento": "Pix"
     },
     {
-      "chave": "os-22",
-      "veiculoClienteChave": "vcli-30",
-      "clienteChave": "cli-25",
-      "mecanicoChave": "usr-7",
-      "tipo": "Revisao",
-      "descricao": "Revisão programada dos 20.000 km",
-      "prazoDiasAPartirDaCriacao": 7,
-      "custoServico": 1320,
-      "dataCriacao": "2026-06-05T09:00:00",
+      "chave": "os-24",
+      "veiculoClienteChave": "vcli-40",
+      "clienteChave": "cli-12",
+      "mecanicoChave": "usr-10",
+      "tipo": "Diagnostico",
+      "descricao": "Carro não liga pela manhã",
+      "prazoDiasAPartirDaCriacao": 15,
+      "custoServico": 1170,
+      "dataCriacao": "2025-07-15T09:00:00",
       "cenario": "finalizadaPaga",
       "itens": [
         {
-          "componenteChave": "comp-13",
+          "componenteChave": "comp-25",
+          "quantidade": 1,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-9",
           "quantidade": 3,
           "origem": "Estoque"
         }
@@ -8193,15 +8255,15 @@
       "modoPagamento": "Transferencia"
     },
     {
-      "chave": "os-23",
+      "chave": "os-25",
       "veiculoClienteChave": "vcli-7",
       "clienteChave": "cli-3",
       "mecanicoChave": "usr-8",
-      "tipo": "TrocaPecas",
-      "descricao": "Troca de bateria",
+      "tipo": "Outro",
+      "descricao": "Instalação de multimídia",
       "prazoDiasAPartirDaCriacao": 10,
       "custoServico": 2020,
-      "dataCriacao": "2025-05-02T17:00:00",
+      "dataCriacao": "2026-01-02T17:00:00",
       "cenario": "finalizadaPaga",
       "itens": [
         {
@@ -8213,15 +8275,15 @@
       "modoPagamento": "Transferencia"
     },
     {
-      "chave": "os-24",
+      "chave": "os-26",
       "veiculoClienteChave": "vcli-1",
       "clienteChave": "cli-9",
       "mecanicoChave": "usr-12",
-      "tipo": "Diagnostico",
-      "descricao": "Ar-condicionado não gela",
+      "tipo": "Manutencao",
+      "descricao": "Vibração no volante em alta velocidade",
       "prazoDiasAPartirDaCriacao": 5,
       "custoServico": 220,
-      "dataCriacao": "2025-07-23T17:00:00",
+      "dataCriacao": "2025-09-23T17:00:00",
       "cenario": "finalizadaPaga",
       "itens": [
         {
@@ -8248,15 +8310,15 @@
       "modoPagamento": "Dinheiro"
     },
     {
-      "chave": "os-25",
+      "chave": "os-27",
       "veiculoClienteChave": "vcli-19",
       "clienteChave": "cli-6",
       "mecanicoChave": "usr-12",
-      "tipo": "Outro",
-      "descricao": "Aplicação de insulfilm",
+      "tipo": "Revisao",
+      "descricao": "Revisão programada dos 40.000 km",
       "prazoDiasAPartirDaCriacao": 3,
       "custoServico": 120,
-      "dataCriacao": "2026-01-23T08:00:00",
+      "dataCriacao": "2024-10-23T08:00:00",
       "cenario": "finalizadaPaga",
       "itens": [
         {
@@ -8269,15 +8331,15 @@
       "modoPagamento": "CartaoCredito"
     },
     {
-      "chave": "os-26",
+      "chave": "os-28",
       "veiculoClienteChave": "vcli-24",
       "clienteChave": "cli-18",
       "mecanicoChave": "usr-7",
-      "tipo": "Manutencao",
-      "descricao": "Vazamento de óleo identificado",
+      "tipo": "TrocaPecas",
+      "descricao": "Troca de correia dentada",
       "prazoDiasAPartirDaCriacao": 7,
       "custoServico": 2170,
-      "dataCriacao": "2025-09-19T13:00:00",
+      "dataCriacao": "2026-04-19T13:00:00",
       "cenario": "finalizadaPaga",
       "itens": [
         {
@@ -8300,15 +8362,15 @@
       "modoPagamento": "CartaoCredito"
     },
     {
-      "chave": "os-27",
+      "chave": "os-29",
       "veiculoClienteChave": "vcli-12",
       "clienteChave": "cli-48",
       "mecanicoChave": "usr-11",
-      "tipo": "Revisao",
-      "descricao": "Revisão pré-viagem",
+      "tipo": "Diagnostico",
+      "descricao": "Ar-condicionado não gela",
       "prazoDiasAPartirDaCriacao": 5,
       "custoServico": 1070,
-      "dataCriacao": "2024-10-19T14:00:00",
+      "dataCriacao": "2025-03-19T14:00:00",
       "cenario": "finalizadaPaga",
       "itens": [
         {
@@ -8336,15 +8398,15 @@
       "modoPagamento": "Dinheiro"
     },
     {
-      "chave": "os-28",
+      "chave": "os-30",
       "veiculoClienteChave": "vcli-11",
       "clienteChave": "cli-26",
       "mecanicoChave": "usr-12",
-      "tipo": "TrocaPecas",
-      "descricao": "Troca de pastilhas e disco de freio",
+      "tipo": "Outro",
+      "descricao": "Instalação de acessório solicitado pelo cliente",
       "prazoDiasAPartirDaCriacao": 20,
       "custoServico": 370,
-      "dataCriacao": "2026-04-27T10:00:00",
+      "dataCriacao": "2024-09-27T10:00:00",
       "cenario": "finalizadaPaga",
       "itens": [
         {
@@ -8372,15 +8434,15 @@
       "modoPagamento": "Dinheiro"
     },
     {
-      "chave": "os-29",
+      "chave": "os-31",
       "veiculoClienteChave": "vcli-50",
       "clienteChave": "cli-2",
       "mecanicoChave": "usr-8",
-      "tipo": "Diagnostico",
-      "descricao": "Ar-condicionado não gela",
+      "tipo": "Manutencao",
+      "descricao": "Vibração no volante em alta velocidade",
       "prazoDiasAPartirDaCriacao": 7,
       "custoServico": 120,
-      "dataCriacao": "2025-03-07T17:00:00",
+      "dataCriacao": "2025-06-07T17:00:00",
       "cenario": "finalizadaPaga",
       "itens": [
         {
@@ -8403,15 +8465,15 @@
       "modoPagamento": "Dinheiro"
     },
     {
-      "chave": "os-30",
+      "chave": "os-32",
       "veiculoClienteChave": "vcli-11",
       "clienteChave": "cli-26",
       "mecanicoChave": "usr-7",
-      "tipo": "Outro",
-      "descricao": "Aplicação de insulfilm",
+      "tipo": "Revisao",
+      "descricao": "Revisão programada dos 40.000 km",
       "prazoDiasAPartirDaCriacao": 20,
       "custoServico": 1370,
-      "dataCriacao": "2024-09-12T15:00:00",
+      "dataCriacao": "2025-11-12T15:00:00",
       "cenario": "finalizadaPaga",
       "itens": [
         {
@@ -8439,15 +8501,15 @@
       "modoPagamento": "Pix"
     },
     {
-      "chave": "os-31",
+      "chave": "os-33",
       "veiculoClienteChave": "vcli-39",
       "clienteChave": "cli-37",
       "mecanicoChave": "usr-9",
-      "tipo": "Manutencao",
-      "descricao": "Vibração no volante em alta velocidade",
+      "tipo": "TrocaPecas",
+      "descricao": "Troca de bateria",
       "prazoDiasAPartirDaCriacao": 7,
       "custoServico": 1920,
-      "dataCriacao": "2025-06-01T13:00:00",
+      "dataCriacao": "2025-01-01T13:00:00",
       "cenario": "finalizadaPaga",
       "itens": [
         {
@@ -8464,15 +8526,15 @@
       "modoPagamento": "Transferencia"
     },
     {
-      "chave": "os-32",
+      "chave": "os-34",
       "veiculoClienteChave": "vcli-17",
       "clienteChave": "cli-38",
       "mecanicoChave": "usr-10",
-      "tipo": "Revisao",
-      "descricao": "Revisão pré-viagem",
+      "tipo": "Diagnostico",
+      "descricao": "Ar-condicionado não gela",
       "prazoDiasAPartirDaCriacao": 7,
       "custoServico": 1920,
-      "dataCriacao": "2025-11-16T11:00:00",
+      "dataCriacao": "2026-02-16T11:00:00",
       "cenario": "finalizadaPaga",
       "itens": [
         {
@@ -8495,15 +8557,15 @@
       "modoPagamento": "Pix"
     },
     {
-      "chave": "os-33",
+      "chave": "os-35",
       "veiculoClienteChave": "vcli-21",
       "clienteChave": "cli-37",
       "mecanicoChave": "usr-12",
-      "tipo": "TrocaPecas",
-      "descricao": "Troca de amortecedores dianteiros",
+      "tipo": "Outro",
+      "descricao": "Aplicação de insulfilm",
       "prazoDiasAPartirDaCriacao": 10,
       "custoServico": 1820,
-      "dataCriacao": "2025-01-01T13:00:00",
+      "dataCriacao": "2024-11-01T13:00:00",
       "cenario": "finalizadaPaga",
       "itens": [
         {
@@ -8521,87 +8583,103 @@
       "modoPagamento": "Pix"
     },
     {
-      "chave": "os-34",
-      "veiculoClienteChave": "vcli-37",
-      "clienteChave": "cli-11",
-      "mecanicoChave": "usr-10",
-      "tipo": "Diagnostico",
-      "descricao": "Carro não liga pela manhã",
-      "prazoDiasAPartirDaCriacao": 15,
-      "custoServico": 720,
-      "dataCriacao": "2026-02-16T11:00:00",
-      "cenario": "finalizadaPaga",
+      "chave": "os-36",
+      "veiculoClienteChave": "vcli-26",
+      "clienteChave": "cli-32",
+      "mecanicoChave": "usr-8",
+      "tipo": "Manutencao",
+      "descricao": "Vibração no volante em alta velocidade",
+      "prazoDiasAPartirDaCriacao": 2,
+      "custoServico": 1770,
+      "dataCriacao": "2025-04-15T14:00:00",
+      "cenario": "entregue",
       "itens": [
         {
-          "componenteChave": "comp-48",
-          "quantidade": 1,
-          "origem": "Encomenda"
-        },
-        {
-          "componenteChave": "comp-16",
-          "quantidade": 1,
-          "origem": "Estoque"
+          "componenteChave": "comp-1",
+          "quantidade": 2,
+          "origem": "Cliente"
         }
       ],
       "checklistPresetChave": "chk-3",
-      "modoPagamento": "Pix"
+      "modoPagamento": "CartaoDebito"
     },
     {
-      "chave": "os-35",
-      "veiculoClienteChave": "vcli-50",
-      "clienteChave": "cli-2",
-      "mecanicoChave": "usr-7",
-      "tipo": "Outro",
-      "descricao": "Instalação de acessório solicitado pelo cliente",
-      "prazoDiasAPartirDaCriacao": 2,
-      "custoServico": 1670,
-      "dataCriacao": "2024-11-20T08:00:00",
-      "cenario": "finalizadaPaga",
+      "chave": "os-37",
+      "veiculoClienteChave": "vcli-40",
+      "clienteChave": "cli-12",
+      "mecanicoChave": "usr-10",
+      "tipo": "Revisao",
+      "descricao": "Revisão programada dos 20.000 km",
+      "prazoDiasAPartirDaCriacao": 10,
+      "custoServico": 920,
+      "dataCriacao": "2026-04-08T13:00:00",
+      "cenario": "entregue",
       "itens": [
         {
-          "componenteChave": "comp-31",
+          "componenteChave": "comp-40",
+          "quantidade": 1,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-22",
+          "quantidade": 1,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-24",
+          "quantidade": 2,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-12",
           "quantidade": 1,
           "origem": "Estoque"
         }
       ],
       "checklistPresetChave": "chk-5",
-      "modoPagamento": "CartaoDebito"
+      "modoPagamento": "Pix"
     },
     {
-      "chave": "os-36",
-      "veiculoClienteChave": "vcli-32",
-      "clienteChave": "cli-37",
-      "mecanicoChave": "usr-8",
-      "tipo": "Manutencao",
-      "descricao": "Suspensão fazendo ruído em buracos",
-      "prazoDiasAPartirDaCriacao": 7,
-      "custoServico": 820,
-      "dataCriacao": "2025-08-25T10:00:00",
-      "cenario": "finalizadaPaga",
+      "chave": "os-38",
+      "veiculoClienteChave": "vcli-7",
+      "clienteChave": "cli-3",
+      "mecanicoChave": "usr-10",
+      "tipo": "TrocaPecas",
+      "descricao": "Troca de correia dentada",
+      "prazoDiasAPartirDaCriacao": 10,
+      "custoServico": 1470,
+      "dataCriacao": "2025-01-28T15:00:00",
+      "cenario": "entregue",
       "itens": [
         {
-          "componenteChave": "comp-34",
-          "quantidade": 2,
-          "origem": "Cliente"
+          "componenteChave": "comp-10",
+          "quantidade": 1,
+          "origem": "Encomenda"
+        },
+        {
+          "componenteChave": "comp-52",
+          "quantidade": 1,
+          "origem": "Estoque"
         }
       ],
-      "modoPagamento": "Dinheiro"
+      "checklistPresetChave": "chk-4",
+      "modoPagamento": "Pix"
     },
     {
-      "chave": "os-37",
-      "veiculoClienteChave": "vcli-33",
-      "clienteChave": "cli-18",
+      "chave": "os-39",
+      "veiculoClienteChave": "vcli-41",
+      "clienteChave": "cli-21",
       "mecanicoChave": "usr-11",
-      "tipo": "Revisao",
-      "descricao": "Revisão pré-viagem",
-      "prazoDiasAPartirDaCriacao": 20,
-      "custoServico": 670,
-      "dataCriacao": "2026-03-15T09:00:00",
-      "cenario": "finalizadaPaga",
+      "tipo": "Diagnostico",
+      "descricao": "Ar-condicionado não gela",
+      "prazoDiasAPartirDaCriacao": 5,
+      "custoServico": 920,
+      "dataCriacao": "2025-10-18T08:00:00",
+      "cenario": "entregue",
       "itens": [
         {
-          "componenteChave": "comp-21",
-          "quantidade": 3,
+          "componenteChave": "comp-7",
+          "quantidade": 1,
           "origem": "Estoque"
         },
         {
@@ -8610,69 +8688,12 @@
           "origem": "Estoque"
         },
         {
-          "componenteChave": "comp-1",
-          "quantidade": 1,
-          "origem": "Cliente"
-        },
-        {
-          "componenteChave": "comp-44",
+          "componenteChave": "comp-11",
           "quantidade": 1,
           "origem": "Estoque"
-        }
-      ],
-      "checklistPresetChave": "chk-4",
-      "modoPagamento": "Transferencia"
-    },
-    {
-      "chave": "os-38",
-      "veiculoClienteChave": "vcli-22",
-      "clienteChave": "cli-2",
-      "mecanicoChave": "usr-11",
-      "tipo": "TrocaPecas",
-      "descricao": "Troca de correia dentada",
-      "prazoDiasAPartirDaCriacao": 7,
-      "custoServico": 1470,
-      "dataCriacao": "2025-02-07T15:00:00",
-      "cenario": "finalizadaPaga",
-      "itens": [
-        {
-          "componenteChave": "comp-24",
-          "quantidade": 3,
-          "origem": "Estoque"
         },
         {
-          "componenteChave": "comp-26",
-          "quantidade": 3,
-          "origem": "Estoque"
-        },
-        {
-          "componenteChave": "comp-18",
-          "quantidade": 1,
-          "origem": "Cliente"
-        }
-      ],
-      "checklistPresetChave": "chk-2",
-      "modoPagamento": "Transferencia"
-    },
-    {
-      "chave": "os-39",
-      "veiculoClienteChave": "vcli-28",
-      "clienteChave": "cli-9",
-      "mecanicoChave": "usr-12",
-      "tipo": "Diagnostico",
-      "descricao": "Carro não liga pela manhã",
-      "prazoDiasAPartirDaCriacao": 3,
-      "custoServico": 570,
-      "dataCriacao": "2025-12-16T08:00:00",
-      "cenario": "finalizadaPaga",
-      "itens": [
-        {
-          "componenteChave": "comp-27",
-          "quantidade": 3,
-          "origem": "Estoque"
-        },
-        {
-          "componenteChave": "comp-32",
+          "componenteChave": "comp-4",
           "quantidade": 1,
           "origem": "Estoque"
         }
@@ -8682,23 +8703,43 @@
     },
     {
       "chave": "os-40",
-      "veiculoClienteChave": "vcli-36",
-      "clienteChave": "cli-23",
-      "mecanicoChave": "usr-6",
+      "veiculoClienteChave": "vcli-2",
+      "clienteChave": "cli-10",
+      "mecanicoChave": "usr-12",
       "tipo": "Outro",
-      "descricao": "Instalação de multimídia",
-      "prazoDiasAPartirDaCriacao": 2,
-      "custoServico": 620,
-      "dataCriacao": "2025-04-02T11:00:00",
-      "cenario": "finalizadaPaga",
+      "descricao": "Instalação de acessório solicitado pelo cliente",
+      "prazoDiasAPartirDaCriacao": 5,
+      "custoServico": 2020,
+      "dataCriacao": "2025-09-07T17:00:00",
+      "cenario": "entregue",
       "itens": [
         {
-          "componenteChave": "comp-31",
-          "quantidade": 1,
+          "componenteChave": "comp-50",
+          "quantidade": 3,
           "origem": "Estoque"
         },
         {
-          "componenteChave": "comp-54",
+          "componenteChave": "comp-19",
+          "quantidade": 2,
+          "origem": "Estoque"
+        }
+      ],
+      "modoPagamento": "CartaoCredito"
+    },
+    {
+      "chave": "os-41",
+      "veiculoClienteChave": "vcli-40",
+      "clienteChave": "cli-12",
+      "mecanicoChave": "usr-10",
+      "tipo": "Manutencao",
+      "descricao": "Vibração no volante em alta velocidade",
+      "prazoDiasAPartirDaCriacao": 15,
+      "custoServico": 570,
+      "dataCriacao": "2024-09-28T10:00:00",
+      "cenario": "entregue",
+      "itens": [
+        {
+          "componenteChave": "comp-27",
           "quantidade": 1,
           "origem": "Estoque"
         },
@@ -8706,230 +8747,10 @@
           "componenteChave": "comp-41",
           "quantidade": 1,
           "origem": "Estoque"
-        }
-      ],
-      "checklistPresetChave": "chk-4",
-      "modoPagamento": "Dinheiro"
-    },
-    {
-      "chave": "os-41",
-      "veiculoClienteChave": "vcli-23",
-      "clienteChave": "cli-23",
-      "mecanicoChave": "usr-9",
-      "tipo": "Manutencao",
-      "descricao": "Vazamento de óleo identificado",
-      "prazoDiasAPartirDaCriacao": 20,
-      "custoServico": 1020,
-      "dataCriacao": "2026-05-12T14:00:00",
-      "cenario": "finalizadaPaga",
-      "itens": [
+        },
         {
-          "componenteChave": "comp-50",
+          "componenteChave": "comp-40",
           "quantidade": 1,
-          "origem": "Estoque"
-        },
-        {
-          "componenteChave": "comp-48",
-          "quantidade": 1,
-          "origem": "Estoque"
-        },
-        {
-          "componenteChave": "comp-29",
-          "quantidade": 1,
-          "origem": "Encomenda"
-        },
-        {
-          "componenteChave": "comp-6",
-          "quantidade": 3,
-          "origem": "Estoque"
-        }
-      ],
-      "checklistPresetChave": "chk-1",
-      "modoPagamento": "Dinheiro"
-    },
-    {
-      "chave": "os-42",
-      "veiculoClienteChave": "vcli-11",
-      "clienteChave": "cli-26",
-      "mecanicoChave": "usr-11",
-      "tipo": "Revisao",
-      "descricao": "Revisão programada dos 20.000 km",
-      "prazoDiasAPartirDaCriacao": 5,
-      "custoServico": 1120,
-      "dataCriacao": "2025-10-21T13:00:00",
-      "cenario": "finalizadaPaga",
-      "itens": [
-        {
-          "componenteChave": "comp-39",
-          "quantidade": 2,
-          "origem": "Estoque"
-        },
-        {
-          "componenteChave": "comp-42",
-          "quantidade": 1,
-          "origem": "Cliente"
-        },
-        {
-          "componenteChave": "comp-26",
-          "quantidade": 3,
-          "origem": "Cliente"
-        }
-      ],
-      "modoPagamento": "CartaoCredito"
-    },
-    {
-      "chave": "os-43",
-      "veiculoClienteChave": "vcli-11",
-      "clienteChave": "cli-26",
-      "mecanicoChave": "usr-8",
-      "tipo": "TrocaPecas",
-      "descricao": "Troca de pastilhas e disco de freio",
-      "prazoDiasAPartirDaCriacao": 3,
-      "custoServico": 870,
-      "dataCriacao": "2024-12-22T13:00:00",
-      "cenario": "finalizadaPaga",
-      "itens": [
-        {
-          "componenteChave": "comp-14",
-          "quantidade": 1,
-          "origem": "Estoque"
-        }
-      ],
-      "checklistPresetChave": "chk-4",
-      "modoPagamento": "Transferencia"
-    },
-    {
-      "chave": "os-44",
-      "veiculoClienteChave": "vcli-4",
-      "clienteChave": "cli-35",
-      "mecanicoChave": "usr-6",
-      "tipo": "Diagnostico",
-      "descricao": "Ar-condicionado não gela",
-      "prazoDiasAPartirDaCriacao": 10,
-      "custoServico": 370,
-      "dataCriacao": "2026-07-04T13:00:00",
-      "cenario": "finalizadaPaga",
-      "itens": [
-        {
-          "componenteChave": "comp-6",
-          "quantidade": 2,
-          "origem": "Encomenda"
-        },
-        {
-          "componenteChave": "comp-42",
-          "quantidade": 1,
-          "origem": "Estoque"
-        }
-      ],
-      "checklistPresetChave": "chk-4",
-      "modoPagamento": "Pix"
-    },
-    {
-      "chave": "os-45",
-      "veiculoClienteChave": "vcli-9",
-      "clienteChave": "cli-26",
-      "mecanicoChave": "usr-8",
-      "tipo": "Outro",
-      "descricao": "Instalação de acessório solicitado pelo cliente",
-      "prazoDiasAPartirDaCriacao": 2,
-      "custoServico": 1220,
-      "dataCriacao": "2024-11-28T14:00:00",
-      "cenario": "finalizadaPaga",
-      "itens": [
-        {
-          "componenteChave": "comp-30",
-          "quantidade": 3,
-          "origem": "Estoque"
-        },
-        {
-          "componenteChave": "comp-35",
-          "quantidade": 3,
-          "origem": "Estoque"
-        },
-        {
-          "componenteChave": "comp-18",
-          "quantidade": 3,
-          "origem": "Estoque"
-        },
-        {
-          "componenteChave": "comp-36",
-          "quantidade": 3,
-          "origem": "Estoque"
-        }
-      ],
-      "checklistPresetChave": "chk-3",
-      "modoPagamento": "CartaoCredito"
-    },
-    {
-      "chave": "os-46",
-      "veiculoClienteChave": "vcli-35",
-      "clienteChave": "cli-4",
-      "mecanicoChave": "usr-9",
-      "tipo": "Manutencao",
-      "descricao": "Barulho estranho ao frear",
-      "prazoDiasAPartirDaCriacao": 7,
-      "custoServico": 1070,
-      "dataCriacao": "2026-02-12T15:00:00",
-      "cenario": "finalizadaPaga",
-      "itens": [
-        {
-          "componenteChave": "comp-10",
-          "quantidade": 1,
-          "origem": "Estoque"
-        },
-        {
-          "componenteChave": "comp-20",
-          "quantidade": 2,
-          "origem": "Estoque"
-        },
-        {
-          "componenteChave": "comp-1",
-          "quantidade": 2,
-          "origem": "Estoque"
-        }
-      ],
-      "modoPagamento": "CartaoCredito"
-    },
-    {
-      "chave": "os-47",
-      "veiculoClienteChave": "vcli-20",
-      "clienteChave": "cli-3",
-      "mecanicoChave": "usr-6",
-      "tipo": "Revisao",
-      "descricao": "Revisão pré-viagem",
-      "prazoDiasAPartirDaCriacao": 20,
-      "custoServico": 1020,
-      "dataCriacao": "2025-08-20T11:00:00",
-      "cenario": "finalizadaPaga",
-      "itens": [
-        {
-          "componenteChave": "comp-36",
-          "quantidade": 2,
-          "origem": "Estoque"
-        }
-      ],
-      "modoPagamento": "CartaoCredito"
-    },
-    {
-      "chave": "os-48",
-      "veiculoClienteChave": "vcli-26",
-      "clienteChave": "cli-32",
-      "mecanicoChave": "usr-9",
-      "tipo": "TrocaPecas",
-      "descricao": "Troca de correia dentada",
-      "prazoDiasAPartirDaCriacao": 15,
-      "custoServico": 2170,
-      "dataCriacao": "2025-03-13T15:00:00",
-      "cenario": "finalizadaPaga",
-      "itens": [
-        {
-          "componenteChave": "comp-17",
-          "quantidade": 1,
-          "origem": "Estoque"
-        },
-        {
-          "componenteChave": "comp-6",
-          "quantidade": 3,
           "origem": "Estoque"
         }
       ],
@@ -8937,16 +8758,195 @@
       "modoPagamento": "CartaoDebito"
     },
     {
-      "chave": "os-49",
-      "veiculoClienteChave": "vcli-19",
-      "clienteChave": "cli-6",
-      "mecanicoChave": "usr-10",
+      "chave": "os-42",
+      "veiculoClienteChave": "vcli-39",
+      "clienteChave": "cli-37",
+      "mecanicoChave": "usr-12",
+      "tipo": "Revisao",
+      "descricao": "Revisão programada dos 40.000 km",
+      "prazoDiasAPartirDaCriacao": 7,
+      "custoServico": 1270,
+      "dataCriacao": "2026-08-24T17:00:00",
+      "cenario": "entregue",
+      "itens": [
+        {
+          "componenteChave": "comp-27",
+          "quantidade": 1,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-11",
+          "quantidade": 1,
+          "origem": "Cliente"
+        },
+        {
+          "componenteChave": "comp-12",
+          "quantidade": 2,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-2",
+          "quantidade": 1,
+          "origem": "Estoque"
+        }
+      ],
+      "modoPagamento": "CartaoCredito"
+    },
+    {
+      "chave": "os-43",
+      "veiculoClienteChave": "vcli-36",
+      "clienteChave": "cli-23",
+      "mecanicoChave": "usr-6",
+      "tipo": "TrocaPecas",
+      "descricao": "Troca de pastilhas e disco de freio",
+      "prazoDiasAPartirDaCriacao": 20,
+      "custoServico": 1370,
+      "dataCriacao": "2026-07-17T09:00:00",
+      "cenario": "entregue",
+      "itens": [
+        {
+          "componenteChave": "comp-17",
+          "quantidade": 1,
+          "origem": "Cliente"
+        }
+      ],
+      "checklistPresetChave": "chk-4",
+      "modoPagamento": "CartaoDebito"
+    },
+    {
+      "chave": "os-44",
+      "veiculoClienteChave": "vcli-15",
+      "clienteChave": "cli-13",
+      "mecanicoChave": "usr-9",
       "tipo": "Diagnostico",
-      "descricao": "Ar-condicionado não gela",
+      "descricao": "Consumo elevado de combustível",
+      "prazoDiasAPartirDaCriacao": 7,
+      "custoServico": 2120,
+      "dataCriacao": "2026-06-05T10:00:00",
+      "cenario": "entregue",
+      "itens": [
+        {
+          "componenteChave": "comp-2",
+          "quantidade": 1,
+          "origem": "Cliente"
+        },
+        {
+          "componenteChave": "comp-3",
+          "quantidade": 2,
+          "origem": "Encomenda"
+        }
+      ],
+      "modoPagamento": "Transferencia"
+    },
+    {
+      "chave": "os-45",
+      "veiculoClienteChave": "vcli-18",
+      "clienteChave": "cli-5",
+      "mecanicoChave": "usr-13",
+      "tipo": "Outro",
+      "descricao": "Polimento e higienização interna",
+      "prazoDiasAPartirDaCriacao": 15,
+      "custoServico": 1820,
+      "dataCriacao": "2024-11-06T16:00:00",
+      "cenario": "entregue",
+      "itens": [
+        {
+          "componenteChave": "comp-34",
+          "quantidade": 2,
+          "origem": "Encomenda"
+        },
+        {
+          "componenteChave": "comp-41",
+          "quantidade": 1,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-35",
+          "quantidade": 1,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-20",
+          "quantidade": 1,
+          "origem": "Estoque"
+        }
+      ],
+      "checklistPresetChave": "chk-1",
+      "modoPagamento": "Transferencia"
+    },
+    {
+      "chave": "os-46",
+      "veiculoClienteChave": "vcli-49",
+      "clienteChave": "cli-46",
+      "mecanicoChave": "usr-8",
+      "tipo": "Manutencao",
+      "descricao": "Suspensão fazendo ruído em buracos",
+      "prazoDiasAPartirDaCriacao": 5,
+      "custoServico": 1620,
+      "dataCriacao": "2025-11-18T08:00:00",
+      "cenario": "entregue",
+      "itens": [
+        {
+          "componenteChave": "comp-49",
+          "quantidade": 1,
+          "origem": "Cliente"
+        },
+        {
+          "componenteChave": "comp-31",
+          "quantidade": 1,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-20",
+          "quantidade": 1,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-1",
+          "quantidade": 3,
+          "origem": "Estoque"
+        }
+      ],
+      "checklistPresetChave": "chk-2",
+      "modoPagamento": "Pix"
+    },
+    {
+      "chave": "os-47",
+      "veiculoClienteChave": "vcli-46",
+      "clienteChave": "cli-15",
+      "mecanicoChave": "usr-12",
+      "tipo": "Revisao",
+      "descricao": "Revisão pré-viagem",
       "prazoDiasAPartirDaCriacao": 3,
+      "custoServico": 920,
+      "dataCriacao": "2025-08-03T15:00:00",
+      "cenario": "entregue",
+      "itens": [
+        {
+          "componenteChave": "comp-34",
+          "quantidade": 3,
+          "origem": "Cliente"
+        },
+        {
+          "componenteChave": "comp-49",
+          "quantidade": 1,
+          "origem": "Encomenda"
+        }
+      ],
+      "checklistPresetChave": "chk-6",
+      "modoPagamento": "Transferencia"
+    },
+    {
+      "chave": "os-48",
+      "veiculoClienteChave": "vcli-18",
+      "clienteChave": "cli-5",
+      "mecanicoChave": "usr-12",
+      "tipo": "TrocaPecas",
+      "descricao": "Troca de correia dentada",
+      "prazoDiasAPartirDaCriacao": 20,
       "custoServico": 320,
-      "dataCriacao": "2024-12-06T10:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2025-07-06T10:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-8",
@@ -8968,16 +8968,16 @@
       "modoPagamento": "Dinheiro"
     },
     {
-      "chave": "os-50",
+      "chave": "os-49",
       "veiculoClienteChave": "vcli-12",
       "clienteChave": "cli-48",
       "mecanicoChave": "usr-7",
-      "tipo": "Outro",
-      "descricao": "Aplicação de insulfilm",
+      "tipo": "Diagnostico",
+      "descricao": "Consumo elevado de combustível",
       "prazoDiasAPartirDaCriacao": 5,
       "custoServico": 520,
-      "dataCriacao": "2025-09-23T16:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2025-06-23T16:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-15",
@@ -8989,16 +8989,16 @@
       "modoPagamento": "CartaoCredito"
     },
     {
-      "chave": "os-51",
+      "chave": "os-50",
       "veiculoClienteChave": "vcli-20",
       "clienteChave": "cli-3",
       "mecanicoChave": "usr-13",
-      "tipo": "Manutencao",
-      "descricao": "Suspensão fazendo ruído em buracos",
+      "tipo": "Outro",
+      "descricao": "Aplicação de insulfilm",
       "prazoDiasAPartirDaCriacao": 7,
       "custoServico": 220,
-      "dataCriacao": "2024-10-11T09:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2026-05-11T09:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-4",
@@ -9015,16 +9015,16 @@
       "modoPagamento": "CartaoCredito"
     },
     {
-      "chave": "os-52",
+      "chave": "os-51",
       "veiculoClienteChave": "vcli-1",
       "clienteChave": "cli-9",
       "mecanicoChave": "usr-7",
-      "tipo": "Revisao",
-      "descricao": "Revisão programada dos 20.000 km",
+      "tipo": "Manutencao",
+      "descricao": "Vazamento de óleo identificado",
       "prazoDiasAPartirDaCriacao": 7,
       "custoServico": 1520,
-      "dataCriacao": "2025-07-08T08:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2024-10-08T08:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-30",
@@ -9041,16 +9041,16 @@
       "modoPagamento": "CartaoDebito"
     },
     {
-      "chave": "os-53",
+      "chave": "os-52",
       "veiculoClienteChave": "vcli-21",
       "clienteChave": "cli-37",
       "mecanicoChave": "usr-8",
-      "tipo": "TrocaPecas",
-      "descricao": "Troca de pastilhas e disco de freio",
+      "tipo": "Revisao",
+      "descricao": "Revisão programada dos 10.000 km",
       "prazoDiasAPartirDaCriacao": 15,
       "custoServico": 1870,
-      "dataCriacao": "2025-11-17T09:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2025-03-17T09:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-31",
@@ -9072,16 +9072,16 @@
       "modoPagamento": "Dinheiro"
     },
     {
-      "chave": "os-54",
+      "chave": "os-53",
       "veiculoClienteChave": "vcli-11",
       "clienteChave": "cli-26",
       "mecanicoChave": "usr-10",
-      "tipo": "Diagnostico",
-      "descricao": "Luz de injeção acesa no painel",
+      "tipo": "TrocaPecas",
+      "descricao": "Troca de pastilhas e disco de freio",
       "prazoDiasAPartirDaCriacao": 7,
       "custoServico": 870,
-      "dataCriacao": "2026-06-01T08:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2026-01-01T08:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-45",
@@ -9108,16 +9108,16 @@
       "modoPagamento": "Pix"
     },
     {
-      "chave": "os-55",
+      "chave": "os-54",
       "veiculoClienteChave": "vcli-45",
       "clienteChave": "cli-32",
       "mecanicoChave": "usr-7",
-      "tipo": "Outro",
-      "descricao": "Polimento e higienização interna",
+      "tipo": "Diagnostico",
+      "descricao": "Carro não liga pela manhã",
       "prazoDiasAPartirDaCriacao": 7,
       "custoServico": 820,
-      "dataCriacao": "2026-05-11T17:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2024-12-11T17:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-52",
@@ -9139,16 +9139,16 @@
       "modoPagamento": "Transferencia"
     },
     {
-      "chave": "os-56",
+      "chave": "os-55",
       "veiculoClienteChave": "vcli-19",
       "clienteChave": "cli-6",
       "mecanicoChave": "usr-13",
-      "tipo": "Manutencao",
-      "descricao": "Vazamento de óleo identificado",
+      "tipo": "Outro",
+      "descricao": "Polimento e higienização interna",
       "prazoDiasAPartirDaCriacao": 10,
       "custoServico": 670,
-      "dataCriacao": "2025-02-18T14:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2025-05-18T14:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-47",
@@ -9170,16 +9170,16 @@
       "modoPagamento": "CartaoDebito"
     },
     {
-      "chave": "os-57",
+      "chave": "os-56",
       "veiculoClienteChave": "vcli-35",
       "clienteChave": "cli-4",
       "mecanicoChave": "usr-11",
-      "tipo": "Revisao",
-      "descricao": "Revisão pré-viagem",
+      "tipo": "Manutencao",
+      "descricao": "Vibração no volante em alta velocidade",
       "prazoDiasAPartirDaCriacao": 2,
       "custoServico": 2120,
-      "dataCriacao": "2025-10-17T15:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2026-02-17T15:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-2",
@@ -9196,16 +9196,16 @@
       "modoPagamento": "CartaoCredito"
     },
     {
-      "chave": "os-58",
+      "chave": "os-57",
       "veiculoClienteChave": "vcli-13",
       "clienteChave": "cli-30",
       "mecanicoChave": "usr-13",
-      "tipo": "TrocaPecas",
-      "descricao": "Troca de correia dentada",
+      "tipo": "Revisao",
+      "descricao": "Revisão programada dos 20.000 km",
       "prazoDiasAPartirDaCriacao": 10,
       "custoServico": 1020,
-      "dataCriacao": "2025-12-11T15:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2026-03-11T15:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-8",
@@ -9227,16 +9227,16 @@
       "modoPagamento": "Pix"
     },
     {
-      "chave": "os-59",
+      "chave": "os-58",
       "veiculoClienteChave": "vcli-7",
       "clienteChave": "cli-3",
       "mecanicoChave": "usr-6",
-      "tipo": "Diagnostico",
-      "descricao": "Ar-condicionado não gela",
+      "tipo": "TrocaPecas",
+      "descricao": "Troca de bateria",
       "prazoDiasAPartirDaCriacao": 15,
       "custoServico": 1670,
-      "dataCriacao": "2026-07-17T13:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2025-12-17T13:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-24",
@@ -9248,16 +9248,16 @@
       "modoPagamento": "CartaoCredito"
     },
     {
-      "chave": "os-60",
+      "chave": "os-59",
       "veiculoClienteChave": "vcli-6",
       "clienteChave": "cli-6",
       "mecanicoChave": "usr-13",
-      "tipo": "Outro",
-      "descricao": "Instalação de acessório solicitado pelo cliente",
+      "tipo": "Diagnostico",
+      "descricao": "Luz de injeção acesa no painel",
       "prazoDiasAPartirDaCriacao": 5,
       "custoServico": 1870,
-      "dataCriacao": "2026-01-24T15:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2025-02-24T15:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-51",
@@ -9278,16 +9278,16 @@
       "modoPagamento": "Transferencia"
     },
     {
-      "chave": "os-61",
+      "chave": "os-60",
       "veiculoClienteChave": "vcli-7",
       "clienteChave": "cli-3",
       "mecanicoChave": "usr-7",
-      "tipo": "Manutencao",
-      "descricao": "Vazamento de óleo identificado",
+      "tipo": "Outro",
+      "descricao": "Polimento e higienização interna",
       "prazoDiasAPartirDaCriacao": 10,
       "custoServico": 1320,
-      "dataCriacao": "2026-03-07T11:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2024-10-07T11:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-37",
@@ -9304,16 +9304,16 @@
       "modoPagamento": "Transferencia"
     },
     {
-      "chave": "os-62",
+      "chave": "os-61",
       "veiculoClienteChave": "vcli-23",
       "clienteChave": "cli-23",
       "mecanicoChave": "usr-13",
-      "tipo": "Revisao",
-      "descricao": "Revisão pré-viagem",
+      "tipo": "Manutencao",
+      "descricao": "Vibração no volante em alta velocidade",
       "prazoDiasAPartirDaCriacao": 2,
       "custoServico": 620,
-      "dataCriacao": "2025-06-26T10:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2026-07-26T10:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-33",
@@ -9340,16 +9340,16 @@
       "modoPagamento": "CartaoCredito"
     },
     {
-      "chave": "os-63",
+      "chave": "os-62",
       "veiculoClienteChave": "vcli-47",
       "clienteChave": "cli-34",
       "mecanicoChave": "usr-11",
-      "tipo": "TrocaPecas",
-      "descricao": "Troca de correia dentada",
+      "tipo": "Revisao",
+      "descricao": "Revisão programada dos 20.000 km",
       "prazoDiasAPartirDaCriacao": 10,
       "custoServico": 1820,
-      "dataCriacao": "2026-04-07T15:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2025-07-07T15:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-24",
@@ -9370,16 +9370,16 @@
       "modoPagamento": "CartaoDebito"
     },
     {
-      "chave": "os-64",
+      "chave": "os-63",
       "veiculoClienteChave": "vcli-1",
       "clienteChave": "cli-9",
       "mecanicoChave": "usr-10",
-      "tipo": "Diagnostico",
-      "descricao": "Carro não liga pela manhã",
+      "tipo": "TrocaPecas",
+      "descricao": "Troca de correia dentada",
       "prazoDiasAPartirDaCriacao": 3,
       "custoServico": 1120,
-      "dataCriacao": "2025-04-01T13:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2026-01-01T13:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-7",
@@ -9395,16 +9395,16 @@
       "modoPagamento": "Pix"
     },
     {
-      "chave": "os-65",
+      "chave": "os-64",
       "veiculoClienteChave": "vcli-15",
       "clienteChave": "cli-13",
       "mecanicoChave": "usr-10",
-      "tipo": "Outro",
-      "descricao": "Aplicação de insulfilm",
+      "tipo": "Diagnostico",
+      "descricao": "Consumo elevado de combustível",
       "prazoDiasAPartirDaCriacao": 2,
       "custoServico": 1920,
-      "dataCriacao": "2026-08-13T11:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2025-04-13T11:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-47",
@@ -9416,16 +9416,16 @@
       "modoPagamento": "Transferencia"
     },
     {
-      "chave": "os-66",
+      "chave": "os-65",
       "veiculoClienteChave": "vcli-7",
       "clienteChave": "cli-3",
       "mecanicoChave": "usr-10",
-      "tipo": "Manutencao",
-      "descricao": "Barulho estranho ao frear",
+      "tipo": "Outro",
+      "descricao": "Instalação de acessório solicitado pelo cliente",
       "prazoDiasAPartirDaCriacao": 15,
       "custoServico": 1920,
-      "dataCriacao": "2025-01-13T09:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2024-12-13T09:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-50",
@@ -9437,16 +9437,16 @@
       "modoPagamento": "Pix"
     },
     {
-      "chave": "os-67",
+      "chave": "os-66",
       "veiculoClienteChave": "vcli-48",
       "clienteChave": "cli-40",
       "mecanicoChave": "usr-6",
-      "tipo": "Revisao",
-      "descricao": "Revisão pré-viagem",
+      "tipo": "Manutencao",
+      "descricao": "Vibração no volante em alta velocidade",
       "prazoDiasAPartirDaCriacao": 2,
       "custoServico": 1070,
-      "dataCriacao": "2024-09-17T08:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2025-06-17T08:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-35",
@@ -9468,16 +9468,16 @@
       "modoPagamento": "Pix"
     },
     {
-      "chave": "os-68",
+      "chave": "os-67",
       "veiculoClienteChave": "vcli-28",
       "clienteChave": "cli-9",
       "mecanicoChave": "usr-10",
-      "tipo": "TrocaPecas",
-      "descricao": "Troca de bateria",
+      "tipo": "Revisao",
+      "descricao": "Revisão pré-viagem",
       "prazoDiasAPartirDaCriacao": 3,
       "custoServico": 520,
-      "dataCriacao": "2025-05-11T09:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2026-08-11T09:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-37",
@@ -9504,16 +9504,16 @@
       "modoPagamento": "CartaoCredito"
     },
     {
-      "chave": "os-69",
+      "chave": "os-68",
       "veiculoClienteChave": "vcli-42",
       "clienteChave": "cli-2",
       "mecanicoChave": "usr-9",
-      "tipo": "Diagnostico",
-      "descricao": "Carro não liga pela manhã",
+      "tipo": "TrocaPecas",
+      "descricao": "Troca de correia dentada",
       "prazoDiasAPartirDaCriacao": 3,
       "custoServico": 320,
-      "dataCriacao": "2025-12-09T15:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2026-06-09T15:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-44",
@@ -9535,16 +9535,16 @@
       "modoPagamento": "CartaoDebito"
     },
     {
-      "chave": "os-70",
+      "chave": "os-69",
       "veiculoClienteChave": "vcli-11",
       "clienteChave": "cli-26",
       "mecanicoChave": "usr-11",
-      "tipo": "Outro",
-      "descricao": "Instalação de multimídia",
+      "tipo": "Diagnostico",
+      "descricao": "Ar-condicionado não gela",
       "prazoDiasAPartirDaCriacao": 10,
       "custoServico": 570,
-      "dataCriacao": "2025-02-15T08:00:00",
-      "cenario": "finalizadaPaga",
+      "dataCriacao": "2025-11-15T08:00:00",
+      "cenario": "entregue",
       "itens": [
         {
           "componenteChave": "comp-13",
@@ -9559,6 +9559,42 @@
       ],
       "checklistPresetChave": "chk-5",
       "modoPagamento": "Pix"
+    },
+    {
+      "chave": "os-70",
+      "veiculoClienteChave": "vcli-19",
+      "clienteChave": "cli-6",
+      "mecanicoChave": "usr-6",
+      "tipo": "Outro",
+      "descricao": "Aplicação de insulfilm",
+      "prazoDiasAPartirDaCriacao": 15,
+      "custoServico": 470,
+      "dataCriacao": "2026-05-10T16:00:00",
+      "cenario": "entregue",
+      "itens": [
+        {
+          "componenteChave": "comp-2",
+          "quantidade": 1,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-22",
+          "quantidade": 1,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-14",
+          "quantidade": 3,
+          "origem": "Estoque"
+        },
+        {
+          "componenteChave": "comp-48",
+          "quantidade": 1,
+          "origem": "Cliente"
+        }
+      ],
+      "checklistPresetChave": "chk-6",
+      "modoPagamento": "Dinheiro"
     }
   ]
 }

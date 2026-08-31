@@ -58,79 +58,100 @@
             </label>
         </div>
 
-        <div class="busca-wrapper">
-            <input type="text"
-                   class="campo-input busca-input"
-                   placeholder="Buscar por nome, OEM, partnumber, SKU ou código de barras..."
-                   value="@termoBusca"
-                   @oninput="OnTermoChanged"
-                   @onfocus="OnBuscaFocus" />
+        @if (origemSelecionada == "Cliente")
+        {
+            <div class="cliente-item-bloco">
+                <input type="text" class="campo-input"
+                       placeholder="Nome da peça trazida pelo cliente..."
+                       @bind="nomeLivre" @bind:event="oninput" />
+                <div class="selecionado-campos">
+                    <input type="number" class="campo-input qtd" @bind="quantidade" placeholder="Qtd" min="1" />
+                    <button class="btn-adicionar-item" @onclick="AdicionarItem"
+                            disabled="@(quantidade < 1 || string.IsNullOrWhiteSpace(nomeLivre))">
+                        + Adicionar
+                    </button>
+                </div>
+                <span class="campo-ajuda">
+                    Peça trazida pelo cliente: sem valor, sem conexão com o estoque — fica registrada só pelo nome.
+                </span>
+            </div>
+        }
+        else
+        {
+            <div class="busca-wrapper">
+                <input type="text"
+                       class="campo-input busca-input"
+                       placeholder="Buscar por nome, OEM, partnumber, SKU ou código de barras..."
+                       value="@termoBusca"
+                       @oninput="OnTermoChanged"
+                       @onfocus="OnBuscaFocus" />
 
-            @if (mostrarResultados && resultadosBusca.Any())
+                @if (mostrarResultados && resultadosBusca.Any())
+                {
+                    <div class="dropdown-resultados">
+                        @foreach (var r in resultadosBusca)
+                        {
+                            <div class="resultado-item" @onclick="() => SelecionarComponente(r)">
+                                <div class="resultado-titulo">@r.Nome</div>
+                                <div class="resultado-meta">
+                                    <span>@r.MarcaFabricante</span>
+                                    @if (!string.IsNullOrWhiteSpace(r.PartNumber))
+                                    {
+                                        <span>· P/N @r.PartNumber</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(r.CodigoOEM))
+                                    {
+                                        <span>· OEM @r.CodigoOEM</span>
+                                    }
+                                </div>
+                                <div class="resultado-meta-direita">
+                                    <span>R$ @r.ValorVenda.ToString("N2")</span>
+                                    <span class="estoque-tag @(r.QuantidadeEmEstoque > 0 ? "ok" : "vazio")">
+                                        @r.QuantidadeEmEstoque em estoque
+                                    </span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else if (mostrarResultados && !string.IsNullOrWhiteSpace(termoBusca) && !buscando)
+                {
+                    <div class="dropdown-resultados">
+                        <div class="resultado-vazio">Nenhum componente encontrado para "@termoBusca"</div>
+                    </div>
+                }
+            </div>
+
+            @if (componenteSelecionado is not null)
             {
-                <div class="dropdown-resultados">
-                    @foreach (var r in resultadosBusca)
+                <div class="selecionado-box">
+                    <div class="selecionado-info">
+                        <strong>@componenteSelecionado.Nome</strong>
+                        <span class="muted">
+                            @componenteSelecionado.MarcaFabricante
+                            @if (!string.IsNullOrWhiteSpace(componenteSelecionado.PartNumber))
+                            {
+                                <text> · P/N @componenteSelecionado.PartNumber</text>
+                            }
+                        </span>
+                    </div>
+                    <div class="selecionado-campos">
+                        <input type="number" class="campo-input qtd" @bind="quantidade" placeholder="Qtd" min="1" />
+                        <input type="number" step="0.01" class="campo-input valor" @bind="valorUnitario" placeholder="Valor Unit." />
+                        <button class="btn-adicionar-item" @onclick="AdicionarItem"
+                                disabled="@(quantidade < 1 || valorUnitario <= 0)">
+                            + Adicionar
+                        </button>
+                        <button class="btn-cancelar-sel" @onclick="LimparSelecao">Cancelar</button>
+                    </div>
+                    @if (origemSelecionada == "Estoque" && componenteSelecionado.QuantidadeEmEstoque < quantidade)
                     {
-                        <div class="resultado-item" @onclick="() => SelecionarComponente(r)">
-                            <div class="resultado-titulo">@r.Nome</div>
-                            <div class="resultado-meta">
-                                <span>@r.MarcaFabricante</span>
-                                @if (!string.IsNullOrWhiteSpace(r.PartNumber))
-                                {
-                                    <span>· P/N @r.PartNumber</span>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(r.CodigoOEM))
-                                {
-                                    <span>· OEM @r.CodigoOEM</span>
-                                }
-                            </div>
-                            <div class="resultado-meta-direita">
-                                <span>R$ @r.ValorVenda.ToString("N2")</span>
-                                <span class="estoque-tag @(r.QuantidadeEmEstoque > 0 ? "ok" : "vazio")">
-                                    @r.QuantidadeEmEstoque em estoque
-                                </span>
-                            </div>
+                        <div class="aviso-estoque">
+                            ⚠ Apenas @componenteSelecionado.QuantidadeEmEstoque em estoque — pedido excede o disponível
                         </div>
                     }
                 </div>
             }
-            else if (mostrarResultados && !string.IsNullOrWhiteSpace(termoBusca) && !buscando)
-            {
-                <div class="dropdown-resultados">
-                    <div class="resultado-vazio">Nenhum componente encontrado para "@termoBusca"</div>
-                </div>
-            }
-        </div>
-
-        @if (componenteSelecionado is not null)
-        {
-            <div class="selecionado-box">
-                <div class="selecionado-info">
-                    <strong>@componenteSelecionado.Nome</strong>
-                    <span class="muted">
-                        @componenteSelecionado.MarcaFabricante
-                        @if (!string.IsNullOrWhiteSpace(componenteSelecionado.PartNumber))
-                        {
-                            <text> · P/N @componenteSelecionado.PartNumber</text>
-                        }
-                    </span>
-                </div>
-                <div class="selecionado-campos">
-                    <input type="number" class="campo-input qtd" @bind="quantidade" placeholder="Qtd" min="1" />
-                    <input type="number" step="0.01" class="campo-input valor" @bind="valorUnitario" placeholder="Valor Unit." />
-                    <button class="btn-adicionar-item" @onclick="AdicionarItem"
-                            disabled="@(quantidade < 1 || valorUnitario <= 0)">
-                        + Adicionar
-                    </button>
-                    <button class="btn-cancelar-sel" @onclick="LimparSelecao">Cancelar</button>
-                </div>
-                @if (origemSelecionada == "Estoque" && componenteSelecionado.QuantidadeEmEstoque < quantidade)
-                {
-                    <div class="aviso-estoque">
-                        ⚠ Apenas @componenteSelecionado.QuantidadeEmEstoque em estoque — pedido excede o disponível
-                    </div>
-                }
-            </div>
         }
     </div>
 
@@ -152,6 +173,7 @@
     private string origemSelecionada = "Estoque";
     private int quantidade = 1;
     private decimal valorUnitario;
+    private string nomeLivre = "";
     private string? mensagemErroItem;
     private Timer? debounceTimer;
 
@@ -164,7 +186,8 @@
             itens.Add(new ItemOrdemServicoTemp
             {
                 ComponenteId = i.ComponenteId,
-                NomeComponente = "",
+                NomeComponente = i.DescricaoLivre ?? "",
+                DescricaoLivre = i.DescricaoLivre,
                 Quantidade = i.Quantidade,
                 ValorUnitario = i.ValorUnitario,
                 Origem = string.IsNullOrEmpty(i.Origem) ? "Estoque" : i.Origem
@@ -226,10 +249,42 @@
         termoBusca = "";
         resultadosBusca.Clear();
         mostrarResultados = false;
+        nomeLivre = "";
     }
 
     private void AdicionarItem()
     {
+        if (origemSelecionada == "Cliente")
+        {
+            if (string.IsNullOrWhiteSpace(nomeLivre))
+            {
+                mensagemErroItem = "Informe o nome da peça trazida pelo cliente.";
+                return;
+            }
+            if (quantidade < 1)
+            {
+                mensagemErroItem = "Quantidade inválida.";
+                return;
+            }
+
+            var nome = nomeLivre.Trim();
+            itens.Add(new ItemOrdemServicoTemp
+            {
+                ComponenteId = null,
+                NomeComponente = nome,
+                DescricaoLivre = nome,
+                Quantidade = quantidade,
+                ValorUnitario = 0,
+                Origem = "Cliente"
+            });
+
+            SincronizarPai();
+            nomeLivre = "";
+            quantidade = 1;
+            mensagemErroItem = null;
+            return;
+        }
+
         if (componenteSelecionado is null)
         {
             mensagemErroItem = "Selecione um componente primeiro.";
@@ -272,7 +327,8 @@
             ComponenteId = i.ComponenteId,
             Quantidade = i.Quantidade,
             ValorUnitario = i.ValorUnitario,
-            Origem = i.Origem
+            Origem = i.Origem,
+            DescricaoLivre = i.DescricaoLivre
         }).ToList();
         ItensChanged.InvokeAsync(Itens);
     }
@@ -293,8 +349,9 @@
 
     private class ItemOrdemServicoTemp
     {
-        public Guid ComponenteId { get; set; }
+        public Guid? ComponenteId { get; set; }
         public string NomeComponente { get; set; } = "";
+        public string? DescricaoLivre { get; set; }
         public int Quantidade { get; set; }
         public decimal ValorUnitario { get; set; }
         public string Origem { get; set; } = "Estoque";
@@ -362,5 +419,7 @@
     .btn-adicionar-item:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-cancelar-sel { background: #eee; border: 0; border-radius: 8px; padding: 9px 14px; cursor: pointer; }
     .aviso-estoque { font-size: 0.85em; color: #8a6d00; background: #fff5d9; padding: 6px 10px; border-radius: 6px; }
+    .cliente-item-bloco { display: flex; flex-direction: column; gap: 8px; }
+    .campo-ajuda { font-size: 0.82em; color: #888; }
     .erro-banner { background: #fff5f5; border: 0.5px solid #fca5a5; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #e02020; margin-top: 8px; }
 </style>
