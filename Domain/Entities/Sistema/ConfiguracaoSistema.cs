@@ -28,12 +28,11 @@ public class ConfiguracaoSistema : Entity
     /// <summary>Percentual mínimo de entrada exigido (0–100). Ignorado se <see cref="ExigirEntradaMinima"/> for false.</summary>
     public decimal PercentualEntradaMinima { get; private set; } = 0m;
 
-    // === Templates de documentos (texto livre, com lacunas para o usuário preencher) ===
-    /// <summary>Texto-base do termo de entrega, usado para pré-preencher o cadastro de novo veículo.</summary>
-    public string TemplateTermoEntrega { get; private set; } = TemplatesDocumentosPadrao.TermoEntrega;
-
-    /// <summary>Texto-base do contrato de consignação, usado para pré-preencher o cadastro de veículo consignado.</summary>
-    public string TemplateContratoConsignacao { get; private set; } = TemplatesDocumentosPadrao.ContratoConsignacao;
+    // Templates de documento (termo de entrega, contrato de consignação, resposta
+    // de financiadora etc.) não vivem mais aqui como campos fixos — viraram
+    // registros dinâmicos em TemplateDocumento (mesmo padrão de ChecklistPreset),
+    // editáveis pelo admin como uma lista de presets nomeados, e cada tela que
+    // redige um contrato/termo escolhe um preset ou escreve do zero.
 
     public DateTime? DataUltimaAtualizacao { get; private set; }
 
@@ -82,17 +81,6 @@ public class ConfiguracaoSistema : Entity
         }
 
         ExigirEntradaMinima = exigir;
-        DataUltimaAtualizacao = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Atualiza os templates de documentos. Aceita texto vazio (loja que
-    /// prefere redigir cada documento do zero, sem ponto de partida).
-    /// </summary>
-    public void AtualizarTemplates(string templateTermoEntrega, string templateContratoConsignacao)
-    {
-        TemplateTermoEntrega = templateTermoEntrega ?? "";
-        TemplateContratoConsignacao = templateContratoConsignacao ?? "";
         DataUltimaAtualizacao = DateTime.UtcNow;
     }
 

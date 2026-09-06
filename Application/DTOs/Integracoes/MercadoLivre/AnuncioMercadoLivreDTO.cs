@@ -11,4 +11,7 @@ public class AnuncioMercadoLivreDTO
     public decimal UltimoPrecoSincronizado { get; set; }
     public DateTime? DataUltimaSincronizacao { get; set; }
     public string? UltimoErro { get; set; }
+    public string? UltimoErroDetalheTecnico { get; set; }
+    public string? CategoriaML { get; set; }
+    public string? ListingTypeML { get; set; }
 }

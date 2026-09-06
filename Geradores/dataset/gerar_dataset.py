@@ -337,6 +337,16 @@ MOTIVOS_REJEICAO = [
     "Financiamento do cliente não foi aprovado por fora.", "Cliente pediu mais tempo e não retornou.",
 ]
 
+# Cenário "financiamentoNegado": a financiadora (contatada por fora do
+# sistema) recusa financiar o cliente/veículo depois de avaliar os dados que
+# o vendedor repassou — distinto de MOTIVOS_REJEICAO porque passa de fato
+# pelo status AguardandoFinanciadora antes de ser negado.
+MOTIVOS_NEGATIVA_FINANCIADORA = [
+    "Cliente com restrição no CPF (SPC/Serasa).",
+    "Renda comprovada insuficiente para o valor solicitado.",
+    "Documentação incompleta para análise de crédito.",
+]
+
 MOTIVOS_CANCELAMENTO_CONSIGNACAO = [
     "Proprietário decidiu vender o veículo por conta própria.",
     "Proprietário retirou o veículo para uso pessoal.",
@@ -435,6 +445,50 @@ CHECKLIST_PRESETS = [
         "Testar motor após a montagem",
     ]),
 ]
+
+# Templates de documento (Configurações > Documentos) — presets reais usados
+# pelos seletores de template espalhados pelo sistema (consignação, termo de
+# entrega, resposta de financiadora). Não são dados randomizados como o resto
+# do dataset: é um conjunto fixo pequeno, pensado pra já vir utilizável.
+TEMPLATES_DOCUMENTO = [
+    ("Termo de entrega (padrão)", (
+        "TERMO DE ENTREGA DE VEÍCULO\n\n"
+        "Pelo presente termo, [NOME DA LOJA], entrega ao(à) Sr(a). [NOME DO CLIENTE], "
+        "portador(a) do CPF nº [CPF DO CLIENTE], o veículo [MARCA E MODELO], ano [ANO], "
+        "placa [PLACA], quilometragem [QUILOMETRAGEM] km, pelo valor de R$ [VALOR].\n\n"
+        "O(A) comprador(a) declara ter vistoriado o veículo no ato da entrega e recebido "
+        "manual, [NÚMERO] chave(s) e documentação de transferência.\n\n"
+        "Local e data: [CIDADE], [DATA]"
+    )),
+    ("Contrato de consignação (padrão)", (
+        "CONTRATO DE CONSIGNAÇÃO PARA VENDA DE VEÍCULO\n\n"
+        "[NOME DA LOJA], CONSIGNATÁRIA, e [NOME DO PROPRIETÁRIO], CPF [CPF DO PROPRIETÁRIO], "
+        "CONSIGNANTE, acordam a consignação do veículo [MARCA E MODELO], ano [ANO], "
+        "placa [PLACA], pelo prazo de [PRAZO EM DIAS] dias.\n\n"
+        "Valor esperado pelo proprietário: R$ [VALOR ESPERADO]. Comissão da consignatária: "
+        "[PERCENTUAL]% sobre o valor da venda.\n\n"
+        "Local e data: [CIDADE], [DATA]"
+    )),
+    ("Resposta da financiadora (roteiro)", (
+        "Financiadora: [NOME DA FINANCIADORA]\n"
+        "Contato: [NOME DO ATENDENTE / TELEFONE / E-MAIL]\n"
+        "Data do retorno: [DATA]\n\n"
+        "Condições propostas:\n"
+        "- Valor financiado: R$ [VALOR]\n"
+        "- Número de parcelas: [PARCELAS]\n"
+        "- Valor aproximado da parcela: R$ [VALOR DA PARCELA]\n"
+        "- Taxa de juros informada: [TAXA]\n\n"
+        "Observações da financiadora: [CONDIÇÕES ADICIONAIS]"
+    )),
+]
+
+
+def gerar_templates_documento():
+    templates = []
+    seq = id_seq("tpl")
+    for nome, conteudo in TEMPLATES_DOCUMENTO:
+        templates.append({"chave": next(seq), "nome": nome, "conteudo": conteudo})
+    return templates
 
 
 def id_seq(prefixo):
@@ -788,7 +842,8 @@ def gerar_propostas(veiculos_disponiveis_chaves, clientes_chaves, vendedores_cha
 
     # ---- Funil aberto + rejeitada: minimizado ----
     # (4 estágios x 3 modos + 4 motivos de rejeição) datados por rodada.
-    dated_pendente = len(estagios_com_modo) * len(MODOS_PAGAMENTO_PROPOSTA) + len(MOTIVOS_REJEICAO)
+    dated_pendente = (len(estagios_com_modo) * len(MODOS_PAGAMENTO_PROPOSTA)
+                      + len(MOTIVOS_REJEICAO) + len(MOTIVOS_NEGATIVA_FINANCIADORA))
     ciclo_pendente = iter(ciclo_meses(dated_pendente * REPETICOES_PROPOSTA_PENDENTE))
 
     for _ in range(REPETICOES_PROPOSTA_PENDENTE):
@@ -817,6 +872,19 @@ def gerar_propostas(veiculos_disponiveis_chaves, clientes_chaves, vendedores_cha
                 "motivoRejeicao": motivo,
                 "dataCriacao": data_estratificada(next(ciclo_pendente)),
                 "cenario": "rejeitada",
+            })
+
+        for motivo in MOTIVOS_NEGATIVA_FINANCIADORA:
+            propostas.append({
+                "chave": next(seq),
+                "veiculoVendaChave": proximo_veiculo(),
+                "clienteChave": random.choice(clientes_chaves),
+                "vendedorChave": random.choice(vendedores_chaves),
+                "valorBase": valor_redondo(38000, 220000, 500),
+                "descontoPercentual": random.choice([0, 5, 10]),
+                "motivoRejeicao": motivo,
+                "dataCriacao": data_estratificada(next(ciclo_pendente)),
+                "cenario": "financiamentoNegado",
             })
 
         propostas.append({
@@ -857,6 +925,8 @@ def gerar_propostas(veiculos_disponiveis_chaves, clientes_chaves, vendedores_cha
 
         for parcelas in [12, 24, 36, 48, 60]:
             criacao = data_estratificada_dt(next(ciclo_concluida))
+            valor_parcela = valor_redondo(500, 4000, 100)
+            taxa = random.choice([1, 1.5, 2, 2.5])
             propostas.append({
                 "chave": next(seq),
                 "veiculoVendaChave": proximo_veiculo(),
@@ -864,9 +934,14 @@ def gerar_propostas(veiculos_disponiveis_chaves, clientes_chaves, vendedores_cha
                 "vendedorChave": random.choice(vendedores_chaves),
                 "valorBase": valor_redondo(45000, 230000, 500),
                 "descontoPercentual": random.choice([0, 5]),
-                "parcelasFinanciamento": parcelas,
-                "valorParcelaFinanciamento": valor_redondo(500, 4000, 100),
-                "taxaJurosMensalFinanciamento": random.choice([1, 1.5, 2, 2.5]),
+                # Texto livre — o sistema não simula/calcula financiamento, o
+                # vendedor negocia com a financiadora por fora e anota aqui o
+                # que foi proposto (ver PropostaVenda.RegistrarRespostaFinanciadora).
+                "textoPropostaFinanciadora": (
+                    f"Financeira parceira aprovou o financiamento em {parcelas}x de "
+                    f"R$ {valor_parcela:.2f}, taxa de {taxa}% a.m., sujeito a análise "
+                    f"cadastral final na assinatura."
+                ),
                 "dataCriacao": criacao.isoformat(),
                 "dataAprovacao": apos(criacao, 5, 20),
                 "cenario": "concluidaFinanciada",
@@ -970,11 +1045,14 @@ def main():
     checklist_presets = gerar_checklist_presets()
     checklist_chaves = [c["chave"] for c in checklist_presets]
 
+    templates_documento = gerar_templates_documento()
+
     despesas = gerar_despesas()
 
     # Conta quantas propostas serão geradas (mesma matemática de gerar_propostas)
     # pra saber quantos veículos "disponíveis" preparar antes.
-    qtd_propostas_pendente_por_rodada = len(["aprovada", "vistoriada", "termoRedigido", "termoEnviado"]) * 3 + len(MOTIVOS_REJEICAO) + 1
+    qtd_propostas_pendente_por_rodada = (len(["aprovada", "vistoriada", "termoRedigido", "termoEnviado"]) * 3
+                                         + len(MOTIVOS_REJEICAO) + len(MOTIVOS_NEGATIVA_FINANCIADORA) + 1)
     qtd_propostas_concluida_por_rodada = 3 + 5
     qtd_propostas = (
         qtd_propostas_pendente_por_rodada * REPETICOES_PROPOSTA_PENDENTE +
@@ -1000,6 +1078,7 @@ def main():
         "fornecedores": fornecedores,
         "componentes": componentes,
         "checklistPresets": checklist_presets,
+        "templatesDocumento": templates_documento,
         "despesas": despesas,
         "veiculosVenda": veiculos_venda,
         "veiculosConsignados": veiculos_consignados,

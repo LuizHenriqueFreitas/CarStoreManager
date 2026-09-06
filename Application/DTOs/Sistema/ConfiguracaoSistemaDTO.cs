@@ -16,8 +16,3 @@ public class MargensDTO
     public decimal MargemPadraoGlobalPct { get; set; } = 30m;
 }
 
-public class TemplatesDocumentosDTO
-{
-    public string TemplateTermoEntrega { get; set; } = "";
-    public string TemplateContratoConsignacao { get; set; } = "";
-}

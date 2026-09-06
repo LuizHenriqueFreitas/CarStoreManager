@@ -31,13 +31,19 @@ public class PropostaVenda : Entity
     public ModoPagamento ModoPagamento { get; private set; } = ModoPagamento.NaoDefinido;
 
     // === Financiamento (preenchidos quando ModoPagamento = Financiamento) ===
+    //
+    // O sistema não simula/calcula financiamento — o vendedor negocia com a
+    // financiadora por fora (telefone, e-mail, portal do parceiro), e anota
+    // aqui em texto livre exatamente o que foi proposto (parcelas, valor,
+    // taxa, carência, o que a financiadora informou). Não há campos
+    // estruturados de parcela/juros porque o formato da resposta varia por
+    // financiadora e o sistema não tem como validar/calcular esses números.
 
     public DateTime? DataSolicitacaoFinanciamento { get; private set; }
     public DateTime? DataRespostaFinanciadora { get; private set; }
-    public int? ParcelasFinanciamento { get; private set; }
-    public Dinheiro? ValorParcela { get; private set; }
-    public decimal? TaxaJurosMensal { get; private set; }
-    public string? ObservacoesFinanciamento { get; private set; }
+
+    /// <summary>Texto livre com o que a financiadora propôs (anotado pelo vendedor) — só preenchido quando ela aprova alguma condição de financiamento.</summary>
+    public string? PropostaFinanciadoraTexto { get; private set; }
 
     // === Auditoria de transições terminais ===
     public string? MotivoRejeicao { get; private set; }
@@ -160,32 +166,43 @@ public class PropostaVenda : Entity
     }
 
     /// <summary>
-    /// Admin recebe retorno da financiadora (e-mail/telefone) e digita os
-    /// termos propostos. Avança o status para o cliente decidir.
+    /// Vendedor recebe retorno da financiadora (contato feito por fora do
+    /// sistema) e anota aqui exatamente o que foi proposto. Avança o status
+    /// para o cliente decidir (aceitar/recusar essa condição de financiamento).
     /// </summary>
-    public void RegistrarRespostaFinanciadora(
-        int parcelas,
-        decimal valorParcela,
-        decimal taxaJurosMensal,
-        string? observacoes = null)
+    public void RegistrarRespostaFinanciadora(string textoProposta)
     {
         BloquearSeTerminal();
         if (Status != StatusPropostaVenda.AguardandoFinanciadora)
             throw new InvalidOperationException(
                 $"Só é possível registrar resposta da financiadora no status AguardandoFinanciadora (atual: {Status}).");
-        if (parcelas <= 0)
-            throw new ArgumentException("Número de parcelas deve ser positivo.", nameof(parcelas));
-        if (valorParcela <= 0)
-            throw new ArgumentException("Valor da parcela deve ser positivo.", nameof(valorParcela));
-        if (taxaJurosMensal < 0)
-            throw new ArgumentException("Taxa de juros não pode ser negativa.", nameof(taxaJurosMensal));
+        if (string.IsNullOrWhiteSpace(textoProposta))
+            throw new ArgumentException("Descreva o que a financiadora propôs.", nameof(textoProposta));
 
-        ParcelasFinanciamento = parcelas;
-        ValorParcela = new Dinheiro(valorParcela);
-        TaxaJurosMensal = taxaJurosMensal;
-        ObservacoesFinanciamento = observacoes?.Trim();
+        PropostaFinanciadoraTexto = textoProposta.Trim();
         DataRespostaFinanciadora = DateTime.UtcNow;
         Status = StatusPropostaVenda.PropostaFinanciadoraRecebida;
+    }
+
+    /// <summary>
+    /// A financiadora recusa financiar esse cliente/veículo (ela também pode
+    /// negar, já que avalia os dados do cliente que o vendedor repassou) —
+    /// encerra a proposta como Rejeitada, com o motivo informado pelo
+    /// vendedor. Distinto de <see cref="Rejeitar"/> só para deixar claro no
+    /// código de chamada quem tomou a decisão; o resultado (status/auditoria)
+    /// é o mesmo, sem inflar o enum de status com mais um valor terminal.
+    /// </summary>
+    public void NegarFinanciamento(string motivo)
+    {
+        BloquearSeTerminal();
+        if (Status != StatusPropostaVenda.AguardandoFinanciadora)
+            throw new InvalidOperationException(
+                $"Só é possível registrar negativa da financiadora no status AguardandoFinanciadora (atual: {Status}).");
+        if (string.IsNullOrWhiteSpace(motivo))
+            throw new ArgumentException("Motivo da negativa é obrigatório.", nameof(motivo));
+
+        Status = StatusPropostaVenda.Rejeitada;
+        MotivoRejeicao = $"Financiadora não aprovou o financiamento: {motivo.Trim()}";
     }
 
     /* =======================================
@@ -320,10 +337,7 @@ public class PropostaVenda : Entity
     {
         BloquearSeTerminal();
         ModoPagamento = ModoPagamento.NaoDefinido;
-        ParcelasFinanciamento = null;
-        ValorParcela = null;
-        TaxaJurosMensal = null;
-        ObservacoesFinanciamento = null;
+        PropostaFinanciadoraTexto = null;
         DataSolicitacaoFinanciamento = null;
         DataRespostaFinanciadora = null;
         if (Status is StatusPropostaVenda.AguardandoFinanciadora

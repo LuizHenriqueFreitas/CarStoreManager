@@ -141,12 +141,11 @@ public static class PropostaVendaGerador
                 if (!rsf.IsSuccess) continue;
 
                 var parcelas = new[] { 12, 24, 36, 48, 60 }[rng.Next(5)];
+                var valorParcela = DocumentoUtils.ValorRedondo(rng, 500, 4000, 50);
                 var rrf = await servico.RegistrarRespostaFinanciadoraAsync(id, new RegistrarRespostaFinanciadoraDTO
                 {
-                    Parcelas = parcelas,
-                    ValorParcela = DocumentoUtils.ValorRedondo(rng, 500, 4000, 50),
-                    TaxaJurosMensal = 1m + rng.Next(0, 3),
-                    Observacoes = "Financiamento pré-aprovado pela financeira parceira."
+                    TextoProposta = $"Financeira parceira pré-aprovou o financiamento em {parcelas}x de " +
+                        $"R$ {valorParcela:N2}, sujeito a análise cadastral final na assinatura."
                 });
                 if (!rrf.IsSuccess) continue;
             }

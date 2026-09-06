@@ -11,6 +11,7 @@ using CarStoreManager.Application.DTOs.Shared.Cliente;
 using CarStoreManager.Application.DTOs.Oficina.ChecklistPreset;
 using CarStoreManager.Application.DTOs.Sistema;
 using CarStoreManager.Application.DTOs.Sistema.Importacao;
+using CarStoreManager.Application.DTOs.Sistema.TemplateDocumento;
 using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Application.Interfaces.Oficina;
 using CarStoreManager.Application.Interfaces.Sistema;
@@ -44,6 +45,7 @@ public class ImportacaoDadosService : IImportacaoDadosService
     private readonly IComponenteService _componenteService;
     private readonly IEstoqueService _estoqueService;
     private readonly IChecklistPresetService _checklistPresetService;
+    private readonly ITemplateDocumentoService _templateDocumentoService;
     private readonly IDespesaService _despesaService;
     private readonly IVeiculoVendaService _veiculoVendaService;
     private readonly IVeiculoConsignacaoService _veiculoConsignacaoService;
@@ -63,6 +65,7 @@ public class ImportacaoDadosService : IImportacaoDadosService
         IComponenteService componenteService,
         IEstoqueService estoqueService,
         IChecklistPresetService checklistPresetService,
+        ITemplateDocumentoService templateDocumentoService,
         IDespesaService despesaService,
         IVeiculoVendaService veiculoVendaService,
         IVeiculoConsignacaoService veiculoConsignacaoService,
@@ -81,6 +84,7 @@ public class ImportacaoDadosService : IImportacaoDadosService
         _componenteService = componenteService;
         _estoqueService = estoqueService;
         _checklistPresetService = checklistPresetService;
+        _templateDocumentoService = templateDocumentoService;
         _despesaService = despesaService;
         _veiculoVendaService = veiculoVendaService;
         _veiculoConsignacaoService = veiculoConsignacaoService;
@@ -107,6 +111,7 @@ public class ImportacaoDadosService : IImportacaoDadosService
             await ImportarFornecedoresAsync(dados.Fornecedores, chaves, resultado);
             await ImportarComponentesAsync(dados.Componentes, chaves, resultado);
             await ImportarChecklistPresetsAsync(dados.ChecklistPresets, chaves, resultado);
+            await ImportarTemplatesDocumentoAsync(dados.TemplatesDocumento, chaves, resultado);
             await ImportarDespesasAsync(dados.Despesas, resultado);
             await ImportarVeiculosVendaAsync(dados.VeiculosVenda, chaves, resultado);
             await ImportarVeiculosConsignadosAsync(dados.VeiculosConsignados, chaves, resultado);
@@ -339,6 +344,41 @@ public class ImportacaoDadosService : IImportacaoDadosService
             {
                 resultado.Avisos.Add($"Checklist preset \"{item.Chave}\": erro inesperado ao criar ({ex.GetType().Name}).");
                 _logger.LogError(ex, "Erro ao importar checklist preset {Chave}", item.Chave);
+            }
+        }
+    }
+
+    // ============================================================
+    // TEMPLATES DE DOCUMENTO (SISTEMA)
+    // ============================================================
+    private async Task ImportarTemplatesDocumentoAsync(
+        List<TemplateDocumentoImportDTO> itens, Dictionary<string, Guid> chaves, ImportacaoResultadoDTO resultado)
+    {
+        foreach (var item in itens)
+        {
+            try
+            {
+                var dto = new SalvarTemplateDocumentoDTO
+                {
+                    Nome = item.Nome,
+                    Conteudo = item.Conteudo,
+                    Ativo = true
+                };
+
+                var r = await _templateDocumentoService.AddAsync(dto);
+                if (!r.IsSuccess)
+                {
+                    resultado.Avisos.Add($"Template de documento \"{item.Chave}\" ({item.Nome}): {r.Error}");
+                    continue;
+                }
+
+                RegistrarChave(chaves, item.Chave, r.Value, resultado.Avisos, "template de documento");
+                resultado.TemplatesDocumentoCriados++;
+            }
+            catch (Exception ex)
+            {
+                resultado.Avisos.Add($"Template de documento \"{item.Chave}\": erro inesperado ao criar ({ex.GetType().Name}).");
+                _logger.LogError(ex, "Erro ao importar template de documento {Chave}", item.Chave);
             }
         }
     }
@@ -626,6 +666,19 @@ public class ImportacaoDadosService : IImportacaoDadosService
             return rr.IsSuccess ? "rejeitada" : Parar("criada", "rejeitar a proposta", rr.Error);
         }
 
+        if (item.Cenario == "financiamentoNegado")
+        {
+            var rmp = await _propostaService.DefinirModoPagamentoAsync(propostaId, "Financiamento");
+            if (!rmp.IsSuccess) return Parar("criada", "definir modo de pagamento Financiamento", rmp.Error);
+
+            var rsfNeg = await _propostaService.SolicitarFinanciamentoAsync(propostaId);
+            if (!rsfNeg.IsSuccess) return Parar("criada", "solicitar financiamento", rsfNeg.Error);
+
+            var rn = await _propostaService.NegarFinanciamentoAsync(propostaId,
+                string.IsNullOrWhiteSpace(item.MotivoRejeicao) ? "Cliente não atende aos critérios de crédito da financeira." : item.MotivoRejeicao);
+            return rn.IsSuccess ? "financiamentoNegado" : Parar("criada", "registrar negativa da financiadora", rn.Error);
+        }
+
         var usaFinanciamento = item.Cenario == "concluidaFinanciada";
         var modo = usaFinanciamento ? "Financiamento" : (string.IsNullOrWhiteSpace(item.ModoPagamento) ? ModosAVista[0] : item.ModoPagamento);
 
@@ -637,12 +690,13 @@ public class ImportacaoDadosService : IImportacaoDadosService
             var rsf = await _propostaService.SolicitarFinanciamentoAsync(propostaId);
             if (!rsf.IsSuccess) return Parar("criada", "solicitar financiamento", rsf.Error);
 
+            var textoProposta = string.IsNullOrWhiteSpace(item.TextoPropostaFinanciadora)
+                ? "Financeira parceira pré-aprovou o financiamento em 36x, sujeito a análise cadastral final na assinatura."
+                : item.TextoPropostaFinanciadora;
+
             var rrf = await _propostaService.RegistrarRespostaFinanciadoraAsync(propostaId, new RegistrarRespostaFinanciadoraDTO
             {
-                Parcelas = item.ParcelasFinanciamento,
-                ValorParcela = item.ValorParcelaFinanciamento,
-                TaxaJurosMensal = item.TaxaJurosMensalFinanciamento,
-                Observacoes = "Financiamento pré-aprovado pela financeira parceira."
+                TextoProposta = textoProposta
             });
             if (!rrf.IsSuccess) return Parar("criada", "registrar resposta da financiadora", rrf.Error);
         }

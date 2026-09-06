@@ -165,6 +165,111 @@ public class PropostaVendaTest
         act.Should().Throw<InvalidOperationException>().WithMessage("*financiamento*");
     }
 
+    // ==================== FINANCIAMENTO (texto livre, sem simulação) ====================
+
+    [Fact]
+    public void SolicitarFinanciamento_ModoFinanciamento_MudaParaAguardandoFinanciadora()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+        proposta.SolicitarFinanciamento();
+        proposta.Status.Should().Be(StatusPropostaVenda.AguardandoFinanciadora);
+        proposta.DataSolicitacaoFinanciamento.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void SolicitarFinanciamento_ModoDiferenteDeFinanciamento_LancaInvalidOperationException()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Pix);
+        Action act = () => proposta.SolicitarFinanciamento();
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Financiamento*");
+    }
+
+    [Fact]
+    public void RegistrarRespostaFinanciadora_TextoValido_RegistraEAvancaStatus()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+        proposta.SolicitarFinanciamento();
+
+        proposta.RegistrarRespostaFinanciadora("Financiadora X aprovou em 48x de R$ 1.200,00.");
+
+        proposta.Status.Should().Be(StatusPropostaVenda.PropostaFinanciadoraRecebida);
+        proposta.PropostaFinanciadoraTexto.Should().Be("Financiadora X aprovou em 48x de R$ 1.200,00.");
+        proposta.DataRespostaFinanciadora.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void RegistrarRespostaFinanciadora_TextoVazio_LancaArgumentException()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+        proposta.SolicitarFinanciamento();
+
+        Action act = () => proposta.RegistrarRespostaFinanciadora("   ");
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void RegistrarRespostaFinanciadora_ForaDoStatusAguardandoFinanciadora_LancaInvalidOperationException()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+
+        Action act = () => proposta.RegistrarRespostaFinanciadora("Qualquer proposta.");
+        act.Should().Throw<InvalidOperationException>().WithMessage("*AguardandoFinanciadora*");
+    }
+
+    [Fact]
+    public void NegarFinanciamento_ComMotivo_MudaParaRejeitadaComMotivoPrefixado()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+        proposta.SolicitarFinanciamento();
+
+        proposta.NegarFinanciamento("Cliente com restrição no CPF.");
+
+        proposta.Status.Should().Be(StatusPropostaVenda.Rejeitada);
+        proposta.MotivoRejeicao.Should().Contain("Financiadora").And.Contain("Cliente com restrição no CPF.");
+    }
+
+    [Fact]
+    public void NegarFinanciamento_SemMotivo_LancaArgumentException()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+        proposta.SolicitarFinanciamento();
+
+        Action act = () => proposta.NegarFinanciamento(" ");
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void NegarFinanciamento_ForaDoStatusAguardandoFinanciadora_LancaInvalidOperationException()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+
+        Action act = () => proposta.NegarFinanciamento("Motivo qualquer.");
+        act.Should().Throw<InvalidOperationException>().WithMessage("*AguardandoFinanciadora*");
+    }
+
+    [Fact]
+    public void RemoverFinanciamento_ComRespostaRegistrada_LimpaTextoEVoltaParaCriada()
+    {
+        var proposta = CriarPropostaBase();
+        proposta.DefinirModoPagamento(ModoPagamento.Financiamento);
+        proposta.SolicitarFinanciamento();
+        proposta.RegistrarRespostaFinanciadora("Proposta qualquer.");
+
+        proposta.RemoverFinanciamento();
+
+        proposta.ModoPagamento.Should().Be(ModoPagamento.NaoDefinido);
+        proposta.PropostaFinanciadoraTexto.Should().BeNull();
+        proposta.Status.Should().Be(StatusPropostaVenda.Criada);
+    }
+
     [Theory]
     [InlineData(StatusPropostaVenda.Rejeitada)]
     [InlineData(StatusPropostaVenda.Cancelada)]

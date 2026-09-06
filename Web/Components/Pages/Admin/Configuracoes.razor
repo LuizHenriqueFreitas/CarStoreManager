@@ -8,12 +8,14 @@
 @inject IConfiguracaoSistemaService ConfigService
 @inject IDespesaService DespesaService
 @inject IChecklistPresetService PresetService
+@inject ITemplateDocumentoService TemplateDocService
 @inject IImportacaoDadosService ImportacaoService
 
 @using CarStoreManager.Application.Interfaces.Sistema
 @using CarStoreManager.Application.Interfaces.Oficina
 @using CarStoreManager.Application.DTOs.Sistema
 @using CarStoreManager.Application.DTOs.Sistema.Importacao
+@using CarStoreManager.Application.DTOs.Sistema.TemplateDocumento
 @using CarStoreManager.Application.DTOs.Oficina.ChecklistPreset
 @using Microsoft.AspNetCore.Components.Forms
 
@@ -257,26 +259,56 @@
         @if (abaAtiva == "documentos")
         {
             <section class="cfg-card-full" data-tour="cfg-documentos-templates">
-                <h2>Templates de documentos</h2>
+                <h2>Templates de documento</h2>
                 <p class="muted">
-                    Texto-base usado para pré-preencher o cadastro de um novo veículo (termo de
-                    entrega) e o cadastro de uma nova consignação (contrato). Vem com um modelo
-                    genérico e formal — edite abaixo para alinhar com a sua loja. Depois de
-                    aplicado, o texto de cada veículo/consignação ainda pode ser ajustado
-                    individualmente na hora do cadastro.
+                    Modelos de contrato/termo (termo de entrega, contrato de consignação, resposta de
+                    financiadora, termo de test-drive etc.) usados em qualquer tela do sistema que
+                    redige um documento. Igual aos presets de checklist: cadastre quantos precisar,
+                    dê um nome claro, e cada tela mostra um seletor pra escolher um template como ponto
+                    de partida (ou escrever do zero) — o texto é copiado como rascunho editável.
                 </p>
 
-                <label>Termo de entrega</label>
-                <textarea class="campo-textarea" rows="14" @bind="templates.TemplateTermoEntrega"></textarea>
-
-                <label>Contrato de consignação</label>
-                <textarea class="campo-textarea" rows="14" @bind="templates.TemplateContratoConsignacao"></textarea>
-
-                <div class="acoes">
-                    <button class="btn-salvar" @onclick="SalvarTemplates" disabled="@salvandoTemplates">
-                        @(salvandoTemplates ? "Salvando..." : "Salvar templates")
-                    </button>
+                <div class="presets-lista" data-tour="cfg-documentos-lista">
+                    @foreach (var t in templatesDocumento)
+                    {
+                        <div class="preset-card @(t.Id == templateSelecionadoId ? "preset-ativo" : "")"
+                             @onclick="() => SelecionarTemplateDocumento(t.Id)">
+                            <div class="preset-nome">@t.Nome</div>
+                            <div class="preset-meta">
+                                @(t.Ativo ? "ativo" : "inativo")
+                            </div>
+                        </div>
+                    }
+                    <div class="preset-card preset-novo" @onclick="NovoTemplateDocumento">
+                        + Novo template
+                    </div>
                 </div>
+
+                @if (templateDocEditando is not null)
+                {
+                    <div class="preset-editor">
+                        <h3>@(templateDocEditando.Id == Guid.Empty ? "Novo template" : "Editar template")</h3>
+
+                        <label>Nome</label>
+                        <input @bind="templateDocEditando.Nome" placeholder="ex: Contrato de consignação — padrão" />
+
+                        <label class="check-line">
+                            <input type="checkbox" @bind="templateDocEditando.Ativo" /> Ativo
+                        </label>
+
+                        <label>Conteúdo</label>
+                        <textarea class="campo-textarea" rows="16" @bind="templateDocEditando.Conteudo"></textarea>
+
+                        <div class="acoes">
+                            <button class="btn-salvar" @onclick="SalvarTemplateDocumento">Salvar template</button>
+                            @if (templateDocEditando.Id != Guid.Empty)
+                            {
+                                <button class="btn-remover" @onclick="RemoverTemplateDocumento">Excluir template</button>
+                            }
+                            <button class="btn-mini" @onclick="CancelarEdicaoTemplateDocumento">Cancelar</button>
+                        </div>
+                    </div>
+                }
             </section>
         }
 
@@ -322,6 +354,7 @@
                             @if (resultadoImportacao.FornecedoresCriados > 0) { <li>@resultadoImportacao.FornecedoresCriados fornecedor(es)</li> }
                             @if (resultadoImportacao.ComponentesCriados > 0) { <li>@resultadoImportacao.ComponentesCriados componente(s) de estoque</li> }
                             @if (resultadoImportacao.ChecklistPresetsCriados > 0) { <li>@resultadoImportacao.ChecklistPresetsCriados preset(s) de checklist</li> }
+                            @if (resultadoImportacao.TemplatesDocumentoCriados > 0) { <li>@resultadoImportacao.TemplatesDocumentoCriados template(s) de documento</li> }
                             @if (resultadoImportacao.DespesasCriadas > 0) { <li>@resultadoImportacao.DespesasCriadas despesa(s) fixa(s)</li> }
                             @if (resultadoImportacao.VeiculosVendaCriados > 0) { <li>@resultadoImportacao.VeiculosVendaCriados veículo(s) de venda</li> }
                             @if (resultadoImportacao.VeiculosConsignadosCriados > 0) { <li>@resultadoImportacao.VeiculosConsignadosCriados veículo(s) consignado(s)</li> }
@@ -480,9 +513,10 @@
     private SalvarChecklistPresetDTO? presetEditando;
     private List<string> itensEdicao = new();
 
-    // Templates de documentos
-    private TemplatesDocumentosDTO templates = new();
-    private bool salvandoTemplates;
+    // Templates de documento
+    private List<TemplateDocumentoDTO> templatesDocumento = new();
+    private Guid? templateSelecionadoId;
+    private SalvarTemplateDocumentoDTO? templateDocEditando;
 
     // Importar dados
     private IBrowserFile? arquivoSelecionado;
@@ -510,8 +544,8 @@
         var rp = await PresetService.GetAllAsync();
         if (rp.IsSuccess) presets = rp.Value!.ToList();
 
-        var rt = await ConfigService.ObterTemplatesAsync();
-        if (rt.IsSuccess) templates = rt.Value!;
+        var rt = await TemplateDocService.GetAllAsync();
+        if (rt.IsSuccess) templatesDocumento = rt.Value!.ToList();
 
         carregando = false;
     }
@@ -635,17 +669,63 @@
     }
 
     // ===================== DOCUMENTOS =====================
-    private async Task SalvarTemplates()
+    private void SelecionarTemplateDocumento(Guid id)
     {
-        salvandoTemplates = true;
-        var r = await ConfigService.AtualizarTemplatesAsync(templates);
-        salvandoTemplates = false;
-        if (r.IsSuccess)
+        templateSelecionadoId = id;
+        var t = templatesDocumento.FirstOrDefault(x => x.Id == id);
+        if (t is null) return;
+
+        templateDocEditando = new SalvarTemplateDocumentoDTO
         {
-            MostrarOk("Templates salvos.");
-            await CarregarTudo();
+            Id = t.Id,
+            Nome = t.Nome,
+            Conteudo = t.Conteudo,
+            Ativo = t.Ativo
+        };
+    }
+
+    private void NovoTemplateDocumento()
+    {
+        templateSelecionadoId = null;
+        templateDocEditando = new SalvarTemplateDocumentoDTO { Id = Guid.Empty, Nome = "", Conteudo = "", Ativo = true };
+    }
+
+    private void CancelarEdicaoTemplateDocumento()
+    {
+        templateDocEditando = null;
+        templateSelecionadoId = null;
+    }
+
+    private async Task SalvarTemplateDocumento()
+    {
+        if (templateDocEditando is null) return;
+
+        if (templateDocEditando.Id == Guid.Empty)
+        {
+            var r = await TemplateDocService.AddAsync(templateDocEditando);
+            if (r.IsSuccess) { MostrarOk("Template criado."); await RecarregarTemplatesDocumento(); CancelarEdicaoTemplateDocumento(); }
+            else MostrarErro(r.Error);
         }
+        else
+        {
+            var r = await TemplateDocService.UpdateAsync(templateDocEditando);
+            if (r.IsSuccess) { MostrarOk("Template atualizado."); await RecarregarTemplatesDocumento(); }
+            else MostrarErro(r.Error);
+        }
+    }
+
+    private async Task RemoverTemplateDocumento()
+    {
+        if (templateDocEditando is null || templateDocEditando.Id == Guid.Empty) return;
+        var r = await TemplateDocService.RemoveAsync(templateDocEditando.Id);
+        if (r.IsSuccess) { MostrarOk("Template removido."); await RecarregarTemplatesDocumento(); CancelarEdicaoTemplateDocumento(); }
         else MostrarErro(r.Error);
+    }
+
+    private async Task RecarregarTemplatesDocumento()
+    {
+        var rt = await TemplateDocService.GetAllAsync();
+        if (rt.IsSuccess) templatesDocumento = rt.Value!.ToList();
     }
 
     // ===================== IMPORTAR DADOS =====================

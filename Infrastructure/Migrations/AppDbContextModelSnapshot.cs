@@ -133,18 +133,11 @@ namespace CarStoreManager.Infrastructure.Migrations
                     b.Property<string>("MotivoRejeicao")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ObservacoesFinanciamento")
+                    b.Property<string>("PropostaFinanciadoraTexto")
                         .HasColumnType("TEXT");
-
-                    b.Property<int?>("ParcelasFinanciamento")
-                        .HasColumnType("INTEGER");
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
-
-                    b.Property<decimal?>("TaxaJurosMensal")
-                        .HasPrecision(7, 4)
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("VeiculoEntidadeTipo")
                         .IsRequired()
@@ -460,6 +453,9 @@ namespace CarStoreManager.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CategoriaML")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("DataCriacao")
                         .HasColumnType("TEXT");
 
@@ -477,10 +473,16 @@ namespace CarStoreManager.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ListingTypeML")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("UltimoErro")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UltimoErroDetalheTecnico")
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("UltimoPrecoSincronizado")
@@ -1102,14 +1104,6 @@ namespace CarStoreManager.Infrastructure.Migrations
                         .HasPrecision(5, 2)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("TemplateContratoConsignacao")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TemplateTermoEntrega")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
                     b.ToTable("ConfiguracoesSistema");
@@ -1149,6 +1143,34 @@ namespace CarStoreManager.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Despesas");
+                });
+
+            modelBuilder.Entity("CarStoreManager.Domain.Entities.Sistema.TemplateDocumento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Conteudo")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataUltimaAtualizacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TemplatesDocumento");
                 });
 
             modelBuilder.Entity("CarStoreManager.Domain.Entities.Usuario", b =>
@@ -1417,24 +1439,6 @@ namespace CarStoreManager.Infrastructure.Migrations
                                 .HasForeignKey("PropostaVendaId");
                         });
 
-                    b.OwnsOne("CarStoreManager.Domain.ValueObjects.Dinheiro", "ValorParcela", b1 =>
-                        {
-                            b1.Property<Guid>("PropostaVendaId")
-                                .HasColumnType("TEXT");
-
-                            b1.Property<decimal>("Valor")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("TEXT")
-                                .HasColumnName("ValorParcela");
-
-                            b1.HasKey("PropostaVendaId");
-
-                            b1.ToTable("PropostasVenda");
-
-                            b1.WithOwner()
-                                .HasForeignKey("PropostaVendaId");
-                        });
-
                     b.Navigation("Desconto")
                         .IsRequired();
 
@@ -1446,8 +1450,6 @@ namespace CarStoreManager.Infrastructure.Migrations
 
                     b.Navigation("ValorFinal")
                         .IsRequired();
-
-                    b.Navigation("ValorParcela");
                 });
 
             modelBuilder.Entity("CarStoreManager.Domain.Entities.Concessionaria.VeiculoConsignacao", b =>

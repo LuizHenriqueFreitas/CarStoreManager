@@ -188,6 +188,10 @@ else
                 <div class="detalhe-section">
                     <h2 class="section-titulo">Consignação — contrato</h2>
                     <p class="contrato-texto">@(string.IsNullOrWhiteSpace(consignacao.TextoContrato) ? "Nenhum termo cadastrado." : consignacao.TextoContrato)</p>
+                    @if (!string.IsNullOrWhiteSpace(consignacao.TextoContrato))
+                    {
+                        <BotaoExportarPdf Titulo="@($"Contrato de consignação - {Marca} {Modelo}")" Conteudo="@consignacao.TextoContrato" CssClass="btn-secondary" />
+                    }
                     @if (!string.IsNullOrWhiteSpace(consignacao.UrlContratoPdf))
                     {
                         <a href="@consignacao.UrlContratoPdf" target="_blank" class="link-contrato">📄 Abrir contrato (PDF)</a>
@@ -257,15 +261,11 @@ else
                         </AuthorizeView>
                         <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxPublicarMl">
                             <Authorized>
-                                <button class="btn-secondary" @onclick="PublicarNoMercadoLivre" disabled="@publicandoMl">
-                                    @(publicandoMl ? "Publicando..." : "Publicar no Mercado Livre")
+                                <button class="btn-secondary" @onclick="PublicarNoMercadoLivre">
+                                    Publicar no Mercado Livre
                                 </button>
                             </Authorized>
                         </AuthorizeView>
-                        @if (erroMl is not null)
-                        {
-                            <div class="erro-banner">@erroMl</div>
-                        }
                     }
 
                     <button class="btn-secondary" @onclick="AbrirModalEdicao">
@@ -315,15 +315,11 @@ else
                         </AuthorizeView>
                         <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxPublicarMlConsig">
                             <Authorized>
-                                <button class="btn-secondary" @onclick="PublicarNoMercadoLivre" disabled="@publicandoMl">
-                                    @(publicandoMl ? "Publicando..." : "Publicar no Mercado Livre")
+                                <button class="btn-secondary" @onclick="PublicarNoMercadoLivre">
+                                    Publicar no Mercado Livre
                                 </button>
                             </Authorized>
                         </AuthorizeView>
-                        @if (erroMl is not null)
-                        {
-                            <div class="erro-banner">@erroMl</div>
-                        }
                     }
                     @if (consignacao.Status == "VendidoAguardandoPagamento")
                     {
@@ -447,6 +443,8 @@ else
                         <p class="secao-sub" style="font-size:.85em; color:#666; margin:4px 0 6px;">
                             Será usado como base do termo final quando a proposta for gerada.
                         </p>
+                        <SeletorTemplateDocumento Label="Substituir por um template"
+                                                  OnTemplateAplicado="AplicarTemplateTermoEdicao" />
                         <textarea class="campo-input" rows="6"
                                   @bind="formEdicao.TextoTermoPreliminar"
                                   placeholder="Texto do termo de entrega..."></textarea>
@@ -456,6 +454,8 @@ else
                 {
                     <div class="form-secao">
                         <label class="campo-label">Texto do contrato de consignação</label>
+                        <SeletorTemplateDocumento Label="Substituir por um template"
+                                                  OnTemplateAplicado="AplicarTemplateContratoEdicao" />
                         <textarea class="campo-input" rows="6"
                                   @bind="formEdicaoConsignacao.TextoContrato"
                                   placeholder="Texto do contrato..."></textarea>
@@ -545,6 +545,9 @@ else
     // Só um dos dois é populado por vez — veiculo para estoque próprio,
     // consignacao para veículo consignado. A rota é a mesma para os dois
     // (não existe mais tela de detalhe separada para consignados).
+    private void AplicarTemplateTermoEdicao(string texto) => formEdicao.TextoTermoPreliminar = texto;
+    private void AplicarTemplateContratoEdicao(string texto) => formEdicaoConsignacao.TextoContrato = texto;
+
     private VeiculoVendaDTO? veiculo;
     private VeiculoConsignacaoDTO? consignacao;
     private bool carregando = true;
@@ -780,20 +783,11 @@ else
         if (r.IsSuccess) await CarregarVeiculo();
     }
 
-    private bool publicandoMl = false;
-    private string? erroMl;
-
-    private async Task PublicarNoMercadoLivre()
-    {
-        publicandoMl = true;
-        erroMl = null;
-        var r = await MercadoLivreService.PublicarAsync(new PublicarAnuncioDTO { EntidadeTipo = EntidadeTipoAtual, EntidadeId = Id });
-        publicandoMl = false;
-        if (r.IsSuccess)
-            Nav.NavigateTo("/integracoes/mercadolivre/anuncios");
-        else
-            erroMl = r.Error;
-    }
+    // Publicação em si não acontece mais direto daqui — a tela de anúncios
+    // busca a categoria sugerida e deixa o operador confirmar/trocar antes de
+    // chamar a API (ver MercadoLivreAnuncios.razor).
+    private void PublicarNoMercadoLivre()
+        => Nav.NavigateTo($"/integracoes/mercadolivre/anuncios?tipo={EntidadeTipoAtual}&id={Id}");
 
     // === Ações de decisão da consignação ===
 

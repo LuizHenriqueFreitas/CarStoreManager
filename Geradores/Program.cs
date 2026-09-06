@@ -65,6 +65,11 @@ var presetIds = await ChecklistPresetGerador.GerarAsync(provider, opcoes.Checkli
 totalCriado += presetIds.Count;
 
 Console.WriteLine();
+Console.WriteLine("== Templates de documento ==");
+var templateDocIds = await TemplateDocumentoGerador.GerarAsync(provider);
+totalCriado += templateDocIds.Count;
+
+Console.WriteLine();
 Console.WriteLine("== Veículos (concessionária) ==");
 var veiculoVendaIds = await VeiculoVendaGerador.GerarAsync(
     provider, opcoes.VeiculosVenda, rng, pools.Placa, pools.Renavam, periodoInicio, periodoFim);

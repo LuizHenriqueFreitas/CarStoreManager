@@ -73,31 +73,6 @@ public class ConfiguracaoSistemaService : IConfiguracaoSistemaService
         catch (Exception) { return Result.Fail("Não foi possível salvar as margens. Tente novamente em instantes."); }
     }
 
-    public async Task<Result<TemplatesDocumentosDTO>> ObterTemplatesAsync()
-    {
-        var cfg = await _repo.ObterAsync();
-        return Result<TemplatesDocumentosDTO>.Ok(new TemplatesDocumentosDTO
-        {
-            TemplateTermoEntrega = cfg.TemplateTermoEntrega,
-            TemplateContratoConsignacao = cfg.TemplateContratoConsignacao
-        });
-    }
-
-    public async Task<Result> AtualizarTemplatesAsync(TemplatesDocumentosDTO dto)
-    {
-        try
-        {
-            var cfg = await _repo.ObterAsync();
-            cfg.AtualizarTemplates(dto.TemplateTermoEntrega, dto.TemplateContratoConsignacao);
-            await _repo.SaveChangesAsync();
-            return Result.Ok();
-        }
-        catch (Exception)
-        {
-            return Result.Fail("Não foi possível salvar os templates. Tente novamente em instantes.");
-        }
-    }
-
     private static ConfiguracaoSistemaDTO MapToDto(ConfiguracaoSistema cfg) => new()
     {
         DataUltimaAtualizacao = cfg.DataUltimaAtualizacao,

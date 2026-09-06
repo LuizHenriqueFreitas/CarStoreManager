@@ -1,0 +1,23 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Botão reutilizável de "gerar PDF" a partir de um texto de contrato/documento.
+   Sem biblioteca de PDF no servidor: abre uma janela formatada e aciona o
+   diálogo de impressão nativo do navegador — o usuário escolhe "Salvar como
+   PDF" e o diretório de destino no próprio diálogo do SO, exatamente como um
+   Ctrl+P normal. Ver wwwroot/js/pdfExport.js. *@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<button type="button" class="btn-exportar-pdf @CssClass" @onclick="Exportar" disabled="@string.IsNullOrWhiteSpace(Conteudo)">
+    @(Texto ?? "🖨️ Gerar PDF")
+</button>
+
+@code {
+    [Parameter] public string Titulo { get; set; } = "Documento";
+    [Parameter] public string Conteudo { get; set; } = "";
+    [Parameter] public string? Texto { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+
+    private async Task Exportar()
+        => await JS.InvokeVoidAsync("carstorePdf.exportar", Titulo, Conteudo);
+}

@@ -41,18 +41,4 @@ public class ConfiguracoesController : ControllerBase
         var r = await _service.AtualizarMargensAsync(dto);
         return r.IsSuccess ? NoContent() : BadRequest(r.Error);
     }
-
-    [HttpGet("templates")]
-    public async Task<IActionResult> ObterTemplates()
-    {
-        var r = await _service.ObterTemplatesAsync();
-        return r.IsSuccess ? Ok(r.Value) : BadRequest(r.Error);
-    }
-
-    [HttpPut("templates")]
-    public async Task<IActionResult> AtualizarTemplates([FromBody] TemplatesDocumentosDTO dto)
-    {
-        var r = await _service.AtualizarTemplatesAsync(dto);
-        return r.IsSuccess ? NoContent() : BadRequest(r.Error);
-    }
 }

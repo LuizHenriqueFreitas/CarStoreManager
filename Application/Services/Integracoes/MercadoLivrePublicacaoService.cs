@@ -3,6 +3,7 @@ using CarStoreManager.Application.DTOs.Integracoes.MercadoLivre;
 using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Application.Mappings.Integracoes;
 using CarStoreManager.Domain.Entities.Integracoes;
+using CarStoreManager.Domain.Interfaces.Repositories.Integracoes;
 using CarStoreManager.Domain.Repositories;
 using Microsoft.Extensions.Options;
 
@@ -13,32 +14,35 @@ public class MercadoLivrePublicacaoService : IMercadoLivrePublicacaoService
     private readonly IAnuncioMercadoLivreRepository _anuncioRepo;
     private readonly IVeiculoVendaRepository _veiculoVendaRepo;
     private readonly IComponenteRepository _componenteRepo;
-    private readonly IEstoqueRepository _estoqueRepo;
     private readonly IVeiculoConsignacaoRepository _veiculoConsignacaoRepo;
-    private readonly IFotoService _fotoService;
+    private readonly IConfiguracaoMercadoLivreRepository _configMLRepo;
     private readonly IMercadoLivreApiClient _apiClient;
     private readonly MercadoLivreTokenHelper _tokenHelper;
+    private readonly MercadoLivreCatalogoService _catalogo;
+    private readonly IEnumerable<IConstrutorPayloadAnuncio> _construtores;
     private readonly MercadoLivreConfig _config;
 
     public MercadoLivrePublicacaoService(
         IAnuncioMercadoLivreRepository anuncioRepo,
         IVeiculoVendaRepository veiculoVendaRepo,
         IComponenteRepository componenteRepo,
-        IEstoqueRepository estoqueRepo,
         IVeiculoConsignacaoRepository veiculoConsignacaoRepo,
-        IFotoService fotoService,
+        IConfiguracaoMercadoLivreRepository configMLRepo,
         IMercadoLivreApiClient apiClient,
         MercadoLivreTokenHelper tokenHelper,
+        MercadoLivreCatalogoService catalogo,
+        IEnumerable<IConstrutorPayloadAnuncio> construtores,
         IOptions<MercadoLivreConfig> config)
     {
         _anuncioRepo = anuncioRepo;
         _veiculoVendaRepo = veiculoVendaRepo;
         _componenteRepo = componenteRepo;
-        _estoqueRepo = estoqueRepo;
         _veiculoConsignacaoRepo = veiculoConsignacaoRepo;
-        _fotoService = fotoService;
+        _configMLRepo = configMLRepo;
         _apiClient = apiClient;
         _tokenHelper = tokenHelper;
+        _catalogo = catalogo;
+        _construtores = construtores;
         _config = config.Value;
     }
 
@@ -48,17 +52,38 @@ public class MercadoLivrePublicacaoService : IMercadoLivrePublicacaoService
         if (!tokenResult.IsSuccess)
             return Result<string>.Fail(tokenResult.Error!);
 
-        var itemResult = await MontarItemAsync(dto.EntidadeTipo, dto.EntidadeId);
-        if (!itemResult.IsSuccess)
-            return Result<string>.Fail(itemResult.Error!);
+        // Item 6: o ML baixa as fotos a partir da URL enviada — localhost não
+        // serve. Componente ainda não manda foto (ver builder), então só
+        // barra aqui os tipos que dependem de foto pública.
+        if (dto.EntidadeTipo != "Componente")
+        {
+            var urlCheck = ValidarUrlPublica();
+            if (!urlCheck.IsSuccess) return Result<string>.Fail(urlCheck.Error!);
+        }
+
+        var builder = _construtores.FirstOrDefault(b => b.Aceita(dto.EntidadeTipo));
+        if (builder is null)
+            return Result<string>.Fail($"Tipo de entidade não suportado: {dto.EntidadeTipo}");
+
+        var cfgML = await _configMLRepo.ObterAsync();
+
+        var payloadResult = await builder.ConstruirAsync(
+            dto.EntidadeTipo, dto.EntidadeId, dto.CategoriaMLOverride, tokenResult.Value!, cfgML.MercadoLivreUserId);
+
+        if (!payloadResult.IsSuccess)
+        {
+            await RegistrarErroAsync(dto, payloadResult.Error!, null);
+            return Result<string>.Fail(payloadResult.Error!);
+        }
 
         try
         {
-            var itemIdML = await _apiClient.PublicarItemAsync(itemResult.Value!, tokenResult.Value!);
+            var itemIdML = await _apiClient.PublicarItemAsync(payloadResult.Value!.Payload, tokenResult.Value!);
 
             var anuncioExistente = await _anuncioRepo.ObterPorEntidadeAsync(dto.EntidadeTipo, dto.EntidadeId);
             var anuncio = anuncioExistente ?? new AnuncioMercadoLivre(dto.EntidadeTipo, dto.EntidadeId);
-            anuncio.MarcarComoPublicado(itemIdML, itemResult.Value!.Preco);
+            anuncio.MarcarComoPublicado(
+                itemIdML, payloadResult.Value.Preco, payloadResult.Value.CategoriaId, payloadResult.Value.ListingTypeId);
 
             if (anuncioExistente is null)
                 await _anuncioRepo.AddAsync(anuncio);
@@ -68,10 +93,26 @@ public class MercadoLivrePublicacaoService : IMercadoLivrePublicacaoService
 
             return Result<string>.Ok(itemIdML);
         }
+        catch (MercadoLivreApiException mlEx)
+        {
+            await RegistrarErroAsync(dto, mlEx.Message, mlEx.DetalheTecnico);
+            return Result<string>.Fail(mlEx.Message);
+        }
         catch (Exception ex)
         {
-            return Result<string>.Fail($"Erro ao publicar no Mercado Livre: {ex.Message}");
+            var mensagem = $"Erro ao publicar no Mercado Livre: {ex.Message}";
+            await RegistrarErroAsync(dto, mensagem, null);
+            return Result<string>.Fail(mensagem);
         }
+    }
+
+    public async Task<Result<SugestaoCategoriaDTO>> SugerirCategoriaAsync(string entidadeTipo, Guid entidadeId)
+    {
+        var titulo = await ObterNomeEntidadeAsync(entidadeTipo, entidadeId);
+        if (titulo is null || titulo == "(removido)")
+            return Result<SugestaoCategoriaDTO>.Fail("Entidade não encontrada");
+
+        return await _catalogo.SugerirCategoriaAsync(titulo);
     }
 
     public async Task<Result> PausarAsync(Guid anuncioId)
@@ -92,10 +133,61 @@ public class MercadoLivrePublicacaoService : IMercadoLivrePublicacaoService
         foreach (var a in anuncios)
         {
             var nome = await ObterNomeEntidadeAsync(a.EntidadeTipo, a.EntidadeId);
-            lista.Add(AnuncioMercadoLivreMapping.ToDto(a, nome));
+            lista.Add(AnuncioMercadoLivreMapping.ToDto(a, nome ?? "(removido)"));
         }
 
         return Result<List<AnuncioMercadoLivreDTO>>.Ok(lista);
+    }
+
+    private async Task RegistrarErroAsync(PublicarAnuncioDTO dto, string mensagem, string? detalheTecnico)
+    {
+        var anuncioExistente = await _anuncioRepo.ObterPorEntidadeAsync(dto.EntidadeTipo, dto.EntidadeId);
+        var anuncio = anuncioExistente ?? new AnuncioMercadoLivre(dto.EntidadeTipo, dto.EntidadeId);
+        anuncio.RegistrarErro(mensagem, detalheTecnico);
+
+        if (anuncioExistente is null)
+            await _anuncioRepo.AddAsync(anuncio);
+        else
+            _anuncioRepo.Update(anuncio);
+        await _anuncioRepo.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Item 6: sem host público válido, nem adianta chamar a API — o ML vai
+    /// tentar baixar as fotos e falhar de um jeito confuso de diagnosticar.
+    /// Aborta localmente com mensagem clara em vez disso.
+    /// </summary>
+    private Result ValidarUrlPublica()
+    {
+        var url = (_config.UrlBasePublica ?? "").Trim();
+
+        if (string.IsNullOrWhiteSpace(url))
+            return Result.Fail(
+                "Publicação cancelada: configure a URL pública do sistema (MercadoLivre:UrlBasePublica no appsettings) antes de publicar — o Mercado Livre precisa baixar as fotos de um endereço acessível pela internet.");
+
+        if (url.Contains("localhost", StringComparison.OrdinalIgnoreCase) || url.Contains("127.0.0.1"))
+            return Result.Fail(
+                $"Publicação cancelada: a URL pública configurada (\"{url}\") aponta para localhost — o Mercado Livre não consegue baixar fotos desse endereço de fora. Configure um host público (ex.: um túnel ngrok) antes de publicar.");
+
+        return Result.Ok();
+    }
+
+    private async Task<string?> ObterNomeEntidadeAsync(string entidadeTipo, Guid entidadeId)
+    {
+        switch (entidadeTipo)
+        {
+            case "VeiculoVenda":
+                var v = await _veiculoVendaRepo.GetByIdAsync(entidadeId);
+                return v is null ? null : $"{v.GetMarca()} {v.GetModelo()} {v.GetAno()}";
+            case "Componente":
+                var c = await _componenteRepo.GetByIdAsync(entidadeId);
+                return c?.GetNome();
+            case "VeiculoConsignacao":
+                var vc = await _veiculoConsignacaoRepo.GetByIdAsync(entidadeId);
+                return vc is null ? null : $"{vc.GetMarca()} {vc.GetModelo()} {vc.GetAno()}";
+            default:
+                return null;
+        }
     }
 
     private async Task<Result> ExecutarAcaoAnuncioAsync(
@@ -119,125 +211,16 @@ public class MercadoLivrePublicacaoService : IMercadoLivrePublicacaoService
             await _anuncioRepo.SaveChangesAsync();
             return Result.Ok();
         }
+        catch (MercadoLivreApiException mlEx)
+        {
+            anuncio.RegistrarErro(mlEx.Message, mlEx.DetalheTecnico);
+            _anuncioRepo.Update(anuncio);
+            await _anuncioRepo.SaveChangesAsync();
+            return Result.Fail(mlEx.Message);
+        }
         catch (Exception ex)
         {
             return Result.Fail(ex.Message);
-        }
-    }
-
-    private async Task<Result<MercadoLivreItemDTO>> MontarItemAsync(string entidadeTipo, Guid entidadeId)
-    {
-        switch (entidadeTipo)
-        {
-            case "VeiculoVenda":
-            {
-                var veiculo = await _veiculoVendaRepo.GetByIdAsync(entidadeId);
-                if (veiculo is null) return Result<MercadoLivreItemDTO>.Fail("Veículo não encontrado");
-
-                var fotos = await ObterFotosAbsolutasAsync("VeiculoVenda", entidadeId);
-                return Result<MercadoLivreItemDTO>.Ok(new MercadoLivreItemDTO
-                {
-                    Titulo = $"{veiculo.GetMarca()} {veiculo.GetModelo()} {veiculo.GetAno()}",
-                    Preco = veiculo.GetValor(),
-                    Quantidade = 1,
-                    Descricao = string.IsNullOrWhiteSpace(veiculo.TextoTermoPreliminar)
-                        ? "Veículo em perfeitas condições."
-                        : veiculo.TextoTermoPreliminar,
-                    UrlsFotos = fotos,
-                    CategoriaML = "MLB1744", // placeholder — categoria real exige lookup na API de categorias do ML
-                    BuyingMode = "classified", // veículos são categoria de classificados no ML
-                    Condicao = "used",
-                    Atributos = new Dictionary<string, string>
-                    {
-                        ["BRAND"] = veiculo.GetMarca(),
-                        ["MODEL"] = veiculo.GetModelo(),
-                        ["VEHICLE_YEAR"] = veiculo.GetAno().ToString(),
-                        ["KILOMETERS"] = veiculo.GetQuilometragem().ToString()
-                    }
-                });
-            }
-
-            case "Componente":
-            {
-                var componente = await _componenteRepo.GetByIdAsync(entidadeId);
-                if (componente is null) return Result<MercadoLivreItemDTO>.Fail("Componente não encontrado");
-
-                var estoque = await _estoqueRepo.ObterPorComponenteAsync(entidadeId);
-                if (estoque is null || estoque.QuantidadeAtual <= 0)
-                    return Result<MercadoLivreItemDTO>.Fail("Componente sem estoque disponível");
-
-                return Result<MercadoLivreItemDTO>.Ok(new MercadoLivreItemDTO
-                {
-                    Titulo = componente.GetNome(),
-                    Preco = componente.ValorVenda,
-                    Quantidade = estoque.QuantidadeAtual,
-                    Descricao = componente.GetDescricao(),
-                    UrlsFotos = new List<string>(), // Componente não tem infraestrutura de fotos hoje
-                    CategoriaML = "MLB1747", // placeholder
-                    Condicao = "new"
-                });
-            }
-
-            case "VeiculoConsignacao":
-            {
-                var veiculo = await _veiculoConsignacaoRepo.GetByIdAsync(entidadeId);
-                if (veiculo is null) return Result<MercadoLivreItemDTO>.Fail("Veículo consignado não encontrado");
-
-                var fotos = await ObterFotosAbsolutasAsync("VeiculoConsignacao", entidadeId);
-                return Result<MercadoLivreItemDTO>.Ok(new MercadoLivreItemDTO
-                {
-                    Titulo = $"{veiculo.GetMarca()} {veiculo.GetModelo()} {veiculo.GetAno()}",
-                    Preco = veiculo.Comissao.ValorVendaEsperado.GetValorDinheiro(),
-                    Quantidade = 1,
-                    Descricao = string.IsNullOrWhiteSpace(veiculo.TextoContrato)
-                        ? "Veículo consignado em perfeitas condições."
-                        : veiculo.TextoContrato,
-                    UrlsFotos = fotos,
-                    CategoriaML = "MLB1744", // placeholder
-                    BuyingMode = "classified", // veículos são categoria de classificados no ML
-                    Condicao = "used",
-                    Atributos = new Dictionary<string, string>
-                    {
-                        ["BRAND"] = veiculo.GetMarca(),
-                        ["MODEL"] = veiculo.GetModelo(),
-                        ["VEHICLE_YEAR"] = veiculo.GetAno().ToString(),
-                        ["KILOMETERS"] = veiculo.GetQuilometragem().ToString()
-                    }
-                });
-            }
-
-            default:
-                return Result<MercadoLivreItemDTO>.Fail($"Tipo de entidade não suportado: {entidadeTipo}");
-        }
-    }
-
-    private async Task<List<string>> ObterFotosAbsolutasAsync(string entidadeTipo, Guid entidadeId)
-    {
-        var r = await _fotoService.GetFotosByEntidadeAsync(entidadeTipo, entidadeId);
-        if (!r.IsSuccess || r.Value is null) return new List<string>();
-
-        var baseUrl = _config.UrlBasePublica?.TrimEnd('/') ?? "";
-        return r.Value
-            .OrderBy(f => f.Ordem)
-            .Select(f => f.Url.StartsWith("http") ? f.Url : $"{baseUrl}{f.Url}")
-            .ToList();
-    }
-
-    private async Task<string> ObterNomeEntidadeAsync(string entidadeTipo, Guid entidadeId)
-    {
-        switch (entidadeTipo)
-        {
-            case "VeiculoVenda":
-                var v = await _veiculoVendaRepo.GetByIdAsync(entidadeId);
-                return v is null ? "(removido)" : $"{v.GetMarca()} {v.GetModelo()} {v.GetAno()}";
-            case "Componente":
-                var c = await _componenteRepo.GetByIdAsync(entidadeId);
-                return c?.GetNome() ?? "(removido)";
-            case "VeiculoConsignacao":
-                var vc = await _veiculoConsignacaoRepo.GetByIdAsync(entidadeId);
-                return vc is null ? "(removido)" : $"{vc.GetMarca()} {vc.GetModelo()} {vc.GetAno()}";
-            default:
-                return "(desconhecido)";
         }
     }
 }

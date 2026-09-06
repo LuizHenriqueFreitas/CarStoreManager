@@ -7,7 +7,6 @@
 @inject IClienteService ClienteService
 @inject IVendedorService VendedorService
 @inject IFotoService FotoService
-@inject IConfiguracaoSistemaService ConfigService
 @inject NavigationManager Nav
 
 @using CarStoreManager.Application.Common
@@ -166,6 +165,7 @@
     <div class="form-card" data-tour="consig-novo-contrato">
         <h2 class="secao-titulo">Contrato</h2>
         <p class="secao-sub">Termos do acordo de consignação com o proprietário.</p>
+        <SeletorTemplateDocumento Label="Começar a partir de um template" OnTemplateAplicado="AplicarTemplateContrato" />
         <textarea class="campo-input" rows="6" @bind="form.TextoContrato"
                   placeholder="Ex: O proprietário consigna o veículo acima descrito à concessionária pelo prazo de..."></textarea>
         <div class="form-campo" style="margin-top: 10px;">
@@ -235,6 +235,8 @@
     private ClienteListaDTO? clienteSelecionado;
     private bool mostrarResultadosCliente;
 
+    private void AplicarTemplateContrato(string texto) => form.TextoContrato = texto;
+
     private record FotoEmMemoria(string Nome, string ContentType, byte[] Conteudo);
     private List<FotoEmMemoria> arquivosSelecionados = new();
     private List<string> previewsNovasFotos = new();
@@ -247,12 +249,6 @@
         var rVendedores = await VendedorService.GetAllAsync();
         if (rVendedores.IsSuccess && rVendedores.Value is not null)
             vendedores = rVendedores.Value.ToList();
-
-        // Pré-preenche com o template configurado em Configurações > Documentos
-        // — o vendedor ajusta as lacunas em vez de partir de um campo em branco.
-        var rTemplates = await ConfigService.ObterTemplatesAsync();
-        if (rTemplates.IsSuccess && rTemplates.Value is not null)
-            form.TextoContrato = rTemplates.Value.TemplateContratoConsignacao;
     }
 
     private async Task BuscarClientes()

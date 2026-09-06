@@ -56,6 +56,7 @@ public class AppDbContext : DbContext
     // SISTEMA
     // =========================
     public DbSet<ConfiguracaoSistema> ConfiguracoesSistema { get; set; }
+    public DbSet<TemplateDocumento> TemplatesDocumento { get; set; }
     public DbSet<Despesa> Despesas { get; set; }
 
     // =========================
@@ -267,6 +268,13 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ChecklistPresetItem>().Property(i => i.Descricao).IsRequired();
 
         // =========================
+        // TEMPLATE DE DOCUMENTO (editável pelo admin — contratos/termos genéricos)
+        // =========================
+        modelBuilder.Entity<TemplateDocumento>().HasKey(t => t.Id);
+        modelBuilder.Entity<TemplateDocumento>().Property(t => t.Nome).IsRequired();
+        modelBuilder.Entity<TemplateDocumento>().Property(t => t.Conteudo).IsRequired();
+
+        // =========================
         // COMPONENTE
         // =========================
         modelBuilder.Entity<Componente>().HasKey(c => c.Id);
@@ -466,12 +474,6 @@ public class AppDbContext : DbContext
                 vo.Property("Valor").HasColumnName("DescontoPercentual");
             });
 
-            // ===== FINANCIAMENTO =====
-            entity.OwnsOne(p => p.ValorParcela, vo =>
-            {
-                vo.Property("Valor").HasColumnName("ValorParcela").HasPrecision(18, 2);
-            });
-            entity.Property(p => p.TaxaJurosMensal).HasPrecision(7, 4);
         });
 
         // =========================

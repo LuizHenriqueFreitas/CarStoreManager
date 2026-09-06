@@ -7,6 +7,7 @@ public class ImportacaoResultadoDTO
     public int FornecedoresCriados { get; set; }
     public int ComponentesCriados { get; set; }
     public int ChecklistPresetsCriados { get; set; }
+    public int TemplatesDocumentoCriados { get; set; }
     public int DespesasCriadas { get; set; }
     public int VeiculosVendaCriados { get; set; }
     public int VeiculosConsignadosCriados { get; set; }
@@ -18,6 +19,6 @@ public class ImportacaoResultadoDTO
 
     public int TotalCriado =>
         UsuariosCriados + ClientesCriados + FornecedoresCriados + ComponentesCriados + ChecklistPresetsCriados +
-        DespesasCriadas + VeiculosVendaCriados + VeiculosConsignadosCriados + VeiculosClienteCriados +
-        PropostasVendaCriadas + OrdensServicoCriadas;
+        TemplatesDocumentoCriados + DespesasCriadas + VeiculosVendaCriados + VeiculosConsignadosCriados +
+        VeiculosClienteCriados + PropostasVendaCriadas + OrdensServicoCriadas;
 }

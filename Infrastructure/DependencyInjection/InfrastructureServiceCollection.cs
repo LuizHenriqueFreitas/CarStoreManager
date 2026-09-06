@@ -111,6 +111,8 @@ public static class InfrastructureServiceCollection
         // =========================
         services.AddScoped<IConfiguracaoSistemaRepository, ConfiguracaoSistemaRepository>();
         services.AddScoped<IConfiguracaoSistemaService, ConfiguracaoSistemaService>();
+        services.AddScoped<ITemplateDocumentoRepository, TemplateDocumentoRepository>();
+        services.AddScoped<ITemplateDocumentoService, TemplateDocumentoService>();
         services.AddScoped<IDespesaRepository, DespesaRepository>();
         services.AddScoped<IDespesaService, DespesaService>();
         services.AddScoped<IBackdateService, BackdateService>();
@@ -132,6 +134,11 @@ public static class InfrastructureServiceCollection
         // INTEGRAÇÕES — MERCADO LIVRE
         // =========================
         services.Configure<MercadoLivreConfig>(configuration.GetSection("MercadoLivre"));
+
+        // Cache em memória pros metadados de categoria do ML (MercadoLivreCatalogoService)
+        // — mudam raramente, e cada publicação faria 3 chamadas HTTP sem isso.
+        services.AddMemoryCache();
+
         services.AddScoped<ITokenCriptografiaService, TokenCriptografiaService>();
         services.AddScoped<IAnuncioMercadoLivreRepository, AnuncioMercadoLivreRepository>();
         services.AddScoped<IVendaMercadoLivreRepository, VendaMercadoLivreRepository>();

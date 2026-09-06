@@ -233,8 +233,24 @@ public class PropostaVendaService : IPropostaVendaService
 
         try
         {
-            proposta.RegistrarRespostaFinanciadora(
-                dto.Parcelas, dto.ValorParcela, dto.TaxaJurosMensal, dto.Observacoes);
+            proposta.RegistrarRespostaFinanciadora(dto.TextoProposta);
+            _repository.Update(proposta);
+            await _repository.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+    }
+
+    public async Task<Result> NegarFinanciamentoAsync(Guid propostaId, string motivo)
+    {
+        var proposta = await _repository.GetByIdAsync(propostaId);
+        if (proposta is null) return Result.Fail("Proposta não encontrada");
+        if (await ExpirarSeNecessarioAsync(proposta))
+            return Result.Fail("Proposta expirou.");
+
+        try
+        {
+            proposta.NegarFinanciamento(motivo);
             _repository.Update(proposta);
             await _repository.SaveChangesAsync();
             return Result.Ok();

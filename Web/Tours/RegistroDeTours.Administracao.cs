@@ -214,9 +214,9 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "cfg-documentos-templates",
                     Titulo = "Templates de documentos",
-                    Texto = "Texto-base do termo de entrega de veículo e do contrato de consignação. Serve " +
-                        "só para pré-preencher — cada cadastro de veículo ou consignação ainda pode ajustar o " +
-                        "texto individualmente."
+                    Texto = "Texto-base do termo de entrega de veículo, do contrato de consignação e do " +
+                        "registro de resposta da financiadora. Serve só para pré-preencher — cada proposta, " +
+                        "veículo ou consignação ainda pode ajustar o texto individualmente."
                 },
                 new()
                 {

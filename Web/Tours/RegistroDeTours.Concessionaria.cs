@@ -427,8 +427,8 @@ public static partial class RegistroDeTours
                     Seletor = "proposta-nova-financ-bloco",
                     Titulo = "Detalhes do financiamento",
                     Texto = "Aparece só quando o modo é Financiamento. Informe a entrada — o valor a financiar é " +
-                        "calculado automaticamente — e marque a opção para já enviar os dados à financiadora " +
-                        "configurada assim que a proposta for registrada."
+                        "calculado automaticamente — e marque a opção para já marcar como enviado à financiadora " +
+                        "assim que a proposta for registrada (o contato em si é feito por fora do sistema)."
                 },
                 new()
                 {
@@ -573,9 +573,10 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "proposta-detalhe-financiamento",
                     Titulo = "Financiamento",
-                    Texto = "Envie a solicitação por e-mail à financiadora configurada, e registre parcelas, " +
-                        "valor da parcela e taxa de juros quando a resposta chegar. Essa seção só aparece " +
-                        "quando o modo de pagamento é Financiamento."
+                    Texto = "O sistema não simula financiamento — entre em contato com a financiadora por fora " +
+                        "(telefone, e-mail, portal do parceiro) e anote aqui o que ela propôs em texto livre, ou " +
+                        "registre a negativa se ela recusar. Essa seção só aparece quando o modo de pagamento é " +
+                        "Financiamento."
                 },
                 new()
                 {

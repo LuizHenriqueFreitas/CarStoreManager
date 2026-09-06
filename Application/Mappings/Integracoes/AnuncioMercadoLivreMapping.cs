@@ -17,7 +17,10 @@ public static class AnuncioMercadoLivreMapping
             Status = entity.Status.ToString(),
             UltimoPrecoSincronizado = entity.UltimoPrecoSincronizado,
             DataUltimaSincronizacao = entity.DataUltimaSincronizacao,
-            UltimoErro = entity.UltimoErro
+            UltimoErro = entity.UltimoErro,
+            UltimoErroDetalheTecnico = entity.UltimoErroDetalheTecnico,
+            CategoriaML = entity.CategoriaML,
+            ListingTypeML = entity.ListingTypeML
         };
     }
 }

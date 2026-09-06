@@ -1,0 +1,49 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Seletor reutilizável de template de documento/contrato — usado em toda tela
+   que redige um contrato (consignação, termo de entrega, resposta de
+   financiadora, termo de test-drive futuramente, etc.). Sempre oferece
+   "escrever do zero" como primeira opção; ao escolher um preset, o conteúdo
+   é copiado (snapshot editável, igual ao preset de checklist na OS) via
+   OnTemplateAplicado — quem usa o componente decide em qual campo colocar. *@
+@using CarStoreManager.Application.Interfaces.Sistema
+@using CarStoreManager.Application.DTOs.Sistema.TemplateDocumento
+@inject ITemplateDocumentoService TemplateDocService
+
+<div class="seletor-template-doc">
+    <label class="campo-label">@Label</label>
+    <select class="campo-input" @bind="templateIdSelecionado" @bind:after="AplicarTemplate" disabled="@carregando">
+        <option value="">Escrever do zero (sem template)</option>
+        @foreach (var t in templates)
+        {
+            <option value="@t.Id">@t.Nome</option>
+        }
+    </select>
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Template de documento";
+
+    /// <summary>Disparado com o conteúdo do template escolhido — o pai decide onde colocar (geralmente sobrescrevendo o textarea do contrato).</summary>
+    [Parameter] public EventCallback<string> OnTemplateAplicado { get; set; }
+
+    private List<TemplateDocumentoLookupDTO> templates = new();
+    private string templateIdSelecionado = "";
+    private bool carregando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var r = await TemplateDocService.GetLookupAtivosAsync();
+        if (r.IsSuccess) templates = r.Value!.ToList();
+        carregando = false;
+    }
+
+    private async Task AplicarTemplate()
+    {
+        if (!Guid.TryParse(templateIdSelecionado, out var id) || id == Guid.Empty) return;
+
+        var r = await TemplateDocService.GetByIdAsync(id);
+        if (r.IsSuccess && r.Value is not null)
+            await OnTemplateAplicado.InvokeAsync(r.Value.Conteudo);
+    }
+}

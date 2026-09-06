@@ -110,16 +110,17 @@
                             <label class="campo-label">&nbsp;</label>
                             <label class="solicitar-check">
                                 <input type="checkbox" @bind="solicitarFinanciadoraAgora" />
-                                Solicitar simulação à financiadora ao criar
+                                Já marcar como enviado à financiadora
                             </label>
                         </div>
                     </div>
                     @if (solicitarFinanciadoraAgora)
                     {
                         <p class="dica">
-                            Dados do cliente, veículo, entrada e valor a financiar serão enviados
-                            por e-mail à financiadora configurada nas
-                            <a href="/admin/configuracoes" target="_blank">configurações do sistema</a>.
+                            O sistema não simula nem envia nada automaticamente — entre em contato com
+                            a financiadora por fora (telefone, e-mail, portal do parceiro), passando os
+                            dados do cliente, do veículo, a entrada e o valor a financiar. Quando ela
+                            responder, registre a proposta (ou a negativa) na tela da proposta.
                         </p>
                     }
                 </div>

@@ -104,4 +104,25 @@ public static class TemplatesDocumentosPadrao
         Assinatura do(a) CONSIGNANTE               Assinatura da CONSIGNATÁRIA
         [NOME DO PROPRIETÁRIO]                     [NOME DO REPRESENTANTE DA LOJA]
         """;
+
+    /// <summary>
+    /// Roteiro de campos pra o vendedor preencher com o que a financiadora
+    /// informou por fora do sistema (ligação, e-mail, portal do parceiro) —
+    /// não é uma simulação nem um cálculo, só um ponto de partida pra não
+    /// esquecer nenhum dado na hora de anotar a resposta.
+    /// </summary>
+    public const string RespostaFinanciadora = """
+        Financiadora: [NOME DA FINANCIADORA]
+        Contato: [NOME DO ATENDENTE / TELEFONE / E-MAIL]
+        Data do retorno: [DATA]
+
+        Condições propostas:
+        - Valor financiado: R$ [VALOR]
+        - Número de parcelas: [PARCELAS]
+        - Valor aproximado da parcela: R$ [VALOR DA PARCELA]
+        - Taxa de juros informada: [TAXA]
+        - Carência/primeira parcela: [PRAZO]
+
+        Observações da financiadora: [CONDIÇÕES ADICIONAIS, EXIGÊNCIAS DE DOCUMENTAÇÃO, VALIDADE DA PROPOSTA, ETC.]
+        """;
 }

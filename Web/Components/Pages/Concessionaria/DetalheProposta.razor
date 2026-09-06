@@ -109,7 +109,7 @@
             </p>
         </section>
 
-        @if (proposta.ModoPagamento == "Financiamento" || proposta.ParcelasFinanciamento.HasValue)
+        @if (proposta.ModoPagamento == "Financiamento" || !string.IsNullOrEmpty(proposta.PropostaFinanciadoraTexto))
         {
             <section class="card" data-tour="proposta-detalhe-financiamento">
                 <h2>Financiamento</h2>
@@ -117,11 +117,13 @@
                 @if (proposta.Status == "Criada" && proposta.ModoPagamento == "Financiamento")
                 {
                     <p class="muted">
-                        Pronto para enviar dados à financiadora configurada nas
-                        <a href="/admin/configuracoes">configurações do sistema</a>.
+                        O sistema não simula financiamento — entre em contato com a financiadora por
+                        fora (telefone, e-mail, portal do parceiro), passando os dados do cliente e do
+                        veículo para ela avaliar as opções. Quando tiver retorno (aprovado ou negado),
+                        registre abaixo.
                     </p>
                     <button class="btn-primary" @onclick="SolicitarFinanciamento" disabled="@processando">
-                        @(processando ? "Enviando..." : "📧 Solicitar simulação à financiadora")
+                        @(processando ? "Registrando..." : "📞 Marcar como enviado à financiadora")
                     </button>
                 }
                 else if (proposta.Status == "AguardandoFinanciadora")
@@ -130,36 +132,35 @@
                         ⏳ Aguardando retorno da financiadora desde
                         <b>@proposta.DataSolicitacaoFinanciamento?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</b>.
                     </p>
-                    <h3>Registrar resposta da financiadora</h3>
-                    <div class="form-row">
-                        <label>Parcelas</label>
-                        <input type="number" min="1" @bind="financ.Parcelas" />
-                        <label>Valor parcela (R$)</label>
-                        <input type="number" step="0.01" min="0" @bind="financ.ValorParcela" />
-                        <label>Taxa juros mensal (%)</label>
-                        <input type="number" step="0.01" min="0" @bind="financ.TaxaJurosMensal" />
-                    </div>
-                    <textarea placeholder="Observações da financiadora (opcional)"
-                              @bind="financ.Observacoes" rows="3"></textarea>
-                    <button class="btn-primary" @onclick="RegistrarResposta" disabled="@processando">
-                        Registrar resposta
+
+                    <h3>Registrar o que a financiadora propôs</h3>
+                    <p class="muted small">Anote em texto livre exatamente o que foi informado (parcelas, valor, taxa, carência, condições) — não há cálculo automático.</p>
+                    <SeletorTemplateDocumento Label="Começar a partir de um template"
+                                              OnTemplateAplicado="AplicarTemplateFinanciadora" />
+                    <textarea placeholder="Ex: Financiadora X aprovou financiamento em 48x de R$ 1.200,00, taxa de 1,8% a.m., primeira parcela em 30 dias..."
+                              @bind="textoPropostaFinanciadora" rows="6"></textarea>
+                    <button class="btn-primary" @onclick="RegistrarResposta" disabled="@(processando || string.IsNullOrWhiteSpace(textoPropostaFinanciadora))">
+                        ✓ Registrar proposta da financiadora
                     </button>
+
+                    <h3 style="margin-top:18px;">Ou, se a financiadora recusou</h3>
+                    <div class="motivo-bloco">
+                        <input type="text" placeholder="Motivo da negativa (obrigatório)" @bind="motivoNegativaFinanciamento" />
+                        <button class="btn-rejeitar" @onclick="NegarFinanciamento"
+                                disabled="@(processando || string.IsNullOrWhiteSpace(motivoNegativaFinanciamento))">
+                            ✗ Financiadora negou o financiamento
+                        </button>
+                    </div>
                 }
-                else if (proposta.ParcelasFinanciamento.HasValue)
+                else if (!string.IsNullOrEmpty(proposta.PropostaFinanciadoraTexto))
                 {
-                    <table class="tbl-valores">
-                        <tr><td>Parcelas</td><td>@proposta.ParcelasFinanciamento×</td></tr>
-                        <tr><td>Valor parcela</td><td>@FormatBRL(proposta.ValorParcela ?? 0)</td></tr>
-                        <tr><td>Taxa juros mensal</td><td>@proposta.TaxaJurosMensal?.ToString("N2")%</td></tr>
-                        <tr><td>Total financiado</td><td>@FormatBRL((proposta.ValorParcela ?? 0) * (proposta.ParcelasFinanciamento ?? 0))</td></tr>
-                        @if (!string.IsNullOrEmpty(proposta.ObservacoesFinanciamento))
-                        {
-                            <tr><td>Observações</td><td>@proposta.ObservacoesFinanciamento</td></tr>
-                        }
-                    </table>
+                    <p class="muted small">Proposta da financiadora (anotada pelo vendedor):</p>
+                    <pre class="termo-preview">@proposta.PropostaFinanciadoraTexto</pre>
                     <p class="muted">
-                        Resposta registrada em @proposta.DataRespostaFinanciadora?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                        Registrada em @proposta.DataRespostaFinanciadora?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                        — o cliente pode aceitar ou recusar essa condição nas ações abaixo.
                     </p>
+                    <BotaoExportarPdf Titulo="Proposta de financiamento" Conteudo="@proposta.PropostaFinanciadoraTexto" CssClass="btn-sec" />
                 }
             </section>
         }
@@ -243,6 +244,8 @@
                 {
                     <p class="muted">Redija o termo descrevendo as condições do veículo na entrega.
                         Esse texto terá valor jurídico — seja específico (avarias, equipamentos, km).</p>
+                    <SeletorTemplateDocumento Label="Começar a partir de um template"
+                                              OnTemplateAplicado="AplicarTemplateTermo" />
                     <textarea @bind="termoTexto" rows="10"
                               placeholder="Ex: O veículo é entregue na data acima, em pleno funcionamento, com [equipamentos], quilometragem [X], sem avarias visíveis exceto [...]. O cliente declara ciência..."></textarea>
                     <button class="btn-primary" @onclick="SalvarTermo" disabled="@processando">
@@ -260,6 +263,8 @@
 
                     @if (termo.Status == "Rascunho")
                     {
+                        <SeletorTemplateDocumento Label="Substituir por um template"
+                                                  OnTemplateAplicado="AplicarTemplateTermo" />
                         <textarea @bind="termoTexto" rows="10"></textarea>
                         <button class="btn-sec" @onclick="SalvarTermo" disabled="@processando">Salvar alterações</button>
                         <button class="btn-primary" @onclick="EnviarTermo" disabled="@processando">
@@ -272,6 +277,7 @@
                         <input type="text" readonly value="@LinkAssinatura" class="link-share" @onclick="SelecionarLink" />
                         <h3>Conteúdo</h3>
                         <pre class="termo-preview">@termo.TextoTermo</pre>
+                        <BotaoExportarPdf Titulo="@($"Termo de entrega - {veiculo?.Marca} {veiculo?.Modelo}")" Conteudo="@termo.TextoTermo" CssClass="btn-sec" />
                     }
                     else if (termo.Status == "Assinado")
                     {
@@ -282,6 +288,7 @@
                         </div>
                         <h3>Conteúdo do termo</h3>
                         <pre class="termo-preview">@termo.TextoTermo</pre>
+                        <BotaoExportarPdf Titulo="@($"Termo de entrega - {veiculo?.Marca} {veiculo?.Modelo}")" Conteudo="@termo.TextoTermo" CssClass="btn-sec" />
                     }
                 }
             </section>
@@ -292,7 +299,7 @@
             <section class="card acoes" data-tour="proposta-detalhe-acoes">
                 <h2>Ações</h2>
                 <button class="btn-aprovar" @onclick="Aprovar" disabled="@processando">
-                    ✓ Cliente aprova proposta
+                    @(proposta.Status == "PropostaFinanciadoraRecebida" ? "✓ Cliente aceita a proposta de financiamento" : "✓ Cliente aprova proposta")
                 </button>
 
                 <div class="motivo-bloco">
@@ -392,7 +399,10 @@
     private bool mensagemErro;
     private decimal novaEntrada;
     private string motivo = "";
-    private RegistrarRespostaFinanciadoraDTO financ = new();
+    private string textoPropostaFinanciadora = "";
+    private void AplicarTemplateFinanciadora(string texto) => textoPropostaFinanciadora = texto;
+    private void AplicarTemplateTermo(string texto) => termoTexto = texto;
+    private string motivoNegativaFinanciamento = "";
 
     private List<VistoriaDTO> vistorias = new();
     private TermoEntregaDTO? termo;
@@ -529,19 +539,30 @@
         processando = true;
         var r = await PropostaService.SolicitarFinanciamentoAsync(Id);
         processando = false;
-        if (r.IsSuccess) { MostrarOk("Solicitação enviada à financiadora."); await Carregar(); }
+        if (r.IsSuccess) { MostrarOk("Marcado como enviado à financiadora — registre o retorno assim que tiver."); await Carregar(); }
+        else MostrarErro(r.Error);
+    }
+
+    private async Task NegarFinanciamento()
+    {
+        if (string.IsNullOrWhiteSpace(motivoNegativaFinanciamento)) return;
+        processando = true;
+        var r = await PropostaService.NegarFinanciamentoAsync(Id, motivoNegativaFinanciamento);
+        processando = false;
+        if (r.IsSuccess) { MostrarOk("Negativa da financiadora registrada — proposta rejeitada."); motivoNegativaFinanciamento = ""; await Carregar(); }
         else MostrarErro(r.Error);
     }
 
     private async Task RegistrarResposta()
     {
-        if (financ.Parcelas <= 0 || financ.ValorParcela <= 0)
-        { MostrarErro("Preencha parcelas e valor da parcela."); return; }
+        if (string.IsNullOrWhiteSpace(textoPropostaFinanciadora))
+        { MostrarErro("Descreva o que a financiadora propôs."); return; }
 
         processando = true;
-        var r = await PropostaService.RegistrarRespostaFinanciadoraAsync(Id, financ);
+        var r = await PropostaService.RegistrarRespostaFinanciadoraAsync(Id,
+            new RegistrarRespostaFinanciadoraDTO { TextoProposta = textoPropostaFinanciadora });
         processando = false;
-        if (r.IsSuccess) { MostrarOk("Resposta registrada."); await Carregar(); }
+        if (r.IsSuccess) { MostrarOk("Proposta da financiadora registrada."); textoPropostaFinanciadora = ""; await Carregar(); }
         else MostrarErro(r.Error);
     }
 

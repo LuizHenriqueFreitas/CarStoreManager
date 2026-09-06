@@ -29,6 +29,7 @@ public class ImportacaoDadosDTO
     public List<FornecedorImportDTO> Fornecedores { get; set; } = new();
     public List<ComponenteImportDTO> Componentes { get; set; } = new();
     public List<ChecklistPresetImportDTO> ChecklistPresets { get; set; } = new();
+    public List<TemplateDocumentoImportDTO> TemplatesDocumento { get; set; } = new();
     public List<DespesaImportDTO> Despesas { get; set; } = new();
     public List<VeiculoVendaImportDTO> VeiculosVenda { get; set; } = new();
     public List<VeiculoConsignacaoImportDTO> VeiculosConsignados { get; set; } = new();
@@ -54,6 +55,14 @@ public class ChecklistPresetImportDTO
     public string Chave { get; set; } = "";
     public string Nome { get; set; } = "";
     public List<string> Itens { get; set; } = new();
+}
+
+/// <summary>Template de documento/contrato reutilizável (termo de entrega, contrato de consignação, resposta de financiadora etc.) — ver TemplateDocumento.</summary>
+public class TemplateDocumentoImportDTO
+{
+    public string Chave { get; set; } = "";
+    public string Nome { get; set; } = "";
+    public string Conteudo { get; set; } = "";
 }
 
 /// <summary>Role: "Vendedor", "Mecanico", "Recepcionista", "ChefeOficina", "GerenteVendas" ou "Admin".</summary>
@@ -197,8 +206,9 @@ public class VeiculoClienteImportDTO
 
 /// <summary>
 /// Cenário (cada um implica os anteriores no funil real da proposta):
-/// "criada", "rejeitada", "aprovada", "vistoriada", "termoRedigido",
-/// "termoEnviado", "concluidaAVista", "concluidaFinanciada".
+/// "criada", "rejeitada", "financiamentoNegado" (financiadora recusou),
+/// "aprovada", "vistoriada", "termoRedigido", "termoEnviado",
+/// "concluidaAVista", "concluidaFinanciada".
 /// </summary>
 public class PropostaVendaImportDTO
 {
@@ -210,9 +220,8 @@ public class PropostaVendaImportDTO
     public decimal DescontoPercentual { get; set; }
     /// <summary>Pix, Transferencia ou Boleto — ignorado se o cenário for "concluidaFinanciada" (compra de veículo não aceita Dinheiro/cartão).</summary>
     public string? ModoPagamento { get; set; }
-    public int ParcelasFinanciamento { get; set; } = 36;
-    public decimal ValorParcelaFinanciamento { get; set; } = 1500;
-    public decimal TaxaJurosMensalFinanciamento { get; set; } = 1.99m;
+    /// <summary>Texto livre anotado pelo vendedor com o que a financiadora propôs — usado quando Cenario = "concluidaFinanciada".</summary>
+    public string? TextoPropostaFinanciadora { get; set; }
     public string? MotivoRejeicao { get; set; }
     public DateTime? DataCriacao { get; set; }
     public DateTime? DataAprovacao { get; set; }

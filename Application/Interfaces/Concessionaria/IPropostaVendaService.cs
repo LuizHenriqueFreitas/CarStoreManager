@@ -21,6 +21,9 @@ public interface IPropostaVendaService : IService<
 
     Task<Result> RegistrarRespostaFinanciadoraAsync(Guid propostaId, RegistrarRespostaFinanciadoraDTO dto);
 
+    /// <summary>Financiadora recusa financiar o cliente/veículo — encerra a proposta como Rejeitada.</summary>
+    Task<Result> NegarFinanciamentoAsync(Guid propostaId, string motivo);
+
     Task<Result> AprovarAsync(Guid propostaId);
     Task<Result> RejeitarAsync(Guid propostaId, string motivo);
     Task<Result> CancelarAsync(Guid propostaId, string motivo);

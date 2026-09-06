@@ -397,15 +397,11 @@
                 </button>
                 @if (ehAdmin)
                 {
-                    <button class="btn-confirmar" @onclick="PublicarNoMercadoLivre" disabled="@publicandoMl">
-                        @(publicandoMl ? "Publicando..." : "Publicar no Mercado Livre")
+                    <button class="btn-confirmar" @onclick="PublicarNoMercadoLivre">
+                        Publicar no Mercado Livre
                     </button>
                 }
             </div>
-            @if (erroPublicacaoMl is not null)
-            {
-                <p class="vazio" style="color: #e02020;">@erroPublicacaoMl</p>
-            }
 
             @if (equivalentesCarregados)
             {
@@ -646,22 +642,13 @@
         if (r.IsSuccess) componenteDetalheCompleto = r.Value;
     }
 
-    private bool publicandoMl = false;
-    private string? erroPublicacaoMl;
-
-    private async Task PublicarNoMercadoLivre()
+    // Publicação em si não acontece mais direto daqui — a tela de anúncios
+    // busca a categoria sugerida e deixa o operador confirmar/trocar antes de
+    // chamar a API (ver MercadoLivreAnuncios.razor).
+    private void PublicarNoMercadoLivre()
     {
         if (componenteDetalhe is null) return;
-
-        publicandoMl = true;
-        erroPublicacaoMl = null;
-        var r = await MercadoLivreService.PublicarAsync(new PublicarAnuncioDTO { EntidadeTipo = "Componente", EntidadeId = componenteDetalhe.Id });
-        publicandoMl = false;
-
-        if (r.IsSuccess)
-            Nav.NavigateTo("/integracoes/mercadolivre/anuncios");
-        else
-            erroPublicacaoMl = r.Error;
+        Nav.NavigateTo($"/integracoes/mercadolivre/anuncios?tipo=Componente&id={componenteDetalhe.Id}");
     }
 
     private async Task BuscarEquivalentes()

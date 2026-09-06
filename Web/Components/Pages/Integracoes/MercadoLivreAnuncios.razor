@@ -31,6 +31,41 @@
         <div class="sucesso-banner">@sucesso</div>
     }
 
+    @if (!string.IsNullOrWhiteSpace(TipoQuery) && IdQuery.HasValue)
+    {
+        <div class="dc-card">
+            <div class="section-titulo">Confirmar publicação</div>
+            @if (carregandoSugestao)
+            {
+                <p class="secao-sub">Consultando categoria sugerida pelo Mercado Livre...</p>
+            }
+            else
+            {
+                <p class="secao-sub">
+                    Categoria sugerida automaticamente pelo Mercado Livre a partir do título do anúncio.
+                    Pode ser trocada por outro category_id antes de confirmar — a sugestão automática erra
+                    com frequência em autopeças.
+                </p>
+                <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
+                    <div class="form-campo">
+                        <label class="campo-label">Categoria (category_id)</label>
+                        <input class="campo-input" @bind="categoriaEditavel" placeholder="ex.: MLB1744" />
+                    </div>
+                    <div class="form-campo">
+                        <label class="campo-label">Nome sugerido</label>
+                        <span class="spec-val">@(nomeCategoriaSugerida ?? "—")</span>
+                    </div>
+                </div>
+                <div class="form-acoes" style="margin-top: 12px;">
+                    <button class="btn-novo" @onclick="CancelarPublicacao" disabled="@publicando">Cancelar</button>
+                    <button class="btn-salvar" @onclick="ConfirmarPublicacao" disabled="@(publicando || string.IsNullOrWhiteSpace(categoriaEditavel))">
+                        @(publicando ? "Publicando..." : "Confirmar publicação")
+                    </button>
+                </div>
+            }
+        </div>
+    }
+
     @if (carregando)
     {
         <p class="loading">Carregando...</p>
@@ -59,7 +94,23 @@
                     </div>
                     @if (!string.IsNullOrWhiteSpace(a.UltimoErro))
                     {
-                        <div class="erro-banner" style="margin-top: 10px;">@a.UltimoErro</div>
+                        <div class="erro-banner" style="margin-top: 10px;">
+                            @a.UltimoErro
+                            @if (!string.IsNullOrWhiteSpace(a.UltimoErroDetalheTecnico))
+                            {
+                                <details style="margin-top: 8px;">
+                                    <summary style="cursor: pointer;">Ver resposta técnica original do Mercado Livre</summary>
+                                    <pre style="white-space: pre-wrap; word-break: break-word; font-size: 11px; margin-top: 6px;">@a.UltimoErroDetalheTecnico</pre>
+                                </details>
+                            }
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(a.CategoriaML))
+                    {
+                        <div class="specs-grid" style="margin-top: 8px;">
+                            <div class="spec"><span class="spec-label">Categoria ML</span><span class="spec-val">@a.CategoriaML</span></div>
+                            <div class="spec"><span class="spec-label">Modalidade</span><span class="spec-val">@(a.ListingTypeML ?? "—")</span></div>
+                        </div>
                     }
                     @if (a.Status == "Publicado")
                     {
@@ -81,11 +132,24 @@
 </div>
 
 @code {
+    // Publicar um veículo/consignação/componente não publica mais direto da
+    // tela de detalhe — navega pra cá com esses dois parâmetros, que disparam
+    // a sugestão de categoria e o passo de confirmação (item 4 da tarefa).
+    [SupplyParameterFromQuery(Name = "tipo")]
+    public string? TipoQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "id")]
+    public Guid? IdQuery { get; set; }
+
     private List<AnuncioMercadoLivreDTO> anuncios = new();
     private bool carregando = true;
     private bool processando = false;
+    private bool publicando = false;
+    private bool carregandoSugestao = false;
     private string? erro;
     private string? sucesso;
+    private string? categoriaEditavel;
+    private string? nomeCategoriaSugerida;
 
     private async Task CarregarAsync()
     {
@@ -95,7 +159,67 @@
         carregando = false;
     }
 
-    protected override async Task OnInitializedAsync() => await CarregarAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarAsync();
+        if (!string.IsNullOrWhiteSpace(TipoQuery) && IdQuery.HasValue)
+            await CarregarSugestaoAsync();
+    }
+
+    private async Task CarregarSugestaoAsync()
+    {
+        carregandoSugestao = true;
+        var r = await PublicacaoService.SugerirCategoriaAsync(TipoQuery!, IdQuery!.Value);
+        if (r.IsSuccess && r.Value is not null)
+        {
+            categoriaEditavel = r.Value.CategoriaId;
+            nomeCategoriaSugerida = r.Value.NomeCategoria;
+        }
+        else
+        {
+            // Sugestão falhou (ex.: sem conexão com o ML) — não trava o fluxo,
+            // o operador ainda pode digitar a categoria manualmente.
+            erro = r.Error;
+        }
+        carregandoSugestao = false;
+    }
+
+    private void CancelarPublicacao()
+    {
+        TipoQuery = null;
+        IdQuery = null;
+        categoriaEditavel = null;
+        nomeCategoriaSugerida = null;
+        Nav.NavigateTo("/integracoes/mercadolivre/anuncios");
+    }
+
+    private async Task ConfirmarPublicacao()
+    {
+        if (string.IsNullOrWhiteSpace(TipoQuery) || !IdQuery.HasValue) return;
+
+        publicando = true;
+        erro = null; sucesso = null;
+        var r = await PublicacaoService.PublicarAsync(new PublicarAnuncioDTO
+        {
+            EntidadeTipo = TipoQuery,
+            EntidadeId = IdQuery.Value,
+            CategoriaMLOverride = categoriaEditavel
+        });
+        publicando = false;
+
+        if (r.IsSuccess)
+        {
+            sucesso = "Anúncio publicado.";
+            TipoQuery = null; IdQuery = null;
+            categoriaEditavel = null; nomeCategoriaSugerida = null;
+            Nav.NavigateTo("/integracoes/mercadolivre/anuncios?publicado=1");
+        }
+        else
+        {
+            erro = r.Error;
+        }
+        await CarregarAsync();
+    }
 
     private async Task Pausar(Guid anuncioId)
     {

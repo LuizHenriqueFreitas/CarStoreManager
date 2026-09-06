@@ -36,6 +36,9 @@ public static class ApplicationServiceCollection
 
         // Integrações — Mercado Livre
         services.AddScoped<MercadoLivreTokenHelper>();
+        services.AddScoped<MercadoLivreCatalogoService>();
+        services.AddScoped<IConstrutorPayloadAnuncio, ComponentePayloadBuilder>();
+        services.AddScoped<IConstrutorPayloadAnuncio, VeiculoPayloadBuilder>();
         services.AddScoped<IMercadoLivrePublicacaoService, MercadoLivrePublicacaoService>();
         services.AddScoped<IMercadoLivreSincronizacaoService, MercadoLivreSincronizacaoService>();
 
