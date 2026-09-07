@@ -7,17 +7,49 @@ public static partial class RegistroDeTours
         new TourDaPagina
         {
             RotaTemplate = "/concessionaria",
-            Titulo = "Estoque da Concessionária",
-            Descricao = "Lista unificada de veículos próprios e consignados, com filtros.",
+            Titulo = "Concessionária — visão geral",
+            Descricao = "Painel gerencial da concessionária: indicadores, propostas e consignações.",
             Passos = new List<PassoTour>
             {
                 new()
                 {
                     Seletor = null,
-                    Titulo = "Estoque unificado",
-                    Texto = "Esta tela reúne, na mesma grade, os veículos que pertencem à loja e os veículos " +
-                        "consignados por terceiros. Os filtros à esquerda e a barra de busca acima ajudam a " +
-                        "encontrar um veículo específico dentro do estoque."
+                    Titulo = "Visão geral da concessionária",
+                    Texto = "Ponto de partida da área comercial: veículos disponíveis, propostas que precisam de " +
+                        "ação, consignações vencendo e o resumo financeiro do mês. Para navegar o estoque em si, " +
+                        "abra \"Salão\" na sub-navegação."
+                },
+                new()
+                {
+                    Seletor = "conc-hub-graficos",
+                    Titulo = "Gráficos",
+                    Texto = "Vendas nos últimos meses (linha) e veículos por situação (barra). Visível para " +
+                        "administração e gerência."
+                },
+                new()
+                {
+                    Seletor = "conc-hub-atalhos",
+                    Titulo = "Ir para",
+                    Texto = "Atalhos para salão, propostas, test drives, consignações, clientes, financeiro, " +
+                        "equipe, relatórios e análises."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/concessionaria/salao",
+            Titulo = "Salão",
+            Descricao = "Grade de veículos próprios e consignados, com filtros.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Estoque do salão",
+                    Texto = "Reúne, na mesma grade, os veículos da loja e os consignados por terceiros. Veículos " +
+                        "já vendidos não aparecem aqui. Os filtros à esquerda e a busca acima ajudam a localizar " +
+                        "um veículo."
                 },
                 new()
                 {
@@ -72,6 +104,42 @@ public static partial class RegistroDeTours
                     Titulo = "Do estoque ao detalhe",
                     Texto = "Ao abrir um veículo, você chega à tela de detalhe — é lá que se gera uma proposta " +
                         "de venda, se libera um veículo em preparação, ou se administra uma consignação."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/concessionaria/consignacoes",
+            Titulo = "Consignações",
+            Descricao = "Lista de consignações por status, com renovação rápida.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Acompanhamento de consignações",
+                    Texto = "Filtre por status — ative \"Vencendo / vencidas\" para ver o que precisa de renovação. " +
+                        "O botão \"Renovar +90d\" aparece quando faltam 10 dias ou menos para o vencimento. Clique " +
+                        "numa linha para abrir o detalhe e trocar o vendedor responsável, devolver ao proprietário, etc."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/concessionaria/test-drives",
+            Titulo = "Test drives",
+            Descricao = "Agendamento e acompanhamento de test drives.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Agenda de test drives",
+                    Texto = "Registre um test drive escolhendo veículo, cliente, vendedor e data. Depois marque o " +
+                        "resultado — realizado, não compareceu ou cancelado. O cliente precisa já estar cadastrado " +
+                        "(Cadastros → Clientes)."
                 }
             }
         },

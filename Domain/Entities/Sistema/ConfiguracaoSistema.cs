@@ -28,6 +28,21 @@ public class ConfiguracaoSistema : Entity
     /// <summary>Percentual mínimo de entrada exigido (0–100). Ignorado se <see cref="ExigirEntradaMinima"/> for false.</summary>
     public decimal PercentualEntradaMinima { get; private set; } = 0m;
 
+    // === Fechamento mensal de despesas ===
+    /// <summary>
+    /// Dia do mês (1–28) em que o gerente faz o balanço/fechamento das despesas.
+    /// Quando faltam ≤ 5 dias, aparece um aviso nas telas. Ver docs/redesign §G.
+    /// </summary>
+    public int DiaFechamentoDespesas { get; private set; } = 5;
+
+    public void ConfigurarDiaFechamentoDespesas(int dia)
+    {
+        if (dia < 1 || dia > 28)
+            throw new ArgumentException("O dia de fechamento deve estar entre 1 e 28.", nameof(dia));
+        DiaFechamentoDespesas = dia;
+        DataUltimaAtualizacao = DateTime.UtcNow;
+    }
+
     // Templates de documento (termo de entrega, contrato de consignação, resposta
     // de financiadora etc.) não vivem mais aqui como campos fixos — viraram
     // registros dinâmicos em TemplateDocumento (mesmo padrão de ChecklistPreset),

@@ -1,0 +1,112 @@
+@namespace CarStoreManager.Web.Components.Shared
+@inject NavigationManager Nav
+@implements IDisposable
+
+@* Item de navbar com menu dropdown (uma "área" com sub-itens).
+   Desktop: hover abre. Mobile: sempre expandido dentro do menu hambúrguer. *@
+
+<div class="nav-area @(aberto ? "aberto" : "")"
+     @onmouseenter="() => aberto = true"
+     @onmouseleave="() => aberto = false">
+    <button class="nav-link nav-area-trigger @(NaArea ? "nav-link-active" : "")"
+            @onclick="Toggle" aria-haspopup="true" aria-expanded="@aberto.ToString().ToLower()">
+        @Titulo <span class="nav-area-seta">▾</span>
+    </button>
+
+    <div class="nav-area-menu">
+        @foreach (var item in Itens)
+        {
+            <a href="@item.Rota" class="nav-area-item" @onclick="OnItemClick">@item.Rotulo</a>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Titulo { get; set; } = "";
+    [Parameter, EditorRequired] public string RotaBase { get; set; } = "";
+    [Parameter, EditorRequired] public Item[] Itens { get; set; } = Array.Empty<Item>();
+    [Parameter] public EventCallback OnNavegar { get; set; }
+
+    public record Item(string Rota, string Rotulo);
+
+    private bool aberto;
+
+    private string CaminhoAtual => "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0].Trim('/');
+
+    private bool NaArea
+    {
+        get
+        {
+            var baseR = "/" + RotaBase.Trim('/');
+            return CaminhoAtual == baseR || CaminhoAtual.StartsWith(baseR + "/");
+        }
+    }
+
+    private void Toggle() => aberto = !aberto;
+
+    private async Task OnItemClick()
+    {
+        aberto = false;
+        await OnNavegar.InvokeAsync();
+    }
+
+    protected override void OnInitialized() => Nav.LocationChanged += OnLoc;
+    private void OnLoc(object? s, EventArgs e) { aberto = false; InvokeAsync(StateHasChanged); }
+    public void Dispose() => Nav.LocationChanged -= OnLoc;
+}
+
+<style>
+    .nav-area { position: relative; }
+    .nav-area-trigger {
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        font-family: inherit;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .nav-area-seta { font-size: 9px; }
+
+    .nav-area-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: var(--cor-superficie);
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-md);
+        min-width: 200px;
+        box-shadow: var(--sombra-menu);
+        padding: var(--sp-2) 0;
+        z-index: 200;
+    }
+    .nav-area.aberto .nav-area-menu { display: block; }
+
+    .nav-area-item {
+        display: block;
+        padding: var(--sp-2) var(--sp-4);
+        font-size: var(--txt-sm);
+        color: var(--cor-tinta-2);
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .nav-area-item:hover { background: var(--cor-superficie-2); color: var(--cor-tinta); }
+
+    @@media (max-width: 900px) {
+        .nav-area { border-bottom: 1px solid #2a2a2a; }
+        .nav-area-trigger { padding: 12px 4px; width: 100%; justify-content: space-between; }
+        .nav-area-menu {
+            display: block;
+            position: static;
+            box-shadow: none;
+            border: none;
+            border-radius: 0;
+            background: #141414;
+            padding: 0 0 var(--sp-2);
+        }
+        .nav-area-item { color: #aaa; padding-left: var(--sp-5); }
+        .nav-area-item:hover { background: transparent; color: #fff; }
+    }
+</style>

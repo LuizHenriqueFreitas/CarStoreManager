@@ -23,6 +23,7 @@ public class DashboardService : IDashboardService
     private const int TOP_CATEGORIAS = 6;
 
     private readonly IDespesaRepository _despesas;
+    private readonly IBalancoMensalDespesaRepository _balancos;
     private readonly IClienteRepository _clientes;
     private readonly IOrdemServicoRepository _ordens;
     private readonly IPropostaVendaRepository _propostas;
@@ -38,6 +39,7 @@ public class DashboardService : IDashboardService
 
     public DashboardService(
         IDespesaRepository despesas,
+        IBalancoMensalDespesaRepository balancos,
         IClienteRepository clientes,
         IOrdemServicoRepository ordens,
         IPropostaVendaRepository propostas,
@@ -52,6 +54,7 @@ public class DashboardService : IDashboardService
         ILogger<DashboardService> logger)
     {
         _despesas = despesas;
+        _balancos = balancos;
         _clientes = clientes;
         _ordens = ordens;
         _propostas = propostas;
@@ -97,18 +100,26 @@ public class DashboardService : IDashboardService
 
         var dto = new DashboardMetricasDTO();
 
-        // === Despesas fixas mensais cadastradas pelo admin (luz, água, aluguel, salários, etc.) ===
+        // === Despesas do mês ===
+        // Se já existe um balanço mensal para a competência corrente, usa os
+        // valores reais lançados nele. Senão, cai no formulário-modelo (soma das
+        // linhas ativas) como estimativa. Ver docs/redesign/11-batch2-melhorias.md §G.
         var despesasAtivas = (await _despesas.GetAtivasAsync()).ToList();
-        dto.TotalDespesasFixasMensal = despesasAtivas.Sum(d => d.GetValor());
-        dto.TotalDespesasGeralMensal = despesasAtivas
-            .Where(d => d.Setor == SetorDespesa.Geral)
-            .Sum(d => d.GetValor());
-        dto.TotalDespesasOficinaMensal = despesasAtivas
-            .Where(d => d.Setor == SetorDespesa.Oficina)
-            .Sum(d => d.GetValor());
-        dto.TotalDespesasConcessionariaMensal = despesasAtivas
-            .Where(d => d.Setor == SetorDespesa.Concessionaria)
-            .Sum(d => d.GetValor());
+        var balancoMes = await _balancos.ObterPorCompetenciaAsync(new DateOnly(hoje.Year, hoje.Month, 1));
+        if (balancoMes is not null)
+        {
+            dto.TotalDespesasFixasMensal = balancoMes.Total();
+            dto.TotalDespesasGeralMensal = balancoMes.TotalPorSetor(SetorDespesa.Geral);
+            dto.TotalDespesasOficinaMensal = balancoMes.TotalPorSetor(SetorDespesa.Oficina);
+            dto.TotalDespesasConcessionariaMensal = balancoMes.TotalPorSetor(SetorDespesa.Concessionaria);
+        }
+        else
+        {
+            dto.TotalDespesasFixasMensal = despesasAtivas.Sum(d => d.GetValor());
+            dto.TotalDespesasGeralMensal = despesasAtivas.Where(d => d.Setor == SetorDespesa.Geral).Sum(d => d.GetValor());
+            dto.TotalDespesasOficinaMensal = despesasAtivas.Where(d => d.Setor == SetorDespesa.Oficina).Sum(d => d.GetValor());
+            dto.TotalDespesasConcessionariaMensal = despesasAtivas.Where(d => d.Setor == SetorDespesa.Concessionaria).Sum(d => d.GetValor());
+        }
 
         // === Receita de serviços (OS finalizadas) ===
         var todasOrdens = (await _ordens.GetAllAsync()).ToList();
@@ -473,7 +484,7 @@ public class DashboardService : IDashboardService
             Id = "despesas-por-tipo",
             Titulo = "Despesas por tipo (valor gasto)",
             Categoria = "Financeiro",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = TopComOutros(
                 despesasAtivas.GroupBy(d => d.Tipo.ToString())
                     .Select(g => (Rotulo: g.Key, Valor: g.Sum(d => d.GetValor()))))
@@ -503,7 +514,7 @@ public class DashboardService : IDashboardService
             Id = "funcionarios-por-tipo",
             Titulo = "Funcionários cadastrados por tipo",
             Categoria = "Pessoas",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = todosUsuarios
                 .GroupBy(u => RotuloRole(u.GetRole()))
                 .Select(g => new CategoriaValorDTO { Rotulo = g.Key, Valor = g.Count() })
@@ -521,7 +532,7 @@ public class DashboardService : IDashboardService
             Id = "marcas-vendidas",
             Titulo = "Marcas mais vendidas",
             Categoria = "Concessionária",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = TopComOutros(ContarPorTexto(
                 veiculosVendidos.Select(v => v.Marca).Concat(consignacoesVendidas.Select(c => c.Marca))))
         });
@@ -531,7 +542,7 @@ public class DashboardService : IDashboardService
             Id = "modelos-vendidos",
             Titulo = "Modelos mais vendidos",
             Categoria = "Concessionária",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = TopComOutros(ContarPorTexto(
                 veiculosVendidos.Select(v => v.Modelo).Concat(consignacoesVendidas.Select(c => c.Modelo))))
         });
@@ -541,7 +552,7 @@ public class DashboardService : IDashboardService
             Id = "cores-vendidas",
             Titulo = "Cores mais vendidas",
             Categoria = "Concessionária",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = TopComOutros(ContarPorTexto(
                 veiculosVendidos.Select(v => v.Cor).Concat(consignacoesVendidas.Select(c => c.Cor))))
         });
@@ -573,7 +584,7 @@ public class DashboardService : IDashboardService
             Id = "acessorios-veiculos",
             Titulo = "Acessórios mais comuns no estoque",
             Categoria = "Concessionária",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = TopComOutros(ContarAcessorios(veiculos.Select(v => v.Acessorios)))
         });
 
@@ -595,7 +606,7 @@ public class DashboardService : IDashboardService
             Id = "modos-pagamento",
             Titulo = "Modos de pagamento (propostas)",
             Categoria = "Concessionária",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = TopComOutros(
                 todasPropostas
                     .Where(p => p.ModoPagamento != ModoPagamento.NaoDefinido)
@@ -609,7 +620,7 @@ public class DashboardService : IDashboardService
             Id = "veiculos-status",
             Titulo = "Veículos por status",
             Categoria = "Concessionária",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = veiculos
                 .GroupBy(v => v.Disponibilidade.ToString())
                 .Select(g => new CategoriaValorDTO { Rotulo = g.Key, Valor = g.Count() })
@@ -669,7 +680,7 @@ public class DashboardService : IDashboardService
             Id = "mecanicos-por-especializacao",
             Titulo = "Mecânicos por especialização",
             Categoria = "Oficina",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = mecanicosLista
                 .GroupBy(m => m.GetEspecialidade())
                 .Select(g => new CategoriaValorDTO { Rotulo = g.Key, Valor = g.Count() })
@@ -682,7 +693,7 @@ public class DashboardService : IDashboardService
             Id = "servicos-tipo",
             Titulo = "Tipos de serviço mais realizados",
             Categoria = "Oficina",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = todasOrdens
                 .GroupBy(o => o.Tipo.ToString())
                 .Select(g => new CategoriaValorDTO { Rotulo = g.Key, Valor = g.Count() })
@@ -695,7 +706,7 @@ public class DashboardService : IDashboardService
             Id = "os-status",
             Titulo = "Ordens de serviço por status",
             Categoria = "Oficina",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = todasOrdens
                 .GroupBy(o => o.Status.ToString())
                 .Select(g => new CategoriaValorDTO { Rotulo = g.Key, Valor = g.Count() })
@@ -707,7 +718,7 @@ public class DashboardService : IDashboardService
             Id = "marcas-visitam-oficina",
             Titulo = "Marcas que mais visitam a oficina",
             Categoria = "Oficina",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = TopComOutros(ContarPorTexto(
                 todasOrdens
                     .Where(o => veiculosClientePorId.ContainsKey(o.VeiculoClienteId))
@@ -719,7 +730,7 @@ public class DashboardService : IDashboardService
             Id = "modelos-visitam-oficina",
             Titulo = "Modelos que mais visitam a oficina",
             Categoria = "Oficina",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = TopComOutros(ContarPorTexto(
                 todasOrdens
                     .Where(o => veiculosClientePorId.ContainsKey(o.VeiculoClienteId))
@@ -771,7 +782,7 @@ public class DashboardService : IDashboardService
             Id = "estoque-por-sistema",
             Titulo = "Componentes em estoque por sistema (quantidade)",
             Categoria = "Estoque",
-            TipoGrafico = "doughnut",
+            TipoGrafico = "barraH",
             Dados = TopComOutros(estoquePorSistema, top: 8)
         });
 

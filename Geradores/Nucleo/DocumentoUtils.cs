@@ -69,6 +69,31 @@ public static class DocumentoUtils
         return dezDigitos + dv;
     }
 
+    /// <summary>Gera um CNPJ válido (14 dígitos, dois dígitos verificadores módulo 11 corretos).</summary>
+    public static string GerarCnpj(Random rng)
+    {
+        var doze = Enumerable.Range(0, 12).Select(_ => rng.Next(0, 10)).ToArray();
+
+        int Digito(int[] numeros)
+        {
+            // pesos: começa em 2 no dígito mais à direita, sobe até 9, reinicia em 2.
+            var soma = 0;
+            var peso = 2;
+            for (var i = numeros.Length - 1; i >= 0; i--)
+            {
+                soma += numeros[i] * peso;
+                peso = peso == 9 ? 2 : peso + 1;
+            }
+            var resto = soma % 11;
+            return resto < 2 ? 0 : 11 - resto;
+        }
+
+        var d1 = Digito(doze);
+        var com13 = doze.Append(d1).ToArray();
+        var d2 = Digito(com13);
+        return string.Concat(com13.Append(d2));
+    }
+
     /// <summary>Gera uma placa no formato antigo brasileiro (ABC1234).</summary>
     public static string GerarPlaca(Random rng)
     {

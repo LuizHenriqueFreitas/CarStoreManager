@@ -1,0 +1,113 @@
+@page "/financeiro/a-receber"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,ChefeOficina")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@inject IOrdemServicoService OrdemService
+@inject IClienteService ClienteService
+@inject NavigationManager Nav
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Oficina.OrdemServico
+@using CarStoreManager.Application.DTOs.Shared.Cliente
+@using CarStoreManager.Web.Components.Shared
+@using System.Globalization
+
+<div class="pagina">
+    <PageHeader Titulo="Contas a receber" Subtitulo="Serviços concluídos aguardando cobrança" />
+
+    <SubNav Itens="SubNavFinanceiro.Itens" />
+
+    @if (carregando)
+    {
+        <div class="estado-carregando">Carregando...</div>
+    }
+    else
+    {
+        <StatCardGrid MinColuna="200" data-tour="areceber-kpis">
+            <MetricCard Rotulo="Total a receber" Valor="@FBRL(total)" Tom="atencao" />
+            <MetricCard Rotulo="Ordens em aberto" Valor="@aReceber.Count.ToString()" />
+            <MetricCard Rotulo="Aberto há mais tempo" Valor="@($"{maxDias} dia(s)")" Tom="@(maxDias > 7 ? "erro" : "")" />
+        </StatCardGrid>
+
+        <p class="muted intro">
+            Aqui estão as ordens de serviço com o trabalho técnico concluído mas ainda não pagas
+            (status "Aguardando cobrança"). Propostas de venda com pagamento pendente aparecem em
+            <a href="/concessionaria/propostas">Propostas</a>.
+        </p>
+
+        @if (!aReceber.Any())
+        {
+            <EstadoVazio Mensagem="Nenhuma ordem aguardando cobrança. Tudo em dia! 🎉" Icone="💰" />
+        }
+        else
+        {
+            <div class="table-scroll" data-tour="areceber-lista">
+                <table class="tab">
+                    <thead>
+                        <tr><th>OS</th><th>Cliente</th><th>Serviço</th><th>Aberta em</th><th>Dias</th><th class="r">Valor</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var o in aReceber)
+                        {
+                            <tr @onclick="() => Abrir(o.Id)" class="linha">
+                                <td class="num">@o.NumeroPublico</td>
+                                <td>@NomeCliente(o.ClienteId)</td>
+                                <td>@o.Tipo</td>
+                                <td>@o.DataCriacao.ToString("dd/MM/yyyy")</td>
+                                <td class="@(Dias(o) > 7 ? "venc" : "")">@Dias(o)</td>
+                                <td class="r valor">@FBRL(o.ValorTotal)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private static readonly CultureInfo Cultura = new("pt-BR");
+    private static string FBRL(decimal v) => v.ToString("C", Cultura);
+
+    private List<OrdemServicoListaDTO> aReceber = new();
+    private Dictionary<Guid, ClienteListaDTO> mapaClientes = new();
+    private decimal total;
+    private int maxDias;
+    private bool carregando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var tO = OrdemService.GetAllAsync();
+        var tC = ClienteService.GetAllAsync();
+        await Task.WhenAll(tO, tC);
+
+        var ordens = tO.Result.IsSuccess ? tO.Result.Value?.ToList() ?? new() : new();
+        if (tC.Result.IsSuccess && tC.Result.Value is not null)
+            mapaClientes = tC.Result.Value.ToDictionary(c => c.Id);
+
+        aReceber = ordens.Where(o => o.Status == "PagamentoPendente")
+                         .OrderByDescending(o => (DateTime.Today - o.DataCriacao.Date).Days)
+                         .ToList();
+        total = aReceber.Sum(o => o.ValorTotal);
+        maxDias = aReceber.Any() ? aReceber.Max(Dias) : 0;
+        carregando = false;
+    }
+
+    private int Dias(OrdemServicoListaDTO o) => (DateTime.Today - o.DataCriacao.Date).Days;
+    private string NomeCliente(Guid id) => mapaClientes.TryGetValue(id, out var c) ? c.Nome : "—";
+    private void Abrir(Guid id) => Nav.NavigateTo($"/oficina/os/{id}");
+}
+
+<style>
+    .intro { max-width: 700px; margin-bottom: var(--sp-5); }
+    .tab { width: 100%; border-collapse: collapse; background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); overflow: hidden; }
+    .tab th, .tab td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--cor-linha-suave); font-size: var(--txt-sm); }
+    .tab th { background: var(--cor-fundo); font-size: var(--txt-xs); text-transform: uppercase; color: var(--cor-tinta-3); }
+    .tab th.r, .tab td.r { text-align: right; }
+    .linha { cursor: pointer; }
+    .linha:hover { background: var(--cor-info-bg); }
+    .num { font-family: monospace; font-weight: var(--peso-forte); color: var(--cor-acao); }
+    .valor { font-weight: var(--peso-bold); }
+    td.venc { color: var(--cor-erro-tx); font-weight: var(--peso-forte); }
+</style>

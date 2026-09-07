@@ -1,0 +1,41 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Bloco de seção com título e ação opcional ("ver todos →").
+   Ver docs/redesign/04-diretrizes-ui-ux.md §3. *@
+
+<section class="secao-bloco" @attributes="Extra">
+    <div class="secao-bloco-header">
+        <h2 class="secao-bloco-titulo">@Titulo</h2>
+        @if (Acao is not null)
+        {
+            <div class="secao-bloco-acao">@Acao</div>
+        }
+    </div>
+    @ChildContent
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Titulo { get; set; } = "";
+    [Parameter] public RenderFragment? Acao { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? Extra { get; set; }
+}
+
+<style>
+    .secao-bloco { margin-bottom: var(--sp-6); }
+    .secao-bloco-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: var(--sp-3);
+        margin-bottom: var(--sp-3);
+    }
+    .secao-bloco-titulo {
+        font-size: var(--txt-lg);
+        font-weight: var(--peso-medio);
+        color: var(--cor-tinta);
+        margin: 0;
+    }
+</style>

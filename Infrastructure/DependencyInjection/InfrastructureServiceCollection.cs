@@ -85,6 +85,7 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IVeiculoConsignacaoRepository, VeiculoConsignacaoRepository>();
         services.AddScoped<IPropostaVendaRepository, PropostaVendaRepository>();
         services.AddScoped<IVendedorRepository, VendedorRepository>();
+        services.AddScoped<ITestDriveRepository, CarStoreManager.Infrastructure.Repositories.Concessionaria.TestDriveRepository>();
         services.AddScoped<IFotoRepository, FotoRepository>();
         services.AddScoped<IFotoService, FotoService>();
         services.AddScoped<IArquivoStorage, ArquivoStorageService>();
@@ -115,8 +116,11 @@ public static class InfrastructureServiceCollection
         services.AddScoped<ITemplateDocumentoService, TemplateDocumentoService>();
         services.AddScoped<IDespesaRepository, DespesaRepository>();
         services.AddScoped<IDespesaService, DespesaService>();
+        services.AddScoped<IBalancoMensalDespesaRepository, CarStoreManager.Infrastructure.Repositories.Sistema.BalancoMensalDespesaRepository>();
+        services.AddScoped<CarStoreManager.Application.Interfaces.Sistema.IBalancoMensalDespesaService, CarStoreManager.Application.Services.Sistema.BalancoMensalDespesaService>();
         services.AddScoped<IBackdateService, BackdateService>();
         services.AddScoped<IImportacaoDadosService, ImportacaoDadosService>();
+        services.AddScoped<IExportacaoDadosService, Services.Sistema.ExportacaoDadosService>();
 
         // =========================
         // DASHBOARD (admin)

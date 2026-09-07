@@ -16,17 +16,34 @@ public class Despesa : Entity
     public bool Ativa { get; private set; }
     public SetorDespesa Setor { get; private set; } = SetorDespesa.Geral;
     public TipoDespesa Tipo { get; private set; } = TipoDespesa.Outros;
+
+    /// <summary>
+    /// Categoria em texto livre escrita pelo administrador (energia, aluguel,
+    /// investimento, perda de operação...). É o que o usuário vê e edita — o
+    /// enum <see cref="Tipo"/> fica só por compatibilidade.
+    /// Ver docs/redesign/11-batch2-melhorias.md §G.
+    /// </summary>
+    public string? Categoria { get; private set; }
+
     public DateTime? DataUltimaAtualizacao { get; private set; }
 
     protected Despesa() { }
 
-    public Despesa(string nome, decimal valor, SetorDespesa setor = SetorDespesa.Geral, TipoDespesa tipo = TipoDespesa.Outros)
+    public Despesa(string nome, decimal valor, SetorDespesa setor = SetorDespesa.Geral,
+        TipoDespesa tipo = TipoDespesa.Outros, string? categoria = null)
     {
         AtualizarNome(nome);
         Valor = new Dinheiro(valor);
         Setor = setor;
         Tipo = tipo;
+        Categoria = string.IsNullOrWhiteSpace(categoria) ? null : categoria.Trim();
         Ativa = true;
+    }
+
+    public void AtualizarCategoria(string? categoria)
+    {
+        Categoria = string.IsNullOrWhiteSpace(categoria) ? null : categoria.Trim();
+        DataUltimaAtualizacao = DateTime.UtcNow;
     }
 
     public void AtualizarNome(string nome)

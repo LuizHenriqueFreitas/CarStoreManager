@@ -31,7 +31,11 @@
             </div>
             <div class="form-campo">
                 <label class="campo-label">CPF *</label>
-                <input class="campo-input" @bind="novoCliente.Cpf" placeholder="000.000.000-00" />
+                <input class="campo-input" @bind="novoCliente.Cpf" @bind:after="VerificarCpfExistente" placeholder="000.000.000-00" />
+                @if (verificandoCpf)
+                {
+                    <span class="cpf-dica">Verificando...</span>
+                }
             </div>
             <div class="form-campo">
                 <label class="campo-label">Telefone</label>
@@ -199,6 +203,32 @@
             }
         }
         catch { /* Mantém o estado padrão */ }
+    }
+
+    private bool verificandoCpf;
+
+    // 1 CPF = 1 cliente: se o CPF digitado já existe, seleciona o cliente
+    // existente automaticamente em vez de deixar cadastrar um duplicado.
+    private async Task VerificarCpfExistente()
+    {
+        var cpf = (novoCliente.Cpf ?? "").Trim();
+        if (cpf.Count(char.IsDigit) < 11) return;
+
+        verificandoCpf = true;
+        try
+        {
+            var r = await ClienteService.ObterPorCpfAsync(cpf);
+            if (r.IsSuccess && r.Value is not null)
+            {
+                clienteSelecionado = new ClienteSimples { Id = r.Value.Id, Nome = r.Value.Nome, Cpf = r.Value.Cpf };
+                Value = r.Value.Id;
+                await ValueChanged.InvokeAsync(r.Value.Id);
+                mensagemSucesso = $"Cliente já cadastrado — selecionado automaticamente: {r.Value.Nome}.";
+                mensagemErro = null;
+            }
+        }
+        catch { }
+        finally { verificandoCpf = false; }
     }
 
     private async Task CadastrarCliente()

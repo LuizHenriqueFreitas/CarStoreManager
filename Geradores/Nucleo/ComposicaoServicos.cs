@@ -32,6 +32,19 @@ public static class ComposicaoServicos
             .AddEnvironmentVariables()
             .Build();
 
+        // O Web usa `Data Source=carstore.db` (relativo) e roda com content
+        // root em Web/ — ou seja, o arquivo real é Web/carstore.db. O Geradores
+        // roda de outro diretório, então ancoramos o caminho relativo do SQLite
+        // em Web/ para escrever EXATAMENTE no mesmo banco que a aplicação lê.
+        var connStr = configuracaoFinal.GetConnectionString("DefaultConnection") ?? "Data Source=carstore.db";
+        var connBuilder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(connStr);
+        if (!Path.IsPathRooted(connBuilder.DataSource))
+        {
+            connBuilder.DataSource = Path.Combine(CaminhosProjeto.RaizSolucao(), "Web", connBuilder.DataSource);
+            configuracaoFinal["ConnectionStrings:DefaultConnection"] = connBuilder.ToString();
+        }
+        Console.WriteLine($"Arquivo do banco: {connBuilder.DataSource}");
+
         var services = new ServiceCollection();
         services.AddInfrastructure(configuracaoFinal);
 
@@ -41,9 +54,11 @@ public static class ComposicaoServicos
         services.AddScoped<IVeiculoConsignacaoService, VeiculoConsignacaoService>();
         services.AddScoped<IVendedorService, VendedorService>();
         services.AddScoped<IPropostaVendaService, PropostaVendaService>();
+        services.AddScoped<ITestDriveService, TestDriveService>();
         services.AddScoped<IVeiculoClienteService, VeiculoClienteService>();
         services.AddScoped<IMecanicoService, MecanicoService>();
         services.AddScoped<IComponenteService, ComponenteService>();
+        services.AddScoped<IFornecedorService, FornecedorService>();
         services.AddScoped<IOrdemServicoService, OrdemServicoService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IJwtService, JwtService>();

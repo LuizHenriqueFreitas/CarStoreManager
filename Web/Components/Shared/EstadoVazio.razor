@@ -1,0 +1,32 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Estado vazio padrão. Ver docs/redesign/04-diretrizes-ui-ux.md §8. *@
+
+<div class="estado-vazio-box">
+    @if (!string.IsNullOrEmpty(Icone))
+    {
+        <div class="ev-icone">@Icone</div>
+    }
+    <p class="ev-msg">@Mensagem</p>
+    @if (Acao is not null)
+    {
+        <div class="ev-acao">@Acao</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Mensagem { get; set; } = "";
+    [Parameter] public string? Icone { get; set; }
+    [Parameter] public RenderFragment? Acao { get; set; }
+}
+
+<style>
+    .estado-vazio-box {
+        text-align: center;
+        padding: var(--sp-10) var(--sp-6);
+        color: var(--cor-tinta-3);
+    }
+    .ev-icone { font-size: 28px; margin-bottom: var(--sp-3); opacity: .7; }
+    .ev-msg { font-size: var(--txt-md); margin: 0; }
+    .ev-acao { margin-top: var(--sp-4); }
+</style>

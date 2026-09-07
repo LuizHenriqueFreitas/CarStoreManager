@@ -1,0 +1,90 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Cabeçalho de página padrão. Ver docs/redesign/04-diretrizes-ui-ux.md §3.
+   Uso:
+   <PageHeader Titulo="Gestão da Oficina" Subtitulo="14 OS ativas">
+       <Acao><button class="btn btn-primario">+ Nova OS</button></Acao>
+   </PageHeader> *@
+
+<header class="page-header">
+    <div class="page-header-texto">
+        @if (Trilha is not null && Trilha.Count > 0)
+        {
+            <nav class="page-breadcrumb" aria-label="Trilha de navegação">
+                @for (var i = 0; i < Trilha.Count; i++)
+                {
+                    var item = Trilha[i];
+                    if (i > 0) { <span class="crumb-sep">›</span> }
+                    if (!string.IsNullOrEmpty(item.Href) && i < Trilha.Count - 1)
+                    {
+                        <a href="@item.Href" class="crumb">@item.Rotulo</a>
+                    }
+                    else
+                    {
+                        <span class="crumb crumb-atual">@item.Rotulo</span>
+                    }
+                }
+            </nav>
+        }
+        <h1 class="page-titulo">@Titulo</h1>
+        @if (!string.IsNullOrEmpty(Subtitulo))
+        {
+            <p class="page-sub">@Subtitulo</p>
+        }
+    </div>
+    @if (Acao is not null)
+    {
+        <div class="page-header-acao">@Acao</div>
+    }
+</header>
+
+@code {
+    [Parameter, EditorRequired] public string Titulo { get; set; } = "";
+    [Parameter] public string? Subtitulo { get; set; }
+    [Parameter] public RenderFragment? Acao { get; set; }
+
+    /// <summary>Breadcrumb opcional — usar quando a profundidade for ≥ 2.</summary>
+    [Parameter] public List<Crumb>? Trilha { get; set; }
+
+    public record Crumb(string Rotulo, string? Href = null);
+}
+
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: var(--sp-4);
+        margin-bottom: var(--sp-6);
+        flex-wrap: wrap;
+    }
+
+    .page-breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+        margin-bottom: var(--sp-2);
+        font-size: var(--txt-xs);
+    }
+    .crumb { color: var(--cor-tinta-3); text-decoration: none; }
+    .crumb:hover { color: var(--cor-acao); }
+    .crumb-atual { color: var(--cor-tinta-2); font-weight: var(--peso-medio); }
+    .crumb-sep { color: var(--cor-linha); }
+
+    .page-titulo {
+        font-size: var(--txt-2xl);
+        font-weight: var(--peso-medio);
+        color: var(--cor-tinta);
+        margin: 0;
+    }
+    .page-sub {
+        font-size: var(--txt-md);
+        color: var(--cor-tinta-3);
+        margin: var(--sp-1) 0 0;
+    }
+    .page-header-acao { flex-shrink: 0; }
+
+    @@media (max-width: 560px) {
+        .page-header-acao { width: 100%; }
+    }
+</style>

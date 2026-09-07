@@ -67,6 +67,10 @@ public static class OrdemServicoMapping
             Status = entity.Status.ToString(),
             DataCriacao = entity.DataCriacao,
             PrazoEstimado = entity.PrazoEstimado,
+            // Bug (need_to_do.txt:100): o total nunca era preenchido aqui, então a
+            // consulta pública sempre mostrava R$ 0,00. Usa o mesmo GetValorTotal()
+            // consolidado (serviço + peças cobradas) exibido internamente.
+            ValorTotal = entity.GetValorTotal(),
             Checklist = entity.Checklist
                 .OrderBy(c => c.OrdemExibicao)
                 .Select(c => new ChecklistItemPublicoDTO

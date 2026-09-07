@@ -207,6 +207,42 @@ namespace CarStoreManager.Infrastructure.Migrations
                     b.ToTable("TermosEntrega");
                 });
 
+            modelBuilder.Entity("CarStoreManager.Domain.Entities.Concessionaria.TestDrive", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ClienteId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataHora")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("VeiculoVendaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("VendedorId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClienteId");
+
+                    b.HasIndex("VeiculoVendaId");
+
+                    b.ToTable("TestDrives");
+                });
+
             modelBuilder.Entity("CarStoreManager.Domain.Entities.Concessionaria.VeiculoConsignacao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1077,6 +1113,31 @@ namespace CarStoreManager.Infrastructure.Migrations
                     b.ToTable("VeiculosCliente");
                 });
 
+            modelBuilder.Entity("CarStoreManager.Domain.Entities.Sistema.BalancoMensalDespesa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("Competencia")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataFechamento")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Fechado")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Competencia")
+                        .IsUnique();
+
+                    b.ToTable("BalancosMensaisDespesa");
+                });
+
             modelBuilder.Entity("CarStoreManager.Domain.Entities.Sistema.ConfiguracaoSistema", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1088,6 +1149,9 @@ namespace CarStoreManager.Infrastructure.Migrations
 
                     b.Property<DateTime?>("DataUltimaAtualizacao")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("DiaFechamentoDespesas")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("ExigirEntradaMinima")
                         .HasColumnType("INTEGER");
@@ -1118,6 +1182,9 @@ namespace CarStoreManager.Infrastructure.Migrations
                     b.Property<bool>("Ativa")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Categoria")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("DataCriacao")
                         .HasColumnType("TEXT");
 
@@ -1143,6 +1210,38 @@ namespace CarStoreManager.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Despesas");
+                });
+
+            modelBuilder.Entity("CarStoreManager.Domain.Entities.Sistema.ItemBalancoDespesa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("BalancoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Categoria")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("DoModelo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Setor")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BalancoId");
+
+                    b.ToTable("ItemBalancoDespesa");
                 });
 
             modelBuilder.Entity("CarStoreManager.Domain.Entities.Sistema.TemplateDocumento", b =>
@@ -1314,6 +1413,9 @@ namespace CarStoreManager.Infrastructure.Migrations
                                 .HasColumnName("CPF");
 
                             b1.HasKey("ClienteId");
+
+                            b1.HasIndex("Numero")
+                                .IsUnique();
 
                             b1.ToTable("Clientes");
 
@@ -2027,6 +2129,36 @@ namespace CarStoreManager.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CarStoreManager.Domain.Entities.Sistema.ItemBalancoDespesa", b =>
+                {
+                    b.HasOne("CarStoreManager.Domain.Entities.Sistema.BalancoMensalDespesa", null)
+                        .WithMany("Itens")
+                        .HasForeignKey("BalancoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsOne("CarStoreManager.Domain.ValueObjects.Dinheiro", "Valor", b1 =>
+                        {
+                            b1.Property<Guid>("ItemBalancoDespesaId")
+                                .HasColumnType("TEXT");
+
+                            b1.Property<decimal>("Valor")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("TEXT")
+                                .HasColumnName("Valor");
+
+                            b1.HasKey("ItemBalancoDespesaId");
+
+                            b1.ToTable("ItemBalancoDespesa");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ItemBalancoDespesaId");
+                        });
+
+                    b.Navigation("Valor")
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CarStoreManager.Domain.Entities.Usuario", b =>
                 {
                     b.OwnsOne("CarStoreManager.Domain.ValueObjects.Email", "Email", b1 =>
@@ -2270,6 +2402,11 @@ namespace CarStoreManager.Infrastructure.Migrations
             modelBuilder.Entity("CarStoreManager.Domain.Entities.Oficina.VeiculoCliente", b =>
                 {
                     b.Navigation("HistoricoServicos");
+                });
+
+            modelBuilder.Entity("CarStoreManager.Domain.Entities.Sistema.BalancoMensalDespesa", b =>
+                {
+                    b.Navigation("Itens");
                 });
 #pragma warning restore 612, 618
         }

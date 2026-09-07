@@ -169,14 +169,28 @@ namespace CarStoreManager.Tests.Integration.Repositories
         [Fact]
         public async Task PesquisarAsync_ResultadosLimitadosA20()
         {
-            // Usa CPFs válidos pré-gerados (recicla os 3 entre vários clientes
-            // pois o teste só verifica o limite de 20).
-            var cpfs = new[] { "11144477735", "39053344705", "52998224725" };
+            // CPFs distintos e válidos por cliente (CPF tem índice único).
             for (int i = 1; i <= 25; i++)
-                await SalvarCliente($"Cliente {i:D2}", $"c{i}@email.com", "11900000000", cpfs[i % 3]);
+                await SalvarCliente($"Cliente {i:D2}", $"c{i}@email.com", "11900000000", CpfValidoSeq(i));
 
             var resultado = await _repository.PesquisarAsync("Cliente");
             resultado.Should().HaveCount(20);
+        }
+
+        private static string CpfValidoSeq(int seed)
+        {
+            var b = (100000000 + seed * 7).ToString("D9").Select(ch => ch - '0').ToArray();
+            int Dv(int[] n, int peso)
+            {
+                var s = 0;
+                for (var i = 0; i < n.Length; i++) s += n[i] * (peso - i);
+                var r = s % 11;
+                return r < 2 ? 0 : 11 - r;
+            }
+            var d1 = Dv(b, 10);
+            var com9 = b.Append(d1).ToArray();
+            var d2 = Dv(com9, 11);
+            return string.Concat(com9.Append(d2));
         }
 
         // ==================== AddAsync ====================

@@ -15,6 +15,7 @@ public sealed class PoolsIniciais
     public required UniquePool Email { get; init; }
     public required UniquePool Telefone { get; init; }
     public required UniquePool Cpf { get; init; }
+    public required UniquePool Cnpj { get; init; }
     public required UniquePool Placa { get; init; }
     public required UniquePool Renavam { get; init; }
     public required UniquePool Sku { get; init; }
@@ -30,6 +31,7 @@ public sealed class PoolsIniciais
         var veiculosCliente = await db.VeiculosCliente.ToListAsync();
         var veiculosConsignacao = await db.VeiculosConsignacao.ToListAsync();
         var componentes = await db.Componentes.ToListAsync();
+        var fornecedores = await db.Fornecedores.ToListAsync();
 
         var emails = usuarios.Select(u => u.GetEmail())
             .Concat(clientes.Select(c => c.GetEmail()));
@@ -38,6 +40,8 @@ public sealed class PoolsIniciais
             .Concat(clientes.Select(c => c.GetTelefone()));
 
         var cpfs = clientes.Select(c => c.GetCpf());
+
+        var cnpjs = fornecedores.Select(f => f.Cnpj.Numero);
 
         var placas = veiculosVenda.Select(v => v.GetPlacaCarro())
             .Concat(veiculosCliente.Select(v => v.Placa.GetPlaca()))
@@ -53,6 +57,7 @@ public sealed class PoolsIniciais
             Email = new UniquePool(emails),
             Telefone = new UniquePool(telefones),
             Cpf = new UniquePool(cpfs),
+            Cnpj = new UniquePool(cnpjs),
             Placa = new UniquePool(placas),
             Renavam = new UniquePool(renavams),
             Sku = new UniquePool(skus)

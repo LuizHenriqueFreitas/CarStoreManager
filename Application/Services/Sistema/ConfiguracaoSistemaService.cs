@@ -27,6 +27,7 @@ public class ConfiguracaoSistemaService : IConfiguracaoSistemaService
         try
         {
             cfg.ConfigurarEntradaMinima(dto.ExigirEntradaMinima, dto.PercentualEntradaMinima);
+            cfg.ConfigurarDiaFechamentoDespesas(dto.DiaFechamentoDespesas);
 
             await _repo.SaveChangesAsync();
             return Result.Ok();
@@ -77,6 +78,7 @@ public class ConfiguracaoSistemaService : IConfiguracaoSistemaService
     {
         DataUltimaAtualizacao = cfg.DataUltimaAtualizacao,
         ExigirEntradaMinima = cfg.ExigirEntradaMinima,
-        PercentualEntradaMinima = cfg.PercentualEntradaMinima
+        PercentualEntradaMinima = cfg.PercentualEntradaMinima,
+        DiaFechamentoDespesas = cfg.DiaFechamentoDespesas
     };
 }

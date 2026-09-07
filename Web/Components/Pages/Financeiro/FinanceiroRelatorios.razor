@@ -1,0 +1,103 @@
+@page "/financeiro/relatorios"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,ChefeOficina")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthState
+@using Microsoft.JSInterop
+@using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="pagina">
+    <PageHeader Titulo="Relatórios" Subtitulo="Exportação em CSV ou XML por período" />
+
+    <SubNav Itens="SubNavFinanceiro.Itens" />
+
+    <div class="card filtros" data-tour="rel-filtros">
+        <div class="campo">
+            <label>Período</label>
+            <SeletorPeriodo @bind-Inicio="inicio" @bind-Fim="fim" />
+        </div>
+        <div class="campo">
+            <label>Formato</label>
+            <select @bind="formato">
+                <option value="csv">CSV (Excel / LibreOffice)</option>
+                <option value="xml">XML</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="rel-grid">
+        @foreach (var r in Relatorios.Where(r => r.Visivel(podeOficina, podeConcessionaria)))
+        {
+            <div class="rel-card">
+                <div>
+                    <h3>@r.Titulo</h3>
+                    <p class="muted">@r.Descricao</p>
+                </div>
+                <button class="btn btn-primario" @onclick="() => Baixar(r.Endpoint, r.Query)">Baixar</button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private DateOnly inicio = DateOnly.FromDateTime(DateTime.Today).AddMonths(-1);
+    private DateOnly fim = DateOnly.FromDateTime(DateTime.Today);
+    private string formato = "csv";
+    private bool podeOficina, podeConcessionaria;
+
+    private record Rel(string Titulo, string Descricao, string Endpoint, string Query,
+                       Func<bool, bool, bool> Visivel);
+
+    private static readonly Rel[] Relatorios =
+    {
+        new("Consolidado geral", "Receitas, despesas e resultado de toda a operação no período.",
+            "export", "tipo=Geral", (of, co) => of && co),
+        new("Consolidado da oficina", "Métricas financeiras e operacionais da oficina no período.",
+            "export", "tipo=OficinaCompleto", (of, co) => of),
+        new("Consolidado da concessionária", "Métricas financeiras e operacionais das vendas no período.",
+            "export", "tipo=ConcessionariaCompleto", (of, co) => co),
+        new("Ordens de serviço", "Uma linha por OS: número, tipo, status, prazo, valor.",
+            "ordens-servico", "", (of, co) => of),
+        new("Propostas de venda", "Uma linha por proposta: veículo, cliente, valor, status.",
+            "propostas-venda", "", (of, co) => co),
+        new("Veículos à venda", "Estoque de veículos próprios: marca, modelo, ano, valor, disponibilidade.",
+            "veiculos-venda", "", (of, co) => co),
+        new("Clientes", "Cadastro de clientes: nome, CPF, contato, data de cadastro.",
+            "clientes", "", (of, co) => of || co),
+        new("Mecânicos", "Equipe da oficina: nome, especialidade, nível.",
+            "mecanicos", "", (of, co) => of),
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var u = (await AuthState.GetAuthenticationStateAsync()).User;
+        podeOficina = u.IsInRole("Admin") || u.IsInRole("ChefeOficina");
+        podeConcessionaria = u.IsInRole("Admin") || u.IsInRole("GerenteVendas");
+    }
+
+    private async Task Baixar(string endpoint, string query)
+    {
+        var qs = $"formato={formato}&dataInicio={inicio:yyyy-MM-dd}&dataFim={fim:yyyy-MM-dd}";
+        if (!string.IsNullOrEmpty(query)) qs = $"{query}&{qs}";
+        await JS.InvokeVoidAsync("open", $"/api/relatorio/{endpoint}?{qs}", "_blank");
+    }
+}
+
+<style>
+    .filtros { display: flex; gap: var(--sp-6); flex-wrap: wrap; margin-bottom: var(--sp-6); }
+    .filtros .campo { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .filtros label { font-size: var(--txt-xs); color: var(--cor-tinta-2); font-weight: var(--peso-medio); }
+    .filtros select { border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 6px 10px; font-size: var(--txt-sm); font-family: inherit; }
+
+    .rel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-4); }
+    .rel-card {
+        background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg);
+        padding: var(--sp-4); display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3);
+    }
+    .rel-card h3 { font-size: var(--txt-md); margin: 0 0 4px; }
+    .rel-card p { margin: 0; }
+</style>

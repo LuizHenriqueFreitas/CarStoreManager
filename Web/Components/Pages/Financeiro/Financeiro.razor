@@ -1,0 +1,257 @@
+@page "/financeiro"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,ChefeOficina")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject IDashboardService DashboardService
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@using Microsoft.JSInterop
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Admin
+@using CarStoreManager.Web.Components.Shared
+@using System.Globalization
+
+<div class="pagina">
+    <PageHeader Titulo="Financeiro" Subtitulo="@subtitulo">
+        <Acao>
+            <div data-tour="fin-periodo">
+                <SeletorPeriodo @bind-Inicio="inicio" @bind-Fim="fim" OnAlterado="RecarregarAsync" />
+            </div>
+        </Acao>
+    </PageHeader>
+
+    <SubNav Itens="SubNavFinanceiro.Itens" />
+
+    <div class="area-filtro" data-tour="fin-area">
+        <span>Área:</span>
+        @foreach (var a in new[] { ("", "Tudo"), ("oficina", "Oficina"), ("concessionaria", "Concessionária") })
+        {
+            <button class="@(area == a.Item1 ? "af-btn ativo" : "af-btn")" @onclick="() => TrocarArea(a.Item1)">@a.Item2</button>
+        }
+    </div>
+
+    @if (carregando)
+    {
+        <div class="estado-carregando">Calculando...</div>
+    }
+    else if (m is null)
+    {
+        <EstadoVazio Mensagem="Não foi possível carregar os dados financeiros." Icone="⚠" />
+    }
+    else
+    {
+        <div data-tour="fin-kpis">
+        <StatCardGrid MinColuna="200">
+            <MetricCard Rotulo="Receita do período" Valor="@FBRL(Receita)" Tom="ok"
+                        Variacao="@Variacao(Receita, receitaAnterior)" TextoComparacao="vs período anterior" />
+            <MetricCard Rotulo="Despesa do período" Valor="@FBRL(Despesa)" Tom="alerta"
+                        Variacao="@Variacao(Despesa, despesaAnterior)" TextoComparacao="vs período anterior" />
+            <MetricCard Rotulo="Lucro líquido" Valor="@FBRL(Lucro)" Tom="@(Lucro >= 0 ? "ok" : "erro")"
+                        Variacao="@Variacao(Lucro, lucroAnterior)" TextoComparacao="vs período anterior" />
+            <MetricCard Rotulo="Margem líquida" Valor="@($"{Margem:0.#}%")" Tom="info" />
+        </StatCardGrid>
+        </div>
+
+        <p class="regime-nota">Valores em regime de caixa — considera o que efetivamente entrou e saiu no período. Despesas de período com mais de um mês são estimadas pelo valor mensal cadastrado.</p>
+
+        <div data-tour="fin-grafico">
+        <Secao Titulo="Receitas e despesas — evolução mensal">
+            <div class="grafico-card"><div class="grafico-area"><canvas id="finPrincipal"></canvas></div></div>
+        </Secao>
+        </div>
+
+        <div class="fin-grid-2">
+            <Secao Titulo="Composição da receita">
+                <div class="grafico-card"><div class="grafico-area"><canvas id="finReceita"></canvas></div></div>
+            </Secao>
+            <Secao Titulo="Composição da despesa (mensal)">
+                <div class="grafico-card"><div class="grafico-area"><canvas id="finDespesa"></canvas></div></div>
+            </Secao>
+        </div>
+
+        <Secao Titulo="Resultado por área (mês corrente)" data-tour="fin-areas">
+            <div class="areas-grid">
+                <div class="area-card">
+                    <h3>Oficina</h3>
+                    <div class="al"><span>Receita de serviços</span><strong>@FBRL(m.ReceitaServicosMesAtual)</strong></div>
+                    <div class="al"><span>Despesas da oficina</span><strong>@FBRL(m.TotalDespesasOficinaMensal)</strong></div>
+                    <div class="al total"><span>Lucro operacional</span><strong class="@(m.LucroOficinaMes >= 0 ? "pos" : "neg")">@FBRL(m.LucroOficinaMes)</strong></div>
+                    <a href="/financeiro?area=oficina">Abrir recorte →</a>
+                </div>
+                <div class="area-card">
+                    <h3>Concessionária</h3>
+                    <div class="al"><span>Receita de vendas</span><strong>@FBRL(m.ReceitaVendasMesAtual)</strong></div>
+                    <div class="al"><span>Despesas da concessionária</span><strong>@FBRL(m.TotalDespesasConcessionariaMensal)</strong></div>
+                    <div class="al total"><span>Lucro operacional</span><strong class="@(m.LucroConcessionariaMes >= 0 ? "pos" : "neg")">@FBRL(m.LucroConcessionariaMes)</strong></div>
+                    <a href="/financeiro?area=concessionaria">Abrir recorte →</a>
+                </div>
+            </div>
+        </Secao>
+
+        <Secao Titulo="Capital imobilizado (não é fluxo de caixa)" data-tour="fin-capital">
+            <div class="capital-grid">
+                <div class="cap"><span>Veículos em estoque (valor de venda)</span><strong>@FBRL(m.CapitalEstoqueVeiculos)</strong></div>
+                <div class="cap"><span>Veículos em estoque (custo de aquisição)</span><strong>@FBRL(m.CapitalAquisicaoVeiculosDisponiveis)</strong></div>
+                <div class="cap"><span>Margem potencial do estoque</span><strong class="pos">@FBRL(m.CapitalEstoqueVeiculos - m.CapitalAquisicaoVeiculosDisponiveis)</strong></div>
+                <div class="cap"><span>Peças em estoque</span><strong>@FBRL(m.CapitalEstoqueComponentes)</strong></div>
+            </div>
+        </Secao>
+    }
+</div>
+
+@code {
+    private static readonly CultureInfo Cultura = new("pt-BR");
+    private static string FBRL(decimal v) => v.ToString("C", Cultura);
+
+    private DashboardMetricasDTO? m;
+    private DateOnly inicio, fim;
+    private string area = "";
+    private bool carregando = true;
+    private string subtitulo = "";
+    private decimal receitaAnterior, despesaAnterior, lucroAnterior;
+    private bool graficosPendentes;
+
+    private decimal Receita => area switch
+    {
+        "oficina" => m!.ReceitaServicosMesAtual,
+        "concessionaria" => m!.ReceitaVendasMesAtual,
+        _ => m!.TotalReceitasMes
+    };
+    private decimal Despesa => area switch
+    {
+        "oficina" => m!.TotalDespesasOficinaMensal,
+        "concessionaria" => m!.TotalDespesasConcessionariaMensal,
+        _ => m!.TotalDespesasMes
+    };
+    private decimal Lucro => Receita - Despesa;
+    private decimal Margem => Receita > 0 ? Lucro / Receita * 100 : 0;
+
+    protected override void OnInitialized()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var q = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (q.TryGetValue("area", out var a)) area = a.ToString();
+
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        inicio = hoje.AddDays(-14);
+        fim = hoje;
+    }
+
+    protected override async Task OnInitializedAsync() => await RecarregarAsync();
+
+    private async Task RecarregarAsync()
+    {
+        carregando = true;
+        StateHasChanged();
+
+        var dias = fim.DayNumber - inicio.DayNumber + 1;
+        var antInicio = inicio.AddDays(-dias);
+        var antFim = inicio.AddDays(-1);
+
+        var tAtual = DashboardService.ObterMetricasPeriodoAsync(inicio.ToDateTime(TimeOnly.MinValue), fim.ToDateTime(TimeOnly.MaxValue));
+        var tAnterior = DashboardService.ObterMetricasPeriodoAsync(antInicio.ToDateTime(TimeOnly.MinValue), antFim.ToDateTime(TimeOnly.MaxValue));
+        // Séries mensais completas (6m) para o gráfico principal
+        var tSerie = DashboardService.ObterMetricasAsync(6);
+        await Task.WhenAll(tAtual, tAnterior, tSerie);
+
+        m = tAtual.Result.IsSuccess ? tAtual.Result.Value : null;
+        serie = tSerie.Result.IsSuccess ? tSerie.Result.Value : m;
+
+        if (tAnterior.Result.IsSuccess && tAnterior.Result.Value is { } ant)
+        {
+            receitaAnterior = area switch { "oficina" => ant.ReceitaServicosMesAtual, "concessionaria" => ant.ReceitaVendasMesAtual, _ => ant.TotalReceitasMes };
+            despesaAnterior = area switch { "oficina" => ant.TotalDespesasOficinaMensal, "concessionaria" => ant.TotalDespesasConcessionariaMensal, _ => ant.TotalDespesasMes };
+            lucroAnterior = receitaAnterior - despesaAnterior;
+        }
+
+        subtitulo = $"{inicio:dd/MM/yyyy} a {fim:dd/MM/yyyy}";
+        carregando = false;
+        graficosPendentes = true;
+        StateHasChanged();
+    }
+
+    private DashboardMetricasDTO? serie;
+
+    private async Task TrocarArea(string a)
+    {
+        area = a;
+        await RecarregarAsync();
+    }
+
+    private static decimal? Variacao(decimal atual, decimal anterior)
+    {
+        if (anterior == 0) return null;
+        return (atual - anterior) / Math.Abs(anterior);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (graficosPendentes && serie is not null && m is not null)
+        {
+            graficosPendentes = false;
+            await RenderGraficos();
+        }
+    }
+
+    private async Task RenderGraficos()
+    {
+        var s = serie!;
+        var labels = s.SerieReceitaServicos.Select(x => x.MesLabel).ToArray();
+        var despesaMensal = s.TotalDespesasFixasMensal;
+
+        await JS.InvokeVoidAsync("carstoreChart.render", "finPrincipal", "bar", labels, new object[]
+        {
+            new { label = "Receita", data = s.SerieReceitaServicos.Zip(s.SerieReceitaVendas, (a,b) => a.Valor + b.Valor).ToArray(), backgroundColor = "#16a34a" },
+            new { label = "Despesa (estim.)", data = labels.Select(_ => despesaMensal).ToArray(), backgroundColor = "#ea580c" },
+            new { label = "Lucro", type = "line", data = s.SerieReceitaServicos.Zip(s.SerieReceitaVendas, (a,b) => a.Valor + b.Valor - despesaMensal).ToArray(), borderColor = "#2563eb", tension = 0.3 },
+        }, new { responsive = true, maintainAspectRatio = false });
+
+        await JS.InvokeVoidAsync("carstoreChart.render", "finReceita", "doughnut",
+            new[] { "Serviços", "Vendas" },
+            new object[] { new { data = new[] { m!.ReceitaServicosMesAtual, m.ReceitaVendasMesAtual }, backgroundColor = new[] { "#16a34a", "#2563eb" } } },
+            new { responsive = true, maintainAspectRatio = false });
+
+        await JS.InvokeVoidAsync("carstoreChart.render", "finDespesa", "doughnut",
+            new[] { "Geral", "Oficina", "Concessionária" },
+            new object[] { new { data = new[] { m.TotalDespesasGeralMensal, m.TotalDespesasOficinaMensal, m.TotalDespesasConcessionariaMensal }, backgroundColor = new[] { "#94a3b8", "#f97316", "#3b82f6" } } },
+            new { responsive = true, maintainAspectRatio = false });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            foreach (var id in new[] { "finPrincipal", "finReceita", "finDespesa" })
+                await JS.InvokeVoidAsync("carstoreChart.destroy", id);
+        }
+        catch { }
+    }
+}
+
+<style>
+    .area-filtro { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-5); font-size: var(--txt-sm); color: var(--cor-tinta-3); }
+    .af-btn { background: var(--cor-superficie-2); border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 5px 12px; font-size: var(--txt-sm); cursor: pointer; color: var(--cor-tinta-2); }
+    .af-btn.ativo { background: var(--cor-tinta); color: #fff; border-color: var(--cor-tinta); }
+    .regime-nota { font-size: var(--txt-xs); color: var(--cor-tinta-3); margin: calc(-1 * var(--sp-3)) 0 var(--sp-6); }
+
+    .grafico-card { background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); padding: var(--sp-4); }
+    .grafico-area { position: relative; height: 280px; }
+    .fin-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); }
+    .fin-grid-2 .grafico-area { height: 220px; }
+
+    .areas-grid, .capital-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
+    .area-card { background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); padding: var(--sp-4); }
+    .area-card h3 { font-size: var(--txt-md); margin: 0 0 var(--sp-3); }
+    .al { display: flex; justify-content: space-between; font-size: var(--txt-sm); padding: var(--sp-1) 0; }
+    .al.total { border-top: 1px solid var(--cor-linha-suave); margin-top: var(--sp-1); padding-top: var(--sp-2); }
+    .al .pos, .cap .pos { color: var(--cor-ok-tx); } .al .neg { color: var(--cor-erro-tx); }
+    .area-card a { display: inline-block; margin-top: var(--sp-2); font-size: var(--txt-sm); color: var(--cor-acao); text-decoration: none; }
+    .cap { background: var(--cor-superficie-2); border-radius: var(--raio-md); padding: var(--sp-3); display: flex; flex-direction: column; gap: 4px; }
+    .cap span { font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+    .cap strong { font-size: var(--txt-lg); }
+
+    @@media (max-width: 900px) { .fin-grid-2, .areas-grid, .capital-grid { grid-template-columns: 1fr; } }
+</style>

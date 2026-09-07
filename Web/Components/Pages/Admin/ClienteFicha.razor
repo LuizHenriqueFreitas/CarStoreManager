@@ -1,0 +1,153 @@
+@page "/clientes/{Id:guid}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,GerenteVendas,Vendedor,Recepcionista")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@inject IClienteConsultaService FichaService
+@inject NavigationManager Nav
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Shared.Cliente
+@using CarStoreManager.Web.Components.Shared
+@using System.Globalization
+
+<div class="pagina">
+    @if (carregando)
+    {
+        <div class="estado-carregando">Carregando ficha...</div>
+    }
+    else if (ficha is null)
+    {
+        <EstadoVazio Mensagem="Cliente não encontrado." Icone="👤" />
+    }
+    else
+    {
+        <PageHeader Titulo="@ficha.Nome" Subtitulo="@($"CPF {ficha.Cpf} · cliente desde {ficha.ClienteDesde:MM/yyyy}")"
+                    Trilha="trilha" />
+
+        <StatCardGrid MinColuna="170" data-tour="ficha-resumo">
+            <MetricCard Rotulo="Ordens de serviço" Valor="@ficha.TotalOrdensServico.ToString()" Sub="@($"{ficha.OrdensServicoAbertas} aberta(s)")" />
+            <MetricCard Rotulo="Propostas / compras" Valor="@($"{ficha.TotalPropostas} / {ficha.ComprasConcluidas}")" />
+            <MetricCard Rotulo="Gasto na oficina" Valor="@FBRL(ficha.TotalGastoOficina)" />
+            <MetricCard Rotulo="Gasto na concessionária" Valor="@FBRL(ficha.TotalGastoConcessionaria)" />
+            <MetricCard Rotulo="Último atendimento" Valor="@(ficha.UltimoAtendimento?.ToString("dd/MM/yyyy") ?? "—")" Sub="@ficha.UltimoAtendimentoSetor" />
+        </StatCardGrid>
+
+        <div class="ficha-grid">
+            <div>
+                <Secao Titulo="Contato">
+                    <div class="card contato">
+                        <div><span class="k">Telefone</span><span>@ficha.Telefone</span></div>
+                        <div><span class="k">E-mail</span><span>@ficha.Email</span></div>
+                        <div class="span"><span class="k">Endereço</span><span>@ficha.Endereco</span></div>
+                    </div>
+                </Secao>
+
+                <Secao Titulo="Veículos" data-tour="ficha-veiculos">
+                    @if (!ficha.Veiculos.Any())
+                    {
+                        <p class="muted">Nenhum veículo cadastrado para este cliente.</p>
+                    }
+                    else
+                    {
+                        <div class="veic-lista">
+                            @foreach (var v in ficha.Veiculos)
+                            {
+                                <div class="veic-item">
+                                    <div>
+                                        <strong>@v.Descricao</strong>
+                                        <span class="placa">@v.Placa</span>
+                                    </div>
+                                    <span class="muted">@v.Atendimentos atendimento(s)</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                </Secao>
+            </div>
+
+            <div data-tour="ficha-historico">
+                <Secao Titulo="Histórico da oficina">
+                    @if (!ficha.HistoricoOficina.Any()) { <p class="muted">Sem ordens de serviço.</p> }
+                    else
+                    {
+                        <div class="hist">
+                            @foreach (var e in ficha.HistoricoOficina)
+                            {
+                                <a class="hist-item" href="@($"/oficina/os/{e.Id}")">
+                                    <span class="hi-data">@e.Data.ToString("dd/MM/yyyy")</span>
+                                    <span class="hi-ref">@e.Referencia</span>
+                                    <span class="hi-desc">@e.Descricao</span>
+                                    <StatusBadge Status="@e.Status" Familia="os" />
+                                    <span class="hi-valor">@FBRL(e.Valor)</span>
+                                </a>
+                            }
+                        </div>
+                    }
+                </Secao>
+
+                <Secao Titulo="Histórico da concessionária">
+                    @if (!ficha.HistoricoConcessionaria.Any()) { <p class="muted">Sem propostas.</p> }
+                    else
+                    {
+                        <div class="hist">
+                            @foreach (var e in ficha.HistoricoConcessionaria)
+                            {
+                                <a class="hist-item" href="@($"/concessionaria/proposta/{e.Id}")">
+                                    <span class="hi-data">@e.Data.ToString("dd/MM/yyyy")</span>
+                                    <span class="hi-ref">@e.Referencia</span>
+                                    <span class="hi-desc">@e.Descricao</span>
+                                    <StatusBadge Status="@e.Status" Familia="proposta" />
+                                    <span class="hi-valor">@FBRL(e.Valor)</span>
+                                </a>
+                            }
+                        </div>
+                    }
+                </Secao>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private static readonly CultureInfo Cultura = new("pt-BR");
+    private static string FBRL(decimal v) => v.ToString("C", Cultura);
+
+    private ClienteFichaDTO? ficha;
+    private bool carregando = true;
+
+    private List<PageHeader.Crumb> trilha => new()
+    {
+        new("Clientes", "/clientes"),
+        new(ficha?.Nome ?? "")
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        carregando = true;
+        var r = await FichaService.ObterFichaAsync(Id);
+        ficha = r.IsSuccess ? r.Value : null;
+        carregando = false;
+    }
+}
+
+<style>
+    .ficha-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: var(--sp-5); align-items: start; }
+    .contato { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+    .contato .span { grid-column: 1 / -1; }
+    .contato .k { display: block; font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+
+    .veic-lista { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .veic-item { display: flex; justify-content: space-between; align-items: center; background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: var(--sp-3); font-size: var(--txt-sm); }
+    .veic-item .placa { font-family: monospace; color: var(--cor-tinta-3); margin-left: var(--sp-2); }
+
+    .hist { display: flex; flex-direction: column; }
+    .hist-item { display: grid; grid-template-columns: 90px 90px 1fr auto auto; gap: var(--sp-2); align-items: center; padding: var(--sp-2) 0; border-top: 1px solid var(--cor-linha-suave); text-decoration: none; color: inherit; font-size: var(--txt-sm); }
+    .hist-item:hover { background: var(--cor-info-bg); }
+    .hi-data { color: var(--cor-tinta-3); } .hi-ref { font-family: monospace; color: var(--cor-acao); }
+    .hi-valor { font-weight: var(--peso-bold); white-space: nowrap; }
+
+    @@media (max-width: 900px) { .ficha-grid { grid-template-columns: 1fr; } .hist-item { grid-template-columns: 1fr 1fr; } }
+</style>

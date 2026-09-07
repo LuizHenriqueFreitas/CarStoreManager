@@ -29,8 +29,32 @@ chama os **mesmos Application Services que a interface web usa**
 dotnet run --project Geradores
 ```
 
-Isso gera a distribuição padrão (~680 registros, bem acima do mínimo de 500).
-Ao final imprime quantos registros foram criados por entidade.
+Sem argumentos, gera a **base de demonstração completa**: a loja é tratada
+como se estivesse **em operação há ~4 anos** (`--anos-operacao`, faixa útil
+3–5), e o resultado é da ordem de **12 mil registros** no banco, com dados em
+todas as tabelas cadastráveis e processos em **todos os estágios** dos fluxos
+de oficina e concessionária. Ao final imprime quantos registros foram criados
+por entidade, com o detalhamento por cenário de OS/consignação/test drive.
+
+O banco alvo é sempre `Web/carstore.db` (o mesmo arquivo que o site abre),
+independente de qual diretório o `dotnet run` é disparado.
+
+### Cobertura de cenários
+
+- **Ordens de serviço** — concluídas com sucesso (feitas, pagas, entregues),
+  concluídas com problema no meio (requisição de peça atendida, pausa por
+  aumento de escopo, pagamento parcial em aberto) e não concluídas (paradas em
+  orçamento, revisão, aprovação, execução, busca de peças, pausa). Cada OS
+  ganha checklist (de um preset), itens de peça do estoque e pagamentos.
+- **Propostas de venda** — funil completo (rejeitada, em vistoria, aguardando
+  assinatura, concluída à vista e via financiamento, recém-criada).
+- **Consignações** — ativas, vendidas aguardando pagamento, concluídas,
+  devolvidas.
+- **Test drives** — agendados (futuros), realizados, cancelados, não
+  compareceu, reagendados.
+- **Balanços mensais de despesas** — uma competência por mês de todo o
+  período histórico, geradas do formulário-modelo + linhas reais, fechadas
+  (menos as 2 mais recentes) — base das análises retro-avaliativas.
 
 ### Rodar de novo para aumentar ainda mais a base
 
@@ -47,7 +71,7 @@ dotnet run --project Geradores -- --vendedores 0 --mecanicos 0 --recepcionistas 
   --veiculos-consignados 0 --propostas 0 --clientes 300 --ordens-servico 200
 ```
 
-Ou simplesmente rodar sem argumentos de novo para adicionar outros ~680.
+Ou simplesmente rodar sem argumentos de novo para dobrar a base.
 
 ### Opções disponíveis
 
@@ -58,21 +82,27 @@ dotnet run --project Geradores -- --ajuda
 | Opção                     | Entidade                          | Padrão |
 |---------------------------|------------------------------------|--------|
 | `--seed N`                | semente do RNG (reprodutibilidade) | aleatória |
-| `--vendedores N`          | Usuário — Vendedor                 | 20 |
-| `--mecanicos N`           | Usuário — Mecânico                 | 20 |
-| `--recepcionistas N`      | Usuário — Recepcionista            | 15 |
-| `--chefes-oficina N`      | Usuário — Chefe de oficina         | 8 |
-| `--gerentes-vendas N`     | Usuário — Gerente de vendas        | 8 |
-| `--admins N`              | Usuário — Admin                    | 5 |
-| `--clientes N`            | Cliente                            | 120 |
-| `--componentes N`         | Componente (peça de estoque)       | 80 |
-| `--despesas N`            | Despesa mensal                     | 30 |
-| `--checklists N`          | Checklist preset                   | 15 |
-| `--veiculos-venda N`      | Veículo (concessionária)           | 90 |
-| `--veiculos-cliente N`    | Veículo de cliente (oficina)       | 100 |
-| `--veiculos-consignados N`| Veículo consignado                 | 40 |
-| `--propostas N`           | Proposta de venda                  | 60 |
-| `--ordens-servico N`      | Ordem de serviço                   | 70 |
+| `--anos-operacao N`       | janela histórica (anos) — 3 a 5    | 4 |
+| `--vendedores N`          | Usuário — Vendedor                 | 30 |
+| `--mecanicos N`           | Usuário — Mecânico                 | 30 |
+| `--recepcionistas N`      | Usuário — Recepcionista            | 18 |
+| `--chefes-oficina N`      | Usuário — Chefe de oficina         | 6 |
+| `--gerentes-vendas N`     | Usuário — Gerente de vendas        | 6 |
+| `--admins N`              | Usuário — Admin                    | 4 |
+| `--clientes N`            | Cliente                            | 800 |
+| `--fornecedores N`        | Fornecedor (peças da oficina)      | 60 |
+| `--componentes N`         | Componente (peça de estoque)       | 300 |
+| `--despesas N`            | Despesa (formulário-modelo)        | 45 |
+| `--checklists N`          | Checklist preset                   | 24 |
+| `--veiculos-venda N`      | Veículo (concessionária)           | 900 |
+| `--veiculos-cliente N`    | Veículo de cliente (oficina)       | 900 |
+| `--veiculos-consignados N`| Veículo consignado                 | 350 |
+| `--propostas N`           | Proposta de venda                  | 550 |
+| `--test-drives N`         | Test drive                         | 700 |
+| `--ordens-servico N`      | Ordem de serviço                   | 900 |
+
+> Os **balanços mensais de despesas** não têm opção de quantidade — é sempre
+> uma competência por mês de `--anos-operacao` (≈ 48 balanços no padrão).
 
 ### Login nos usuários gerados
 
@@ -105,14 +135,17 @@ Geradores/
   Entidades/                 um gerador por entidade cadastrável
     UsuarioGerador.cs
     ClienteGerador.cs
-    ComponenteGerador.cs
+    FornecedorGerador.cs
+    ComponenteGerador.cs         (depende de FornecedorGerador)
     DespesaGerador.cs
+    BalancoDespesaGerador.cs     (depende de DespesaGerador — 1 competência/mês)
     ChecklistPresetGerador.cs
     VeiculoVendaGerador.cs
     VeiculoClienteGerador.cs
     VeiculoConsignacaoGerador.cs
     PropostaVendaGerador.cs
-    OrdemServicoGerador.cs
+    TestDriveGerador.cs
+    OrdemServicoGerador.cs       (checklist + itens + pagamentos + requisições + alertas)
 ```
 
 ## Adicionando um gerador para uma entidade nova

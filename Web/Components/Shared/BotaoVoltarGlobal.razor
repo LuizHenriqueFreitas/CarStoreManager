@@ -19,7 +19,8 @@
     // voltar, já que não há uma página anterior natural dentro do sistema.
     private static readonly HashSet<string> RotasIniciais = new(StringComparer.OrdinalIgnoreCase)
     {
-        "", "dashboard", "concessionaria", "oficina", "recepcao", "login"
+        "", "dashboard", "concessionaria", "oficina", "oficina/recepcao", "recepcao",
+        "financeiro", "cadastros", "login"
     };
 
     protected override void OnInitialized()

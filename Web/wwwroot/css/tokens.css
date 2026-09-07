@@ -1,0 +1,67 @@
+/* ============================================================================
+   DELORE — Design tokens
+   Fonte única de cores, espaçamento, tipografia e raio para todo o sistema.
+   Ver docs/redesign/04-diretrizes-ui-ux.md §2.
+
+   Regra: NENHUMA tela nova/alterada usa hex ou px cru para cor/spacing —
+   sempre var(--token). Telas antigas migram aos poucos.
+   ============================================================================ */
+
+:root {
+    /* ---- Cores de marca / ação ---- */
+    --cor-marca:            #e02020;   /* vermelho DELORE — ação primária, identidade */
+    --cor-marca-hover:      #c01818;
+    --cor-acao:             #2563eb;   /* azul — ação secundária / links / seleção */
+    --cor-acao-hover:       #1d4ed8;
+
+    /* ---- Neutros ---- */
+    --cor-tinta:            #1a1a1a;   /* texto principal, navbar */
+    --cor-tinta-2:          #555555;   /* texto secundário */
+    --cor-tinta-3:          #888888;   /* texto terciário / legendas */
+    --cor-linha:            #e0e0e0;   /* bordas */
+    --cor-linha-suave:      #f0f0f0;
+    --cor-fundo:            #fafafa;   /* fundo da aplicação */
+    --cor-superficie:       #ffffff;   /* cards */
+    --cor-superficie-2:     #f4f4f4;   /* cards neutros / chips */
+
+    /* ---- Estados semânticos (fundo / texto) ---- */
+    --cor-ok-bg:      #dcfce7;  --cor-ok-tx:      #166534;
+    --cor-info-bg:    #eff6ff;  --cor-info-tx:    #1d4ed8;
+    --cor-atencao-bg: #fff7ed;  --cor-atencao-tx: #c2410c;
+    --cor-alerta-bg:  #fef9c3;  --cor-alerta-tx:  #854d0e;
+    --cor-erro-bg:    #fff5f5;  --cor-erro-tx:    #e02020;
+    --cor-neutro-bg:  #f3e8ff;  --cor-neutro-tx:  #6b21a8;
+
+    /* ---- Dots de status (sólidos) ---- */
+    --dot-cinza: #aaaaaa; --dot-amarelo: #f59e0b; --dot-azul: #3b82f6;
+    --dot-verde: #22c55e; --dot-vermelho: #ef4444; --dot-laranja: #f97316;
+
+    /* ---- Tipografia ---- */
+    --fonte: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --txt-xs: 11px; --txt-sm: 13px; --txt-md: 14px; --txt-lg: 16px;
+    --txt-xl: 20px; --txt-2xl: 24px; --txt-3xl: 32px;
+    --peso-normal: 400; --peso-medio: 500; --peso-forte: 600; --peso-bold: 700;
+
+    /* ---- Espaçamento (escala 4px) ---- */
+    --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+    --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+
+    /* ---- Raio / sombra ---- */
+    --raio-sm: 6px; --raio-md: 8px; --raio-lg: 12px; --raio-full: 999px;
+    --sombra-card: 0 1px 2px rgba(0, 0, 0, .04);
+    --sombra-hover: 0 2px 8px rgba(37, 99, 235, .10);
+    --sombra-menu: 0 4px 12px rgba(0, 0, 0, .10);
+
+    /* ---- Layout ---- */
+    --largura-conteudo: 1200px;
+    --largura-form: 640px;
+    --altura-navbar: 56px;
+
+    /* ---- Aliases legados (app.css antigo) — manter até migrar tudo ---- */
+    --vermelho: var(--cor-marca);
+    --preto: var(--cor-tinta);
+    --cinza-bg: var(--cor-fundo);
+    --cinza-card: var(--cor-superficie);
+    --cinza-borda: var(--cor-linha);
+    --cinza-texto: var(--cor-tinta-3);
+}

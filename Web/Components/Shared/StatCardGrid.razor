@@ -1,0 +1,26 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Grade responsiva de MetricCard. Ver docs/redesign/04-diretrizes-ui-ux.md §3. *@
+
+<div class="stat-card-grid" style="--min-col: @(MinColuna)px" @attributes="Extra">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Largura mínima de cada card antes de quebrar linha.</summary>
+    [Parameter] public int MinColuna { get; set; } = 180;
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? Extra { get; set; }
+}
+
+<style>
+    .stat-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(var(--min-col, 180px), 1fr));
+        gap: var(--sp-3);
+        margin-bottom: var(--sp-6);
+    }
+</style>

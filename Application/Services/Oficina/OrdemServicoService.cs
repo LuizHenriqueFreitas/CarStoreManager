@@ -402,6 +402,10 @@ public class OrdemServicoService : IOrdemServicoService
         if (item is null)
             return Result.Fail("Item não encontrado");
 
+        // need_to_do.txt: checklist só é marcável na etapa 5 (serviço em andamento).
+        try { ordem!.GarantirChecklistEditavel(); }
+        catch (InvalidOperationException ex) { return Result.Fail(ex.Message); }
+
         if (dto.NovoStatus == "EmAndamento") item.IniciarItem();
         else if (dto.NovoStatus == "Concluido") item.ConcluirItem();
         else return Result.Fail("Status inválido");

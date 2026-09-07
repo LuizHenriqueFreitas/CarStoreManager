@@ -7,6 +7,9 @@ public class ConfiguracaoSistemaDTO
     // === Modo operante — entrada mínima ===
     public bool ExigirEntradaMinima { get; set; } = false;
     public decimal PercentualEntradaMinima { get; set; } = 0m;
+
+    // === Fechamento mensal de despesas ===
+    public int DiaFechamentoDespesas { get; set; } = 5;
 }
 
 public class MargensDTO

@@ -1,0 +1,308 @@
+@page "/concessionaria"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject IVeiculoVendaService VeiculoService
+@inject IVeiculoConsignacaoService ConsignacaoService
+@inject IPropostaVendaService PropostaService
+@inject IDashboardService DashboardService
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@using Microsoft.JSInterop
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoConsignacao
+@using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda
+@using CarStoreManager.Application.DTOs.Admin
+@using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="pagina">
+    <PageHeader Titulo="Concessionária" Subtitulo="@subtitulo">
+        <Acao>
+            <button class="btn btn-primario" @onclick='() => Nav.NavigateTo("/concessionaria/veiculo/novo")'>+ Cadastrar veículo</button>
+        </Acao>
+    </PageHeader>
+
+    <SubNav Itens="SubNavConcessionaria.Itens" />
+
+    @if (carregando)
+    {
+        <div class="estado-carregando">Carregando painel...</div>
+    }
+    else
+    {
+        <div class="hub-layout">
+        <MenuAtalhos Itens="atalhos" data-tour="conc-hub-atalhos" />
+        <div class="hub-conteudo">
+        <FaixaAlertas Alertas="alertas" />
+
+        <StatCardGrid>
+            <MetricCard Rotulo="Veículos disponíveis" Valor="@disponiveis.ToString()" Href="/concessionaria/salao" />
+            <MetricCard Rotulo="Em preparação" Valor="@emPreparacao.ToString()" Tom="atencao" />
+            <MetricCard Rotulo="Propostas aguardando" Valor="@propostasAtencao.Count.ToString()"
+                        Tom="@(propostasAtencao.Count > 0 ? "atencao" : "")" Href="/concessionaria/propostas" />
+            <MetricCard Rotulo="Vendas no mês" Valor="@vendasMes.ToString()" Tom="ok" />
+            <MetricCard Rotulo="Consignações ativas" Valor="@consignacoesAtivas.ToString()" Href="/concessionaria/consignacoes" />
+            <MetricCard Rotulo="Ticket médio (mês)" Valor="@FBRL(ticketMedio)" />
+        </StatCardGrid>
+
+        <div class="hub-grid">
+            <div>
+                <Secao Titulo="Propostas que precisam de atenção">
+                    @if (!propostasAtencao.Any())
+                    {
+                        <p class="muted">Nenhuma proposta aguardando ação.</p>
+                    }
+                    else
+                    {
+                        <div class="lista">
+                            @foreach (var p in propostasAtencao.Take(6))
+                            {
+                                <a class="lista-item" href="@($"/concessionaria/proposta/{p.Id}")">
+                                    <div>
+                                        <span class="li-titulo">@p.ClienteNome</span>
+                                        <span class="li-sub">@p.VeiculoMarca @p.VeiculoModelo · @FBRL(p.ValorFinal)</span>
+                                    </div>
+                                    <StatusBadge Status="@p.Status" Familia="proposta" />
+                                </a>
+                            }
+                        </div>
+                    }
+                </Secao>
+
+                <Secao Titulo="Veículos parados no salão">
+                    @if (!veiculosParados.Any())
+                    {
+                        <p class="muted">Nenhum veículo há mais de 60 dias no estoque.</p>
+                    }
+                    else
+                    {
+                        <div class="lista">
+                            @foreach (var v in veiculosParados.Take(6))
+                            {
+                                <a class="lista-item" href="@($"/concessionaria/veiculo/{v.Id}")">
+                                    <div>
+                                        <span class="li-titulo">@v.Marca @v.Modelo @v.Ano</span>
+                                        <span class="li-sub">@((DateTime.Today - v.DataCriacao.Date).Days) dias no estoque · @FBRL(v.Valor)</span>
+                                    </div>
+                                    <span class="li-tag">rever preço</span>
+                                </a>
+                            }
+                        </div>
+                    }
+                </Secao>
+            </div>
+
+            <div>
+                <Secao Titulo="Consignações vencendo">
+                    @if (!consignacoesVencendo.Any())
+                    {
+                        <p class="muted">Nenhuma consignação vencendo nos próximos 7 dias.</p>
+                    }
+                    else
+                    {
+                        <div class="lista">
+                            @foreach (var c in consignacoesVencendo)
+                            {
+                                <a class="lista-item" href="@($"/concessionaria/veiculo/{c.Id}")">
+                                    <div>
+                                        <span class="li-titulo">@c.Marca @c.Modelo</span>
+                                        <span class="li-sub">@(c.EstaVencido ? "vencida" : $"{c.DiasRestantes} dia(s)") · @c.VendedorResponsavelNome</span>
+                                    </div>
+                                    <span class="li-tag alerta">@(c.EstaVencido ? "vencida" : "vence")</span>
+                                </a>
+                            }
+                        </div>
+                    }
+                </Secao>
+
+                @if (podeVerFinanceiro && metricas is not null)
+                {
+                    <Secao Titulo="Resumo financeiro do mês">
+                        <div class="card">
+                            <div class="fin-linha"><span>Receita de vendas</span><strong>@FBRL(metricas.ReceitaVendasMesAtual)</strong></div>
+                            <div class="fin-linha"><span>Despesas da concessionária</span><strong>@FBRL(metricas.TotalDespesasConcessionariaMensal)</strong></div>
+                            <div class="fin-linha total"><span>Lucro operacional</span><strong class="@(metricas.LucroConcessionariaMes >= 0 ? "pos" : "neg")">@FBRL(metricas.LucroConcessionariaMes)</strong></div>
+                            <div class="fin-linha"><span>Investido em estoque (aquisição)</span><strong>@FBRL(metricas.CapitalAquisicaoVeiculosDisponiveis)</strong></div>
+                            <a class="fin-link" href="/financeiro?area=concessionaria">Ver no Financeiro →</a>
+                        </div>
+                    </Secao>
+                }
+            </div>
+        </div>
+
+        @if (podeVerFinanceiro && metricas is not null)
+        {
+            <div class="graf-row" data-tour="conc-hub-graficos">
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Vendas — últimos meses</h3>
+                    <div class="grafico-area"><canvas id="concVendas"></canvas></div>
+                </div>
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Veículos por situação</h3>
+                    <div class="grafico-area"><canvas id="concStatus"></canvas></div>
+                </div>
+            </div>
+        }
+
+        </div>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly System.Globalization.CultureInfo Cultura = new("pt-BR");
+    private static string FBRL(decimal v) => v.ToString("C", Cultura);
+
+    private bool graficosPendentes;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (graficosPendentes && metricas is not null)
+        {
+            graficosPendentes = false;
+            var labels = metricas.SerieReceitaVendas.Select(x => x.MesLabel).ToArray();
+            await JS.InvokeVoidAsync("carstoreChart.linhaTempo", "concVendas", labels,
+                new object[] { new { nome = "Vendas", dados = metricas.SerieReceitaVendas.Select(x => x.Valor).ToArray() } }, "R$");
+
+            var porStatus = metricas.VeiculosPorStatus
+                .Select(kv => new { rotulo = kv.Key, valor = kv.Value }).Where(x => x.valor > 0).ToArray();
+            await JS.InvokeVoidAsync("carstoreChart.barraMagnitude", "concStatus", porStatus, "un", 8);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("carstoreChart.destroy", "concVendas"); await JS.InvokeVoidAsync("carstoreChart.destroy", "concStatus"); } catch { }
+    }
+
+    private List<VeiculoVendaListaDTO> veiculos = new();
+    private List<VeiculoConsignacaoListaDTO> consignacoes = new();
+    private List<PropostaVendaListaDTO> propostas = new();
+    private DashboardMetricasDTO? metricas;
+
+    private List<FaixaAlertas.Alerta> alertas = new();
+    private List<PropostaVendaListaDTO> propostasAtencao = new();
+    private List<VeiculoVendaListaDTO> veiculosParados = new();
+    private List<VeiculoConsignacaoListaDTO> consignacoesVencendo = new();
+
+    private int disponiveis, emPreparacao, vendasMes, consignacoesAtivas;
+    private decimal ticketMedio;
+    private bool carregando = true;
+    private bool podeVerFinanceiro;
+    private string subtitulo = "";
+
+    private IEnumerable<MenuAtalhos.Item> atalhos
+    {
+        get
+        {
+            yield return new("Salão", "🚗", "/concessionaria/salao", "Grade de veículos com filtros.");
+            yield return new("Propostas", "📄", "/concessionaria/propostas", "Propostas de venda por situação.");
+            yield return new("Test drives", "🔑", "/concessionaria/test-drives", "Agendamento e acompanhamento.");
+            yield return new("Consignações", "🤝", "/concessionaria/consignacoes", "Contratos, renovação e vendedores.");
+            yield return new("Clientes", "👤", "/clientes", "Cadastro e histórico de clientes.");
+            if (podeVerFinanceiro)
+            {
+                yield return new("Financeiro", "💰", "/financeiro?area=concessionaria", "Receita de vendas, despesas, lucro.");
+                yield return new("Relatórios", "📑", "/financeiro/relatorios", "Exportar dados por período.");
+                yield return new("Análises", "📊", "/dashboard", "Gráficos e comparativos de vendas.");
+            }
+        }
+    }
+
+    private static readonly string[] PropostaAtencao =
+        { "PropostaFinanciadoraRecebida", "Aprovada", "VistoriaConcluida", "AguardandoAssinaturaTermo" };
+    private static readonly string[] PropostaTerminal =
+        { "Concluida", "Rejeitada", "Cancelada", "Expirada" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        podeVerFinanceiro = state.User.IsInRole("Admin") || state.User.IsInRole("GerenteVendas");
+
+        var tV = VeiculoService.GetAllAsync();
+        var tC = ConsignacaoService.GetAllAsync();
+        var tP = PropostaService.GetAllAsync();
+        var tM = podeVerFinanceiro
+            ? DashboardService.ObterMetricasAsync(6)
+            : Task.FromResult<CarStoreManager.Application.Common.Result<DashboardMetricasDTO>>(null!);
+        await Task.WhenAll(tV, tC, tP, tM);
+
+        veiculos = tV.Result.IsSuccess ? tV.Result.Value?.ToList() ?? new() : new();
+        consignacoes = tC.Result.IsSuccess ? tC.Result.Value?.ToList() ?? new() : new();
+        propostas = tP.Result.IsSuccess ? tP.Result.Value?.ToList() ?? new() : new();
+        if (podeVerFinanceiro && tM.Result is not null && tM.Result.IsSuccess) metricas = tM.Result.Value;
+
+        disponiveis = veiculos.Count(v => v.Disponibilidade == "Disponivel");
+        emPreparacao = veiculos.Count(v => v.Disponibilidade == "EmPreparacao");
+        consignacoesAtivas = consignacoes.Count(c => c.Status == "Ativa");
+
+        var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var vendas = propostas.Where(p => p.Status == "Concluida" && p.DataCriacao >= inicioMes).ToList();
+        vendasMes = vendas.Count;
+        ticketMedio = vendasMes > 0 ? vendas.Average(p => p.ValorFinal) : 0;
+
+        propostasAtencao = propostas
+            .Where(p => PropostaAtencao.Contains(p.Status))
+            .OrderBy(p => p.DiasRestantes)
+            .ToList();
+
+        veiculosParados = veiculos
+            .Where(v => v.Disponibilidade == "Disponivel" && (DateTime.Today - v.DataCriacao.Date).Days > 60)
+            .OrderByDescending(v => (DateTime.Today - v.DataCriacao.Date).Days)
+            .ToList();
+
+        consignacoesVencendo = consignacoes
+            .Where(c => c.Status == "Ativa" && (c.EstaVencido || c.DiasRestantes <= 7))
+            .OrderBy(c => c.DiasRestantes)
+            .ToList();
+
+        alertas = new();
+        if (consignacoesVencendo.Count > 0)
+            alertas.Add(new($"{consignacoesVencendo.Count} consignação(ões) vencendo", "/concessionaria/consignacoes", "atencao", "⏳"));
+        var propParadas = propostas.Count(p => !PropostaTerminal.Contains(p.Status) && p.DiasRestantes < 0);
+        if (propParadas > 0)
+            alertas.Add(new($"{propParadas} proposta(s) fora do prazo", "/concessionaria/propostas", "alerta", "📄"));
+        if (veiculosParados.Count > 0)
+            alertas.Add(new($"{veiculosParados.Count} veículo(s) parado(s) há +60 dias", "/concessionaria/salao", "info", "🚗"));
+
+        var ativos = veiculos.Count(v => v.Disponibilidade is "Disponivel" or "EmPreparacao" or "Reservado");
+        subtitulo = $"{ativos} veículos no salão · {propostas.Count(p => !PropostaTerminal.Contains(p.Status))} propostas abertas";
+
+        carregando = false;
+        graficosPendentes = podeVerFinanceiro && metricas is not null;
+    }
+}
+
+<style>
+    .hub-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--sp-5); align-items: start; }
+    .hub-conteudo { min-width: 0; }
+    .hub-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: var(--sp-5); align-items: start; }
+    .lista { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .lista-item {
+        display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3);
+        background: var(--cor-superficie);
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-md);
+        padding: var(--sp-3);
+        text-decoration: none; color: inherit;
+    }
+    .lista-item:hover { border-color: var(--cor-acao); }
+    .li-titulo { display: block; font-size: var(--txt-sm); font-weight: var(--peso-medio); color: var(--cor-tinta); }
+    .li-sub { display: block; font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+    .li-tag { font-size: var(--txt-xs); color: var(--cor-tinta-3); white-space: nowrap; }
+    .li-tag.alerta { color: var(--cor-atencao-tx); font-weight: var(--peso-forte); }
+
+    .fin-linha { display: flex; justify-content: space-between; font-size: var(--txt-sm); padding: var(--sp-1) 0; }
+    .fin-linha.total { border-top: 1px solid var(--cor-linha-suave); margin-top: var(--sp-1); padding-top: var(--sp-2); }
+    .fin-linha .pos { color: var(--cor-ok-tx); } .fin-linha .neg { color: var(--cor-erro-tx); }
+    .fin-link { display: inline-block; margin-top: var(--sp-2); font-size: var(--txt-sm); color: var(--cor-acao); text-decoration: none; }
+
+    @@media (max-width: 1200px) { .hub-grid { grid-template-columns: 1fr; } }
+    @@media (max-width: 1000px) { .hub-layout { grid-template-columns: 1fr; } }
+</style>

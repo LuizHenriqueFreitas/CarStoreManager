@@ -1,0 +1,189 @@
+@page "/configuracoes/formulario-despesas"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,ChefeOficina")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@inject IDespesaService DespesaService
+@inject IConfiguracaoSistemaService ConfigService
+@using CarStoreManager.Application.Interfaces.Sistema
+@using CarStoreManager.Application.DTOs.Sistema
+@using CarStoreManager.Web.Components.Shared
+
+<div class="pagina">
+    <PageHeader Titulo="Formulário mensal de despesas"
+                Subtitulo="Modelo das despesas do mês e dia de fechamento do balanço" />
+
+    <SubNav Itens="SubNavConfiguracoes.Itens" />
+
+    @if (!string.IsNullOrEmpty(msg)) { <div class="banner @(erro ? "erro" : "ok")">@msg</div> }
+
+    <p class="muted intro">
+        Monte aqui o modelo do balanço mensal: cada linha é uma despesa recorrente com
+        um <strong>nome</strong>, um <strong>setor</strong>, uma <strong>categoria</strong>
+        (energia, aluguel, investimento, perda…) e um <strong>valor padrão</strong>.
+        Todo mês o gerente parte desse modelo, na tela <a href="/financeiro/despesas">Financeiro → Despesas</a>,
+        e ajusta os valores reais.
+    </p>
+
+    <div class="card fechamento" data-tour="form-despesas-dia">
+        <div>
+            <strong>Dia de fechamento do balanço</strong>
+            <p class="muted">Dia do mês em que o balanço deve ser preenchido e fechado. O aviso aparece 5 dias antes.</p>
+        </div>
+        <div class="cluster">
+            <input type="number" min="1" max="28" @bind="diaFechamento" class="dia-input" />
+            <button class="btn btn-primario" @onclick="SalvarDia" disabled="@salvandoDia">Salvar dia</button>
+        </div>
+    </div>
+
+    @if (carregando)
+    {
+        <div class="estado-carregando">Carregando...</div>
+    }
+    else
+    {
+        <div class="table-scroll" data-tour="form-despesas-tabela">
+            <table class="tab">
+                <thead>
+                    <tr><th style="width:26%">Nome</th><th style="width:16%">Setor</th>
+                        <th style="width:20%">Categoria</th><th style="width:14%">Valor padrão</th>
+                        <th style="width:8%">Ativa</th><th style="width:16%"></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in linhas)
+                    {
+                        <tr>
+                            <td><input @bind="d.Nome" /></td>
+                            <td>
+                                <select @bind="d.Setor">
+                                    <option value="Geral">Geral</option>
+                                    <option value="Oficina">Oficina</option>
+                                    <option value="Concessionaria">Concessionária</option>
+                                </select>
+                            </td>
+                            <td><input @bind="d.Categoria" placeholder="energia, aluguel..." /></td>
+                            <td><input type="number" step="0.01" @bind="d.Valor" /></td>
+                            <td class="c"><input type="checkbox" @bind="d.Ativa" /></td>
+                            <td class="acoes">
+                                <button class="btn-mini ok" @onclick="() => Salvar(d)">Salvar</button>
+                                <button class="btn-mini neg" @onclick="() => Remover(d.Id)">Excluir</button>
+                            </td>
+                        </tr>
+                    }
+                    <tr class="nova">
+                        <td><input @bind="nova.Nome" placeholder="ex: Energia elétrica" /></td>
+                        <td>
+                            <select @bind="nova.Setor">
+                                <option value="Geral">Geral</option>
+                                <option value="Oficina">Oficina</option>
+                                <option value="Concessionaria">Concessionária</option>
+                            </select>
+                        </td>
+                        <td><input @bind="nova.Categoria" placeholder="energia, aluguel..." /></td>
+                        <td><input type="number" step="0.01" @bind="nova.Valor" /></td>
+                        <td class="c">—</td>
+                        <td class="acoes"><button class="btn-mini ok" @onclick="Adicionar">Adicionar</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="resumo">
+            <div class="resumo-item"><span>Linhas ativas</span><strong>@linhas.Count(l => l.Ativa)</strong></div>
+            <div class="resumo-item total"><span>Valor padrão total/mês</span><strong>@linhas.Where(l => l.Ativa).Sum(l => l.Valor).ToString("C", Cultura)</strong></div>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly System.Globalization.CultureInfo Cultura = new("pt-BR");
+
+    private List<DespesaDTO> linhas = new();
+    private CriarDespesaDTO nova = new() { Valor = 0, Setor = "Geral" };
+    private int diaFechamento = 5;
+    private bool carregando = true, salvandoDia;
+    private string? msg; private bool erro;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cfg = await ConfigService.ObterAsync();
+        if (cfg.IsSuccess && cfg.Value is not null) diaFechamento = cfg.Value.DiaFechamentoDespesas;
+        await Recarregar();
+    }
+
+    private async Task Recarregar()
+    {
+        carregando = true;
+        var r = await DespesaService.GetAllAsync();
+        linhas = r.IsSuccess ? r.Value!.ToList() : new();
+        carregando = false;
+    }
+
+    private async Task SalvarDia()
+    {
+        salvandoDia = true;
+        var cfg = await ConfigService.ObterAsync();
+        var dto = cfg.Value ?? new ConfiguracaoSistemaDTO();
+        dto.DiaFechamentoDespesas = diaFechamento;
+        var r = await ConfigService.AtualizarAsync(dto);
+        Msg(r.IsSuccess ? "Dia de fechamento salvo." : r.Error ?? "Erro", !r.IsSuccess);
+        salvandoDia = false;
+    }
+
+    private async Task Adicionar()
+    {
+        if (string.IsNullOrWhiteSpace(nova.Nome)) { Msg("Informe o nome.", true); return; }
+        var r = await DespesaService.AddAsync(nova);
+        if (r.IsSuccess) { nova = new() { Valor = 0, Setor = "Geral" }; Msg("Linha adicionada.", false); await Recarregar(); }
+        else Msg(r.Error ?? "Erro", true);
+    }
+
+    private async Task Salvar(DespesaDTO d)
+    {
+        var r = await DespesaService.UpdateAsync(new AtualizarDespesaDTO
+        {
+            Id = d.Id, Nome = d.Nome, Valor = d.Valor, Ativa = d.Ativa,
+            Setor = d.Setor, Tipo = d.Tipo, Categoria = d.Categoria
+        });
+        Msg(r.IsSuccess ? "Linha atualizada." : r.Error ?? "Erro", !r.IsSuccess);
+        if (r.IsSuccess) await Recarregar();
+    }
+
+    private async Task Remover(Guid id)
+    {
+        var r = await DespesaService.RemoveAsync(id);
+        Msg(r.IsSuccess ? "Linha removida." : r.Error ?? "Erro", !r.IsSuccess);
+        if (r.IsSuccess) await Recarregar();
+    }
+
+    private void Msg(string m, bool e) { msg = m; erro = e; }
+}
+
+<style>
+    .intro { max-width: 760px; margin-bottom: var(--sp-5); }
+    .fechamento { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-4); margin-bottom: var(--sp-5); flex-wrap: wrap; }
+    .fechamento p { margin: 2px 0 0; max-width: 480px; }
+    .dia-input { width: 70px; border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 7px 10px; font-size: var(--txt-sm); }
+
+    .tab { width: 100%; border-collapse: collapse; background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); overflow: hidden; }
+    .tab th, .tab td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--cor-linha-suave); font-size: var(--txt-sm); }
+    .tab th { background: var(--cor-fundo); font-size: var(--txt-xs); text-transform: uppercase; color: var(--cor-tinta-3); }
+    .tab td.c { text-align: center; }
+    .tab input, .tab select { width: 100%; border: 1px solid var(--cor-linha); border-radius: var(--raio-sm); padding: 5px 7px; font-size: var(--txt-sm); font-family: inherit; }
+    .tab td.c input { width: auto; }
+    .tab .nova { background: var(--cor-info-bg); }
+    .acoes { display: flex; gap: 4px; }
+    .btn-mini { border: 1px solid var(--cor-linha); border-radius: var(--raio-sm); padding: 4px 9px; font-size: var(--txt-xs); cursor: pointer; background: var(--cor-superficie-2); }
+    .btn-mini.ok { background: var(--cor-ok-bg); color: var(--cor-ok-tx); border-color: transparent; }
+    .btn-mini.neg { background: var(--cor-erro-bg); color: var(--cor-erro-tx); border-color: transparent; }
+
+    .resumo { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-4); }
+    .resumo-item { background: var(--cor-superficie-2); border-radius: var(--raio-md); padding: var(--sp-3) var(--sp-4); display: flex; flex-direction: column; gap: 2px; }
+    .resumo-item span { font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+    .resumo-item.total { background: var(--cor-tinta); color: #fff; }
+    .resumo-item.total span { color: #bbb; }
+
+    .banner { margin-bottom: var(--sp-4); padding: var(--sp-3); border-radius: var(--raio-md); font-size: var(--txt-sm); }
+    .banner.ok { background: var(--cor-ok-bg); color: var(--cor-ok-tx); }
+    .banner.erro { background: var(--cor-erro-bg); color: var(--cor-erro-tx); }
+</style>

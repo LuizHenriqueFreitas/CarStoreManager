@@ -1,4 +1,4 @@
-@page "/admin/usuarios"
+@page "/equipe"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 
 @namespace CarStoreManager.Web.Components.Pages
@@ -17,8 +17,8 @@
 <div class="usuarios-page">
     <div class="page-header">
         <div>
-            <h1 class="page-titulo">Usuários</h1>
-            <p class="page-sub">Gerenciamento de funcionários do sistema</p>
+            <h1 class="page-titulo">Equipe</h1>
+            <p class="page-sub">Funcionários do sistema: vendedores, mecânicos, recepção e gestão</p>
         </div>
         <button class="btn-novo" data-tour="usuarios-btn-novo" @onclick="AbrirModalNovoUsuario">+ Novo usuário</button>
     </div>

@@ -30,8 +30,8 @@
 <div class="dash-page">
     <div class="dash-header">
         <div>
-            <h1 class="dash-titulo">Dashboard</h1>
-            <p class="dash-sub">Visão geral · @DateTime.Now.ToString("dd/MM/yyyy")</p>
+            <h1 class="dash-titulo">Análises</h1>
+            <p class="dash-sub">Indicadores e gráficos comparativos · @DateTime.Now.ToString("dd/MM/yyyy")</p>
         </div>
         <div class="dash-header-acoes">
             <div class="periodo-seletor" data-tour="dashboard-periodo">
@@ -42,18 +42,10 @@
                     <option value="12">Últimos 12 meses</option>
                 </select>
             </div>
-            @if (PodeVerOficina || PodeVerConcessionaria)
-            {
-                <button class="btn-usuarios" @onclick='() => Nav.NavigateTo("/admin/clientes")'>
-                    Clientes
-                </button>
-            }
-            @if (PodeGerenciarUsuarios)
-            {
-                <button class="btn-usuarios" @onclick='() => Nav.NavigateTo("/admin/usuarios")'>
-                    Usuários
-                </button>
-            }
+            <button class="btn-relatorio" data-tour="dashboard-relatorio" @onclick="() => modalExportVisivel = true">
+                📄 Relatório
+            </button>
+            <a class="btn-usuarios" href="/financeiro">Financeiro →</a>
         </div>
     </div>
 
@@ -75,45 +67,12 @@
     @* ===================== ABA GERAL ===================== *@
     @if (abaAtiva == "geral")
     {
-        <h2 class="grupo-titulo">Resumo geral</h2>
+        <div class="aviso-financeiro">
+            Os números financeiros (receita, despesa, lucro, capital, contas a receber) agora ficam no
+            <a href="/financeiro"><strong>Financeiro</strong></a>. Esta tela concentra os gráficos e comparativos.
+        </div>
         @if (metricas is not null)
         {
-            <div class="metricas-grid" data-tour="dashboard-metricas-geral">
-                <div class="metrica-card">
-                    <span class="metrica-label">Receitas do mês</span>
-                    <span class="metrica-valor sucesso">@FormatBRL(metricas.TotalReceitasMes)</span>
-                    <span class="metrica-sub muted">
-                        Serviços @FormatBRL(metricas.ReceitaServicosMesAtual) ·
-                        Vendas @FormatBRL(metricas.ReceitaVendasMesAtual)
-                    </span>
-                </div>
-                <div class="metrica-card">
-                    <span class="metrica-label">Despesas do mês</span>
-                    <span class="metrica-valor alerta">@FormatBRL(metricas.TotalDespesasMes)</span>
-                    <span class="metrica-sub muted">
-                        Fixas @FormatBRL(metricas.TotalDespesasFixasMensal)
-                    </span>
-                </div>
-                <div class="metrica-card destaque-lucro">
-                    <span class="metrica-label">Lucro líquido (mês)</span>
-                    <span class="metrica-valor @(metricas.LucroLiquidoMes >= 0 ? "sucesso" : "alerta")">
-                        @FormatBRL(metricas.LucroLiquidoMes)
-                    </span>
-                    <span class="metrica-sub muted">Receitas − Despesas</span>
-                </div>
-            </div>
-
-            <div class="capital-imobilizado-bloco" data-tour="dashboard-capital-imobilizado">
-                <div class="capital-card">
-                    <div class="capital-titulo">💎 Capital imobilizado</div>
-                    <div class="capital-valor">@FormatBRL(metricas.CapitalEstoqueVeiculos)</div>
-                    <div class="capital-nota">
-                        Veículos disponíveis para venda — <strong>não compõe fluxo de caixa</strong>.
-                        Esse dinheiro está parado em estoque e só será realizado quando o veículo for vendido.
-                    </div>
-                </div>
-            </div>
-
             <div class="grafico-row">
                 <div class="grafico-card grafico-largo">
                     <h3 class="grafico-titulo">Receitas e despesas — últimos @janelaMesesSelecionada meses</h3>
@@ -124,7 +83,7 @@
             <div class="grafico-row">
                 <div class="grafico-card grafico-largo" data-tour="dashboard-analises">
                     <div class="analise-header">
-                        <h3 class="grafico-titulo">Análises</h3>
+                        <h3 class="grafico-titulo">Comparativos</h3>
                         <select class="analise-select" value="@graficoSelecionadoId" @onchange="OnGraficoSelecionado">
                             @foreach (var grupo in metricas.Graficos.GroupBy(g => g.Categoria))
                             {
@@ -448,141 +407,46 @@
         }
     }
 
-    <h2 class="grupo-titulo">Pessoas</h2>
-    <div class="metricas-grid" data-tour="dashboard-pessoas">
-        <div class="metrica-card">
-            <span class="metrica-label">Clientes</span>
-            <span class="metrica-valor">@totalClientes</span>
-        </div>
-        <div class="metrica-card">
-            <span class="metrica-label">Mecânicos</span>
-            <span class="metrica-valor">@totalMecanicos</span>
-        </div>
-        <div class="metrica-card">
-            <span class="metrica-label">Vendedores</span>
-            <span class="metrica-valor">@totalVendedores</span>
-        </div>
-    </div>
-
-    <h2 class="grupo-titulo">Relatórios</h2>
-    <div class="relatorios-grid" data-tour="dashboard-relatorios">
-        @if (PodeVerConcessionaria)
-        {
-            <button type="button" class="rel-card" @onclick='() => AbrirExport("Veículos à venda", "/api/relatorio/veiculos-venda")'>
-                <div class="rel-icone">📄</div>
-                <div>
-                    <div class="rel-nome">Veículos à venda</div>
-                    <div class="rel-desc">Todos os anúncios do período</div>
-                </div>
-            </button>
-            <button type="button" class="rel-card" @onclick='() => AbrirExport("Propostas de venda", "/api/relatorio/propostas-venda")'>
-                <div class="rel-icone">💼</div>
-                <div>
-                    <div class="rel-nome">Propostas de venda</div>
-                    <div class="rel-desc">Propostas criadas no período</div>
-                </div>
-            </button>
-            <button type="button" class="rel-card" @onclick='() => AbrirExport("Relatório completo — Concessionária", "/api/relatorio/export?tipo=ConcessionariaCompleto")'>
-                <div class="rel-icone">📊</div>
-                <div>
-                    <div class="rel-nome">Relatório completo — Concessionária</div>
-                    <div class="rel-desc">Métricas e gráficos recalculados para o período</div>
-                </div>
-            </button>
-        }
-        @if (PodeVerOficina)
-        {
-            <button type="button" class="rel-card" @onclick='() => AbrirExport("Ordens de serviço", "/api/relatorio/ordens-servico")'>
-                <div class="rel-icone">🔧</div>
-                <div>
-                    <div class="rel-nome">Ordens de serviço</div>
-                    <div class="rel-desc">Ordens criadas no período</div>
-                </div>
-            </button>
-            <button type="button" class="rel-card" @onclick='() => AbrirExport("Mecânicos", "/api/relatorio/mecanicos")'>
-                <div class="rel-icone">🛠</div>
-                <div>
-                    <div class="rel-nome">Mecânicos</div>
-                    <div class="rel-desc">Equipe cadastrada no período</div>
-                </div>
-            </button>
-            <button type="button" class="rel-card" @onclick='() => AbrirExport("Relatório completo — Oficina", "/api/relatorio/export?tipo=OficinaCompleto")'>
-                <div class="rel-icone">📊</div>
-                <div>
-                    <div class="rel-nome">Relatório completo — Oficina</div>
-                    <div class="rel-desc">Métricas e gráficos recalculados para o período</div>
-                </div>
-            </button>
-        }
-        @if (PodeVerOficina && PodeVerConcessionaria)
-        {
-            <button type="button" class="rel-card" @onclick='() => AbrirExport("Relatório completo — Geral", "/api/relatorio/export?tipo=Geral")'>
-                <div class="rel-icone">📈</div>
-                <div>
-                    <div class="rel-nome">Relatório completo — Geral</div>
-                    <div class="rel-desc">Oficina + concessionária, recalculado para o período</div>
-                </div>
-            </button>
-        }
-        <button type="button" class="rel-card" @onclick='() => AbrirExport("Clientes", "/api/relatorio/clientes")'>
-            <div class="rel-icone">👤</div>
-            <div>
-                <div class="rel-nome">Clientes</div>
-                <div class="rel-desc">Base de clientes cadastrados no período</div>
-            </div>
-        </button>
-    </div>
-
-    <h2 class="grupo-titulo">Atalhos</h2>
-    <div class="dash-modulos" data-tour="dashboard-atalhos">
-        <div class="modulo-card" @onclick='() => Nav.NavigateTo("/concessionaria")'>
-            <div class="modulo-icone concessionaria">🚗</div>
-            <div>
-                <div class="modulo-titulo">Concessionária</div>
-                <div class="modulo-sub">Veículos, propostas e vendas</div>
-            </div>
-            <span class="modulo-seta">→</span>
-        </div>
-        <div class="modulo-card" @onclick='() => Nav.NavigateTo("/oficina")'>
-            <div class="modulo-icone oficina">🔧</div>
-            <div>
-                <div class="modulo-titulo">Oficina</div>
-                <div class="modulo-sub">Ordens de serviço e mecânicos</div>
-            </div>
-            <span class="modulo-seta">→</span>
-        </div>
-        <div class="modulo-card" @onclick='() => Nav.NavigateTo("/oficina/componentes")'>
-            <div class="modulo-icone estoque">📦</div>
-            <div>
-                <div class="modulo-titulo">Estoque</div>
-                <div class="modulo-sub">Componentes e peças da oficina</div>
-            </div>
-            <span class="modulo-seta">→</span>
-        </div>
-        <div class="modulo-card" @onclick='() => Nav.NavigateTo("/admin/clientes")'>
-            <div class="modulo-icone clientes">🧑</div>
-            <div>
-                <div class="modulo-titulo">Clientes</div>
-                <div class="modulo-sub">Cadastro e veículos vinculados</div>
-            </div>
-            <span class="modulo-seta">→</span>
-        </div>
-        <div class="modulo-card" @onclick='() => Nav.NavigateTo("/admin/usuarios")'>
-            <div class="modulo-icone usuarios">👥</div>
-            <div>
-                <div class="modulo-titulo">Usuários</div>
-                <div class="modulo-sub">Funcionários do sistema</div>
-            </div>
-            <span class="modulo-seta">→</span>
-        </div>
-    </div>
 </div>
 
-<RelatorioExportModal
-    Visivel="modalExportVisivel"
-    Titulo="@modalExportTitulo"
-    OnConfirmar="ConfirmarExport"
-    OnCancelar="() => modalExportVisivel = false" />
+@if (modalExportVisivel)
+{
+    <div class="rel-modal-fundo" @onclick="() => modalExportVisivel = false">
+        <div class="rel-modal" @onclick:stopPropagation="true">
+            <h2>Exportar relatório</h2>
+            <div class="rm-campo">
+                <label>Relatório</label>
+                <select @bind="relTipo">
+                    @foreach (var r in RelatoriosDisponiveis)
+                    {
+                        <option value="@r.endpoint">@r.nome</option>
+                    }
+                </select>
+            </div>
+            <div class="rm-linha">
+                <div class="rm-campo">
+                    <label>De</label>
+                    <input type="date" @bind="relInicio" />
+                </div>
+                <div class="rm-campo">
+                    <label>Até</label>
+                    <input type="date" @bind="relFim" />
+                </div>
+            </div>
+            <div class="rm-campo">
+                <label>Formato</label>
+                <select @bind="relFormato">
+                    <option value="csv">CSV (Excel / LibreOffice)</option>
+                    <option value="xml">XML</option>
+                </select>
+            </div>
+            <div class="rm-acoes">
+                <button class="btn btn-neutro" @onclick="() => modalExportVisivel = false">Cancelar</button>
+                <button class="btn btn-primario" @onclick="BaixarRelatorio">Baixar</button>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private string abaAtiva = "geral";
@@ -636,24 +500,38 @@
     private string modalExportTitulo = "";
     private string modalExportEndpoint = "";
 
-    private void AbrirExport(string titulo, string endpointBase)
+    private string relTipo = "/api/relatorio/export?tipo=Geral";
+    private DateTime relInicio = DateTime.Today.AddMonths(-1);
+    private DateTime relFim = DateTime.Today;
+    private string relFormato = "csv";
+
+    private IEnumerable<(string nome, string endpoint)> RelatoriosDisponiveis
     {
-        modalExportTitulo = titulo;
-        modalExportEndpoint = endpointBase;
-        modalExportVisivel = true;
+        get
+        {
+            if (PodeVerOficina && PodeVerConcessionaria)
+                yield return ("Consolidado geral", "/api/relatorio/export?tipo=Geral");
+            if (PodeVerConcessionaria)
+            {
+                yield return ("Consolidado da concessionária", "/api/relatorio/export?tipo=ConcessionariaCompleto");
+                yield return ("Veículos à venda", "/api/relatorio/veiculos-venda");
+                yield return ("Propostas de venda", "/api/relatorio/propostas-venda");
+            }
+            if (PodeVerOficina)
+            {
+                yield return ("Consolidado da oficina", "/api/relatorio/export?tipo=OficinaCompleto");
+                yield return ("Ordens de serviço", "/api/relatorio/ordens-servico");
+                yield return ("Mecânicos", "/api/relatorio/mecanicos");
+            }
+            yield return ("Clientes", "/api/relatorio/clientes");
+        }
     }
 
-    private async Task ConfirmarExport((DateTime DataInicio, DateTime DataFim, string Formato) selecao)
+    private async Task BaixarRelatorio()
     {
         modalExportVisivel = false;
-
-        var separador = modalExportEndpoint.Contains('?') ? "&" : "?";
-        var url = $"{modalExportEndpoint}{separador}" +
-                  $"dataInicio={selecao.DataInicio:yyyy-MM-dd}&dataFim={selecao.DataFim:yyyy-MM-dd}&formato={selecao.Formato}";
-
-        // window.open (não NavigationManager) — o endpoint devolve o arquivo
-        // com Content-Disposition: attachment, então o navegador só baixa e
-        // fecha a aba, sem tirar o usuário da dashboard nem derrubar o circuito.
+        var sep = relTipo.Contains('?') ? "&" : "?";
+        var url = $"{relTipo}{sep}dataInicio={relInicio:yyyy-MM-dd}&dataFim={relFim:yyyy-MM-dd}&formato={relFormato}";
         await JS.InvokeVoidAsync("open", url, "_blank");
     }
 
@@ -867,18 +745,12 @@
             await JS.InvokeVoidAsync("carstoreChart.render",
                 "chartOficina6m", "line", labels6m, datasetsOf, commonOpts);
 
-            var (labelsOS, dadosOS, coresOS) = MontarOSDataset();
-            await JS.InvokeVoidAsync("carstoreChart.render",
-                "chartOSStatusOf", "bar", labelsOS, new object[] {
-                    new { data = dadosOS, backgroundColor = coresOS }
-                }, commonOpts);
+            var (labelsOS, dadosOS, _) = MontarOSDataset();
+            await JS.InvokeVoidAsync("carstoreChart.barraMagnitude", "chartOSStatusOf",
+                labelsOS.Zip(dadosOS, (l, v) => new { rotulo = l, valor = (decimal)v }).ToArray(), "", 12);
 
-            var labelsMec = metricas.ReceitaPorMecanico.Select(m => m.MecanicoNome).ToArray();
-            var dadosMec = metricas.ReceitaPorMecanico.Select(m => m.Receita).ToArray();
-            await JS.InvokeVoidAsync("carstoreChart.render",
-                "chartReceitaMecanico", "doughnut", labelsMec, new object[] {
-                    new { data = dadosMec, backgroundColor = CoresCategoricas }
-                }, commonOpts);
+            await JS.InvokeVoidAsync("carstoreChart.barraMagnitude", "chartReceitaMecanico",
+                metricas.ReceitaPorMecanico.Select(m => new { rotulo = m.MecanicoNome, valor = m.Receita }).ToArray(), "R$", 8);
 
             var labelsAcumulada = metricas.SerieReceitaServicosAcumulada12m.Select(s => s.MesLabel).ToArray();
             var dadosAcumulada = metricas.SerieReceitaServicosAcumulada12m.Select(s => s.Valor).ToArray();
@@ -927,11 +799,9 @@
             await JS.InvokeVoidAsync("carstoreChart.render",
                 "chartConcessionaria6m", "line", labels6m, datasetsCo, commonOpts);
 
-            var (labelsVeic, dadosVeic, coresVeic) = MontarVeiculoStatusDataset();
-            await JS.InvokeVoidAsync("carstoreChart.render",
-                "chartVeiculosStatus", "bar", labelsVeic, new object[] {
-                    new { data = dadosVeic, backgroundColor = coresVeic }
-                }, commonOpts);
+            var (labelsVeic, dadosVeic, _) = MontarVeiculoStatusDataset();
+            await JS.InvokeVoidAsync("carstoreChart.barraMagnitude", "chartVeiculosStatus",
+                labelsVeic.Zip(dadosVeic, (l, v) => new { rotulo = l, valor = (decimal)v }).ToArray(), "", 12);
 
             await RenderizarGraficoPorId("marcas-vendidas", "chartVendasMarca");
             await RenderizarGraficoPorId("modelos-vendidos", "chartModelosVendidos");
@@ -978,28 +848,27 @@
         var grafico = metricas?.Graficos.FirstOrDefault(g => g.Id == graficoId);
         if (grafico is null) return;
 
-        var labels = grafico.Dados.Select(d => d.Rotulo).ToArray();
-        var valores = grafico.Dados.Select(d => d.Valor).ToArray();
-        var cores = labels.Select((_, i) => CorCategorica(labels[i], i)).ToArray();
+        // Ver docs/redesign/11-batch2-melhorias.md §E — comparar magnitude entre
+        // muitas categorias é sempre barra horizontal (1 tom, ordenada). Rosca só
+        // para os poucos comparativos de 2–6 segmentos (part-to-whole).
+        var dados = grafico.Dados.Select(d => new { rotulo = d.Rotulo, valor = d.Valor }).ToArray();
 
-        var isBarra = grafico.TipoGrafico == "bar";
-        var datasets = new object[]
+        switch (grafico.TipoGrafico)
         {
-            new { data = valores, backgroundColor = cores }
-        };
-
-        // Gráfico de barra aqui é sempre uma única série (uma métrica por
-        // categoria) — legenda não agrega nada, o título do cartão já diz o
-        // que é. Doughnut mantém a legenda: é ela que identifica cada fatia.
-        var opcoes = new
-        {
-            responsive = true,
-            maintainAspectRatio = false,
-            indexAxis = isBarra ? "y" : "x",
-            plugins = new { legend = new { display = !isBarra, position = "bottom" } }
-        };
-
-        await JS.InvokeVoidAsync("carstoreChart.render", canvasId, grafico.TipoGrafico, labels, datasets, opcoes);
+            case "barraH":
+                await JS.InvokeVoidAsync("carstoreChart.barraMagnitude", canvasId, dados,
+                    grafico.Categoria == "Financeiro" ? "R$" : "", 12);
+                break;
+            case "rosca":
+            case "doughnut":
+                await JS.InvokeVoidAsync("carstoreChart.rosca", canvasId, dados,
+                    grafico.Categoria == "Financeiro" ? "R$" : "");
+                break;
+            default: // "bar" — barra vertical de magnitude (médias, ticket)
+                await JS.InvokeVoidAsync("carstoreChart.barraMagnitude", canvasId, dados,
+                    grafico.Categoria == "Financeiro" ? "R$" : "", 20);
+                break;
+        }
     }
 
     /// <summary>
@@ -1104,7 +973,38 @@
         background: #fff;
     }
     .periodo-select:focus { border-color: #0a84ff; outline: none; }
+    .aviso-financeiro {
+        background: var(--cor-info-bg);
+        border: 1px solid #bfdbfe;
+        border-radius: var(--raio-md);
+        padding: 12px 16px;
+        font-size: 13px;
+        color: var(--cor-info-tx);
+        margin-bottom: 20px;
+    }
+    .aviso-financeiro a { color: var(--cor-info-tx); text-decoration: underline; }
+
+    .btn-relatorio {
+        background: var(--cor-marca);
+        color: #fff; border: none; border-radius: var(--raio-md);
+        padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer;
+    }
+    .btn-relatorio:hover { background: var(--cor-marca-hover); }
+
+    .rel-modal-fundo { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 500; padding: 16px; }
+    .rel-modal { background: #fff; border-radius: 12px; padding: 24px; width: 100%; max-width: 420px; }
+    .rel-modal h2 { font-size: 16px; margin: 0 0 16px; }
+    .rm-campo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+    .rm-campo label { font-size: 11px; color: #555; font-weight: 500; }
+    .rm-campo select, .rm-campo input { border: 1px solid #ccc; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: inherit; }
+    .rm-linha { display: flex; gap: 12px; }
+    .rm-linha .rm-campo { flex: 1; }
+    .rm-acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
     .btn-usuarios {
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
         background: #1a1a1a; color: #fff; padding: 9px 18px; border-radius: 6px;
         border: 0; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap;
     }

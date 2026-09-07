@@ -25,7 +25,7 @@
 <div class="login-page">
     <div class="login-card">
         <div class="login-logo">
-            <span class="logo-texto">AUTO</span><span class="logo-destaque">STORE</span>
+            <span class="logo-texto">DE</span><span class="logo-destaque">LORE</span>
         </div>
         <p class="login-sub">Sistema de gestão interno</p>
 
@@ -123,10 +123,10 @@
             // forceLoad faz o navegador anexar o cookie em todos os requests subsequentes.
             var destino = role switch
             {
-                "Admin" => "/dashboard",
+                "Admin" => "/",
                 "Vendedor" => "/concessionaria",
                 "Mecanico" => "/oficina",
-                "Recepcionista" => "/recepcao",
+                "Recepcionista" => "/oficina/recepcao",
                 "ChefeOficina" => "/oficina",
                 "GerenteVendas" => "/concessionaria",
                 _ => "/"

@@ -331,7 +331,25 @@ public class OrdemServico : Entity
     public void Finalizar()
     {
         ValidarStatus(StatusOrdemServico.EmAndamento);
+
+        // need_to_do.txt: só é possível avançar para a etapa 6 (finalizar o
+        // serviço) depois de concluir todos os itens da checklist.
+        if (Checklist.Count > 0 && Checklist.Any(c => c.Status != StatusChecklistItem.Concluido))
+            throw new InvalidOperationException(
+                "Conclua todos os itens da checklist antes de finalizar o serviço.");
+
         Status = StatusOrdemServico.PagamentoPendente;
+    }
+
+    /// <summary>
+    /// need_to_do.txt: os itens da checklist só podem ser marcados durante a
+    /// etapa 5 (serviço em andamento). Fora dela a checklist é só leitura.
+    /// </summary>
+    public void GarantirChecklistEditavel()
+    {
+        if (Status != StatusOrdemServico.EmAndamento)
+            throw new InvalidOperationException(
+                "Os itens da checklist só podem ser marcados com o serviço em andamento.");
     }
 
     /*

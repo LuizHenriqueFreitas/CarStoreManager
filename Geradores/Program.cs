@@ -24,11 +24,14 @@ Console.WriteLine();
 var rng = new Random(opcoes.Seed);
 var provider = ComposicaoServicos.Construir();
 
-// Período histórico simulado (~2 anos) — veículos, propostas, consignações e
-// OS são espalhados por essa janela em vez de nascerem todos "agora", pra
-// dar volume e variação real aos gráficos mensais da dashboard.
+// Período histórico simulado — a loja é tratada como se estivesse "em
+// operação" há `opcoes.AnosOperacao` anos (padrão 4). Veículos, propostas,
+// consignações, test drives, OS e balanços mensais são espalhados por essa
+// janela em vez de nascerem todos "agora", pra dar volume e variação real
+// aos gráficos e às análises retro-avaliativas.
 var periodoFim = DateTime.UtcNow;
-var periodoInicio = periodoFim.AddYears(-2);
+var periodoInicio = periodoFim.AddDays(-(int)Math.Round(opcoes.AnosOperacao * 365));
+Console.WriteLine($"Janela histórica: {periodoInicio:dd/MM/yyyy} → {periodoFim:dd/MM/yyyy} (~{opcoes.AnosOperacao:0.#} anos de operação)");
 
 Console.WriteLine("Carregando valores já existentes no banco (evita colisão de e-mail/CPF/placa/SKU)...");
 var pools = await PoolsIniciais.CarregarAsync(provider);
@@ -50,14 +53,23 @@ var clienteIds = await ClienteGerador.GerarAsync(provider, opcoes.Clientes, rng,
 totalCriado += clienteIds.Count;
 
 Console.WriteLine();
+Console.WriteLine("== Fornecedores (peças da oficina) ==");
+var fornecedorIds = await FornecedorGerador.GerarAsync(provider, opcoes.Fornecedores, rng, pools.Cnpj, pools.Email);
+totalCriado += fornecedorIds.Count;
+
+Console.WriteLine();
 Console.WriteLine("== Componentes (estoque da oficina) ==");
-var componenteIds = await ComponenteGerador.GerarAsync(provider, opcoes.Componentes, rng, pools.Sku);
+var componenteIds = await ComponenteGerador.GerarAsync(provider, opcoes.Componentes, rng, pools.Sku, fornecedorIds);
 totalCriado += componenteIds.Count;
 
 Console.WriteLine();
-Console.WriteLine("== Despesas ==");
+Console.WriteLine("== Despesas (formulário-modelo) ==");
 var despesaIds = await DespesaGerador.GerarAsync(provider, opcoes.Despesas, rng);
 totalCriado += despesaIds.Count;
+
+Console.WriteLine();
+Console.WriteLine("== Balanços mensais de despesas (histórico) ==");
+totalCriado += await BalancoDespesaGerador.GerarAsync(provider, rng, periodoInicio, periodoFim);
 
 Console.WriteLine();
 Console.WriteLine("== Checklist presets ==");
@@ -74,6 +86,12 @@ Console.WriteLine("== Veículos (concessionária) ==");
 var veiculoVendaIds = await VeiculoVendaGerador.GerarAsync(
     provider, opcoes.VeiculosVenda, rng, pools.Placa, pools.Renavam, periodoInicio, periodoFim);
 totalCriado += veiculoVendaIds.Count;
+
+Console.WriteLine();
+Console.WriteLine("== Test drives ==");
+var testDriveIds = await TestDriveGerador.GerarAsync(
+    provider, opcoes.TestDrives, rng, veiculoVendaIds, clienteIds, vendedorIds, periodoInicio, periodoFim);
+totalCriado += testDriveIds.Count;
 
 Console.WriteLine();
 Console.WriteLine("== Veículos (cliente / oficina) ==");
@@ -102,8 +120,11 @@ if (propostaIds.Count > 0 && vendedorIds.Count > 0)
 
 Console.WriteLine();
 Console.WriteLine("== Ordens de serviço ==");
+var adminParaResolver = adminIds.Count > 0 ? adminIds[0]
+    : mecanicoIds.Count > 0 ? mecanicoIds[0] : Guid.NewGuid();
 var ordemIds = await OrdemServicoGerador.GerarAsync(
-    provider, opcoes.OrdensServico, rng, veiculosCliente, mecanicoIds, periodoInicio, periodoFim);
+    provider, opcoes.OrdensServico, rng, veiculosCliente, mecanicoIds,
+    componenteIds, presetIds, adminParaResolver, periodoInicio, periodoFim);
 totalCriado += ordemIds.Count;
 
 Console.WriteLine();

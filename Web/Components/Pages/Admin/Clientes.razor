@@ -1,5 +1,5 @@
-@page "/admin/clientes"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,GerenteVendas")]
+@page "/clientes"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,GerenteVendas,Vendedor,Recepcionista")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -7,25 +7,21 @@
 @inject IClienteService ClienteService
 @inject IVeiculoClienteService VeiculoClienteService
 @inject IVeiculoConsignacaoService ConsignacaoService
+@inject NavigationManager Nav
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Shared.Cliente
 @using CarStoreManager.Application.DTOs.Oficina.VeiculoCliente
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoConsignacao
+@using CarStoreManager.Web.Components.Shared
 
 @using Microsoft.AspNetCore.Components.Web
 
-<div class="clientes-page">
-    <div class="page-header">
-        <div>
-            <h1 class="page-titulo">Clientes</h1>
-            <p class="page-sub">Cadastro de clientes e veículos vinculados</p>
-        </div>
-    </div>
+<div class="pagina clientes-page">
+    <PageHeader Titulo="Clientes" Subtitulo="@($"{todosClientes.Count} cliente(s) cadastrado(s) · oficina e concessionária")" />
 
-    <div class="toolbar">
-        <input class="campo-input busca-input" placeholder="Buscar por nome, CPF, telefone ou e-mail..."
-               @bind="termoBusca" @bind:event="oninput" @bind:after="AplicarFiltro" />
-    </div>
+    <FiltroBar @bind-Busca="termoBusca" BuscaPlaceholder="Buscar por nome, CPF, telefone ou e-mail..." OnBusca="AplicarFiltro">
+        <FiltroSelect Rotulo="Ordenar" @bind-Valor="ordenacao" OnMudou="AplicarFiltro" Opcoes="opcoesOrdem" />
+    </FiltroBar>
 
     @if (carregando)
     {
@@ -34,14 +30,16 @@
     else
     {
         <div class="clientes-lista">
-            @foreach (var c in clientesFiltrados)
+            @for (var idx = 0; idx < clientesFiltrados.Count; idx++)
             {
-                <div class="cliente-card" @onclick="() => AbrirDetalhe(c)">
+                var c = clientesFiltrados[idx];
+                <div class="cliente-card" data-tour="@(idx == 0 ? "clientes-card-exemplo" : null)" @onclick="() => AbrirFicha(c.Id)">
                     <div class="cliente-avatar">@c.Nome[0].ToString().ToUpper()</div>
                     <div class="cliente-info">
                         <span class="cliente-nome">@c.Nome</span>
-                        <span class="cliente-detalhe">@c.Telefone · @c.Email</span>
+                        <span class="cliente-detalhe">CPF @c.Cpf · @c.Telefone</span>
                     </div>
+                    <button class="cliente-editar" @onclick:stopPropagation="true" @onclick="() => AbrirDetalhe(c)">Editar</button>
                     <span class="cliente-seta">→</span>
                 </div>
             }
@@ -136,7 +134,13 @@
     private List<ClienteListaDTO> todosClientes = new();
     private List<ClienteListaDTO> clientesFiltrados = new();
     private string termoBusca = string.Empty;
+    private string ordenacao = "nome";
     private bool carregando = true;
+
+    private static readonly List<FiltroSelect.Opcao> opcoesOrdem = new()
+    {
+        new("nome", "Nome (A-Z)"), new("recentes", "Cadastro mais recente"),
+    };
 
     private bool modalDetalheVisivel = false;
     private bool carregandoDetalhe = false;
@@ -168,10 +172,13 @@
                 || c.Email.Contains(termo, StringComparison.OrdinalIgnoreCase));
         }
 
-        clientesFiltrados = baseLista
-            .OrderBy(c => c.Nome, StringComparer.OrdinalIgnoreCase)
+        clientesFiltrados = (ordenacao == "recentes"
+            ? baseLista.OrderByDescending(c => c.DataCriacao)
+            : baseLista.OrderBy(c => c.Nome, StringComparer.OrdinalIgnoreCase))
             .ToList();
     }
+
+    private void AbrirFicha(Guid id) => Nav.NavigateTo($"/clientes/{id}");
 
     private async Task AbrirDetalhe(ClienteListaDTO cliente)
     {
@@ -282,6 +289,8 @@
     .cliente-nome { font-size: 14px; font-weight: 500; }
     .cliente-detalhe { font-size: 12px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cliente-seta { color: #888; font-size: 16px; flex-shrink: 0; }
+    .cliente-editar { background: #f4f4f4; border: 1px solid #e0e0e0; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
+    .cliente-editar:hover { background: #eaeaea; }
 
     .loading { text-align: center; padding: 60px; color: #888; font-size: 14px; }
 

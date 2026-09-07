@@ -1,0 +1,97 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Barra de filtros padrão das telas de lista: seletores + 1 campo de busca.
+   Ver docs/redesign/11-batch2-melhorias.md §A.
+
+   Uso:
+   <FiltroBar @bind-Busca="busca" BuscaPlaceholder="Buscar por nº, cliente..."
+              OnBusca="AplicarFiltro">
+       <FiltroSelect Rotulo="Status" @bind-Valor="status" OnMudou="AplicarFiltro"
+                     Opcoes="statusOpcoes" />
+       <FiltroSelect Rotulo="Ordenar" @bind-Valor="ordem" OnMudou="AplicarFiltro"
+                     Opcoes="ordemOpcoes" />
+   </FiltroBar> *@
+
+<div class="filtro-bar">
+    <div class="fb-selects">
+        @ChildContent
+    </div>
+    @if (MostrarBusca)
+    {
+        <div class="fb-busca">
+            <span class="fb-busca-icone">⌕</span>
+            <input type="text" value="@Busca" @oninput="OnInput" placeholder="@BuscaPlaceholder" />
+            @if (!string.IsNullOrEmpty(Busca))
+            {
+                <button class="fb-limpar" @onclick="Limpar" title="Limpar busca" aria-label="Limpar busca">×</button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Busca { get; set; } = "";
+    [Parameter] public EventCallback<string> BuscaChanged { get; set; }
+    [Parameter] public EventCallback OnBusca { get; set; }
+    [Parameter] public string BuscaPlaceholder { get; set; } = "Buscar...";
+    [Parameter] public bool MostrarBusca { get; set; } = true;
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        Busca = e.Value?.ToString() ?? "";
+        await BuscaChanged.InvokeAsync(Busca);
+        await OnBusca.InvokeAsync();
+    }
+
+    private async Task Limpar()
+    {
+        Busca = "";
+        await BuscaChanged.InvokeAsync("");
+        await OnBusca.InvokeAsync();
+    }
+}
+
+<style>
+    .filtro-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: var(--sp-3);
+        flex-wrap: wrap;
+        margin-bottom: var(--sp-5);
+    }
+    .fb-selects { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: flex-end; }
+
+    .fb-busca {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-width: 240px;
+        flex: 0 1 320px;
+    }
+    .fb-busca-icone {
+        position: absolute; left: 10px;
+        color: var(--cor-tinta-3); font-size: var(--txt-md); pointer-events: none;
+    }
+    .fb-busca input {
+        width: 100%;
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-md);
+        padding: 8px 30px 8px 30px;
+        font-size: var(--txt-sm);
+        font-family: inherit;
+        background: var(--cor-superficie);
+    }
+    .fb-busca input:focus { outline: none; border-color: var(--cor-acao); }
+    .fb-limpar {
+        position: absolute; right: 6px;
+        background: none; border: none; cursor: pointer;
+        color: var(--cor-tinta-3); font-size: 16px; line-height: 1; padding: 2px 6px;
+    }
+    .fb-limpar:hover { color: var(--cor-tinta); }
+
+    @@media (max-width: 640px) {
+        .fb-busca { flex: 1 1 100%; }
+    }
+</style>

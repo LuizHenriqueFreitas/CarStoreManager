@@ -1,0 +1,268 @@
+@page "/concessionaria/test-drives"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@inject ITestDriveService TestDriveService
+@inject IVeiculoVendaService VeiculoService
+@inject IClienteService ClienteService
+@inject IVendedorService VendedorService
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Concessionaria.TestDrive
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
+@using CarStoreManager.Application.DTOs.Shared.Cliente
+@using CarStoreManager.Application.DTOs.Concessionaria.Vendedor
+@using CarStoreManager.Web.Components.Shared
+
+<div class="pagina">
+    <PageHeader Titulo="Test drives" Subtitulo="@($"{lista.Count} registro(s) · {Hoje} hoje")">
+        <Acao>
+            <button class="btn btn-primario" @onclick="() => AbrirModal()">+ Agendar test drive</button>
+        </Acao>
+    </PageHeader>
+
+    <SubNav Itens="SubNavConcessionaria.Itens" />
+
+    <FiltroBar @bind-Busca="busca" BuscaPlaceholder="Buscar por veículo, cliente ou vendedor..." OnBusca="StateHasChanged">
+        <FiltroSelect Rotulo="Status" @bind-Valor="filtro" OnMudou="StateHasChanged" Opcoes="opcoesStatus" />
+        <FiltroSelect Rotulo="Quando" @bind-Valor="filtroQuando" OnMudou="StateHasChanged" Opcoes="opcoesQuando" />
+    </FiltroBar>
+
+    @if (carregando)
+    {
+        <div class="estado-carregando">Carregando...</div>
+    }
+    else if (!Filtrados.Any())
+    {
+        <EstadoVazio Mensagem="Nenhum test drive neste filtro." Icone="🚗" />
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="tab">
+                <thead>
+                    <tr><th>Data / hora</th><th>Veículo</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in Filtrados)
+                    {
+                        <tr>
+                            <td>@t.DataHora.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@t.VeiculoDescricao</td>
+                            <td>@t.ClienteNome</td>
+                            <td>@t.VendedorNome</td>
+                            <td><StatusBadge Status="@t.Status" Familia="testdrive" /></td>
+                            <td class="acoes">
+                                @if (t.Status == "Agendado")
+                                {
+                                    <button class="btn-mini ok" @onclick='() => MudarStatus(t.Id, "Realizado")'>Realizado</button>
+                                    <button class="btn-mini" @onclick='() => MudarStatus(t.Id, "NaoCompareceu")'>Faltou</button>
+                                    <button class="btn-mini neg" @onclick='() => MudarStatus(t.Id, "Cancelado")'>Cancelar</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(msg)) { <div class="banner @(msgErro ? "erro" : "ok")">@msg</div> }
+</div>
+
+@if (modalAberto)
+{
+    <div class="modal-fundo" @onclick="() => modalAberto = false">
+        <div class="modal" @onclick:stopPropagation="true">
+            <h2>Agendar test drive</h2>
+            <div class="campo">
+                <label>Veículo</label>
+                <select @bind="form.VeiculoVendaId">
+                    <option value="@Guid.Empty">Selecione...</option>
+                    @foreach (var v in veiculosDisponiveis)
+                    {
+                        <option value="@v.Id">@v.Marca @v.Modelo @v.Ano · @v.Placa</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label>Cliente</label>
+                <select @bind="form.ClienteId">
+                    <option value="@Guid.Empty">Selecione...</option>
+                    @foreach (var c in clientes)
+                    {
+                        <option value="@c.Id">@c.Nome — @c.Cpf</option>
+                    }
+                </select>
+                <span class="dica">Cliente não cadastrado? Cadastre em Cadastros → Clientes.</span>
+            </div>
+            <div class="campo">
+                <label>Vendedor</label>
+                <select @bind="form.VendedorId">
+                    <option value="@Guid.Empty">Selecione...</option>
+                    @foreach (var vd in vendedores)
+                    {
+                        <option value="@vd.Id">@vd.Nome</option>
+                    }
+                </select>
+            </div>
+            <div class="campo">
+                <label>Data e hora</label>
+                <input type="datetime-local" @bind="dataHora" />
+            </div>
+            <div class="campo">
+                <label>Observação</label>
+                <textarea @bind="form.Observacao" rows="2"></textarea>
+            </div>
+            <div class="modal-acoes">
+                <button class="btn btn-neutro" @onclick="() => modalAberto = false">Cancelar</button>
+                <button class="btn btn-primario" @onclick="Agendar" disabled="@salvando">
+                    @(salvando ? "Salvando..." : "Agendar")
+                </button>
+            </div>
+            @if (!string.IsNullOrEmpty(modalErro)) { <div class="banner erro">@modalErro</div> }
+        </div>
+    </div>
+}
+
+@code {
+    private List<TestDriveListaDTO> lista = new();
+    private List<VeiculoVendaListaDTO> veiculosDisponiveis = new();
+    private List<ClienteListaDTO> clientes = new();
+    private List<VendedorListaDTO> vendedores = new();
+
+    private string filtro = "";
+    private string filtroQuando = "";
+    private string busca = "";
+    private bool carregando = true;
+    private string? msg; private bool msgErro;
+
+    private bool modalAberto, salvando;
+    private string? modalErro;
+    private CriarTestDriveDTO form = new();
+    private DateTime dataHora = DateTime.Now.AddHours(1);
+
+    private static readonly List<FiltroSelect.Opcao> opcoesStatus = new()
+    {
+        new("", "Todos os status"), new("Agendado", "Agendados"), new("Realizado", "Realizados"),
+        new("Cancelado", "Cancelados"), new("NaoCompareceu", "Não compareceu"),
+    };
+    private static readonly List<FiltroSelect.Opcao> opcoesQuando = new()
+    {
+        new("", "Qualquer data"), new("hoje", "Hoje"), new("semana", "Próximos 7 dias"), new("passados", "Já passaram"),
+    };
+
+    private int Hoje => lista.Count(t => t.DataHora.Date == DateTime.Today && t.Status == "Agendado");
+
+    private IEnumerable<TestDriveListaDTO> Filtrados
+    {
+        get
+        {
+            IEnumerable<TestDriveListaDTO> q = lista;
+            if (!string.IsNullOrEmpty(filtro)) q = q.Where(t => t.Status == filtro);
+            q = filtroQuando switch
+            {
+                "hoje" => q.Where(t => t.DataHora.Date == DateTime.Today),
+                "semana" => q.Where(t => t.DataHora.Date >= DateTime.Today && t.DataHora.Date <= DateTime.Today.AddDays(7)),
+                "passados" => q.Where(t => t.DataHora.Date < DateTime.Today),
+                _ => q
+            };
+            if (!string.IsNullOrWhiteSpace(busca))
+            {
+                var b = busca.Trim();
+                q = q.Where(t => $"{t.VeiculoDescricao} {t.ClienteNome} {t.VendedorNome}"
+                    .Contains(b, StringComparison.OrdinalIgnoreCase));
+            }
+            return q.OrderByDescending(t => t.DataHora);
+        }
+    }
+
+    protected override async Task OnInitializedAsync() => await Carregar();
+
+    private async Task Carregar()
+    {
+        carregando = true;
+        var tL = TestDriveService.GetAllAsync();
+        var tV = VeiculoService.GetAllAsync();
+        var tC = ClienteService.GetAllAsync();
+        var tD = VendedorService.GetAllAsync();
+        await Task.WhenAll(tL, tV, tC, tD);
+
+        lista = tL.Result.IsSuccess ? tL.Result.Value?.ToList() ?? new() : new();
+        veiculosDisponiveis = (tV.Result.IsSuccess ? tV.Result.Value?.ToList() ?? new() : new())
+            .Where(v => v.Disponibilidade is "Disponivel" or "Reservado").ToList();
+        clientes = (tC.Result.IsSuccess ? tC.Result.Value?.ToList() ?? new() : new())
+            .OrderBy(c => c.Nome).ToList();
+        vendedores = (tD.Result.IsSuccess ? tD.Result.Value?.ToList() ?? new() : new())
+            .OrderBy(v => v.Nome).ToList();
+        carregando = false;
+    }
+
+    private void AbrirModal()
+    {
+        form = new();
+        dataHora = DateTime.Now.AddHours(1);
+        modalErro = null;
+        modalAberto = true;
+    }
+
+    private async Task Agendar()
+    {
+        modalErro = null;
+        if (form.VeiculoVendaId == Guid.Empty || form.ClienteId == Guid.Empty || form.VendedorId == Guid.Empty)
+        {
+            modalErro = "Escolha veículo, cliente e vendedor.";
+            return;
+        }
+        form.DataHora = dataHora;
+
+        salvando = true;
+        var r = await TestDriveService.AgendarAsync(form);
+        salvando = false;
+        if (r.IsSuccess)
+        {
+            modalAberto = false;
+            msg = "Test drive agendado."; msgErro = false;
+            await Carregar();
+        }
+        else { modalErro = r.Error; }
+    }
+
+    private async Task MudarStatus(Guid id, string status)
+    {
+        var r = await TestDriveService.AtualizarStatusAsync(new AtualizarStatusTestDriveDTO { Id = id, Status = status });
+        msg = r.IsSuccess ? "Status atualizado." : r.Error;
+        msgErro = !r.IsSuccess;
+        await Carregar();
+    }
+
+}
+
+<style>
+    .filtros-status { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-5); }
+    .filtro-chip { background: var(--cor-superficie-2); border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 6px 12px; font-size: var(--txt-sm); color: var(--cor-tinta-2); cursor: pointer; }
+    .filtro-chip.ativo { background: var(--cor-tinta); border-color: var(--cor-tinta); color: #fff; }
+    .filtro-count { opacity: .6; font-size: var(--txt-xs); }
+
+    .tab { width: 100%; border-collapse: collapse; background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); overflow: hidden; }
+    .tab th, .tab td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--cor-linha-suave); font-size: var(--txt-sm); }
+    .tab th { background: var(--cor-fundo); font-size: var(--txt-xs); text-transform: uppercase; color: var(--cor-tinta-3); }
+    .acoes { display: flex; gap: 4px; }
+    .btn-mini { background: var(--cor-superficie-2); border: 1px solid var(--cor-linha); border-radius: var(--raio-sm); padding: 4px 8px; font-size: var(--txt-xs); cursor: pointer; }
+    .btn-mini.ok { background: var(--cor-ok-bg); color: var(--cor-ok-tx); border-color: transparent; }
+    .btn-mini.neg { background: var(--cor-erro-bg); color: var(--cor-erro-tx); border-color: transparent; }
+
+    .modal-fundo { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 500; padding: var(--sp-4); }
+    .modal { background: var(--cor-superficie); border-radius: var(--raio-lg); padding: var(--sp-6); width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; }
+    .modal h2 { font-size: var(--txt-lg); margin: 0 0 var(--sp-4); }
+    .modal .campo { display: flex; flex-direction: column; gap: 4px; margin-bottom: var(--sp-3); }
+    .modal label { font-size: var(--txt-xs); color: var(--cor-tinta-2); font-weight: var(--peso-medio); }
+    .modal select, .modal input, .modal textarea { border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 8px 10px; font-size: var(--txt-sm); font-family: inherit; }
+    .modal .dica { font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+    .modal-acoes { display: flex; justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-4); }
+
+    .banner { margin-top: var(--sp-4); padding: var(--sp-3); border-radius: var(--raio-md); font-size: var(--txt-sm); }
+    .banner.ok { background: var(--cor-ok-bg); color: var(--cor-ok-tx); }
+    .banner.erro { background: var(--cor-erro-bg); color: var(--cor-erro-tx); }
+</style>

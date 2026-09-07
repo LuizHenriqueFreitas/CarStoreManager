@@ -1,0 +1,91 @@
+/* ============================================================================
+   DELORE — Utilitários base
+   Classes reaproveitáveis usadas pelos componentes compartilhados e telas.
+   Ver docs/redesign/04-diretrizes-ui-ux.md §1.
+   ============================================================================ */
+
+/* ---- Layout helpers ---- */
+.stack   { display: flex; flex-direction: column; gap: var(--sp-4); }
+.stack-2 { display: flex; flex-direction: column; gap: var(--sp-2); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+
+.pagina {
+    max-width: var(--largura-conteudo);
+    margin: 0 auto;
+    padding: var(--sp-8) var(--sp-6);
+}
+.pagina-form { max-width: var(--largura-form); }
+
+/* ---- Card genérico ---- */
+.card {
+    background: var(--cor-superficie);
+    border: 1px solid var(--cor-linha);
+    border-radius: var(--raio-lg);
+    padding: var(--sp-5);
+}
+
+/* ---- Texto ---- */
+.muted { color: var(--cor-tinta-3); font-size: var(--txt-sm); }
+
+/* ---- Tabela com rolagem horizontal (nunca deixar o body rolar) ---- */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ---- Estados de tela ---- */
+.estado-carregando,
+.estado-vazio {
+    text-align: center;
+    padding: var(--sp-10);
+    color: var(--cor-tinta-3);
+    font-size: var(--txt-md);
+}
+
+/* ---- Botões padrão (novo sistema) ---- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    border-radius: var(--raio-md);
+    padding: 9px 16px;
+    font-family: inherit;
+    font-size: var(--txt-sm);
+    font-weight: var(--peso-medio);
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background .15s, border-color .15s;
+}
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+
+.btn-primario {
+    background: var(--cor-marca);
+    color: #fff;
+}
+.btn-primario:hover:not(:disabled) { background: var(--cor-marca-hover); }
+
+.btn-neutro {
+    background: var(--cor-superficie);
+    color: var(--cor-tinta);
+    border-color: var(--cor-linha);
+}
+.btn-neutro:hover:not(:disabled) { background: var(--cor-superficie-2); }
+
+.btn-fantasma {
+    background: transparent;
+    color: var(--cor-acao);
+}
+.btn-fantasma:hover:not(:disabled) { background: var(--cor-info-bg); }
+
+/* ---- Foco visível consistente ---- */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--cor-acao);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+}

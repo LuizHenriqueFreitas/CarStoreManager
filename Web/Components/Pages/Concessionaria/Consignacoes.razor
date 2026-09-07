@@ -1,0 +1,181 @@
+@page "/concessionaria/consignacoes"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@inject IVeiculoConsignacaoService ConsignacaoService
+@inject NavigationManager Nav
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoConsignacao
+@using CarStoreManager.Web.Components.Shared
+
+<div class="pagina">
+    <PageHeader Titulo="Consignações" Subtitulo="@($"{consignacoes.Count} consignação(ões) · {ativas} ativa(s)")">
+        <Acao>
+            <button class="btn btn-primario" @onclick='() => Nav.NavigateTo("/concessionaria/veiculo-consignado/novo")'>
+                + Cadastrar consignação
+            </button>
+        </Acao>
+    </PageHeader>
+
+    <SubNav Itens="SubNavConcessionaria.Itens" />
+
+    <FiltroBar @bind-Busca="busca" BuscaPlaceholder="Buscar por veículo, placa ou proprietário..." OnBusca="Aplicar">
+        <FiltroSelect Rotulo="Situação" @bind-Valor="filtroAtivo" OnMudou="Aplicar" Opcoes="opcoesFiltro" />
+        <FiltroSelect Rotulo="Ordenar" @bind-Valor="ordenacao" OnMudou="Aplicar" Opcoes="opcoesOrdem" />
+    </FiltroBar>
+
+    @if (carregando)
+    {
+        <div class="estado-carregando">Carregando...</div>
+    }
+    else if (!filtradas.Any())
+    {
+        <EstadoVazio Mensagem="Nenhuma consignação neste filtro." Icone="🤝" />
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="tab">
+                <thead>
+                    <tr>
+                        <th>Veículo</th><th>Proprietário</th><th>Vendedor</th>
+                        <th>Valor esperado</th><th>Prazo</th><th>Status</th><th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in filtradas)
+                    {
+                        <tr @onclick="() => Abrir(c.Id)" class="linha">
+                            <td>
+                                <strong>@c.Marca @c.Modelo</strong>
+                                <span class="sub">@c.Ano · @c.Placa</span>
+                            </td>
+                            <td>@c.ClienteProprietarioNome</td>
+                            <td>@c.VendedorResponsavelNome</td>
+                            <td>@c.ValorVendaEsperado.ToString("C", Cultura)</td>
+                            <td>
+                                @if (c.Status == "Ativa")
+                                {
+                                    <span class="@(c.EstaVencido ? "prazo venc" : "prazo")">
+                                        @(c.EstaVencido ? "Vencida" : $"{c.DiasRestantes} dia(s)")
+                                    </span>
+                                }
+                                else { <span class="sub">—</span> }
+                            </td>
+                            <td><StatusBadge Status="@c.Status" Familia="consignacao" /></td>
+                            <td class="acoes" @onclick:stopPropagation="true">
+                                @if (c.Status == "Ativa" && (c.EstaVencido || c.DiasRestantes <= 10))
+                                {
+                                    <button class="btn-mini" @onclick="() => Renovar(c.Id)">Renovar +90d</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(msg))
+    {
+        <div class="banner-ok">@msg</div>
+    }
+</div>
+
+@code {
+    private static readonly System.Globalization.CultureInfo Cultura = new("pt-BR");
+
+    private List<VeiculoConsignacaoListaDTO> consignacoes = new();
+    private List<VeiculoConsignacaoListaDTO> filtradas = new();
+    private string filtroAtivo = "Ativa";
+    private string ordenacao = "recentes";
+    private string busca = "";
+    private bool carregando = true;
+    private int ativas;
+    private string? msg;
+
+    private static readonly List<FiltroSelect.Opcao> opcoesFiltro = new()
+    {
+        new("Ativa", "Ativas"), new("Vencendo", "Vencendo / vencidas"), new("Todas", "Todas"),
+        new("VendidoAguardandoPagamento", "Vendidas"), new("Concluida", "Concluídas"),
+        new("Devolvida", "Devolvidas"), new("Cancelada", "Canceladas"),
+    };
+    private static readonly List<FiltroSelect.Opcao> opcoesOrdem = new()
+    {
+        new("recentes", "Mais recentes"), new("antigas", "Mais antigas"),
+        new("vencimento", "Vencendo primeiro"), new("valor-desc", "Maior valor"),
+    };
+
+    protected override async Task OnInitializedAsync() => await Carregar();
+
+    private async Task Carregar()
+    {
+        carregando = true;
+        var r = await ConsignacaoService.GetAllAsync();
+        consignacoes = r.IsSuccess ? r.Value?.ToList() ?? new() : new();
+        ativas = consignacoes.Count(c => c.Status == "Ativa");
+        Aplicar();
+        carregando = false;
+    }
+
+    private void Abrir(Guid id) => Nav.NavigateTo($"/concessionaria/veiculo/{id}");
+
+    private void Aplicar()
+    {
+        IEnumerable<VeiculoConsignacaoListaDTO> q = filtroAtivo switch
+        {
+            "Todas" => consignacoes,
+            "Vencendo" => consignacoes.Where(c => c.Status == "Ativa" && (c.EstaVencido || c.DiasRestantes <= 7)),
+            _ => consignacoes.Where(c => c.Status == filtroAtivo)
+        };
+
+        if (!string.IsNullOrWhiteSpace(busca))
+        {
+            var t = busca.Trim();
+            q = q.Where(c => $"{c.Marca} {c.Modelo} {c.Placa} {c.ClienteProprietarioNome}"
+                .Contains(t, StringComparison.OrdinalIgnoreCase));
+        }
+
+        q = ordenacao switch
+        {
+            "antigas" => q.OrderBy(c => c.DataCriacao),
+            "vencimento" => q.OrderBy(c => c.DiasRestantes),
+            "valor-desc" => q.OrderByDescending(c => c.ValorVendaEsperado),
+            _ => q.OrderByDescending(c => c.DataCriacao)
+        };
+
+        filtradas = q.ToList();
+    }
+
+    private async Task Renovar(Guid id)
+    {
+        msg = null;
+        var r = await ConsignacaoService.RenovarAsync(id);
+        msg = r.IsSuccess ? "Consignação renovada por mais 90 dias." : r.Error;
+        await Carregar();
+    }
+}
+
+<style>
+    .filtros-status { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-5); }
+    .filtro-chip {
+        background: var(--cor-superficie-2); border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-md); padding: 6px 12px; font-size: var(--txt-sm);
+        color: var(--cor-tinta-2); cursor: pointer;
+    }
+    .filtro-chip.ativo { background: var(--cor-tinta); border-color: var(--cor-tinta); color: #fff; }
+    .filtro-count { opacity: .6; font-size: var(--txt-xs); }
+
+    .tab { width: 100%; border-collapse: collapse; background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); overflow: hidden; }
+    .tab th, .tab td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--cor-linha-suave); font-size: var(--txt-sm); }
+    .tab th { background: var(--cor-fundo); font-size: var(--txt-xs); text-transform: uppercase; letter-spacing: .3px; color: var(--cor-tinta-3); }
+    .linha { cursor: pointer; }
+    .linha:hover { background: var(--cor-info-bg); }
+    .tab .sub { display: block; font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+    .prazo { color: var(--cor-tinta-2); }
+    .prazo.venc { color: var(--cor-erro-tx); font-weight: var(--peso-forte); }
+    .btn-mini { background: var(--cor-acao); color: #fff; border: none; border-radius: var(--raio-sm); padding: 4px 10px; font-size: var(--txt-xs); cursor: pointer; }
+    .banner-ok { margin-top: var(--sp-4); background: var(--cor-ok-bg); color: var(--cor-ok-tx); padding: var(--sp-3); border-radius: var(--raio-md); font-size: var(--txt-sm); }
+</style>

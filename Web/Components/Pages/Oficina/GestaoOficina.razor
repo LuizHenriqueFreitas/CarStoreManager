@@ -1,0 +1,405 @@
+@page "/oficina"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer
+@implements IAsyncDisposable
+@inject IOrdemServicoService OrdemService
+@inject IEstoqueService EstoqueService
+@inject IDashboardService DashboardService
+@inject CarStoreManager.Application.Interfaces.Sistema.IBalancoMensalDespesaService BalancoService
+@inject IClienteService ClienteService
+@inject IVeiculoClienteService VeiculoClienteService
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@using Microsoft.JSInterop
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Oficina.OrdemServico
+@using CarStoreManager.Application.DTOs.Oficina.Componente
+@using CarStoreManager.Application.DTOs.Shared.Cliente
+@using CarStoreManager.Application.DTOs.Oficina.VeiculoCliente
+@using CarStoreManager.Application.DTOs.Admin
+@using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="pagina">
+    <PageHeader Titulo="Gestão da Oficina" Subtitulo="@subtitulo">
+        <Acao>
+            @if (!ehMecanico)
+            {
+                <button class="btn btn-primario" @onclick='() => Nav.NavigateTo("/oficina/os/nova")'>+ Nova OS</button>
+            }
+        </Acao>
+    </PageHeader>
+
+    <SubNav Itens="SubNavOficina.Itens(ehMecanico)" />
+
+    @if (carregando)
+    {
+        <div class="estado-carregando">Carregando painel...</div>
+    }
+    else
+    {
+        <div class="hub-layout">
+        <MenuAtalhos Itens="atalhos" data-tour="oficina-hub-atalhos" />
+        <div class="hub-conteudo">
+        <div data-tour="oficina-hub-alertas">
+            <FaixaAlertas Alertas="alertas" />
+        </div>
+
+        <div data-tour="oficina-hub-kpis">
+        <StatCardGrid>
+            <MetricCard Rotulo="OS pendentes" Valor="@Contar("Pendente").ToString()" />
+            <MetricCard Rotulo="Em andamento" Valor="@Contar("EmAndamento").ToString()" Tom="info" />
+            <MetricCard Rotulo="Aguardando cobrança" Valor="@aguardandoCobranca.Count.ToString()"
+                        Tom="@(aguardandoCobranca.Count > 0 ? "atencao" : "")" />
+            <MetricCard Rotulo="Entregues no mês" Valor="@entreguesMes.ToString()" Tom="ok" />
+            <MetricCard Rotulo="Prazo médio estimado" Valor="@($"{prazoMedioDias:0.#} dias")" />
+        </StatCardGrid>
+        </div>
+
+        <div class="hub-grid">
+            <div class="hub-principal" data-tour="oficina-hub-board">
+                <Secao Titulo="Ordens por etapa">
+                    <div class="board">
+                        @foreach (var col in Colunas)
+                        {
+                            var lista = PorEtapa(col.status);
+                            <div class="board-col">
+                                <div class="board-col-head">
+                                    <span>@col.label</span>
+                                    <span class="board-col-count">@lista.Count</span>
+                                </div>
+                                <div class="board-col-body">
+                                    @foreach (var os in lista.Take(6))
+                                    {
+                                        <a class="mini-os" href="@($"/oficina/os/{os.Id}")">
+                                            <span class="mini-os-num">@os.NumeroPublico</span>
+                                            <span class="mini-os-tipo">@os.Tipo</span>
+                                            <span class="mini-os-cli">@NomeCliente(os.ClienteId)</span>
+                                        </a>
+                                    }
+                                    @if (lista.Count > 6)
+                                    {
+                                        <a class="mini-os-mais" href="/oficina/ordens">+@(lista.Count - 6) mais</a>
+                                    }
+                                    @if (lista.Count == 0)
+                                    {
+                                        <span class="board-col-vazio">—</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </Secao>
+            </div>
+
+            <div class="hub-lateral" data-tour="oficina-hub-atencao">
+                <Secao Titulo="Precisa de atenção">
+                    @if (!atencao.Any())
+                    {
+                        <p class="muted">Nada pendente. 👍</p>
+                    }
+                    else
+                    {
+                        <div class="atencao-lista">
+                            @foreach (var a in atencao)
+                            {
+                                <a class="atencao-item" href="@a.Href">
+                                    <span class="atencao-item-txt">@a.Texto</span>
+                                    <span class="atencao-item-seta">→</span>
+                                </a>
+                            }
+                        </div>
+                    }
+                </Secao>
+
+                @if (podeVerFinanceiro && metricas is not null)
+                {
+                    <Secao Titulo="Resumo financeiro do mês">
+                        <div class="card">
+                            <div class="fin-linha">
+                                <span>Receita de serviços</span>
+                                <strong>@FBRL(metricas.ReceitaServicosMesAtual)</strong>
+                            </div>
+                            <div class="fin-linha">
+                                <span>Despesas da oficina</span>
+                                <strong>@FBRL(metricas.TotalDespesasOficinaMensal)</strong>
+                            </div>
+                            <div class="fin-linha total">
+                                <span>Lucro operacional</span>
+                                <strong class="@(metricas.LucroOficinaMes >= 0 ? "pos" : "neg")">@FBRL(metricas.LucroOficinaMes)</strong>
+                            </div>
+                            <a class="fin-link" href="/financeiro?area=oficina">Ver no Financeiro →</a>
+                        </div>
+                    </Secao>
+
+                    <Secao Titulo="Capital em peças">
+                        <div class="card">
+                            <div class="capital-valor">@FBRL(metricas.CapitalEstoqueComponentes)</div>
+                            <p class="muted">Dinheiro parado em estoque de componentes — não é despesa do mês.</p>
+                            <a class="fin-link" href="/oficina/componentes">Ver estoque →</a>
+                        </div>
+                    </Secao>
+                }
+            </div>
+        </div>
+
+        @if (podeVerFinanceiro && metricas is not null)
+        {
+            <div class="graf-row" data-tour="oficina-hub-graficos">
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Receita de serviços — últimos meses</h3>
+                    <div class="grafico-area"><canvas id="ofReceita"></canvas></div>
+                </div>
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Ordens de serviço por situação</h3>
+                    <div class="grafico-area"><canvas id="ofStatus"></canvas></div>
+                </div>
+            </div>
+        }
+
+        </div>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly System.Globalization.CultureInfo Cultura = new("pt-BR");
+    private static string FBRL(decimal v) => v.ToString("C", Cultura);
+
+    private List<OrdemServicoListaDTO> ordens = new();
+    private List<OrdemServicoListaDTO> aguardandoCobranca = new();
+    private Dictionary<Guid, ClienteListaDTO> mapaClientes = new();
+    private DashboardMetricasDTO? metricas;
+
+    private List<FaixaAlertas.Alerta> alertas = new();
+    private List<(string Texto, string Href)> atencao = new();
+
+    private int entreguesMes;
+    private double prazoMedioDias;
+    private bool carregando = true;
+    private bool ehMecanico;
+    private bool podeVerFinanceiro;
+    private Guid mecanicoId;
+    private string subtitulo = "";
+
+    private IEnumerable<MenuAtalhos.Item> atalhos
+    {
+        get
+        {
+            yield return new("Ordens de serviço", "🔧", "/oficina/ordens", "Lista completa com filtros e busca.");
+            yield return new("Estoque de peças", "📦", "/oficina/componentes", "Componentes, mínimos e alertas.");
+            if (!ehMecanico)
+            {
+                yield return new("Recepção", "📋", "/oficina/recepcao", "Abrir OS e busca rápida.");
+                yield return new("Fornecedores", "🏭", "/oficina/fornecedores", "Cadastro de fornecedores de peças.");
+                yield return new("Clientes", "👤", "/clientes", "Cadastro e histórico de clientes.");
+            }
+            if (podeVerFinanceiro)
+            {
+                yield return new("Financeiro da oficina", "💰", "/financeiro?area=oficina", "Receita de serviços, despesas e lucro.");
+                yield return new("Despesas da oficina", "💸", "/financeiro/despesas", "Balanço mensal de despesas.");
+                yield return new("Relatórios", "📄", "/financeiro/relatorios", "Exportar dados por período.");
+                yield return new("Análises", "📊", "/dashboard", "Gráficos e comparativos da oficina.");
+            }
+        }
+    }
+
+    private readonly (string status, string label)[] Colunas =
+    {
+        ("Pendente",                    "Orçamento"),
+        ("EmAnalise",                   "Revisão mecânico"),
+        ("AguardandoCliente",           "Aguardando cliente"),
+        ("Aprovada",                    "Aprovada"),
+        ("EmAndamento",                 "Em andamento"),
+        ("PagamentoPendente",           "Pgto pendente"),
+        ("Finalizada",                  "Pronta p/ entrega"),
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var user = state.User;
+        ehMecanico = user.IsInRole("Mecanico") && !user.IsInRole("Admin") && !user.IsInRole("ChefeOficina");
+        podeVerFinanceiro = user.IsInRole("Admin") || user.IsInRole("ChefeOficina");
+        var claim = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (claim is not null) mecanicoId = Guid.Parse(claim.Value);
+
+        var tOrdens = OrdemService.GetAllAsync();
+        var tClientes = ClienteService.GetAllAsync();
+        var tEstoqueBaixo = EstoqueService.ListarComEstoqueBaixoAsync();
+        var tMetricas = podeVerFinanceiro ? DashboardService.ObterMetricasAsync(6) : Task.FromResult<CarStoreManager.Application.Common.Result<DashboardMetricasDTO>>(null!);
+        await Task.WhenAll(tOrdens, tClientes, tEstoqueBaixo, tMetricas);
+
+        var todas = tOrdens.Result.IsSuccess ? tOrdens.Result.Value?.ToList() ?? new() : new();
+        ordens = ehMecanico ? todas.Where(o => o.MecanicoId == mecanicoId).ToList() : todas;
+
+        if (tClientes.Result.IsSuccess && tClientes.Result.Value is not null)
+            mapaClientes = tClientes.Result.Value.ToDictionary(c => c.Id);
+
+        var estoqueBaixo = tEstoqueBaixo.Result.IsSuccess ? tEstoqueBaixo.Result.Value?.ToList() ?? new() : new();
+
+        if (podeVerFinanceiro && tMetricas.Result is not null && tMetricas.Result.IsSuccess)
+            metricas = tMetricas.Result.Value;
+
+        aguardandoCobranca = ordens.Where(o => o.Status == "PagamentoPendente")
+                                   .OrderBy(o => o.PrazoEstimado).ToList();
+
+        var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        entreguesMes = ordens.Count(o => o.Status == "Entregue" && o.PrazoEstimado >= inicioMes);
+
+        var abertas = ordens.Where(o => StatusAbertos.Contains(o.Status)).ToList();
+        prazoMedioDias = abertas.Any()
+            ? abertas.Average(o => (o.PrazoEstimado - o.DataCriacao).TotalDays)
+            : 0;
+
+        var atrasadas = abertas.Where(o => o.PrazoEstimado.Date < DateTime.Today).ToList();
+        var paradas = ordens.Where(o => o.Status is "BuscandoPecasParaOrcamento" or "Pausada").ToList();
+
+        // ---- Faixa de alertas ----
+        alertas = new();
+        if (aguardandoCobranca.Count > 0)
+            alertas.Add(new($"{aguardandoCobranca.Count} OS aguardando cobrança", "/oficina/recepcao", "atencao", "💰"));
+        if (estoqueBaixo.Count > 0)
+            alertas.Add(new($"{estoqueBaixo.Count} peça(s) abaixo do mínimo", "/oficina/componentes", "alerta", "📦"));
+        if (atrasadas.Count > 0)
+            alertas.Add(new($"{atrasadas.Count} OS com prazo estourado", "/oficina/ordens", "erro", "⏰"));
+        if (paradas.Count > 0)
+            alertas.Add(new($"{paradas.Count} OS parada(s) (peças/pausa)", "/oficina/ordens", "atencao", "⏸"));
+        if (podeVerFinanceiro)
+        {
+            var diasFech = await BalancoService.DiasParaFechamentoAsync();
+            if (diasFech is { } df)
+                alertas.Add(new(df == 0 ? "Hoje é a data de fechamento de despesas" : $"{df} dia(s) para o fechamento de despesas",
+                    "/financeiro/despesas", "atencao", "🧾"));
+        }
+
+        // ---- Precisa de atenção ----
+        atencao = new();
+        foreach (var o in aguardandoCobranca.Take(3))
+            atencao.Add(($"{o.NumeroPublico} — cobrar {FBRL(o.ValorTotal)}", $"/oficina/os/{o.Id}"));
+        foreach (var o in atrasadas.Take(3))
+            atencao.Add(($"{o.NumeroPublico} — prazo estourado ({o.PrazoEstimado:dd/MM})", $"/oficina/os/{o.Id}"));
+        foreach (var p in estoqueBaixo.Take(3))
+            atencao.Add(($"{p.ComponenteNome} — {p.QuantidadeAtual}/{p.QuantidadeMinima} un.", "/oficina/componentes"));
+
+        var ativas = ordens.Count(o => o.Status is not "Entregue" and not "Cancelada");
+        subtitulo = $"{DateTime.Now:dddd, dd/MM/yyyy} · {ativas} OS ativas";
+
+        carregando = false;
+        graficosPendentes = podeVerFinanceiro && metricas is not null;
+    }
+
+    private bool graficosPendentes;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (graficosPendentes && metricas is not null)
+        {
+            graficosPendentes = false;
+            var labels = metricas.SerieReceitaServicos.Select(x => x.MesLabel).ToArray();
+            await JS.InvokeVoidAsync("carstoreChart.linhaTempo", "ofReceita", labels,
+                new object[] { new { nome = "Serviços", dados = metricas.SerieReceitaServicos.Select(x => x.Valor).ToArray() } }, "R$");
+
+            var porStatus = metricas.OrdensServicoPorStatus
+                .Select(kv => new { rotulo = LabelStatus(kv.Key), valor = kv.Value })
+                .Where(x => x.valor > 0).ToArray();
+            await JS.InvokeVoidAsync("carstoreChart.barraMagnitude", "ofStatus", porStatus, "un", 10);
+        }
+    }
+
+    private static string LabelStatus(string s) => s switch
+    {
+        "Pendente" => "Pendente", "EmAnalise" => "Em análise", "AguardandoCliente" => "Aguard. cliente",
+        "BuscandoPecasParaOrcamento" => "Buscando peças", "Aprovada" => "Aprovada",
+        "EmAndamento" => "Em andamento", "Pausada" => "Pausada",
+        "PagamentoPendente" => "Aguard. cobrança", "Finalizada" => "Pronta p/ entrega",
+        "Entregue" => "Entregue", "Cancelada" => "Cancelada", _ => s
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("carstoreChart.destroy", "ofReceita");
+            await JS.InvokeVoidAsync("carstoreChart.destroy", "ofStatus");
+        }
+        catch { }
+    }
+
+    private static readonly string[] StatusAbertos =
+        { "Pendente", "EmAnalise", "AguardandoCliente", "BuscandoPecasParaOrcamento", "Aprovada", "EmAndamento", "Pausada" };
+
+    private int Contar(string status) => ordens.Count(o => o.Status == status);
+    private List<OrdemServicoListaDTO> PorEtapa(string status) =>
+        ordens.Where(o => o.Status == status).OrderBy(o => o.PrazoEstimado).ToList();
+    private string NomeCliente(Guid id) => mapaClientes.TryGetValue(id, out var c) ? c.Nome : "—";
+}
+
+<style>
+    .hub-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--sp-5); align-items: start; }
+    .hub-conteudo { min-width: 0; }
+    .hub-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--sp-5); align-items: start; }
+
+    .graf-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); margin-bottom: var(--sp-6); }
+    .grafico-card { background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); padding: var(--sp-4); }
+    .grafico-titulo { font-size: var(--txt-sm); font-weight: var(--peso-medio); color: var(--cor-tinta); margin: 0 0 var(--sp-3); }
+    .grafico-area { position: relative; height: 240px; }
+    .atalhos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
+    @@media (max-width: 900px) { .graf-row { grid-template-columns: 1fr; } }
+
+    .board { display: flex; gap: var(--sp-2); overflow-x: auto; padding-bottom: var(--sp-2); }
+    .board-col {
+        flex: 1 0 150px;
+        background: var(--cor-superficie-2);
+        border-radius: var(--raio-md);
+        padding: var(--sp-2);
+    }
+    .board-col-head {
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: var(--txt-xs); font-weight: var(--peso-forte);
+        color: var(--cor-tinta-2); text-transform: uppercase; letter-spacing: .3px;
+        padding: var(--sp-1) var(--sp-1) var(--sp-2);
+    }
+    .board-col-count { background: var(--cor-superficie); border-radius: var(--raio-full); padding: 0 6px; }
+    .board-col-body { display: flex; flex-direction: column; gap: var(--sp-1); }
+    .board-col-vazio { color: var(--cor-tinta-3); text-align: center; font-size: var(--txt-sm); padding: var(--sp-2); }
+    .mini-os {
+        display: flex; flex-direction: column; gap: 1px;
+        background: var(--cor-superficie);
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-sm);
+        padding: 6px 8px;
+        text-decoration: none; color: inherit;
+    }
+    .mini-os:hover { border-color: var(--cor-acao); }
+    .mini-os-num { font-family: monospace; font-size: 11px; font-weight: var(--peso-forte); color: var(--cor-acao); }
+    .mini-os-tipo { font-size: var(--txt-xs); color: var(--cor-tinta); }
+    .mini-os-cli { font-size: 11px; color: var(--cor-tinta-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mini-os-mais { font-size: var(--txt-xs); color: var(--cor-acao); text-align: center; padding: 4px; text-decoration: none; }
+
+    .atencao-lista { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .atencao-item {
+        display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2);
+        background: var(--cor-superficie);
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-md);
+        padding: var(--sp-3);
+        text-decoration: none; color: var(--cor-tinta);
+        font-size: var(--txt-sm);
+    }
+    .atencao-item:hover { border-color: var(--cor-acao); }
+    .atencao-item-seta { color: var(--cor-tinta-3); }
+
+    .fin-linha { display: flex; justify-content: space-between; font-size: var(--txt-sm); padding: var(--sp-1) 0; }
+    .fin-linha.total { border-top: 1px solid var(--cor-linha-suave); margin-top: var(--sp-1); padding-top: var(--sp-2); }
+    .fin-linha .pos { color: var(--cor-ok-tx); } .fin-linha .neg { color: var(--cor-erro-tx); }
+    .fin-link { display: inline-block; margin-top: var(--sp-2); font-size: var(--txt-sm); color: var(--cor-acao); text-decoration: none; }
+    .capital-valor { font-size: var(--txt-2xl); font-weight: var(--peso-medio); color: var(--cor-tinta); margin-bottom: var(--sp-1); }
+
+    @@media (max-width: 1200px) { .hub-grid { grid-template-columns: 1fr; } }
+    @@media (max-width: 1000px) { .hub-layout { grid-template-columns: 1fr; } }
+</style>

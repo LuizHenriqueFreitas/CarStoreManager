@@ -1,9 +1,11 @@
 # Build
 bin/
 obj/
+CLAUDE.md
 
 # Visual Studio
 .vs/
+docs/
 *.user
 *.suo
 *.userosscache

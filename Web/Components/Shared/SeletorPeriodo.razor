@@ -1,0 +1,136 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Seletor de período reutilizável (Financeiro, Análises, Relatórios).
+   Padrão: últimos 15 dias. Presets 7/15/30/60 + intervalo customizado.
+   Ver docs/redesign/04-diretrizes-ui-ux.md §3.
+
+   Uso:
+   <SeletorPeriodo Inicio="ini" Fim="fim" InicioChanged="..." FimChanged="..."
+                   OnAlterado="RecarregarAsync" /> *@
+
+<div class="seletor-periodo">
+    <div class="sp-presets" role="group" aria-label="Período">
+        @foreach (var dias in Presets)
+        {
+            <button type="button"
+                    class="sp-preset @(PresetAtivo == dias ? "ativo" : "")"
+                    @onclick="() => AplicarPreset(dias)">
+                @dias d
+            </button>
+        }
+        <button type="button"
+                class="sp-preset @(modoCustom ? "ativo" : "")"
+                @onclick="() => modoCustom = !modoCustom">
+            Intervalo…
+        </button>
+    </div>
+
+    @if (modoCustom)
+    {
+        <div class="sp-custom">
+            <input type="date" value="@Inicio.ToString("yyyy-MM-dd")"
+                   @onchange="OnInicioInput" aria-label="Data início" />
+            <span class="sp-ate">até</span>
+            <input type="date" value="@Fim.ToString("yyyy-MM-dd")"
+                   @onchange="OnFimInput" aria-label="Data fim" />
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public DateOnly Inicio { get; set; }
+    [Parameter] public EventCallback<DateOnly> InicioChanged { get; set; }
+    [Parameter] public DateOnly Fim { get; set; }
+    [Parameter] public EventCallback<DateOnly> FimChanged { get; set; }
+
+    /// <summary>Disparado após qualquer mudança (preset ou custom), já com Inicio/Fim novos.</summary>
+    [Parameter] public EventCallback OnAlterado { get; set; }
+
+    [Parameter] public int[] Presets { get; set; } = { 7, 15, 30, 60 };
+    [Parameter] public int PresetPadrao { get; set; } = 15;
+
+    private bool modoCustom;
+    private int? PresetAtivo;
+
+    protected override void OnInitialized()
+    {
+        if (Inicio == default || Fim == default)
+        {
+            PresetAtivo = PresetPadrao;
+            var hoje = DateOnly.FromDateTime(DateTime.Today);
+            Inicio = hoje.AddDays(-PresetPadrao + 1);
+            Fim = hoje;
+        }
+        else
+        {
+            var span = Fim.DayNumber - Inicio.DayNumber + 1;
+            PresetAtivo = Array.IndexOf(Presets, span) >= 0 ? span : null;
+            modoCustom = PresetAtivo is null;
+        }
+    }
+
+    private async Task AplicarPreset(int dias)
+    {
+        modoCustom = false;
+        PresetAtivo = dias;
+        var hoje = DateOnly.FromDateTime(DateTime.Today);
+        Inicio = hoje.AddDays(-dias + 1);
+        Fim = hoje;
+        await Propagar();
+    }
+
+    private async Task OnInicioInput(ChangeEventArgs e)
+    {
+        if (DateOnly.TryParse(e.Value?.ToString(), out var d))
+        {
+            Inicio = d;
+            PresetAtivo = null;
+            await Propagar();
+        }
+    }
+
+    private async Task OnFimInput(ChangeEventArgs e)
+    {
+        if (DateOnly.TryParse(e.Value?.ToString(), out var d))
+        {
+            Fim = d;
+            PresetAtivo = null;
+            await Propagar();
+        }
+    }
+
+    private async Task Propagar()
+    {
+        await InicioChanged.InvokeAsync(Inicio);
+        await FimChanged.InvokeAsync(Fim);
+        await OnAlterado.InvokeAsync();
+    }
+}
+
+<style>
+    .seletor-periodo { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .sp-presets { display: inline-flex; gap: var(--sp-1); flex-wrap: wrap; }
+    .sp-preset {
+        background: var(--cor-superficie-2);
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-md);
+        padding: 5px 12px;
+        font-size: var(--txt-sm);
+        color: var(--cor-tinta-2);
+        cursor: pointer;
+    }
+    .sp-preset.ativo {
+        background: var(--cor-tinta);
+        border-color: var(--cor-tinta);
+        color: #fff;
+    }
+    .sp-custom { display: inline-flex; align-items: center; gap: var(--sp-2); }
+    .sp-custom input {
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-md);
+        padding: 5px 8px;
+        font-size: var(--txt-sm);
+        font-family: inherit;
+    }
+    .sp-ate { font-size: var(--txt-sm); color: var(--cor-tinta-3); }
+</style>

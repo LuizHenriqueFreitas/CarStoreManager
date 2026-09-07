@@ -9,30 +9,25 @@
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Oficina.Fornecedor
 @using CarStoreManager.Application.DTOs.Shared.Cliente
+@using CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Web
 
-<div class="forn-page">
-    <div class="page-header">
-        <div>
-            <h1 class="page-titulo">Fornecedores</h1>
-            <p class="page-sub">Cadastro de fornecedores de peças e componentes</p>
-        </div>
-        @if (ehAdmin)
-        {
-            <button class="btn-novo" data-tour="forn-btn-novo" @onclick="AbrirModalNovo">+ Novo fornecedor</button>
-        }
-    </div>
+<div class="pagina forn-page">
+    <PageHeader Titulo="Fornecedores" Subtitulo="@($"{todosFornecedores.Count} fornecedor(es) · {todosFornecedores.Count(f => f.Ativo)} ativo(s)")">
+        <Acao>
+            @if (ehAdmin)
+            {
+                <button class="btn btn-primario" data-tour="forn-btn-novo" @onclick="AbrirModalNovo">+ Novo fornecedor</button>
+            }
+        </Acao>
+    </PageHeader>
 
-    <div class="toolbar">
-        <input class="campo-input busca-input" placeholder="Buscar por nome ou CNPJ..."
-               @bind="termoBusca" @bind:event="oninput" @bind:after="AplicarFiltro" />
-        <select class="campo-input filtro-select" @bind="filtroStatus" @bind:after="AplicarFiltro">
-            <option value="Todos">Todos</option>
-            <option value="Ativos">Ativos</option>
-            <option value="Inativos">Inativos</option>
-        </select>
-    </div>
+    <SubNav Itens="SubNavOficina.Itens(false)" />
+
+    <FiltroBar @bind-Busca="termoBusca" BuscaPlaceholder="Buscar por nome ou CNPJ..." OnBusca="AplicarFiltro">
+        <FiltroSelect Rotulo="Situação" @bind-Valor="filtroStatus" OnMudou="AplicarFiltro" Opcoes="opcoesStatus" />
+    </FiltroBar>
 
     @if (carregando)
     {
@@ -66,7 +61,7 @@
             }
             @if (!fornecedoresFiltrados.Any())
             {
-                <div class="vazio-aba">Nenhum fornecedor encontrado.</div>
+                <EstadoVazio Mensagem="Nenhum fornecedor com esses filtros." Icone="🏭" />
             }
         </div>
     }
@@ -249,6 +244,10 @@
     private List<FornecedorListaDTO> fornecedoresFiltrados = new();
     private string termoBusca = string.Empty;
     private string filtroStatus = "Todos";
+    private static readonly List<FiltroSelect.Opcao> opcoesStatus = new()
+    {
+        new("Todos", "Todos"), new("Ativos", "Ativos"), new("Inativos", "Inativos"),
+    };
     private bool carregando = true;
     private bool ehAdmin;
 

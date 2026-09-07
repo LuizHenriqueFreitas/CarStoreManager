@@ -1,0 +1,292 @@
+@page "/oficina/ordens"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer
+@inject IOrdemServicoService OrdemService
+@inject IClienteService ClienteService
+@inject IMecanicoService MecanicoService
+@inject IVeiculoClienteService VeiculoClienteService
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Oficina.OrdemServico
+@using CarStoreManager.Application.DTOs.Oficina.Mecanico
+@using CarStoreManager.Application.DTOs.Oficina.VeiculoCliente
+@using CarStoreManager.Application.DTOs.Shared.Cliente
+@using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="pagina">
+    <PageHeader Titulo="Ordens de serviço"
+                Subtitulo="@($"{ordens.Count} ordem(ns) · {ordensFiltradas.Count} no filtro atual")">
+        <Acao>
+            @if (!ehMecanico)
+            {
+                <button class="btn btn-primario" @onclick='() => Nav.NavigateTo("/oficina/os/nova")'>+ Nova OS</button>
+            }
+        </Acao>
+    </PageHeader>
+
+    <SubNav Itens="SubNavOficina.Itens(ehMecanico)" />
+
+    @if (!carregando)
+    {
+        <StatCardGrid MinColuna="150">
+            <MetricCard Rotulo="Abertas" Valor="@abertas.ToString()" />
+            <MetricCard Rotulo="Em andamento" Valor="@Contar("EmAndamento").ToString()" Tom="info" />
+            <MetricCard Rotulo="Aguardando cobrança" Valor="@Contar("PagamentoPendente").ToString()" Tom="@(Contar("PagamentoPendente") > 0 ? "atencao" : "")" />
+            <MetricCard Rotulo="Atrasadas" Valor="@atrasadas.ToString()" Tom="@(atrasadas > 0 ? "erro" : "")" />
+            <MetricCard Rotulo="Entregues (mês)" Valor="@entreguesMes.ToString()" Tom="ok" />
+        </StatCardGrid>
+    }
+
+    <FiltroBar @bind-Busca="busca" BuscaPlaceholder="Buscar por nº, cliente ou placa..." OnBusca="AplicarFiltro">
+        <FiltroSelect Rotulo="Situação" @bind-Valor="filtroAtivo" OnMudou="AplicarFiltro" Opcoes="opcoesFiltro" />
+        <FiltroSelect Rotulo="Ordenar" @bind-Valor="ordenacao" OnMudou="AplicarFiltro" Opcoes="opcoesOrdem" />
+    </FiltroBar>
+
+    @if (carregando)
+    {
+        <div class="estado-carregando">Carregando ordens...</div>
+    }
+    else if (!ordensFiltradas.Any())
+    {
+        <EstadoVazio Mensagem="Nenhuma ordem de serviço com esses filtros." Icone="🔧" />
+    }
+    else
+    {
+        <div class="ordens-lista">
+            @foreach (var os in ordensFiltradas)
+            {
+                <a class="os-card" href="@($"/oficina/os/{os.Id}")">
+                    <div class="os-cabecalho">
+                        <span class="os-numero">@os.NumeroPublico</span>
+                        <div class="cluster">
+                            @if (EhAtrasada(os))
+                            {
+                                <span class="tag-atraso">Atrasada</span>
+                            }
+                            <StatusBadge Status="@os.Status" Familia="os" />
+                        </div>
+                    </div>
+                    <div class="os-corpo">
+                        <div class="os-col">
+                            <span class="rotulo">Cliente</span>
+                            <span class="dado">@NomeCliente(os.ClienteId)</span>
+                            <span class="dado-sub">@CpfCliente(os.ClienteId)</span>
+                        </div>
+                        <div class="os-col">
+                            <span class="rotulo">Veículo</span>
+                            <span class="dado">@DescricaoVeiculo(os.VeiculoClienteId)</span>
+                            <span class="dado-sub">@AnoVeiculo(os.VeiculoClienteId)</span>
+                        </div>
+                        <div class="os-col">
+                            <span class="rotulo">Mecânico</span>
+                            <span class="dado">@NomeMecanico(os.MecanicoId)</span>
+                            <span class="dado-sub">@os.Tipo</span>
+                        </div>
+                        <div class="os-col">
+                            <span class="rotulo">Prazo</span>
+                            <span class="dado @(EhAtrasada(os) ? "vencido" : "")">@os.PrazoEstimado.ToString("dd/MM/yyyy")</span>
+                            <span class="dado-sub">@DiasAberta(os) dia(s) aberta</span>
+                        </div>
+                        <div class="os-col alinha-dir">
+                            <span class="rotulo">Valor</span>
+                            <span class="dado valor">@os.ValorTotal.ToString("C", Cultura)</span>
+                        </div>
+                    </div>
+                </a>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly System.Globalization.CultureInfo Cultura = new("pt-BR");
+
+    private List<OrdemServicoListaDTO> ordens = new();
+    private List<OrdemServicoListaDTO> ordensFiltradas = new();
+    private Dictionary<Guid, ClienteListaDTO> mapaClientes = new();
+    private Dictionary<Guid, MecanicoListaDTO> mapaMecanicos = new();
+    private Dictionary<Guid, VeiculoClienteListaDTO> mapaVeiculos = new();
+
+    private string filtroAtivo = "abertas";
+    private string ordenacao = "recentes";
+    private string busca = "";
+    private bool carregando = true;
+    private bool ehMecanico;
+    private Guid mecanicoId;
+    private int abertas, atrasadas, entreguesMes;
+
+    private static readonly List<FiltroSelect.Opcao> opcoesFiltro = new()
+    {
+        new("abertas", "Em aberto"), new("Todos", "Todas"), new("Atrasadas", "Atrasadas"),
+        new("Pendente", "Pendentes"), new("EmAndamento", "Em andamento"),
+        new("PagamentoPendente", "Aguardando cobrança"), new("Finalizada", "Prontas p/ entrega"),
+        new("Entregue", "Entregues"), new("Cancelada", "Canceladas"),
+    };
+    private static readonly List<FiltroSelect.Opcao> opcoesOrdem = new()
+    {
+        new("recentes", "Mais recentes"), new("antigas", "Mais antigas"),
+        new("prazo", "Prazo mais próximo"), new("valor-desc", "Maior valor"),
+    };
+
+    private int Contar(string status) => ordens.Count(o => o.Status == status);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var user = state.User;
+        ehMecanico = user.IsInRole("Mecanico") && !user.IsInRole("Admin") && !user.IsInRole("ChefeOficina");
+        var claim = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (claim is not null) mecanicoId = Guid.Parse(claim.Value);
+
+        var tOrdens = OrdemService.GetAllAsync();
+        var tClientes = ClienteService.GetAllAsync();
+        var tMecanicos = MecanicoService.GetAllAsync();
+        var tVeiculos = VeiculoClienteService.GetAllAsync();
+        await Task.WhenAll(tOrdens, tClientes, tMecanicos, tVeiculos);
+
+        var todas = tOrdens.Result.IsSuccess ? tOrdens.Result.Value?.ToList() ?? new() : new();
+        ordens = ehMecanico ? todas.Where(o => o.MecanicoId == mecanicoId).ToList() : todas;
+
+        if (tClientes.Result.IsSuccess && tClientes.Result.Value is not null)
+            mapaClientes = tClientes.Result.Value.ToDictionary(c => c.Id);
+        if (tMecanicos.Result.IsSuccess && tMecanicos.Result.Value is not null)
+            mapaMecanicos = tMecanicos.Result.Value.ToDictionary(m => m.Id);
+        if (tVeiculos.Result.IsSuccess && tVeiculos.Result.Value is not null)
+            mapaVeiculos = tVeiculos.Result.Value.ToDictionary(v => v.Id);
+
+        var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        abertas = ordens.Count(o => StatusAbertos.Contains(o.Status));
+        atrasadas = ordens.Count(EhAtrasada);
+        entreguesMes = ordens.Count(o => o.Status == "Entregue" && o.PrazoEstimado >= inicioMes);
+
+        AplicarFiltro();
+        carregando = false;
+    }
+
+    private void AplicarFiltro()
+    {
+        IEnumerable<OrdemServicoListaDTO> q = filtroAtivo switch
+        {
+            "Todos"     => ordens,
+            "abertas"   => ordens.Where(o => StatusAbertos.Contains(o.Status)),
+            "Atrasadas" => ordens.Where(EhAtrasada),
+            _           => ordens.Where(o => o.Status == filtroAtivo)
+        };
+
+        if (!string.IsNullOrWhiteSpace(busca))
+        {
+            var t = busca.Trim();
+            q = q.Where(o =>
+                o.NumeroPublico.Contains(t, StringComparison.OrdinalIgnoreCase)
+                || NomeCliente(o.ClienteId).Contains(t, StringComparison.OrdinalIgnoreCase)
+                || PlacaVeiculo(o.VeiculoClienteId).Contains(t, StringComparison.OrdinalIgnoreCase));
+        }
+
+        q = ordenacao switch
+        {
+            "antigas" => q.OrderBy(o => o.DataCriacao),
+            "prazo" => q.OrderBy(o => o.PrazoEstimado),
+            "valor-desc" => q.OrderByDescending(o => o.ValorTotal),
+            _ => q.OrderByDescending(o => o.DataCriacao)
+        };
+
+        ordensFiltradas = q.ToList();
+    }
+
+    private static readonly string[] StatusAbertos =
+        { "Pendente", "EmAnalise", "AguardandoCliente", "BuscandoPecasParaOrcamento", "Aprovada", "EmAndamento", "Pausada" };
+
+    private bool EhAtrasada(OrdemServicoListaDTO o) =>
+        StatusAbertos.Contains(o.Status) && o.PrazoEstimado.Date < DateTime.Today;
+
+    private int DiasAberta(OrdemServicoListaDTO o) => Math.Max(0, (DateTime.Today - o.DataCriacao.Date).Days);
+
+    private string NomeCliente(Guid id) => mapaClientes.TryGetValue(id, out var c) ? c.Nome : "—";
+    private string CpfCliente(Guid id) => mapaClientes.TryGetValue(id, out var c) ? $"CPF {c.Cpf}" : "";
+    private string DescricaoVeiculo(Guid id) => mapaVeiculos.TryGetValue(id, out var v) ? $"{v.Marca} {v.Modelo}" : "—";
+    private string AnoVeiculo(Guid id) => mapaVeiculos.TryGetValue(id, out var v) ? $"{v.Cor} · {v.Ano}" : "";
+    private string PlacaVeiculo(Guid id) => mapaVeiculos.TryGetValue(id, out var v) ? v.Placa : "";
+    private string NomeMecanico(Guid id) => id == Guid.Empty ? "Não atribuído"
+        : mapaMecanicos.TryGetValue(id, out var m) ? m.Nome : "—";
+}
+
+<style>
+    .filtros-linha {
+        display: flex;
+        justify-content: space-between;
+        gap: var(--sp-3);
+        align-items: flex-start;
+        flex-wrap: wrap;
+        margin-bottom: var(--sp-5);
+    }
+    .filtros-status { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+    .filtro-chip {
+        background: var(--cor-superficie-2);
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-md);
+        padding: 6px 12px;
+        font-size: var(--txt-sm);
+        color: var(--cor-tinta-2);
+        cursor: pointer;
+        display: flex; align-items: center; gap: 6px;
+    }
+    .filtro-chip.ativo { background: var(--cor-tinta); border-color: var(--cor-tinta); color: #fff; }
+    .filtro-count { opacity: .6; font-size: var(--txt-xs); }
+    .filtro-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .dot-cinza { background: var(--dot-cinza); } .dot-amarelo { background: var(--dot-amarelo); }
+    .dot-azul { background: var(--dot-azul); } .dot-verde { background: var(--dot-verde); }
+    .dot-vermelho { background: var(--dot-vermelho); } .dot-laranja { background: var(--dot-laranja); }
+
+    .busca-os {
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-md);
+        padding: 8px 12px;
+        font-size: var(--txt-sm);
+        min-width: 260px;
+        font-family: inherit;
+    }
+
+    .ordens-lista { display: flex; flex-direction: column; gap: var(--sp-3); }
+    .os-card {
+        display: block;
+        background: var(--cor-superficie);
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-lg);
+        padding: var(--sp-4);
+        text-decoration: none;
+        color: inherit;
+        transition: border-color .15s, box-shadow .15s;
+    }
+    .os-card:hover { border-color: var(--cor-acao); box-shadow: var(--sombra-hover); }
+    .os-cabecalho {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: var(--sp-3); padding-bottom: var(--sp-2);
+        border-bottom: 1px solid var(--cor-linha-suave);
+    }
+    .os-numero {
+        font-family: monospace; font-size: var(--txt-sm); font-weight: var(--peso-forte);
+        color: var(--cor-acao); background: var(--cor-info-bg);
+        padding: 3px 9px; border-radius: var(--raio-sm);
+    }
+    .tag-atraso {
+        font-size: var(--txt-xs); font-weight: var(--peso-forte);
+        color: var(--cor-erro-tx); background: var(--cor-erro-bg);
+        padding: 2px 8px; border-radius: var(--raio-full);
+    }
+    .os-corpo { display: grid; grid-template-columns: 1.4fr 1.4fr 1.2fr .9fr .9fr; gap: var(--sp-3); }
+    .os-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .os-col.alinha-dir { align-items: flex-end; text-align: right; }
+    .rotulo { font-size: 10px; color: var(--cor-tinta-3); text-transform: uppercase; letter-spacing: .5px; font-weight: var(--peso-forte); }
+    .dado { font-size: var(--txt-sm); font-weight: var(--peso-medio); color: var(--cor-tinta); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dado.valor { font-size: var(--txt-lg); font-weight: var(--peso-bold); }
+    .dado.vencido { color: var(--cor-erro-tx); }
+    .dado-sub { font-size: var(--txt-xs); color: var(--cor-tinta-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    @@media (max-width: 900px) { .os-corpo { grid-template-columns: 1fr 1fr; } .os-col.alinha-dir { align-items: flex-start; text-align: left; } }
+    @@media (max-width: 560px) { .os-corpo { grid-template-columns: 1fr; } .filtros-linha { flex-direction: column; } .busca-os { width: 100%; } }
+</style>

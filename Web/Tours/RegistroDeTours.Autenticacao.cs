@@ -15,45 +15,36 @@ public static partial class RegistroDeTours
             new()
             {
                 Seletor = null,
-                Titulo = "Consulta pública de OS",
-                Texto = "Esta tela permite que qualquer cliente acompanhe o andamento do serviço do seu " +
-                    "veículo sem precisar de login — basta o código que a oficina informou na abertura da " +
-                    "ordem."
+                Titulo = "Consulta pública",
+                Texto = "Esta tela permite que qualquer cliente acompanhe o serviço do seu veículo e veja o " +
+                    "histórico de atendimentos, sem precisar de login."
             },
             new()
             {
                 Seletor = "consulta-busca",
-                Titulo = "Código da ordem",
-                Texto = "Digite o código de 8 caracteres recebido da oficina (ex.: A1B2C3D4) e clique em " +
-                    "\"Consultar\". O mesmo código também funciona direto na URL, em /consulta/SEUCODIGO."
+                Titulo = "CPF + placa",
+                Texto = "Informe o CPF do cliente e a placa de um dos veículos dele. A placa serve como " +
+                    "segunda verificação — precisa pertencer àquele CPF."
             },
             new()
             {
-                Seletor = "consulta-trilha",
-                Titulo = "Andamento do serviço",
-                Texto = "Uma versão simplificada da trilha usada internamente pela oficina, mostrando em qual " +
-                    "das seis etapas o serviço está agora."
+                Seletor = "consulta-aberta",
+                Titulo = "Ordem em andamento",
+                Texto = "Se houver um serviço em curso, ele aparece em destaque no topo, com a trilha de " +
+                    "etapas, o checklist e o valor."
             },
             new()
             {
-                Seletor = "consulta-info",
-                Titulo = "Informações do serviço",
-                Texto = "Tipo de serviço, data de abertura, descrição do problema relatado, prazo estimado e " +
-                    "valor total — a mesma visão que a recepção usa, mas sem os campos internos."
-            },
-            new()
-            {
-                Seletor = "consulta-checklist",
-                Titulo = "Etapas técnicas",
-                Texto = "Se a oficina já definiu um checklist para o serviço, cada item aparece aqui com seu " +
-                    "progresso — dá pra acompanhar exatamente o que já foi feito no veículo."
+                Seletor = "consulta-veiculos",
+                Titulo = "Histórico por veículo",
+                Texto = "Cada veículo do cliente lista todos os atendimentos já feitos na oficina — data, " +
+                    "número da OS, serviço, status e valor."
             },
             new()
             {
                 Seletor = null,
                 Titulo = "Sem cadastro necessário",
-                Texto = "Esta consulta não exige login. Para acessar as telas internas do sistema, use o link " +
-                    "\"Acesso interno\" no topo da página."
+                Texto = "Para acessar as telas internas do sistema, use o link \"Acesso interno\" no topo."
             }
         };
 

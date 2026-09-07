@@ -20,12 +20,19 @@ public static class ComponenteGerador
         IServiceProvider provider,
         int quantidade,
         Random rng,
-        UniquePool skuPool)
+        UniquePool skuPool,
+        IReadOnlyList<Guid> fornecedorIds)
     {
+        if (fornecedorIds.Count == 0)
+        {
+            Console.WriteLine("  Componentes: pulado — nenhum fornecedor cadastrado (pré-requisito do formulário de peça).");
+            return new List<Guid>();
+        }
+
         var ids = await ExecutorLote.ExecutarAsync<IComponenteService>(
             provider,
             quantidade,
-            (servico, _) => servico.AddAsync(MontarDto(rng, skuPool)),
+            (servico, _) => servico.AddAsync(MontarDto(rng, skuPool, fornecedorIds)),
             "Componentes");
 
         var comEstoque = 0;
@@ -41,7 +48,7 @@ public static class ComponenteGerador
         return ids;
     }
 
-    private static CriarComponenteDTO MontarDto(Random rng, UniquePool skuPool)
+    private static CriarComponenteDTO MontarDto(Random rng, UniquePool skuPool, IReadOnlyList<Guid> fornecedorIds)
     {
         var sistemas = Enum.GetValues<SistemaComponente>();
         var sistema = sistemas[rng.Next(sistemas.Length)];
@@ -51,6 +58,7 @@ public static class ComponenteGerador
 
         return new CriarComponenteDTO
         {
+            FornecedorId = fornecedorIds[rng.Next(fornecedorIds.Count)],
             SKUInterno = sku,
             Nome = $"{nomePeca} {marca}",
             Descricao = $"{nomePeca} — sistema {sistema}, compatível com diversos modelos.",

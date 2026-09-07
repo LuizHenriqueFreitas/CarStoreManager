@@ -1,4 +1,4 @@
-@page "/admin/configuracoes"
+@page "/configuracoes/sistema"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 
 @namespace CarStoreManager.Web.Components.Pages
@@ -10,6 +10,7 @@
 @inject IChecklistPresetService PresetService
 @inject ITemplateDocumentoService TemplateDocService
 @inject IImportacaoDadosService ImportacaoService
+@inject NavigationManager Nav
 
 @using CarStoreManager.Application.Interfaces.Sistema
 @using CarStoreManager.Application.Interfaces.Oficina
@@ -17,27 +18,42 @@
 @using CarStoreManager.Application.DTOs.Sistema.Importacao
 @using CarStoreManager.Application.DTOs.Sistema.TemplateDocumento
 @using CarStoreManager.Application.DTOs.Oficina.ChecklistPreset
+@using CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Forms
 
-<div class="cfg-page">
-    <h1 class="page-titulo">Configurações do sistema</h1>
-    <p class="page-sub">Parâmetros de funcionamento gerenciados pelo administrador</p>
+<div class="pagina cfg-page">
+    <PageHeader Titulo="Configurações do sistema"
+                Subtitulo="Parâmetros de funcionamento gerenciados pelo administrador">
+        <Acao>
+            <a class="btn btn-neutro" href="@(abaAtiva == "menu" ? "/configuracoes" : "/configuracoes/sistema")">← Voltar</a>
+        </Acao>
+    </PageHeader>
+
+    <SubNav Itens="SubNavConfiguracoes.Itens" />
 
     @if (!string.IsNullOrEmpty(mensagem))
     {
         <div class="banner @(mensagemErro ? "banner-erro" : "banner-ok")">@mensagem</div>
     }
 
-    <div class="abas" data-tour="cfg-abas">
-        <button class="@AbaClass("geral")" @onclick='() => abaAtiva = "geral"'>Geral</button>
-        <button class="@AbaClass("despesas")" @onclick='() => abaAtiva = "despesas"'>Despesas mensais</button>
-        <button class="@AbaClass("checklists")" @onclick='() => abaAtiva = "checklists"'>Checklists</button>
-        <button class="@AbaClass("operacao")" @onclick='() => abaAtiva = "operacao"'>Modo operante</button>
-        <button class="@AbaClass("documentos")" @onclick='() => abaAtiva = "documentos"'>Documentos</button>
-        <button class="@AbaClass("importar")" @onclick='() => abaAtiva = "importar"'>Importar dados</button>
-    </div>
-
-    @if (carregando)
+    @if (abaAtiva == "menu")
+    {
+        <div class="cfg-menu-grid">
+            <SecaoCard Titulo="Integrações" Icone="🔌" Href="/configuracoes/sistema?aba=geral"
+                       Descricao="Conexão com Mercado Livre e gerenciamento de anúncios." />
+            <SecaoCard Titulo="Checklists" Icone="✅" Href="/configuracoes/sistema?aba=checklists"
+                       Descricao="Modelos de checklist usados na abertura de ordens de serviço." />
+            <SecaoCard Titulo="Modo operante" Icone="⚙️" Href="/configuracoes/sistema?aba=operacao"
+                       Descricao="Ativa/desativa módulos e ajusta parâmetros globais de operação." />
+            <SecaoCard Titulo="Documentos" Icone="📄" Href="/configuracoes/sistema?aba=documentos"
+                       Descricao="Templates dos documentos gerados pelo sistema (termos, propostas)." />
+            <SecaoCard Titulo="Importar dados" Icone="📥" Href="/configuracoes/sistema?aba=importar"
+                       Descricao="Carrega uma base de dados a partir de um arquivo." />
+            <SecaoCard Titulo="Exportar dados" Icone="📤" Href="/configuracoes/sistema?aba=exportar"
+                       Descricao="Baixa todo o banco de dados da aplicação em um arquivo JSON." />
+        </div>
+    }
+    else if (carregando)
     {
         <p class="muted">Carregando...</p>
     }
@@ -378,6 +394,25 @@
             </section>
         }
 
+        @if (abaAtiva == "exportar")
+        {
+            <section class="cfg-card-full" data-tour="cfg-exportar-dados">
+                <h2>Exportar dados</h2>
+                <p class="muted">
+                    Gera um único arquivo <strong>JSON</strong> com o conteúdo de todas as tabelas
+                    do banco — clientes, veículos, propostas, ordens de serviço, despesas,
+                    configurações e integrações. Serve como backup e para inspeção externa dos
+                    dados. O arquivo pode ser grande; a geração leva alguns segundos.
+                </p>
+
+                <div class="acoes">
+                    <a class="btn-salvar" href="/api/configuracoes/exportar-dados" target="_blank" rel="noopener">
+                        Baixar arquivo JSON
+                    </a>
+                </div>
+            </section>
+        }
+
         @if (config.DataUltimaAtualizacao.HasValue)
         {
             <p class="muted ultima">Última atualização: @config.DataUltimaAtualizacao.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
@@ -388,6 +423,7 @@
 
 <style>
     .cfg-page { padding:24px; max-width:1100px; margin:0 auto; }
+    .cfg-menu-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; }
     .page-titulo { margin:0; font-size:1.6rem; }
     .page-sub { margin:4px 0 24px; color:#666; }
     .banner { padding:12px 16px; border-radius:6px; margin-bottom:16px; }
@@ -433,6 +469,7 @@
         cursor:pointer; font-weight:500;
     }
     .btn-salvar:disabled { background:#aaa; cursor:not-allowed; }
+    a.btn-salvar { display:inline-block; text-decoration:none; }
     .ultima { text-align:right; margin-top:14px; }
     .integ-links { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
     .btn-integ {
@@ -499,7 +536,7 @@
     private bool salvando;
     private string mensagem = "";
     private bool mensagemErro;
-    private string abaAtiva = "geral";
+    private string abaAtiva = "menu";
 
     // Despesas
     private List<DespesaDTO> despesas = new();
@@ -528,7 +565,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await CarregarTudo();
+        var q = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(Nav.Uri).Query);
+        if (q.TryGetValue("aba", out var aba) && !string.IsNullOrWhiteSpace(aba))
+            abaAtiva = aba.ToString();
+
+        if (abaAtiva != "menu")
+            await CarregarTudo();
+        else
+            carregando = false;
     }
 
     private async Task CarregarTudo()

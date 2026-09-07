@@ -458,4 +458,64 @@ public class OrdemServicoTest
             prazo ?? DateTime.UtcNow.AddDays(1),
             custoServico);
     }
+
+    // ==================== CHECKLIST — regras do need_to_do.txt ====================
+
+    [Fact]
+    public void Finalizar_ChecklistIncompleto_LancaInvalidOperationException()
+    {
+        var ordem = CriarOrdemServicoValida();
+        ordem.GerarChecklistAPartirDoPreset(new[] { "Trocar óleo", "Verificar freios" });
+        ordem.Iniciar();
+
+        Action act = () => ordem.Finalizar();
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*checklist*");
+        ordem.Status.Should().Be(StatusOrdemServico.EmAndamento);
+    }
+
+    [Fact]
+    public void Finalizar_ChecklistTodoConcluido_AvancaParaPagamentoPendente()
+    {
+        var ordem = CriarOrdemServicoValida();
+        ordem.GerarChecklistAPartirDoPreset(new[] { "Trocar óleo" });
+        ordem.Iniciar();
+        foreach (var item in ordem.Checklist) item.ConcluirItem();
+
+        ordem.Finalizar();
+
+        ordem.Status.Should().Be(StatusOrdemServico.PagamentoPendente);
+    }
+
+    [Fact]
+    public void Finalizar_SemChecklist_NaoBloqueia()
+    {
+        var ordem = CriarOrdemServicoValida();
+        ordem.Iniciar();
+
+        ordem.Finalizar();
+
+        ordem.Status.Should().Be(StatusOrdemServico.PagamentoPendente);
+    }
+
+    [Fact]
+    public void GarantirChecklistEditavel_ForaDeEmAndamento_Lanca()
+    {
+        var ordem = CriarOrdemServicoValida(); // Pendente
+
+        Action act = () => ordem.GarantirChecklistEditavel();
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void GarantirChecklistEditavel_EmAndamento_NaoLanca()
+    {
+        var ordem = CriarOrdemServicoValida();
+        ordem.Iniciar();
+
+        Action act = () => ordem.GarantirChecklistEditavel();
+
+        act.Should().NotThrow();
+    }
 }

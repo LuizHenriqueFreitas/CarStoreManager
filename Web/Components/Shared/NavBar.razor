@@ -8,48 +8,58 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
 @inject TourEstadoService TourEstado
+@implements IDisposable
+
+@* Navegação global — 5 áreas primárias + utilitários.
+   Ver docs/redesign/01-arquitetura-informacao.md §2 e 04 §5. *@
 
 <nav class="navbar">
-    <a href="/" class="navbar-logo">AUTOSTORE</a>
+    <a href="/" class="navbar-logo">
+        <span class="logo-a">DE</span><span class="logo-b">LORE</span>
+    </a>
 
-    <div class="navbar-links @(mostrarMenuMobile ? "aberto" : "")">
-        <AuthorizeView Roles="Admin,GerenteVendas,Vendedor">
-            <NavLink href="/concessionaria" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
-                Concessionária
-            </NavLink>
-            <NavLink href="/concessionaria/propostas" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
-                Propostas
+    <div class="navbar-links @(menuMobileAberto ? "aberto" : "")">
+        <NavLink href="/" Match="NavLinkMatch.All" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMobile">
+            Início
+        </NavLink>
+
+        <AuthorizeView Roles="Admin,GerenteVendas,Vendedor" Context="c1">
+            <NavArea Titulo="Concessionária" RotaBase="/concessionaria"
+                     Itens="@ItensConcessionaria" OnNavegar="FecharMobile" />
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin,ChefeOficina,Mecanico,Recepcionista" Context="c2">
+            <NavArea Titulo="Oficina" RotaBase="/oficina"
+                     Itens="@ItensOficina(c2.User)" OnNavegar="FecharMobile" />
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin,GerenteVendas,Vendedor,ChefeOficina,Recepcionista" Context="cCli">
+            <NavLink href="/clientes" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMobile">
+                Clientes
             </NavLink>
         </AuthorizeView>
 
-        <AuthorizeView Roles="Admin,ChefeOficina,Mecanico,Recepcionista">
-            <NavLink href="/oficina" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
-                Oficina
+        <AuthorizeView Roles="Admin,GerenteVendas,ChefeOficina" Context="c3">
+            <NavLink href="/financeiro" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMobile">
+                Financeiro
             </NavLink>
         </AuthorizeView>
 
-        <AuthorizeView Roles="Admin,ChefeOficina,Recepcionista">
-            <NavLink href="/recepcao" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
-                Recepção
+        <AuthorizeView Roles="Admin,GerenteVendas,ChefeOficina" Context="c4">
+            <NavLink href="/dashboard" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMobile">
+                Análises
             </NavLink>
         </AuthorizeView>
 
-        <AuthorizeView Roles="Admin,ChefeOficina,Mecanico">
-            <NavLink href="/oficina/componentes" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
-                Estoque
+        <AuthorizeView Roles="Admin" Context="cEq">
+            <NavLink href="/equipe" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMobile">
+                Equipe
             </NavLink>
         </AuthorizeView>
 
-        <AuthorizeView Roles="Admin,ChefeOficina,GerenteVendas" Context="ctxDash">
-            <NavLink href="/dashboard" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
-                Dashboard
-            </NavLink>
-        </AuthorizeView>
-
-        <AuthorizeView Roles="Admin" Context="ctxAdmin">
-            <NavLink href="/admin/configuracoes" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMenuMobile">
-                Configurações
-            </NavLink>
+        <AuthorizeView Roles="Admin,GerenteVendas,ChefeOficina" Context="c5">
+            <NavArea Titulo="Configurações" RotaBase="/configuracoes"
+                     Itens="@ItensConfiguracoes(c5.User)" OnNavegar="FecharMobile" />
         </AuthorizeView>
     </div>
 
@@ -58,32 +68,29 @@
             ?
         </button>
 
-        <div class="navbar-user" @onclick="ToggleDropdown">
-            <div class="navbar-avatar">
-                @(NomeUsuario.Length > 0 ? NomeUsuario[0].ToString().ToUpper() : "?")
-            </div>
-            <span class="navbar-user-nome">@NomeUsuario</span>
-            <span class="dropdown-seta">▾</span>
+        <div class="navbar-user">
+            <button class="navbar-user-btn" @onclick="ToggleDropdown"
+                    aria-haspopup="true" aria-expanded="@dropdownAberto.ToString().ToLower()">
+                <span class="navbar-avatar">@(NomeUsuario.Length > 0 ? NomeUsuario[0].ToString().ToUpper() : "?")</span>
+                <span class="navbar-user-nome">@NomeUsuario</span>
+                <span class="dropdown-seta">▾</span>
+            </button>
 
-            @if (mostrarDropdown)
+            @if (dropdownAberto)
             {
                 <div class="dropdown-menu" @onclick:stopPropagation>
                     <div class="dropdown-header">
                         <div class="dropdown-nome">@NomeUsuario</div>
                         <div class="dropdown-role">@Role</div>
                     </div>
-                    <button class="dropdown-item" @onclick="IrParaConfiguracoes">
-                        Configurações
-                    </button>
-                    <button class="dropdown-item" @onclick="Logout">
-                        Sair
-                    </button>
+                    <button class="dropdown-item" @onclick="IrParaConta">Minha conta</button>
+                    <button class="dropdown-item" @onclick="Logout">Sair</button>
                 </div>
             }
         </div>
 
         <button class="navbar-hamburguer" @onclick="ToggleMenuMobile"
-                title="Menu" aria-label="Abrir menu" aria-expanded="@mostrarMenuMobile.ToString().ToLower()">
+                title="Menu" aria-label="Abrir menu" aria-expanded="@menuMobileAberto.ToString().ToLower()">
             <span></span><span></span><span></span>
         </button>
     </div>
@@ -93,226 +100,199 @@
     [Parameter] public string NomeUsuario { get; set; } = "Usuário";
     [Parameter] public string Role { get; set; } = string.Empty;
 
-    private bool mostrarDropdown = false;
-    private bool mostrarMenuMobile = false;
+    private bool dropdownAberto;
+    private bool menuMobileAberto;
 
-    private void ToggleDropdown() => mostrarDropdown = !mostrarDropdown;
+    private static readonly NavArea.Item[] ItensConcessionaria =
+    {
+        new("/concessionaria", "Visão geral"),
+        new("/concessionaria/salao", "Salão"),
+        new("/concessionaria/propostas", "Propostas"),
+        new("/concessionaria/test-drives", "Test drives"),
+        new("/concessionaria/consignacoes", "Consignações"),
+    };
 
-    private void ToggleMenuMobile() => mostrarMenuMobile = !mostrarMenuMobile;
+    private static NavArea.Item[] ItensOficina(System.Security.Claims.ClaimsPrincipal u)
+    {
+        var mecanico = u.IsInRole("Mecanico") && !u.IsInRole("Admin") && !u.IsInRole("ChefeOficina");
+        return mecanico
+            ? new NavArea.Item[]
+            {
+                new("/oficina", "Visão geral"),
+                new("/oficina/ordens", "Ordens de serviço"),
+                new("/oficina/componentes", "Estoque de peças"),
+            }
+            : new NavArea.Item[]
+            {
+                new("/oficina", "Visão geral"),
+                new("/oficina/recepcao", "Recepção"),
+                new("/oficina/ordens", "Ordens de serviço"),
+                new("/oficina/componentes", "Estoque de peças"),
+                new("/oficina/fornecedores", "Fornecedores"),
+            };
+    }
 
-    private void FecharMenuMobile() => mostrarMenuMobile = false;
+    private static NavArea.Item[] ItensConfiguracoes(System.Security.Claims.ClaimsPrincipal u)
+    {
+        var lista = new List<NavArea.Item>
+        {
+            new("/configuracoes", "Visão geral"),
+        };
+        if (u.IsInRole("Admin") || u.IsInRole("GerenteVendas") || u.IsInRole("ChefeOficina"))
+            lista.Add(new("/configuracoes/formulario-despesas", "Formulário de despesas"));
+        if (u.IsInRole("Admin"))
+            lista.Add(new("/configuracoes/sistema", "Sistema"));
+        return lista.ToArray();
+    }
+
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLoc;
+    private void OnLoc(object? s, EventArgs e) { dropdownAberto = false; menuMobileAberto = false; InvokeAsync(StateHasChanged); }
+    public void Dispose() => Navigation.LocationChanged -= OnLoc;
+
+    private void ToggleDropdown() => dropdownAberto = !dropdownAberto;
+    private void ToggleMenuMobile() => menuMobileAberto = !menuMobileAberto;
+    private void FecharMobile() => menuMobileAberto = false;
 
     private async Task AbrirTourAsync() => await TourEstado.SolicitarTourAsync();
 
-    private void IrParaConfiguracoes()
+    private void IrParaConta()
     {
-        mostrarDropdown = false;
-        Navigation.NavigateTo("/configuracoes");
+        dropdownAberto = false;
+        Navigation.NavigateTo("/conta");
     }
 
     private async Task Logout()
     {
-        mostrarDropdown = false;
-        try
-        {
-            // Limpa cookie de sessão (server-side) E token do storage local.
-            await JS.InvokeVoidAsync("carstoreLogout");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Erro ao limpar sessão: {ex.Message}");
-        }
-
+        dropdownAberto = false;
+        try { await JS.InvokeVoidAsync("carstoreLogout"); }
+        catch (Exception ex) { Console.WriteLine($"Erro ao limpar sessão: {ex.Message}"); }
         Navigation.NavigateTo("/login?logout=true", forceLoad: true);
     }
 }
 
 <style>
     .navbar {
-        background: #1a1a1a;
-        padding: 0 24px;
-        min-height: 56px;
+        background: var(--cor-tinta);
+        padding: 0 var(--sp-6);
+        min-height: var(--altura-navbar);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
+        gap: var(--sp-3);
         position: sticky;
         top: 0;
         z-index: 100;
     }
 
     .navbar-logo {
-        color: #e02020;
         font-size: 18px;
-        font-weight: 600;
+        font-weight: var(--peso-forte);
         letter-spacing: 1px;
         text-decoration: none;
         flex-shrink: 0;
     }
+    .logo-a { color: #fff; }
+    .logo-b { color: var(--cor-marca); }
 
     .navbar-links {
         display: flex;
-        gap: 24px;
+        align-items: center;
+        gap: var(--sp-5);
         flex-wrap: wrap;
     }
 
-    .navbar-direita {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-shrink: 0;
-    }
+    .navbar-direita { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
 
     .navbar-hamburguer {
         display: none;
         flex-direction: column;
         justify-content: center;
         gap: 4px;
-        width: 32px;
-        height: 32px;
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        padding: 0;
+        width: 32px; height: 32px;
+        background: transparent; border: none; cursor: pointer; padding: 0;
     }
-
-    .navbar-hamburguer span {
-        display: block;
-        width: 20px;
-        height: 2px;
-        background: #ccc;
-        margin: 0 auto;
-    }
+    .navbar-hamburguer span { display: block; width: 20px; height: 2px; background: #ccc; margin: 0 auto; }
 
     .nav-link {
         color: #aaa;
-        font-size: 13px;
+        font-size: var(--txt-sm);
         padding: 4px 0;
         border-bottom: 2px solid transparent;
-        transition: color 0.2s;
+        transition: color .2s;
         text-decoration: none;
+        white-space: nowrap;
     }
-
     .nav-link:hover { color: #fff; }
-
-    .nav-link-active {
-        color: #fff !important;
-        border-bottom: 2px solid #e02020;
-    }
+    .nav-link-active { color: #fff !important; border-bottom: 2px solid var(--cor-marca); }
 
     .tour-btn-ajuda {
-        width: 26px;
-        height: 26px;
+        width: 26px; height: 26px;
         border-radius: 50%;
-        border: 0.5px solid #555;
+        border: 1px solid #555;
         background: transparent;
         color: #ccc;
-        font-size: 13px;
-        font-weight: 600;
+        font-size: var(--txt-sm);
+        font-weight: var(--peso-forte);
         cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: flex; align-items: center; justify-content: center;
         flex-shrink: 0;
     }
-
     .tour-btn-ajuda:hover { background: #2a2a2a; color: #fff; border-color: #888; }
-    .tour-btn-ajuda:focus { outline: 2px solid #e02020; outline-offset: 2px; }
 
-    .navbar-user {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #ccc;
-        font-size: 13px;
-        cursor: pointer;
-        position: relative;
+    .navbar-user { position: relative; }
+    .navbar-user-btn {
+        display: flex; align-items: center; gap: var(--sp-2);
+        background: transparent; border: none; cursor: pointer;
+        color: #ccc; font-size: var(--txt-sm); font-family: inherit;
     }
-
     .navbar-avatar {
-        width: 28px;
-        height: 28px;
+        width: 28px; height: 28px;
         border-radius: 50%;
-        background: #e02020;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        font-size: 11px;
-        font-weight: 600;
+        background: var(--cor-marca);
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: var(--txt-xs); font-weight: var(--peso-forte);
     }
-
-    .dropdown-seta {
-        font-size: 10px;
-        color: #888;
-    }
+    .dropdown-seta { font-size: 10px; color: #888; }
 
     .dropdown-menu {
         position: absolute;
-        top: 110%;
+        top: 130%;
         right: 0;
-        background: #fff;
-        border: 0.5px solid #e0e0e0;
-        border-radius: 8px;
+        background: var(--cor-superficie);
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-md);
         min-width: 180px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        padding: 8px 0;
+        box-shadow: var(--sombra-menu);
+        padding: var(--sp-2) 0;
         z-index: 200;
     }
-
-    .dropdown-header {
-        padding: 8px 16px;
-        border-bottom: 0.5px solid #eee;
-        margin-bottom: 4px;
-    }
-
-    .dropdown-nome { font-weight: 500; color: #1a1a1a; }
-    .dropdown-role { font-size: 11px; color: #888; margin-top: 2px; }
-
+    .dropdown-header { padding: var(--sp-2) var(--sp-4); border-bottom: 1px solid var(--cor-linha-suave); margin-bottom: var(--sp-1); }
+    .dropdown-nome { font-weight: var(--peso-medio); color: var(--cor-tinta); }
+    .dropdown-role { font-size: var(--txt-xs); color: var(--cor-tinta-3); margin-top: 2px; }
     .dropdown-item {
-        display: block;
-        width: 100%;
-        text-align: left;
-        padding: 8px 16px;
-        background: none;
-        border: none;
-        color: #444;
-        font-size: 13px;
-        cursor: pointer;
+        display: block; width: 100%; text-align: left;
+        padding: var(--sp-2) var(--sp-4);
+        background: none; border: none;
+        color: var(--cor-tinta-2); font-size: var(--txt-sm); cursor: pointer; font-family: inherit;
     }
+    .dropdown-item:hover { background: var(--cor-superficie-2); }
 
-    .dropdown-item:hover { background: #f4f4f4; }
-
-    /* ============ Mobile: menu vira hambúrguer ============ */
-    @@media (max-width: 768px) {
-        .navbar { padding: 0 12px; flex-wrap: wrap; }
-
+    @@media (max-width: 900px) {
+        .navbar { padding: 0 var(--sp-3); flex-wrap: wrap; }
         .navbar-hamburguer { display: flex; order: 3; }
-
         .navbar-links {
             order: 4;
             display: none;
             flex-direction: column;
+            align-items: stretch;
             gap: 0;
             width: 100%;
-            background: #1a1a1a;
-            border-top: 0.5px solid #333;
+            background: var(--cor-tinta);
+            border-top: 1px solid #333;
         }
-
-        .navbar-links.aberto {
-            display: flex;
-        }
-
-        .navbar-links .nav-link {
-            padding: 12px 4px;
-            border-bottom: 0.5px solid #2a2a2a;
-        }
-
-        .navbar-links .nav-link-active {
-            border-bottom: 0.5px solid #2a2a2a;
-            border-left: 3px solid #e02020;
-            padding-left: 12px;
-        }
+        .navbar-links.aberto { display: flex; }
+        .navbar-links > .nav-link { padding: 12px 4px; border-bottom: 1px solid #2a2a2a; }
+        .navbar-links .nav-link-active { border-bottom: 1px solid #2a2a2a; border-left: 3px solid var(--cor-marca); padding-left: 12px; }
     }
 
     @@media (max-width: 420px) {

@@ -15,12 +15,14 @@ public static class ApplicationServiceCollection
     {
         // Shared
         services.AddScoped<IClienteService, ClienteService>();
+        services.AddScoped<IClienteConsultaService, CarStoreManager.Application.Services.ClienteConsultaService>();
 
         // Concessionaria
         services.AddScoped<IVeiculoVendaService, VeiculoVendaService>();
         services.AddScoped<IVeiculoConsignacaoService, VeiculoConsignacaoService>();
         services.AddScoped<IVendedorService, VendedorService>();
         services.AddScoped<IPropostaVendaService, PropostaVendaService>();
+        services.AddScoped<ITestDriveService, CarStoreManager.Application.Services.TestDriveService>();
 
         // Oficina
         services.AddScoped<IVeiculoClienteService, VeiculoClienteService>();
@@ -28,6 +30,7 @@ public static class ApplicationServiceCollection
         services.AddScoped<IComponenteService, ComponenteService>();
         services.AddScoped<IFornecedorService, FornecedorService>();
         services.AddScoped<IOrdemServicoService, OrdemServicoService>();
+        services.AddScoped<IConsultaPublicaService, CarStoreManager.Application.Services.ConsultaPublicaService>();
 
         // Auth
         services.AddScoped<IAuthService, AuthService>();

@@ -46,6 +46,7 @@ public class AppDbContext : DbContext
     public DbSet<VeiculoVenda> VeiculosVenda { get; set; }
     public DbSet<VeiculoConsignacao> VeiculosConsignacao { get; set; }
     public DbSet<HistoricoConsignacao> HistoricosConsignacao { get; set; }
+    public DbSet<TestDrive> TestDrives { get; set; }
     public DbSet<Foto> Fotos { get; set; }
     public DbSet<PropostaVenda> PropostasVenda { get; set; }
     public DbSet<Vistoria> Vistorias { get; set; }
@@ -58,6 +59,7 @@ public class AppDbContext : DbContext
     public DbSet<ConfiguracaoSistema> ConfiguracoesSistema { get; set; }
     public DbSet<TemplateDocumento> TemplatesDocumento { get; set; }
     public DbSet<Despesa> Despesas { get; set; }
+    public DbSet<BalancoMensalDespesa> BalancosMensaisDespesa { get; set; }
 
     // =========================
     // INTEGRAÇÕES — MERCADO LIVRE
@@ -165,9 +167,14 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Cliente>()
             .OwnsOne(c => c.Cpf, cpf =>
+            {
                 cpf.Property("Numero")
                     .HasColumnName("CPF")
-                    .IsRequired());
+                    .IsRequired();
+                // 1 CPF = 1 cliente no sistema todo (oficina + concessionária).
+                // Ver docs/redesign/07-cadastro-clientes.md.
+                cpf.HasIndex("Numero").IsUnique();
+            });
 
         // =========================
         // ENDERECO (tabela própria — Cliente guarda só a FK EnderecoId)
@@ -440,6 +447,19 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<HistoricoConsignacao>().Property(h => h.Id).ValueGeneratedNever();
 
         // =========================
+        // TEST DRIVE
+        // =========================
+        modelBuilder.Entity<TestDrive>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.Id).ValueGeneratedNever();
+            entity.Property(t => t.Status).HasConversion<int>();
+            entity.Property(t => t.Observacao).HasMaxLength(1000);
+            entity.HasIndex(t => t.VeiculoVendaId);
+            entity.HasIndex(t => t.ClienteId);
+        });
+
+        // =========================
         // FOTO
         // =========================
         modelBuilder.Entity<Foto>().HasKey(f => f.Id);
@@ -527,6 +547,23 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Despesa>()
             .OwnsOne(d => d.Valor, vo =>
                 vo.Property("Valor").HasColumnName("Valor").HasPrecision(18, 2));
+
+        // === Balanço mensal de despesas ===
+        modelBuilder.Entity<BalancoMensalDespesa>(e =>
+        {
+            e.HasKey(b => b.Id);
+            e.Property(b => b.Id).ValueGeneratedNever();
+            e.HasIndex(b => b.Competencia).IsUnique();
+            e.HasMany(b => b.Itens).WithOne().HasForeignKey(i => i.BalancoId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<ItemBalancoDespesa>(e =>
+        {
+            e.HasKey(i => i.Id);
+            e.Property(i => i.Id).ValueGeneratedNever();
+            e.Property(i => i.Nome).IsRequired();
+            e.Property(i => i.Setor).HasConversion<string>();
+            e.OwnsOne(i => i.Valor, vo => vo.Property("Valor").HasColumnName("Valor").HasPrecision(18, 2));
+        });
 
         // === Precificação de componentes ===
         modelBuilder.Entity<Componente>()

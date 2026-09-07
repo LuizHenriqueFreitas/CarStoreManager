@@ -1,0 +1,46 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Seletor rotulado para uso dentro de <FiltroBar>. *@
+
+<label class="filtro-select">
+    <span class="fs-rotulo">@Rotulo</span>
+    <select value="@Valor" @onchange="OnChange">
+        @foreach (var op in Opcoes)
+        {
+            <option value="@op.Valor">@op.Rotulo</option>
+        }
+    </select>
+</label>
+
+@code {
+    [Parameter, EditorRequired] public string Rotulo { get; set; } = "";
+    [Parameter] public string Valor { get; set; } = "";
+    [Parameter] public EventCallback<string> ValorChanged { get; set; }
+    [Parameter] public EventCallback OnMudou { get; set; }
+    [Parameter, EditorRequired] public IEnumerable<Opcao> Opcoes { get; set; } = Array.Empty<Opcao>();
+
+    public record Opcao(string Valor, string Rotulo);
+
+    private async Task OnChange(ChangeEventArgs e)
+    {
+        Valor = e.Value?.ToString() ?? "";
+        await ValorChanged.InvokeAsync(Valor);
+        await OnMudou.InvokeAsync();
+    }
+}
+
+<style>
+    .filtro-select { display: flex; flex-direction: column; gap: 3px; }
+    .fs-rotulo { font-size: var(--txt-xs); color: var(--cor-tinta-3); font-weight: var(--peso-medio); }
+    .filtro-select select {
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-md);
+        padding: 7px 28px 7px 10px;
+        font-size: var(--txt-sm);
+        font-family: inherit;
+        background: var(--cor-superficie);
+        cursor: pointer;
+        min-width: 130px;
+    }
+    .filtro-select select:focus { outline: none; border-color: var(--cor-acao); }
+</style>

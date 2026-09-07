@@ -1,0 +1,49 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Faixa de chips de alerta clicáveis. Só renderiza se houver ≥ 1 alerta.
+   Ver docs/redesign/04-diretrizes-ui-ux.md §3 e docs 01/02. *@
+
+@if (Alertas is not null && Alertas.Count > 0)
+{
+    <div class="faixa-alertas" role="region" aria-label="Alertas">
+        @foreach (var a in Alertas)
+        {
+            <a class="alerta-chip tom-@a.Tom" href="@a.Href">
+                <span class="alerta-chip-icone">@(string.IsNullOrEmpty(a.Icone) ? "⚠" : a.Icone)</span>
+                @a.Texto
+            </a>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public List<Alerta>? Alertas { get; set; }
+
+    public record Alerta(string Texto, string Href, string Tom = "atencao", string? Icone = null);
+}
+
+<style>
+    .faixa-alertas {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--sp-2);
+        margin-bottom: var(--sp-5);
+    }
+    .alerta-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--sp-2);
+        padding: var(--sp-2) var(--sp-3);
+        border-radius: var(--raio-md);
+        font-size: var(--txt-sm);
+        font-weight: var(--peso-medio);
+        text-decoration: none;
+        border: 1px solid transparent;
+    }
+    .alerta-chip-icone { font-size: var(--txt-sm); }
+    .alerta-chip.tom-atencao { background: var(--cor-atencao-bg); color: var(--cor-atencao-tx); border-color: #fdba74; }
+    .alerta-chip.tom-alerta  { background: var(--cor-alerta-bg);  color: var(--cor-alerta-tx); }
+    .alerta-chip.tom-erro    { background: var(--cor-erro-bg);    color: var(--cor-erro-tx); border-color: #fca5a5; }
+    .alerta-chip.tom-info    { background: var(--cor-info-bg);    color: var(--cor-info-tx); }
+    .alerta-chip:hover { filter: brightness(0.97); }
+</style>

@@ -109,9 +109,9 @@ public static partial class RegistroDeTours
 
         new TourDaPagina
         {
-            RotaTemplate = "/recepcao",
+            RotaTemplate = "/oficina/recepcao",
             Titulo = "Recepção",
-            Descricao = "Painel de atendimento — visão geral das ordens de serviço em andamento.",
+            Descricao = "Tela de atendimento — abrir OS, cobrar e entregar.",
             Passos = new List<PassoTour>
             {
                 new()
@@ -119,43 +119,28 @@ public static partial class RegistroDeTours
                     Seletor = null,
                     Titulo = "Painel da recepção",
                     Texto = "Esta é a tela de trabalho de quem atende o cliente no balcão — abre novas ordens de " +
-                        "serviço, acompanha o andamento e recebe o pagamento na entrega do veículo."
+                        "serviço e recebe o pagamento na entrega do veículo. O painel geral da oficina (KPIs, " +
+                        "board de etapas) fica em \"Visão geral\"."
                 },
                 new()
                 {
                     Seletor = "recepcao-btn-nova",
                     Titulo = "Abrir nova ordem",
-                    Texto = "Atalho direto para o formulário de abertura de OS — o mesmo formulário acessível " +
-                        "pela tela Oficina."
+                    Texto = "Atalho direto para o formulário de abertura de OS."
                 },
                 new()
                 {
                     Seletor = "recepcao-metricas",
                     Titulo = "Métricas do dia",
-                    Texto = "Contagem rápida de ordens pendentes de revisão, em andamento na oficina, aguardando " +
-                        "cobrança e entregues no mês. Some rápido — não são números fechados de caixa, só um panorama."
+                    Texto = "Contagem rápida — em destaque, quantas ordens estão aguardando cobrança."
                 },
                 new()
                 {
                     Seletor = "recepcao-cobranca",
                     Titulo = "Aguardando cobrança e entrega",
-                    Texto = "Quando o mecânico termina o serviço, a ordem cai aqui com status \"Pagamento " +
-                        "pendente\" — falta receber do cliente antes de liberar o veículo. Clique na ordem para " +
+                    Texto = "Quando o mecânico termina o serviço, a ordem cai aqui com status \"Aguardando " +
+                        "cobrança\" — falta receber do cliente antes de liberar o veículo. Clique na ordem para " +
                         "abrir o painel de pagamento e registrar o recebimento."
-                },
-                new()
-                {
-                    Seletor = "recepcao-ordens-recentes",
-                    Titulo = "Ordens recentes",
-                    Texto = "As demais ordens em andamento, das mais recentes para as mais antigas pelo prazo " +
-                        "estimado. Clique em qualquer uma para abrir o detalhe completo."
-                },
-                new()
-                {
-                    Seletor = null,
-                    Titulo = "Fluxo completo",
-                    Texto = "Para acompanhar uma ordem específica do início ao fim — orçamento, aprovação do " +
-                        "cliente, execução e entrega — abra o tour da tela de detalhe da OS."
                 }
             }
         },
@@ -163,44 +148,68 @@ public static partial class RegistroDeTours
         new TourDaPagina
         {
             RotaTemplate = "/oficina",
-            Titulo = "Ordens de Serviço",
-            Descricao = "Lista de todas as ordens de serviço, com filtro por status.",
+            Titulo = "Gestão da Oficina",
+            Descricao = "Painel geral: KPIs, board de OS por etapa e pendências.",
             Passos = new List<PassoTour>
             {
                 new()
                 {
                     Seletor = null,
-                    Titulo = "Todas as ordens de serviço",
-                    Texto = "Esta tela lista todas as ordens de serviço do sistema. Um mecânico vê só as ordens " +
-                        "atribuídas a ele — as demais funções veem a lista completa."
+                    Titulo = "Visão geral da oficina",
+                    Texto = "Em uma tela: como a oficina está agora, o que precisa de atenção e para onde ir. " +
+                        "Um mecânico vê só as ordens atribuídas a ele."
                 },
                 new()
                 {
-                    Seletor = "oficina-btn-nova",
-                    Titulo = "Nova ordem",
-                    Texto = "Abre o formulário de criação de uma nova OS. Este botão não aparece para o " +
-                        "mecânico, que só acompanha as ordens já atribuídas a ele."
+                    Seletor = "oficina-hub-kpis",
+                    Titulo = "Indicadores",
+                    Texto = "OS pendentes, em andamento, aguardando cobrança, entregues no mês e prazo médio " +
+                        "estimado."
                 },
                 new()
                 {
-                    Seletor = "oficina-filtros",
-                    Titulo = "Filtro por status",
-                    Texto = "Filtre a lista por uma etapa do fluxo — pendente, em andamento, pagamento " +
-                        "pendente, finalizada ou cancelada. \"Todas\" limpa o filtro."
+                    Seletor = "oficina-hub-board",
+                    Titulo = "Ordens por etapa",
+                    Texto = "Cada coluna é uma etapa do fluxo da OS. Clique num card para abrir a ordem. Para a " +
+                        "lista completa com filtros e busca, use \"Ordens de serviço\"."
                 },
                 new()
                 {
-                    Seletor = "oficina-card-exemplo",
-                    Titulo = "Card de uma ordem",
-                    Texto = "Cada card resume número, tipo de serviço, prazo, valor total e status atual. Clique " +
-                        "em qualquer card para abrir o detalhe completo da ordem."
+                    Seletor = "oficina-hub-atencao",
+                    Titulo = "Precisa de atenção",
+                    Texto = "Cobranças pendentes, prazos estourados e peças abaixo do mínimo, já com o link " +
+                        "para resolver."
                 },
+                new()
+                {
+                    Seletor = "oficina-hub-graficos",
+                    Titulo = "Gráficos",
+                    Texto = "Receita de serviços nos últimos meses (linha) e ordens por situação (barra). " +
+                        "Visível para administração e chefia."
+                },
+                new()
+                {
+                    Seletor = "oficina-hub-atalhos",
+                    Titulo = "Ir para",
+                    Texto = "Atalhos para estoque, fornecedores, equipe, financeiro da oficina, despesas, " +
+                        "relatórios e análises."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/oficina/ordens",
+            Titulo = "Ordens de serviço",
+            Descricao = "Lista completa com filtros por status e busca.",
+            Passos = new List<PassoTour>
+            {
                 new()
                 {
                     Seletor = null,
-                    Titulo = "Abrindo uma ordem",
-                    Texto = "Ao clicar em uma ordem, você chega à tela de detalhe — é lá que o fluxo avança, " +
-                        "etapa por etapa, até a entrega ao cliente."
+                    Titulo = "Todas as ordens",
+                    Texto = "Lista completa das OS. Filtre por status (incluindo \"Atrasadas\") ou busque por " +
+                        "número, cliente ou placa. Clique em qualquer card para abrir o detalhe."
                 }
             }
         },
@@ -346,6 +355,36 @@ public static partial class RegistroDeTours
                     Titulo = "De volta às ordens",
                     Texto = "As peças cadastradas aqui ficam disponíveis para adicionar em qualquer ordem de " +
                         "serviço, tanto na abertura quanto no detalhe."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/oficina/fornecedores",
+            Titulo = "Fornecedores",
+            Descricao = "Cadastro dos fornecedores de peças da oficina.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Fornecedores de peças",
+                    Texto = "Cadastro dos fornecedores usados no cadastro de componentes. Nome e CNPJ são " +
+                        "obrigatórios; endereço, e-mail e telefone são opcionais."
+                },
+                new()
+                {
+                    Seletor = "forn-btn-novo",
+                    Titulo = "Novo fornecedor",
+                    Texto = "Abre o formulário de cadastro. O CNPJ precisa ser único — o sistema recusa duplicados."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Ativar e desativar",
+                    Texto = "Um fornecedor desativado deixa de aparecer no autocomplete de cadastro de peças, " +
+                        "mas o histórico é preservado."
                 }
             }
         }

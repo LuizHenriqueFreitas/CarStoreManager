@@ -52,6 +52,12 @@ else
                 {
                     <button class="btn-acao verde" @onclick='() => PedirConfirmacao("Finalizar serviço", "Deseja finalizar o serviço desta OS?", FinalizarOS)'>Finalizar serviço</button>
                 }
+                else if (os?.Status == "EmAndamento" && (ehAdmin || ehMecanico) && !ChecklistCompleto)
+                {
+                    <button class="btn-acao verde" disabled title="Conclua todos os itens do checklist para finalizar">
+                        Finalizar serviço (checklist pendente)
+                    </button>
+                }
                 @if (PodeEntregar)
                 {
                     <button class="btn-acao verde" @onclick='() => PedirConfirmacao("Cobrar e entregar", "Deseja marcar esta OS como entregue ao cliente?", EntregarOS)'>💰 Cobrar e entregar</button>
@@ -523,8 +529,13 @@ else
     private bool PodeIniciar =>
         os?.Status == "Aprovada" && (ehAdmin || ehMecanico);
 
+    // need_to_do.txt: só é possível avançar para a etapa 6 (Finalizar) depois de
+    // concluir todos os itens da checklist.
+    private bool ChecklistCompleto =>
+        os is not null && os.Checklist.Count > 0 && os.Checklist.All(c => c.Status == "Concluido");
+
     private bool PodeFinalizar =>
-        os?.Status == "EmAndamento" && (ehAdmin || ehMecanico);
+        os?.Status == "EmAndamento" && (ehAdmin || ehMecanico) && ChecklistCompleto;
 
     // Recepção é quem cobra e entrega — mecânico não tem acesso a essa etapa.
     private bool PodeEntregar =>
@@ -549,7 +560,10 @@ else
     // permissivo: Admin e ChefeOficina também podem, além do mecânico responsável.
     private bool SouOMecanicoDaOS => os is not null && ehMecanico && os.MecanicoId == meuUsuarioId;
     private bool PodeEditarChecklist => OsAberta && SouOMecanicoDaOS;
-    private bool PodeMudarStatusChecklist => OsAberta && (SouOMecanicoDaOS || ehAdmin || ehChefeOficina);
+    // need_to_do.txt: os itens da checklist só podem ser marcados durante a etapa 5
+    // (serviço em andamento).
+    private bool PodeMudarStatusChecklist =>
+        os?.Status == "EmAndamento" && (SouOMecanicoDaOS || ehAdmin || ehChefeOficina);
     private bool PodeEditarItens     => OsAberta && (ehAdmin || ehMecanico || ehRecepcionista);
 
     // ========== Transições ==========
@@ -716,16 +730,15 @@ else
         }
     }
 
-    private void CliqueCirculoChecklist(ChecklistItemDTO item)
+    // need_to_do.txt: cliques na checklist são aceitos automaticamente, sem
+    // confirmação a cada clique.
+    private async Task CliqueCirculoChecklist(ChecklistItemDTO item)
     {
         if (!PodeMudarStatusChecklist) return;
         if (item.Status == "Concluido") return;
 
         var novoStatus = item.Status == "Pendente" ? "EmAndamento" : "Concluido";
-        PedirConfirmacao(
-            "Atualizar item",
-            $"Deseja marcar \"{item.Descricao}\" como {StatusChecklistLabel(novoStatus)}?",
-            () => AvancarStatusChecklist(item, novoStatus));
+        await AvancarStatusChecklist(item, novoStatus);
     }
 
     private async Task AvancarStatusChecklist(ChecklistItemDTO item, string novoStatus)

@@ -1,0 +1,39 @@
+@page "/configuracoes"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,ChefeOficina")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using CarStoreManager.Web.Components.Shared
+
+<div class="pagina">
+    <PageHeader Titulo="Configurações" Subtitulo="Parâmetros de funcionamento, presets e dados do sistema" />
+
+    <SubNav Itens="SubNavConfiguracoes.Itens" />
+
+    <div class="cfg-grid" data-tour="config-cards">
+        <AuthorizeView Roles="Admin,GerenteVendas,ChefeOficina" Context="cd">
+            <SecaoCard Titulo="Formulário mensal de despesas" Icone="🧾" Href="/configuracoes/formulario-despesas"
+                       Descricao="Modelo das despesas mensais e dia de fechamento do balanço." />
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin">
+            <SecaoCard Titulo="Integrações" Icone="🔌" Href="/configuracoes/sistema?aba=geral"
+                       Descricao="Conexão com Mercado Livre e gerenciamento de anúncios." />
+            <SecaoCard Titulo="Checklists" Icone="✅" Href="/configuracoes/sistema?aba=checklists"
+                       Descricao="Modelos de checklist usados na abertura de ordens de serviço." />
+            <SecaoCard Titulo="Modo operante" Icone="⚙️" Href="/configuracoes/sistema?aba=operacao"
+                       Descricao="Ativa/desativa módulos e ajusta parâmetros globais." />
+            <SecaoCard Titulo="Documentos" Icone="📄" Href="/configuracoes/sistema?aba=documentos"
+                       Descricao="Templates dos documentos gerados pelo sistema." />
+            <SecaoCard Titulo="Importar dados" Icone="📥" Href="/configuracoes/sistema?aba=importar"
+                       Descricao="Carrega uma base de dados a partir de um arquivo JSON." />
+            <SecaoCard Titulo="Exportar dados" Icone="📤" Href="/configuracoes/sistema?aba=exportar"
+                       Descricao="Baixa todo o banco de dados da aplicação em um arquivo JSON." />
+        </AuthorizeView>
+    </div>
+</div>
+
+<style>
+    .cfg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--sp-4); }
+</style>

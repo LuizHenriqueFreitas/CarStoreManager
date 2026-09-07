@@ -33,7 +33,7 @@ public class DespesaService : IDespesaService
         {
             var setor = ParseSetor(dto.Setor);
             var tipo = ParseTipo(dto.Tipo);
-            var despesa = new Despesa(dto.Nome, dto.Valor, setor, tipo);
+            var despesa = new Despesa(dto.Nome, dto.Valor, setor, tipo, dto.Categoria);
             await _repo.AddAsync(despesa);
             await _repo.SaveChangesAsync();
             return Result<Guid>.Ok(despesa.Id);
@@ -51,6 +51,7 @@ public class DespesaService : IDespesaService
             despesa.Atualizar(dto.Nome, dto.Valor);
             despesa.AtualizarSetor(ParseSetor(dto.Setor));
             despesa.AtualizarTipo(ParseTipo(dto.Tipo));
+            despesa.AtualizarCategoria(dto.Categoria);
             if (dto.Ativa && !despesa.Ativa) despesa.Reativar();
             else if (!dto.Ativa && despesa.Ativa) despesa.Desativar();
 
@@ -104,6 +105,7 @@ public class DespesaService : IDespesaService
         Ativa = d.Ativa,
         Setor = d.Setor.ToString(),
         Tipo = d.Tipo.ToString(),
+        Categoria = d.Categoria,
         DataUltimaAtualizacao = d.DataUltimaAtualizacao
     };
 }

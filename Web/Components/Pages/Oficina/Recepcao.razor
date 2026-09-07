@@ -1,4 +1,4 @@
-@page "/recepcao"
+@page "/oficina/recepcao"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
 
 @namespace CarStoreManager.Web.Components.Pages
@@ -14,19 +14,51 @@
 @using CarStoreManager.Application.DTOs.Oficina.Mecanico
 @using CarStoreManager.Application.DTOs.Oficina.VeiculoCliente
 @using CarStoreManager.Application.DTOs.Shared.Cliente
+@using CarStoreManager.Web.Components.Shared
 
-<div class="recepcao-page">
-    <div class="page-header">
-        <div>
-            <h1 class="page-titulo">Recepção</h1>
-            <p class="page-sub">Atendimento e abertura de ordens de serviço</p>
+<div class="pagina recepcao-page">
+    <PageHeader Titulo="Recepção" Subtitulo="Atendimento, abertura de OS, cobrança e entrega">
+        <Acao>
+            <button class="btn btn-primario" data-tour="recepcao-btn-nova" @onclick='() => Nav.NavigateTo("/oficina/os/nova")'>
+                + Nova ordem de serviço
+            </button>
+        </Acao>
+    </PageHeader>
+
+    <SubNav Itens="SubNavOficina.Itens(false)" />
+
+    <div class="recepcao-topo">
+        <a class="abrir-os-card" href="/oficina/os/nova">
+            <span class="aoc-icone">＋</span>
+            <div>
+                <strong>Abrir ordem de serviço</strong>
+                <span>Registrar um novo atendimento</span>
+            </div>
+        </a>
+        <div class="busca-rapida">
+            <label>Buscar OS</label>
+            <input type="text" placeholder="Nº da OS, cliente ou placa..." @bind="buscaOs" @bind:event="oninput" />
+            @if (!string.IsNullOrWhiteSpace(buscaOs) && ResultadosBusca.Any())
+            {
+                <div class="busca-drop">
+                    @foreach (var os in ResultadosBusca)
+                    {
+                        <a class="busca-item" href="@($"/oficina/os/{os.Id}")">
+                            <span class="bi-num">@os.NumeroPublico</span>
+                            <span class="bi-cli">@NomeCliente(os.ClienteId)</span>
+                            <span class="bi-status">@os.Status</span>
+                        </a>
+                    }
+                </div>
+            }
         </div>
-        <button class="btn-novo" data-tour="recepcao-btn-nova" @onclick='() => Nav.NavigateTo("/oficina/os/nova")'>
-            + Nova ordem de serviço
-        </button>
     </div>
 
     <div class="metricas-grid" data-tour="recepcao-metricas">
+        <div class="metrica-card destaque-pronta">
+            <span class="metrica-label">⚠ Aguardando cobrança</span>
+            <span class="metrica-valor pronta">@prontasParaCobrar.Count</span>
+        </div>
         <div class="metrica-card">
             <span class="metrica-label">Pendentes</span>
             <span class="metrica-valor pendentes">@pendentes</span>
@@ -34,10 +66,6 @@
         <div class="metrica-card">
             <span class="metrica-label">Em andamento</span>
             <span class="metrica-valor andamento">@emAndamento</span>
-        </div>
-        <div class="metrica-card destaque-pronta">
-            <span class="metrica-label">⚠ Aguardando cobrança</span>
-            <span class="metrica-valor pronta">@prontasParaCobrar.Count</span>
         </div>
         <div class="metrica-card">
             <span class="metrica-label">Entregues (mês)</span>
@@ -89,69 +117,16 @@
         </div>
     }
 
-    <div class="secao" data-tour="recepcao-ordens-recentes">
+    <div class="secao">
         <div class="secao-header">
-            <h2 class="secao-titulo">Ordens recentes</h2>
-            <button class="link-link" @onclick='() => Nav.NavigateTo("/oficina")'>
-                Ver todas →
-            </button>
+            <h2 class="secao-titulo">Ordens de serviço</h2>
+            <a class="link-link" href="/oficina/ordens">Ver e filtrar todas →</a>
         </div>
-
-        @if (carregando)
-        {
-            <div class="loading">Carregando ordens...</div>
-        }
-        else if (!recentes.Any())
-        {
-            <div class="vazio">Nenhuma ordem de serviço cadastrada ainda.</div>
-        }
-        else
-        {
-            <div class="ordens-lista">
-                @foreach (var os in recentes)
-                {
-                    <div class="os-card" @onclick="() => AbrirDetalhe(os.Id)">
-                        <div class="os-cabecalho">
-                            <span class="os-numero">@os.NumeroPublico</span>
-                            <span class="os-status @StatusClass(os.Status)">@StatusLabel(os.Status)</span>
-                        </div>
-
-                        <div class="os-corpo">
-                            <div class="os-coluna">
-                                <span class="rotulo">Cliente</span>
-                                <span class="dado-principal">@NomeCliente(os.ClienteId)</span>
-                                <span class="dado-sub">@CpfCliente(os.ClienteId)</span>
-                            </div>
-
-                            <div class="os-coluna">
-                                <span class="rotulo">Veículo</span>
-                                <span class="dado-principal">@DescricaoVeiculo(os.VeiculoClienteId)</span>
-                                <span class="dado-sub">@AnoVeiculo(os.VeiculoClienteId)</span>
-                            </div>
-
-                            <div class="os-coluna">
-                                <span class="rotulo">Mecânico</span>
-                                <span class="dado-principal">@NomeMecanico(os.MecanicoId)</span>
-                                <span class="dado-sub">@EspecialidadeDoMecanico(os.MecanicoId)</span>
-                            </div>
-
-                            <div class="os-coluna">
-                                <span class="rotulo">Serviço</span>
-                                <span class="dado-principal">@os.Tipo</span>
-                                <span class="dado-sub">Prazo: @os.PrazoEstimado.ToString("dd/MM/yyyy")</span>
-                            </div>
-
-                            <div class="os-coluna alinhado-direita">
-                                <span class="rotulo">Valor</span>
-                                <span class="dado-principal valor">
-                                    @os.ValorTotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-        }
+        <p class="muted">
+            A lista completa de OS, com filtros e busca, fica em
+            <a href="/oficina/ordens">Ordens de serviço</a>.
+            O painel geral da oficina fica em <a href="/oficina">Visão geral</a>.
+        </p>
     </div>
 </div>
 
@@ -166,6 +141,23 @@
     private int emAndamento;
     private int entreguesMes;
     private bool carregando = true;
+    private string buscaOs = "";
+
+    private IEnumerable<OrdemServicoListaDTO> ResultadosBusca
+    {
+        get
+        {
+            var t = buscaOs.Trim();
+            if (t.Length < 2) return Enumerable.Empty<OrdemServicoListaDTO>();
+            return todas.Where(o =>
+                o.NumeroPublico.Contains(t, StringComparison.OrdinalIgnoreCase)
+                || NomeCliente(o.ClienteId).Contains(t, StringComparison.OrdinalIgnoreCase)
+                || PlacaVeic(o.VeiculoClienteId).Contains(t, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(o => o.DataCriacao).Take(6);
+        }
+    }
+
+    private string PlacaVeic(Guid id) => mapaVeiculos.TryGetValue(id, out var v) ? v.Placa : "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -262,6 +254,26 @@
 }
 
 <style>
+    .recepcao-topo { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: var(--sp-4); margin-bottom: var(--sp-5); align-items: start; }
+    .abrir-os-card {
+        display: flex; align-items: center; gap: var(--sp-3);
+        background: var(--cor-marca); color: #fff;
+        border-radius: var(--raio-lg); padding: var(--sp-4); text-decoration: none;
+    }
+    .abrir-os-card:hover { background: var(--cor-marca-hover); }
+    .aoc-icone { font-size: 26px; line-height: 1; }
+    .abrir-os-card strong { display: block; font-size: var(--txt-md); }
+    .abrir-os-card span { font-size: var(--txt-xs); opacity: .85; }
+
+    .busca-rapida { position: relative; }
+    .busca-rapida label { display: block; font-size: var(--txt-xs); color: var(--cor-tinta-3); margin-bottom: 4px; font-weight: var(--peso-medio); }
+    .busca-rapida input { width: 100%; border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 10px 12px; font-size: var(--txt-sm); font-family: inherit; }
+    .busca-drop { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; background: #fff; border: 1px solid var(--cor-linha); border-radius: var(--raio-md); box-shadow: var(--sombra-menu); margin-top: 4px; overflow: hidden; }
+    .busca-item { display: grid; grid-template-columns: 90px 1fr auto; gap: var(--sp-2); align-items: center; padding: 8px 12px; text-decoration: none; color: inherit; font-size: var(--txt-sm); }
+    .busca-item:hover { background: var(--cor-info-bg); }
+    .bi-num { font-family: monospace; color: var(--cor-acao); font-weight: var(--peso-forte); }
+    .bi-status { font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+    @@media (max-width: 640px) { .recepcao-topo { grid-template-columns: 1fr; } }
     .recepcao-page {
         max-width: 1100px;
         margin: 0 auto;

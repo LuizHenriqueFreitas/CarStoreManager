@@ -1,0 +1,82 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Menu lateral de atalhos usado nos hubs (Concessionária, Oficina). Ocupa a
+   coluna lateral que antes ficava vazia; no mobile vira uma faixa de cartões. *@
+
+<aside class="menu-atalhos" @attributes="Extra">
+    <span class="menu-atalhos-titulo">@Titulo</span>
+    <nav class="menu-atalhos-lista">
+        @foreach (var a in Itens)
+        {
+            <a class="menu-atalho" href="@a.Href">
+                <span class="menu-atalho-ic" aria-hidden="true">@a.Icone</span>
+                <span class="menu-atalho-tx">
+                    <span class="menu-atalho-tit">@a.Titulo</span>
+                    @if (!string.IsNullOrWhiteSpace(a.Descricao))
+                    {
+                        <span class="menu-atalho-desc">@a.Descricao</span>
+                    }
+                </span>
+            </a>
+        }
+    </nav>
+</aside>
+
+@code {
+    [Parameter] public string Titulo { get; set; } = "Ir para";
+    [Parameter] public IEnumerable<Item> Itens { get; set; } = Array.Empty<Item>();
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? Extra { get; set; }
+
+    public record Item(string Titulo, string Icone, string Href, string? Descricao = null);
+}
+
+<style>
+    .menu-atalhos {
+        position: sticky;
+        top: calc(var(--altura-navbar, 56px) + var(--sp-4));
+        background: var(--cor-superficie);
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-lg);
+        padding: var(--sp-3);
+        align-self: start;
+    }
+    .menu-atalhos-titulo {
+        display: block;
+        font-size: var(--txt-xs);
+        font-weight: var(--peso-forte);
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        color: var(--cor-tinta-3);
+        padding: var(--sp-1) var(--sp-2) var(--sp-2);
+    }
+    .menu-atalhos-lista { display: flex; flex-direction: column; gap: 2px; }
+    .menu-atalho {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+        padding: var(--sp-2);
+        border-radius: var(--raio-md);
+        text-decoration: none;
+        color: var(--cor-tinta);
+    }
+    .menu-atalho:hover { background: var(--cor-superficie-2); }
+    .menu-atalho-ic { font-size: 18px; flex-shrink: 0; width: 22px; text-align: center; }
+    .menu-atalho-tx { display: flex; flex-direction: column; min-width: 0; }
+    .menu-atalho-tit { font-size: var(--txt-sm); font-weight: var(--peso-medio); }
+    .menu-atalho-desc { font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+
+    @@media (max-width: 1000px) {
+        .menu-atalhos { position: static; }
+        .menu-atalhos-lista {
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+        .menu-atalho {
+            flex: 1 1 200px;
+            border: 1px solid var(--cor-linha);
+        }
+        .menu-atalho-desc { display: none; }
+    }
+</style>

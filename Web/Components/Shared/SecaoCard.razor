@@ -1,0 +1,70 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Cartão-botão para telas-índice (Cadastros, Configurações do sistema).
+   Ver docs/redesign/04-diretrizes-ui-ux.md §3 e §4.5. *@
+
+@if (!string.IsNullOrEmpty(Href))
+{
+    <a class="secao-card" href="@Href">@Corpo</a>
+}
+else
+{
+    <div class="secao-card">@Corpo</div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Titulo { get; set; } = "";
+    [Parameter] public string? Descricao { get; set; }
+    [Parameter] public string? Icone { get; set; }
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public string? Contagem { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private RenderFragment Corpo => @<div class="secao-card-inner">
+        @if (!string.IsNullOrEmpty(Icone))
+        {
+            <span class="secao-card-icone">@Icone</span>
+        }
+        <div>
+            <div class="secao-card-titulo">
+                @Titulo
+                @if (!string.IsNullOrEmpty(Contagem))
+                {
+                    <span class="secao-card-contagem">@Contagem</span>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(Descricao))
+            {
+                <p class="secao-card-desc">@Descricao</p>
+            }
+            @ChildContent
+        </div>
+    </div>;
+}
+
+<style>
+    .secao-card {
+        display: block;
+        background: var(--cor-superficie);
+        border: 1px solid var(--cor-linha);
+        border-radius: var(--raio-lg);
+        padding: var(--sp-5);
+        text-decoration: none;
+        color: inherit;
+        transition: border-color .15s, box-shadow .15s;
+    }
+    a.secao-card:hover { border-color: var(--cor-acao); box-shadow: var(--sombra-hover); }
+
+    .secao-card-inner { display: flex; gap: var(--sp-3); align-items: flex-start; }
+    .secao-card-icone { font-size: var(--txt-2xl); line-height: 1; flex-shrink: 0; }
+    .secao-card-titulo {
+        font-size: var(--txt-lg);
+        font-weight: var(--peso-medio);
+        color: var(--cor-tinta);
+        display: flex;
+        align-items: baseline;
+        gap: var(--sp-2);
+    }
+    .secao-card-contagem { font-size: var(--txt-sm); color: var(--cor-tinta-3); font-weight: var(--peso-normal); }
+    .secao-card-desc { font-size: var(--txt-sm); color: var(--cor-tinta-3); margin: var(--sp-1) 0 0; }
+</style>

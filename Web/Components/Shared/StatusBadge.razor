@@ -1,0 +1,164 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Badge de status unificado — substitui os mapas StatusClass/StatusLabel
+   recopiados em Oficina, Recepção, Dashboard, Propostas, Consulta.
+   Ver docs/redesign/04-diretrizes-ui-ux.md §3. *@
+
+<span class="status-badge tom-@Tom" title="@Legenda">@Legenda</span>
+
+@code {
+    /// <summary>Valor de status vindo do domínio (ex.: "PagamentoPendente").</summary>
+    [Parameter, EditorRequired] public string Status { get; set; } = "";
+
+    /// <summary>
+    /// Família de status: "os" (ordem de serviço), "proposta", "veiculo".
+    /// Default "os".
+    /// </summary>
+    [Parameter] public string Familia { get; set; } = "os";
+
+    /// <summary>Rótulo customizado — sobrescreve o mapeado.</summary>
+    [Parameter] public string? Texto { get; set; }
+
+    private string Legenda => Texto ?? MapaLabel(Familia, Status);
+    private string Tom => MapaTom(Familia, Status);
+
+    private static string MapaLabel(string familia, string s) => familia switch
+    {
+        "proposta" => s switch
+        {
+            "Rascunho"                     => "Rascunho",
+            "Criada" or "Enviada"          => "Ativa",
+            "AguardandoFinanciadora"       => "Aguardando financiadora",
+            "PropostaFinanciadoraRecebida" => "Resposta da financiadora",
+            "Aprovada"                     => "Aprovada",
+            "AguardandoVistoria"           => "Aguardando vistoria",
+            "VistoriaConcluida"            => "Vistoria concluída",
+            "AguardandoAssinaturaTermo"    => "Aguardando assinatura",
+            "Concluida"                    => "Concluída",
+            "Rejeitada"                    => "Rejeitada",
+            "Cancelada"                    => "Cancelada",
+            "Expirada"                     => "Expirada",
+            _                              => Humanizar(s)
+        },
+        "veiculo" => s switch
+        {
+            "Disponivel"    => "Disponível",
+            "EmPreparacao"  => "Em preparação",
+            "Reservado"     => "Reservado",
+            "Vendido"       => "Vendido",
+            _               => Humanizar(s)
+        },
+        "consignacao" => s switch
+        {
+            "Ativa"                       => "Ativa",
+            "Expirada"                    => "Expirada",
+            "VendidoAguardandoPagamento"  => "Vendido — aguardando pagamento",
+            "Concluida"                   => "Concluída",
+            "Devolvida"                   => "Devolvida",
+            "Cancelada"                   => "Cancelada",
+            _                             => Humanizar(s)
+        },
+        "testdrive" => s switch
+        {
+            "Agendado"      => "Agendado",
+            "Realizado"     => "Realizado",
+            "Cancelado"     => "Cancelado",
+            "NaoCompareceu" => "Não compareceu",
+            _               => Humanizar(s)
+        },
+        _ => s switch // os
+        {
+            "Pendente"                   => "Pendente",
+            "EmAnalise"                  => "Em análise (mecânico)",
+            "AguardandoCliente"          => "Aguardando cliente",
+            "BuscandoPecasParaOrcamento" => "Buscando peças",
+            "Aprovada"                   => "Aprovada",
+            "EmAndamento"                => "Em andamento",
+            "Pausada"                    => "Pausada",
+            "PagamentoPendente"          => "Aguardando cobrança",
+            "Finalizada"                 => "Pronta para entrega",
+            "Entregue"                   => "Entregue",
+            "Cancelada"                  => "Cancelada",
+            _                            => Humanizar(s)
+        }
+    };
+
+    private static string MapaTom(string familia, string s) => familia switch
+    {
+        "proposta" => s switch
+        {
+            "Aprovada" or "Concluida" or "VistoriaConcluida"                => "ok",
+            "Criada" or "Enviada" or "AguardandoFinanciadora"
+                or "AguardandoVistoria"                                     => "info",
+            "PropostaFinanciadoraRecebida"
+                or "AguardandoAssinaturaTermo"                              => "atencao",
+            "Rejeitada" or "Cancelada"                                      => "erro",
+            "Rascunho" or "Expirada"                                        => "neutro",
+            _                                                              => "info"
+        },
+        "veiculo" => s switch
+        {
+            "Disponivel"              => "ok",
+            "EmPreparacao"            => "atencao",
+            "Reservado"               => "info",
+            "Vendido"                 => "neutro",
+            _                         => "info"
+        },
+        "consignacao" => s switch
+        {
+            "Ativa" or "Concluida"        => "ok",
+            "VendidoAguardandoPagamento"  => "atencao",
+            "Expirada"                    => "alerta",
+            "Devolvida" or "Cancelada"    => "neutro",
+            _                             => "info"
+        },
+        "testdrive" => s switch
+        {
+            "Realizado"     => "ok",
+            "Agendado"      => "info",
+            "Cancelado"     => "neutro",
+            "NaoCompareceu" => "erro",
+            _               => "info"
+        },
+        _ => s switch // os
+        {
+            "Finalizada" or "Entregue"                     => "ok",
+            "EmAnalise" or "Aprovada" or "EmAndamento"     => "info",
+            "AguardandoCliente" or "PagamentoPendente"     => "atencao",
+            "Pendente"                                     => "alerta",
+            "Pausada" or "BuscandoPecasParaOrcamento"      => "neutro",
+            "Cancelada"                                    => "erro",
+            _                                              => "info"
+        }
+    };
+
+    private static string Humanizar(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return s;
+        var sb = new System.Text.StringBuilder();
+        for (var i = 0; i < s.Length; i++)
+        {
+            if (i > 0 && char.IsUpper(s[i])) sb.Append(' ');
+            sb.Append(s[i]);
+        }
+        return sb.ToString();
+    }
+}
+
+<style>
+    .status-badge {
+        display: inline-block;
+        font-size: var(--txt-xs);
+        padding: 3px 10px;
+        border-radius: var(--raio-full);
+        font-weight: var(--peso-medio);
+        white-space: nowrap;
+    }
+
+    .tom-ok      { background: var(--cor-ok-bg);      color: var(--cor-ok-tx); }
+    .tom-info    { background: var(--cor-info-bg);    color: var(--cor-info-tx); }
+    .tom-atencao { background: var(--cor-atencao-bg); color: var(--cor-atencao-tx); font-weight: var(--peso-forte); }
+    .tom-alerta  { background: var(--cor-alerta-bg);  color: var(--cor-alerta-tx); }
+    .tom-erro    { background: var(--cor-erro-bg);    color: var(--cor-erro-tx); }
+    .tom-neutro  { background: var(--cor-neutro-bg);  color: var(--cor-neutro-tx); }
+</style>

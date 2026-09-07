@@ -30,11 +30,16 @@ public static partial class RegistroDeTours
 {
     private static readonly List<TourDaPagina> Tours = new();
 
+    /// <summary>Todos os tours registrados — usado pelos testes de cobertura.</summary>
+    public static IReadOnlyList<TourDaPagina> Todos => Tours;
+
     static RegistroDeTours()
     {
+        Tours.AddRange(TodosGeral());
         Tours.AddRange(TodosAutenticacaoEAcessoPublico());
         Tours.AddRange(TodosConcessionaria());
         Tours.AddRange(TodosOficina());
+        Tours.AddRange(TodosFinanceiro());
         Tours.AddRange(TodosAdministracao());
         Tours.AddRange(TodosIntegracoes());
     }

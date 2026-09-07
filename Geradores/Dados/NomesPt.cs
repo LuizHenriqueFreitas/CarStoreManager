@@ -98,6 +98,27 @@ public static class NomesPt
         "Terminal de direção", "Bieleta", "Mangueira do radiador", "Compressor de ar-condicionado", "Farol"
     };
 
+    // Razão social de fornecedores de autopeças — combinada em RazaoSocialFornecedor.
+    private static readonly string[] PrefixosFornecedor =
+    {
+        "Auto Peças", "Distribuidora", "Comercial de Autopeças", "Rede", "Casa das Peças",
+        "Importadora", "Atacado", "Central de Peças", "Grupo"
+    };
+    private static readonly string[] SufixosFornecedor =
+    {
+        "Ltda", "S.A.", "ME", "EIRELI", "& Cia", "do Brasil", "Automotiva", "Comércio e Serviços"
+    };
+
+    public static string RazaoSocialFornecedor(Random rng)
+    {
+        var prefixo = PrefixosFornecedor[rng.Next(PrefixosFornecedor.Length)];
+        var nucleo = rng.Next(2) == 0
+            ? Sobrenomes[rng.Next(Sobrenomes.Length)]
+            : Cidades[rng.Next(Cidades.Length)];
+        var sufixo = SufixosFornecedor[rng.Next(SufixosFornecedor.Length)];
+        return $"{prefixo} {nucleo} {sufixo}";
+    }
+
     public static string NomeCompletoAleatorio(Random rng)
     {
         var masculino = rng.Next(2) == 0;

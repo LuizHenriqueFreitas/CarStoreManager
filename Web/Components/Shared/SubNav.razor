@@ -1,0 +1,79 @@
+@namespace CarStoreManager.Web.Components.Shared
+@inject NavigationManager Nav
+@implements IDisposable
+
+@* Sub-navegação contextual de uma área (fica na área de conteúdo, não na navbar
+   global). Ver docs/redesign/04-diretrizes-ui-ux.md §4.
+   Uso:
+   <SubNav Itens="@(new List<SubNav.Item> {
+       new("/oficina", "Visão geral"),
+       new("/oficina/recepcao", "Recepção"),
+       new("/oficina/ordens", "Ordens de serviço"),
+   })" /> *@
+
+<nav class="subnav" aria-label="Navegação da seção">
+    <div class="subnav-track">
+        @foreach (var item in Itens.Where(i => i.Visivel))
+        {
+            <a href="@item.Rota"
+               class="subnav-item @(EstaAtivo(item) ? "ativo" : "")"
+               aria-current="@(EstaAtivo(item) ? "page" : null)">
+                @item.Rotulo
+            </a>
+        }
+    </div>
+</nav>
+
+@code {
+    [Parameter, EditorRequired] public List<Item> Itens { get; set; } = new();
+
+    public record Item(string Rota, string Rotulo, bool Visivel = true);
+
+    protected override void OnInitialized() => Nav.LocationChanged += OnLoc;
+    private void OnLoc(object? s, EventArgs e) => InvokeAsync(StateHasChanged);
+    public void Dispose() => Nav.LocationChanged -= OnLoc;
+
+    private string CaminhoAtual =>
+        "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0].Trim('/');
+
+    private bool EstaAtivo(Item item)
+    {
+        var atual = CaminhoAtual;
+        var rota = "/" + item.Rota.Trim('/');
+        if (atual == rota) return true;
+        // Um item "pai" (ex.: /oficina/ordens) fica ativo em telas filhas
+        // (/oficina/ordens/{id}), mas o item raiz da área (/oficina) só casa exato.
+        return rota.Count(c => c == '/') > 1 && atual.StartsWith(rota + "/");
+    }
+}
+
+<style>
+    .subnav {
+        border-bottom: 1px solid var(--cor-linha);
+        margin-bottom: var(--sp-6);
+    }
+    .subnav-track {
+        display: flex;
+        gap: var(--sp-5);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .subnav-track::-webkit-scrollbar { display: none; }
+
+    .subnav-item {
+        padding: var(--sp-3) 0;
+        font-size: var(--txt-sm);
+        color: var(--cor-tinta-3);
+        text-decoration: none;
+        white-space: nowrap;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+    }
+    .subnav-item:hover { color: var(--cor-tinta); }
+    .subnav-item.ativo {
+        color: var(--cor-tinta);
+        font-weight: var(--peso-medio);
+        border-bottom-color: var(--cor-marca);
+    }
+</style>

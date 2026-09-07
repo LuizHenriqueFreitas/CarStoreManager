@@ -11,8 +11,22 @@ namespace CarStoreManager.Web.Controllers;
 public class ConfiguracoesController : ControllerBase
 {
     private readonly IConfiguracaoSistemaService _service;
+    private readonly IExportacaoDadosService _exportacao;
 
-    public ConfiguracoesController(IConfiguracaoSistemaService service) => _service = service;
+    public ConfiguracoesController(IConfiguracaoSistemaService service, IExportacaoDadosService exportacao)
+    {
+        _service = service;
+        _exportacao = exportacao;
+    }
+
+    /// <summary>Baixa todo o banco de dados da aplicação em um único arquivo JSON.</summary>
+    [HttpGet("exportar-dados")]
+    public async Task<IActionResult> ExportarDados(CancellationToken ct)
+    {
+        var r = await _exportacao.ExportarJsonAsync(ct);
+        if (!r.IsSuccess) return BadRequest(r.Error);
+        return File(r.Value!.Conteudo, "application/json", r.Value.NomeArquivo);
+    }
 
     [HttpGet]
     public async Task<IActionResult> Obter()

@@ -99,14 +99,10 @@ public class ClienteRepositoryPesquisarTest : IDisposable
     [Fact]
     public async Task PesquisarAsync_LimitaA20Resultados()
     {
-        // Adiciona 21 clientes válidos com nomes que casam.
-        // Como precisamos de 21 CPFs válidos diferentes e gerar é caro, repetimos com sufixo de email.
-        var cpfs = new[] { CpfValido1, CpfValido2, CpfValido3 };
+        // 21 clientes com CPFs distintos e válidos (CPF agora tem índice único).
         for (var i = 0; i < 21; i++)
         {
-            // Alterna entre CPFs válidos — repetir CPF não funcionaria por causa de unicidade implícita?
-            // Aqui só persiste sem unicidade enforced, então tudo bem.
-            var c = new Cliente($"ClienteX {i:D2}", $"c{i}@x.com", "11900000000", cpfs[i % 3],
+            var c = new Cliente($"ClienteX {i:D2}", $"c{i}@x.com", "11900000000", CpfValidoSeq(i),
                 new CarStoreManager.Domain.Entities.Endereco("Rua A", "1", null, "Centro", "São Paulo", "SP", "01001000"));
             await _repo.AddAsync(c);
         }
@@ -115,6 +111,23 @@ public class ClienteRepositoryPesquisarTest : IDisposable
         var resultado = await _repo.PesquisarAsync("ClienteX");
 
         resultado.Count.Should().Be(20);
+    }
+
+    // Gera um CPF válido determinístico a partir de um índice (9 dígitos base + 2 DV).
+    private static string CpfValidoSeq(int seed)
+    {
+        var b = (100000000 + seed * 7).ToString("D9").Select(ch => ch - '0').ToArray();
+        int Dv(int[] n, int peso)
+        {
+            var s = 0;
+            for (var i = 0; i < n.Length; i++) s += n[i] * (peso - i);
+            var r = s % 11;
+            return r < 2 ? 0 : 11 - r;
+        }
+        var d1 = Dv(b, 10);
+        var com9 = b.Append(d1).ToArray();
+        var d2 = Dv(com9, 11);
+        return string.Concat(com9.Append(d2));
     }
 
     private async Task SalvarCliente(string nome, string cpf)

@@ -1,4 +1,4 @@
-@page "/concessionaria"
+@page "/concessionaria/salao"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
 
 @namespace CarStoreManager.Web.Components.Pages
@@ -15,6 +15,10 @@
 @using CarStoreManager.Web.Components.Shared
 @using CarStoreManager.Web.Components.Concessionaria
 @using Microsoft.AspNetCore.Components.Authorization
+
+<div class="salao-topo">
+    <SubNav Itens="SubNavConcessionaria.Itens" />
+</div>
 
 <div class="conc-layout">
     <aside class="conc-sidebar" data-tour="conc-sidebar-filtros">
@@ -33,15 +37,16 @@
                 Disponíveis
             </label>
             <label class="sb-opcao">
-                <input type="radio" name="disp" checked="@(filtroDisp == "Vendido")"
-                       @onchange='() => SetDisp("Vendido")' />
-                Vendidos
+                <input type="radio" name="disp" checked="@(filtroDisp == "Preparacao")"
+                       @onchange='() => SetDisp("Preparacao")' />
+                Em preparação
             </label>
             <label class="sb-opcao">
                 <input type="radio" name="disp" checked="@(filtroDisp == "Consignado")"
                        @onchange='() => SetDisp("Consignado")' />
                 Consignados
             </label>
+            <p class="sb-dica">Veículos já vendidos não aparecem no salão — consulte o histórico em Análises.</p>
         </section>
 
         <section class="sb-secao">
@@ -119,13 +124,7 @@
                     <input type="checkbox"
                            checked="@filtroAcessoriosTem.Contains(acc)"
                            @onchange="@(e => ToggleAcessorioTem(acc, (bool)e.Value!))" />
-                    Tem @acc
-                </label>
-                <label class="sb-opcao sb-opcao-not">
-                    <input type="checkbox"
-                           checked="@filtroAcessoriosNao.Contains(acc)"
-                           @onchange="@(e => ToggleAcessorioNao(acc, (bool)e.Value!))" />
-                    Não tem @acc
+                    @acc
                 </label>
             }
         </section>
@@ -136,8 +135,8 @@
     <main class="conc-main">
         <header class="conc-header">
             <div>
-                <h1>Estoque de veículos</h1>
-                <p class="conc-sub">@veiculosFiltrados.Count de @veiculos.Count veículos</p>
+                <h1>Salão</h1>
+                <p class="conc-sub">@veiculosFiltrados.Count de @veiculos.Count veículos no estoque</p>
             </div>
             <div class="conc-toolbar" data-tour="conc-toolbar">
                 <input type="text" class="conc-busca" placeholder="Buscar por modelo ou placa..."
@@ -197,13 +196,14 @@
     @ref="modalCadastroRef" />
 
 <style>
+    .salao-topo { max-width: 1400px; margin: 0 auto; padding: 24px 24px 0; }
     .conc-layout {
         display: grid;
         grid-template-columns: 260px 1fr;
         gap: 24px;
         max-width: 1400px;
         margin: 0 auto;
-        padding: 24px;
+        padding: 8px 24px 24px;
     }
     .conc-sidebar {
         background: #fff;
@@ -302,7 +302,6 @@
     private string filtroTermPlaca = "";
     private bool filtroIpvaAtualPago;
     private HashSet<string> filtroAcessoriosTem = new(StringComparer.OrdinalIgnoreCase);
-    private HashSet<string> filtroAcessoriosNao = new(StringComparer.OrdinalIgnoreCase);
     private decimal? filtroValorMin;
     private decimal? filtroValorMax;
 
@@ -415,15 +414,8 @@
 
     private void ToggleAcessorioTem(string a, bool s)
     {
-        if (s) { filtroAcessoriosTem.Add(a); filtroAcessoriosNao.Remove(a); }
+        if (s) filtroAcessoriosTem.Add(a);
         else filtroAcessoriosTem.Remove(a);
-        AplicarFiltro();
-    }
-
-    private void ToggleAcessorioNao(string a, bool s)
-    {
-        if (s) { filtroAcessoriosNao.Add(a); filtroAcessoriosTem.Remove(a); }
-        else filtroAcessoriosNao.Remove(a);
         AplicarFiltro();
     }
 
@@ -437,7 +429,6 @@
         filtroTermPlaca = "";
         filtroIpvaAtualPago = false;
         filtroAcessoriosTem.Clear();
-        filtroAcessoriosNao.Clear();
         filtroValorMin = filtroValorMax = null;
         buscaTexto = "";
         ordenacao = "DataDesc";
@@ -452,15 +443,18 @@
         // "Vendido" casam com o status equivalente tanto em veículo próprio
         // quanto em consignação — do ponto de vista do estoque, uma consignação
         // Ativa é tão "disponível" quanto um veículo próprio Disponivel.
+        // Um veículo é "vendido" quando: próprio com status Vendido, ou consignação
+        // já concluída/aguardando pagamento. O salão nunca mostra vendidos.
+        bool EhVendido(VeiculoListaUnificadoDTO v) => v.IsConsignado
+            ? v.StatusLabel is "Concluida" or "VendidoAguardandoPagamento"
+            : v.StatusLabel == "Vendido";
+
         q = filtroDisp switch
         {
-            "Todos" => q,
-            "Consignado" => q.Where(v => v.IsConsignado),
+            "Consignado" => q.Where(v => v.IsConsignado && !EhVendido(v)),
             "Disponivel" => q.Where(v => v.IsConsignado ? v.StatusLabel == "Ativa" : v.StatusLabel == "Disponivel"),
-            "Vendido" => q.Where(v => v.IsConsignado
-                ? v.StatusLabel is "Concluida" or "VendidoAguardandoPagamento"
-                : v.StatusLabel == "Vendido"),
-            _ => q
+            "Preparacao" => q.Where(v => !v.IsConsignado && v.StatusLabel == "EmPreparacao"),
+            _            => q.Where(v => !EhVendido(v)) // "Todos" — exclui vendidos
         };
 
         if (!string.IsNullOrWhiteSpace(filtroMarca))
@@ -491,9 +485,6 @@
         if (filtroAcessoriosTem.Any())
             q = q.Where(v => filtroAcessoriosTem.All(req =>
                 v.Acessorios?.Any(a => string.Equals(a, req, StringComparison.OrdinalIgnoreCase)) == true));
-        if (filtroAcessoriosNao.Any())
-            q = q.Where(v => filtroAcessoriosNao.All(req =>
-                v.Acessorios?.Any(a => string.Equals(a, req, StringComparison.OrdinalIgnoreCase)) != true));
 
         if (filtroValorMin.HasValue)
             q = q.Where(v => v.Valor >= filtroValorMin.Value);

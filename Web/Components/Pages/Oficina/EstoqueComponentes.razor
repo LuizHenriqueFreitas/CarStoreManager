@@ -15,55 +15,37 @@
 @using CarStoreManager.Application.DTOs.Oficina.Fornecedor
 @using CarStoreManager.Application.DTOs.Integracoes.MercadoLivre
 @using Microsoft.AspNetCore.Components.Authorization
+@using CarStoreManager.Web.Components.Shared
 @using System.Timers
 
 @using Microsoft.AspNetCore.Components.Web
 
-<div class="comp-page">
-    <div class="page-header">
-        <div>
-            <h1 class="page-titulo">Componentes</h1>
-            <p class="page-sub">Cadastro de peças e controle de estoque</p>
-        </div>
-        <div class="header-acoes">
-            <button class="btn-secundario" data-tour="comp-btn-fornecedores" @onclick='() => Nav.NavigateTo("/oficina/fornecedores")'>
-                Gerenciar fornecedores
-            </button>
+<div class="pagina comp-page">
+    <PageHeader Titulo="Estoque de peças" Subtitulo="@($"{componentes.Count} componente(s) cadastrado(s)")">
+        <Acao>
             @if (ehAdmin)
             {
-                <button class="btn-novo" data-tour="comp-btn-novo" @onclick="AbrirModalNovo">+ Novo componente</button>
+                <button class="btn btn-primario" data-tour="comp-btn-novo" @onclick="AbrirModalNovo">+ Novo componente</button>
             }
-        </div>
-    </div>
+        </Acao>
+    </PageHeader>
 
-    @if (estoquesBaixo.Any())
+    <SubNav Itens="SubNavOficina.Itens(false)" />
+
+    @if (!carregando)
     {
-        <div class="alerta-estoque" data-tour="comp-alerta-estoque">
-            <span class="alerta-icone">⚠</span>
-            <span>@estoquesBaixo.Count peça(s) com estoque abaixo do mínimo</span>
-            <button class="alerta-btn" @onclick='() => FiltrarPor("EstoqueBaixo")'>
-                Ver peças
-            </button>
-        </div>
+        <StatCardGrid MinColuna="160">
+            <MetricCard Rotulo="Componentes" Valor="@componentes.Count.ToString()" />
+            <MetricCard Rotulo="Unidades em estoque" Valor="@estoques.Sum(e => e.QuantidadeAtual).ToString()" />
+            <MetricCard Rotulo="Abaixo do mínimo" Valor="@estoquesBaixo.Count.ToString()" Tom="@(estoquesBaixo.Count > 0 ? "alerta" : "")" />
+            <MetricCard Rotulo="Sem estoque" Valor="@estoques.Count(e => e.SemEstoque).ToString()" Tom="@(estoques.Any(e => e.SemEstoque) ? "erro" : "")" />
+        </StatCardGrid>
     }
 
-    <div class="filtros-row" data-tour="comp-filtros">
-        <div class="filtros-status">
-            <button class="@FiltroClass("Todos")"
-                    @onclick='() => FiltrarPor("Todos")'>Todos</button>
-            <button class="@FiltroClass("EstoqueBaixo")"
-                    @onclick='() => FiltrarPor("EstoqueBaixo")'>Estoque baixo</button>
-            @foreach (var s in todosSistemas)
-            {
-                <button class="@FiltroClass(s)"
-                        @onclick="() => FiltrarPor(s)">@s</button>
-            }
-        </div>
-        <input class="busca-input"
-               placeholder="Buscar por nome, SKU, OEM, PartNumber, marca, categoria..."
-               value="@termoBusca"
-               @oninput="OnBuscaChanged" />
-    </div>
+    <FiltroBar @bind-Busca="termoBusca" BuscaPlaceholder="Buscar por nome, SKU, OEM, PartNumber, marca..." OnBusca="AplicarFiltro">
+        <FiltroSelect Rotulo="Situação" @bind-Valor="filtroSituacao" OnMudou="AplicarFiltro" Opcoes="opcoesSituacao" />
+        <FiltroSelect Rotulo="Sistema" @bind-Valor="filtroSistema" OnMudou="AplicarFiltro" Opcoes="opcoesSistema" />
+    </FiltroBar>
 
     @if (carregando)
     {
@@ -71,7 +53,7 @@
     }
     else if (!componentesFiltrados.Any())
     {
-        <div class="vazio">Nenhum componente encontrado.</div>
+        <EstadoVazio Mensagem="Nenhum componente com esses filtros." Icone="📦" />
     }
     else
     {
@@ -443,8 +425,16 @@
     private List<ComponenteListaDTO> componentesFiltrados = new();
     private List<EstoqueComponenteDTO> estoques = new();
     private List<EstoqueComponenteDTO> estoquesBaixo = new();
-    private string filtroAtivo = "Todos";
+    private string filtroSituacao = "Todos";
+    private string filtroSistema = "";
     private string termoBusca = string.Empty;
+
+    private static readonly List<FiltroSelect.Opcao> opcoesSituacao = new()
+    {
+        new("Todos", "Todas"), new("EstoqueBaixo", "Abaixo do mínimo"), new("SemEstoque", "Sem estoque"),
+    };
+    private List<FiltroSelect.Opcao> opcoesSistema => new List<FiltroSelect.Opcao> { new("", "Todos os sistemas") }
+        .Concat(todosSistemas.Select(s => new FiltroSelect.Opcao(s, s))).ToList();
     private bool carregando = true;
     private bool ehAdmin = false;
     private bool modalNovoVisivel = false;
@@ -513,21 +503,18 @@
     private EstoqueComponenteDTO? ObterEstoque(Guid componenteId)
         => estoques.FirstOrDefault(e => e.ComponenteId == componenteId);
 
-    private void FiltrarPor(string filtro)
-    {
-        filtroAtivo = filtro;
-        AplicarFiltro();
-    }
-
     private void AplicarFiltro()
     {
-        var base_ = filtroAtivo switch
+        var semEstoqueIds = estoques.Where(e => e.SemEstoque).Select(e => e.ComponenteId).ToHashSet();
+        var base_ = filtroSituacao switch
         {
-            "EstoqueBaixo" => componentes
-                .Where(c => estoquesBaixo.Any(e => e.ComponenteId == c.Id)).ToList(),
-            "Todos" => componentes.ToList(),
-            _ => componentes.Where(c => c.Sistema == filtroAtivo).ToList()
+            "EstoqueBaixo" => componentes.Where(c => estoquesBaixo.Any(e => e.ComponenteId == c.Id)).ToList(),
+            "SemEstoque" => componentes.Where(c => semEstoqueIds.Contains(c.Id)).ToList(),
+            _ => componentes.ToList()
         };
+
+        if (!string.IsNullOrEmpty(filtroSistema))
+            base_ = base_.Where(c => c.Sistema == filtroSistema).ToList();
 
         if (string.IsNullOrWhiteSpace(termoBusca))
         {
@@ -550,12 +537,6 @@
         static bool Match(string? campo, string termo)
             => !string.IsNullOrEmpty(campo)
                && campo.Contains(termo, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private void OnBuscaChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
-    {
-        termoBusca = e.Value?.ToString() ?? "";
-        AplicarFiltro();
     }
 
     private void AbrirModalNovo()
@@ -741,8 +722,6 @@
         salvando = false;
     }
 
-    private string FiltroClass(string f) =>
-        f == filtroAtivo ? "filtro-os ativo" : "filtro-os";
 
     private string EstoqueClass(EstoqueComponenteDTO? est)
     {

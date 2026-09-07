@@ -1,0 +1,90 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Cartão de KPI. Ver docs/redesign/04-diretrizes-ui-ux.md §3.
+   Uso dentro de <StatCardGrid>:
+   <MetricCard Rotulo="Receita do mês" Valor="@FormatBRL(x)" Variacao="0.12m" Tom="ok" /> *@
+
+@if (!string.IsNullOrEmpty(Href))
+{
+    <a class="metric-card clicavel" href="@Href">@Corpo</a>
+}
+else
+{
+    <div class="metric-card">@Corpo</div>
+}
+
+@code {
+    [Parameter, EditorRequired] public string Rotulo { get; set; } = "";
+    [Parameter, EditorRequired] public string Valor { get; set; } = "";
+
+    /// <summary>Variação relativa (0.12 = +12%). Null = não mostra.</summary>
+    [Parameter] public decimal? Variacao { get; set; }
+    [Parameter] public string TextoComparacao { get; set; } = "vs período anterior";
+
+    /// <summary>ok | info | atencao | alerta | erro | neutro | "" (tinta padrão)</summary>
+    [Parameter] public string Tom { get; set; } = "";
+    [Parameter] public string? Sub { get; set; }
+    [Parameter] public string? Href { get; set; }
+
+    /// <summary>Quando true, a variação é em pontos percentuais (ex.: margem).</summary>
+    [Parameter] public bool VariacaoEmPontos { get; set; }
+
+    private RenderFragment Corpo => @<text>
+        <span class="metric-rotulo">@Rotulo</span>
+        <span class="metric-valor tom-@Tom">@Valor</span>
+        @if (Variacao is not null)
+        {
+            var v = Variacao.Value;
+            var cls = v > 0 ? "sobe" : v < 0 ? "desce" : "neutro";
+            var seta = v > 0 ? "▲" : v < 0 ? "▼" : "—";
+            <span class="metric-variacao @cls">@seta @FormatarVariacao(v) @TextoComparacao</span>
+        }
+        @if (!string.IsNullOrEmpty(Sub))
+        {
+            <span class="metric-sub">@Sub</span>
+        }
+    </text>;
+
+    private string FormatarVariacao(decimal v)
+    {
+        var abs = Math.Abs(v);
+        return VariacaoEmPontos ? $"{abs * 100:0.0} p.p." : $"{abs * 100:0.#}%";
+    }
+}
+
+<style>
+    .metric-card {
+        display: flex;
+        flex-direction: column;
+        gap: var(--sp-2);
+        background: var(--cor-superficie-2);
+        border: 1px solid transparent;
+        border-radius: var(--raio-lg);
+        padding: var(--sp-4);
+        text-decoration: none;
+        color: inherit;
+    }
+    .metric-card.clicavel { cursor: pointer; transition: border-color .15s, background .15s; }
+    .metric-card.clicavel:hover { border-color: var(--cor-acao); background: var(--cor-superficie); }
+
+    .metric-rotulo { font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+    .metric-valor {
+        font-size: var(--txt-3xl);
+        font-weight: var(--peso-medio);
+        color: var(--cor-tinta);
+        line-height: 1.1;
+    }
+    .metric-valor.tom-ok      { color: var(--cor-ok-tx); }
+    .metric-valor.tom-info    { color: var(--cor-info-tx); }
+    .metric-valor.tom-atencao { color: var(--cor-atencao-tx); }
+    .metric-valor.tom-alerta  { color: var(--cor-alerta-tx); }
+    .metric-valor.tom-erro    { color: var(--cor-erro-tx); }
+    .metric-valor.tom-neutro  { color: var(--cor-tinta-2); }
+
+    .metric-variacao { font-size: var(--txt-xs); font-weight: var(--peso-medio); }
+    .metric-variacao.sobe   { color: var(--cor-ok-tx); }
+    .metric-variacao.desce  { color: var(--cor-erro-tx); }
+    .metric-variacao.neutro { color: var(--cor-tinta-3); }
+
+    .metric-sub { font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+</style>

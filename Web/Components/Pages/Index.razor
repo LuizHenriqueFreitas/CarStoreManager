@@ -1,11 +1,137 @@
-﻿@page "/"
+@page "/"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+@namespace CarStoreManager.Web.Components.Pages
+@implements IAsyncDisposable
+@using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Authorization
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Admin
+@using CarStoreManager.Web.Components.Shared
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthState
+@inject IOrdemServicoService OrdemService
+@inject IVeiculoVendaService VeiculoService
+@inject IVeiculoConsignacaoService ConsignacaoService
+@inject IPropostaVendaService PropostaService
+@inject IEstoqueService EstoqueService
+@inject IDashboardService DashboardService
+@inject IJSRuntime JS
+@inject CarStoreManager.Application.Interfaces.Sistema.IBalancoMensalDespesaService BalancoService
 
-@using Microsoft.AspNetCore.Components.Web
+<div class="pagina">
+    <PageHeader Titulo="@saudacao" Subtitulo="@DateTime.Now.ToString("dddd, dd 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("pt-BR"))" />
+
+    @if (carregando)
+    {
+        <div class="estado-carregando">Carregando...</div>
+    }
+    else
+    {
+        <div data-tour="inicio-alertas"><FaixaAlertas Alertas="alertas" /></div>
+
+        @if (podeVerFinanceiro && metricas is not null)
+        {
+            <StatCardGrid MinColuna="200" data-tour="inicio-kpis">
+                <MetricCard Rotulo="Receita do mês" Valor="@FBRL(metricas.TotalReceitasMes)" Tom="ok" Href="/financeiro" />
+                <MetricCard Rotulo="Despesa do mês" Valor="@FBRL(metricas.TotalDespesasMes)" Tom="alerta" Href="/financeiro" />
+                <MetricCard Rotulo="Lucro líquido" Valor="@FBRL(metricas.LucroLiquidoMes)" Tom="@(metricas.LucroLiquidoMes >= 0 ? "ok" : "erro")" Href="/financeiro" />
+                <MetricCard Rotulo="Capital em estoque" Valor="@FBRL(metricas.CapitalEstoqueVeiculos + metricas.CapitalEstoqueComponentes)" Href="/financeiro" />
+            </StatCardGrid>
+        }
+
+        @if (podeVerFinanceiro && serieFaturamento.Count > 1)
+        {
+            <Secao Titulo="Faturamento dos últimos meses" data-tour="inicio-faturamento">
+                <div class="grafico-inicio"><canvas id="inicioFaturamento"></canvas></div>
+            </Secao>
+        }
+
+        <div class="areas" data-tour="inicio-areas">
+            @if (temConcessionaria)
+            {
+                <div class="area-card">
+                    <div class="area-head"><h2>Concessionária</h2><a href="/concessionaria">Abrir →</a></div>
+                    <div class="area-kpis">
+                        <div><strong>@veiculosDisponiveis</strong><span>disponíveis</span></div>
+                        <div><strong>@propostasAbertas</strong><span>propostas abertas</span></div>
+                        <div><strong>@consignacoesVencendo</strong><span>consig. vencendo</span></div>
+                    </div>
+                </div>
+            }
+            @if (temOficina)
+            {
+                <div class="area-card">
+                    <div class="area-head"><h2>Oficina</h2><a href="/oficina">Abrir →</a></div>
+                    <div class="area-kpis">
+                        <div><strong>@osAbertas</strong><span>OS abertas</span></div>
+                        <div><strong>@osCobranca</strong><span>aguard. cobrança</span></div>
+                        <div><strong>@pecasBaixas</strong><span>peças no mínimo</span></div>
+                    </div>
+                </div>
+            }
+            @if (podeVerFinanceiro)
+            {
+                <div class="area-card">
+                    <div class="area-head"><h2>Financeiro</h2><a href="/financeiro">Abrir →</a></div>
+                    <div class="area-kpis">
+                        <div><strong>@(metricas is not null ? FBRL(metricas.LucroLiquidoMes) : "—")</strong><span>lucro do mês</span></div>
+                        <div><strong>@osCobranca</strong><span>OS a receber</span></div>
+                    </div>
+                </div>
+            }
+            @if (podeVerAnalises)
+            {
+                <div class="area-card">
+                    <div class="area-head"><h2>Análises</h2><a href="/dashboard">Abrir →</a></div>
+                    <p class="muted">Gráficos e comparativos de oficina e concessionária.</p>
+                </div>
+            }
+        </div>
+
+        <Secao Titulo="Atalhos">
+            <div class="atalhos" data-tour="inicio-atalhos">
+                <SecaoCard Titulo="Clientes" Icone="👤" Href="/clientes" Descricao="Buscar e abrir a ficha de um cliente." />
+                @if (podeVerFinanceiro)
+                {
+                    <SecaoCard Titulo="Relatórios" Icone="📑" Href="/financeiro/relatorios" Descricao="Exportar dados por período." />
+                    <SecaoCard Titulo="Análises" Icone="📊" Href="/dashboard" Descricao="Gráficos e comparativos." />
+                    <SecaoCard Titulo="Despesas do mês" Icone="🧾" Href="/financeiro/despesas" Descricao="Balanço mensal de despesas." />
+                }
+                <AuthorizeView Roles="Admin" Context="ctxA">
+                    <SecaoCard Titulo="Equipe" Icone="🧑‍🔧" Href="/equipe" Descricao="Funcionários do sistema." />
+                    <SecaoCard Titulo="Configurações" Icone="⚙️" Href="/configuracoes" Descricao="Parâmetros do sistema." />
+                </AuthorizeView>
+                <SecaoCard Titulo="Consulta do cliente" Icone="🔎" Href="/consulta" Descricao="Página pública de acompanhamento de OS." />
+            </div>
+        </Secao>
+
+        @if (!temConcessionaria && !temOficina && !podeVerFinanceiro)
+        {
+            <EstadoVazio Mensagem="Use o menu acima para navegar." Icone="👋" />
+        }
+    }
+</div>
 
 @code {
+    private static readonly System.Globalization.CultureInfo Cultura = new("pt-BR");
+    private static string FBRL(decimal v) => v.ToString("C", Cultura);
+
+    private string saudacao = "Bem-vindo";
+    private bool carregando = true;
+    private bool temConcessionaria, temOficina, podeVerFinanceiro, podeVerAnalises;
+
+    private DashboardMetricasDTO? metricas;
+    private List<(string Label, decimal Valor)> serieFaturamento = new();
+    private bool graficoRenderizado;
+    private List<FaixaAlertas.Alerta> alertas = new();
+    private int veiculosDisponiveis, propostasAbertas, consignacoesVencendo;
+    private int osAbertas, osCobranca, pecasBaixas;
+
+    private static readonly string[] StatusOsAbertas =
+        { "Pendente", "EmAnalise", "AguardandoCliente", "BuscandoPecasParaOrcamento", "Aprovada", "EmAndamento", "Pausada" };
+    private static readonly string[] PropTerminal = { "Concluida", "Rejeitada", "Cancelada", "Expirada" };
+
     protected override async Task OnInitializedAsync()
     {
         var state = await AuthState.GetAuthenticationStateAsync();
@@ -17,19 +143,114 @@
             return;
         }
 
-        if (user.IsInRole("Admin"))
-            Nav.NavigateTo("/dashboard");
-        else if (user.IsInRole("GerenteVendas"))
-            Nav.NavigateTo("/concessionaria");
-        else if (user.IsInRole("ChefeOficina"))
-            Nav.NavigateTo("/oficina");
-        else if (user.IsInRole("Vendedor"))
-            Nav.NavigateTo("/concessionaria");
-        else if (user.IsInRole("Mecanico"))
-            Nav.NavigateTo("/oficina");
-        else if (user.IsInRole("Recepcionista"))
-            Nav.NavigateTo("/recepcao");
-        else
-            Nav.NavigateTo("/login");
+        var nome = user.FindFirst("name")?.Value
+                   ?? user.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
+                   ?? "";
+        var h = DateTime.Now.Hour;
+        var parte = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+        saudacao = string.IsNullOrWhiteSpace(nome) ? parte : $"{parte}, {nome.Split(' ')[0]}";
+
+        temConcessionaria = user.IsInRole("Admin") || user.IsInRole("GerenteVendas") || user.IsInRole("Vendedor");
+        temOficina = user.IsInRole("Admin") || user.IsInRole("ChefeOficina") || user.IsInRole("Mecanico") || user.IsInRole("Recepcionista");
+        podeVerFinanceiro = user.IsInRole("Admin") || user.IsInRole("GerenteVendas") || user.IsInRole("ChefeOficina");
+        podeVerAnalises = podeVerFinanceiro;
+
+        try
+        {
+            var tOrdens = temOficina ? OrdemService.GetAllAsync() : NullList<CarStoreManager.Application.DTOs.Oficina.OrdemServico.OrdemServicoListaDTO>();
+            var tVeic = temConcessionaria ? VeiculoService.GetAllAsync() : NullList<CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda.VeiculoVendaListaDTO>();
+            var tConsig = temConcessionaria ? ConsignacaoService.GetAllAsync() : NullList<CarStoreManager.Application.DTOs.Concessionaria.VeiculoConsignacao.VeiculoConsignacaoListaDTO>();
+            var tProp = temConcessionaria ? PropostaService.GetAllAsync() : NullList<CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda.PropostaVendaListaDTO>();
+            var tEstoque = temOficina ? EstoqueService.ListarComEstoqueBaixoAsync() : NullList<CarStoreManager.Application.DTOs.Oficina.Componente.EstoqueComponenteDTO>();
+            var tMetr = podeVerFinanceiro
+                ? DashboardService.ObterMetricasAsync(6)
+                : Task.FromResult<CarStoreManager.Application.Common.Result<DashboardMetricasDTO>>(null!);
+
+            await Task.WhenAll(tOrdens, tVeic, tConsig, tProp, tEstoque, tMetr);
+
+            var ordens = tOrdens.Result?.Value?.ToList() ?? new();
+            var veic = tVeic.Result?.Value?.ToList() ?? new();
+            var consig = tConsig.Result?.Value?.ToList() ?? new();
+            var props = tProp.Result?.Value?.ToList() ?? new();
+            var pecas = tEstoque.Result?.Value?.ToList() ?? new();
+            if (podeVerFinanceiro && tMetr.Result is { IsSuccess: true })
+            {
+                metricas = tMetr.Result.Value;
+                var servicos = metricas!.SerieReceitaServicos ?? new();
+                var vendas = metricas.SerieReceitaVendas ?? new();
+                var meses = servicos.Select(s => s.MesLabel)
+                    .Union(vendas.Select(v => v.MesLabel))
+                    .ToList();
+                serieFaturamento = meses.Select(m => (
+                    m,
+                    (servicos.FirstOrDefault(s => s.MesLabel == m)?.Valor ?? 0m)
+                    + (vendas.FirstOrDefault(v => v.MesLabel == m)?.Valor ?? 0m)
+                )).ToList();
+            }
+
+            osAbertas = ordens.Count(o => StatusOsAbertas.Contains(o.Status));
+            osCobranca = ordens.Count(o => o.Status == "PagamentoPendente");
+            pecasBaixas = pecas.Count;
+            veiculosDisponiveis = veic.Count(v => v.Disponibilidade == "Disponivel");
+            propostasAbertas = props.Count(p => !PropTerminal.Contains(p.Status));
+            consignacoesVencendo = consig.Count(c => c.Status == "Ativa" && (c.EstaVencido || c.DiasRestantes <= 7));
+
+            if (osCobranca > 0) alertas.Add(new($"{osCobranca} OS aguardando cobrança", "/oficina/recepcao", "atencao", "💰"));
+            if (consignacoesVencendo > 0) alertas.Add(new($"{consignacoesVencendo} consignação(ões) vencendo", "/concessionaria/consignacoes", "atencao", "⏳"));
+            if (pecasBaixas > 0) alertas.Add(new($"{pecasBaixas} peça(s) abaixo do mínimo", "/oficina/componentes", "alerta", "📦"));
+
+            if (podeVerFinanceiro)
+            {
+                var dias = await BalancoService.DiasParaFechamentoAsync();
+                if (dias is { } d)
+                {
+                    var txt = d == 0 ? "Hoje é a data de fechamento de despesas"
+                        : d == 1 ? "1 dia para a data de fechamento de despesas"
+                        : $"{d} dias para a data de fechamento de despesas";
+                    alertas.Add(new(txt, "/financeiro/despesas", "atencao", "🧾"));
+                }
+            }
+        }
+        catch { }
+
+        carregando = false;
+    }
+
+    private static Task<CarStoreManager.Application.Common.Result<IEnumerable<T>>> NullList<T>()
+        => Task.FromResult(CarStoreManager.Application.Common.Result<IEnumerable<T>>.Ok(Enumerable.Empty<T>()));
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (carregando || graficoRenderizado || serieFaturamento.Count <= 1) return;
+        graficoRenderizado = true;
+        try
+        {
+            await JS.InvokeVoidAsync("carstoreChart.linhaTempo", "inicioFaturamento",
+                serieFaturamento.Select(p => p.Label).ToArray(),
+                new[] { new { nome = "Faturamento", dados = serieFaturamento.Select(p => p.Valor).ToArray() } },
+                "R$");
+        }
+        catch { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("carstoreChart.destroy", "inicioFaturamento"); }
+        catch { }
     }
 }
+
+<style>
+    .areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--sp-4); margin-bottom: var(--sp-6); }
+    .atalhos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
+    .grafico-inicio { position: relative; height: 240px; }
+    .grafico-inicio canvas { max-height: 240px; }
+    .area-card { background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); padding: var(--sp-5); }
+    .area-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--sp-4); }
+    .area-head h2 { font-size: var(--txt-lg); margin: 0; }
+    .area-head a { font-size: var(--txt-sm); color: var(--cor-acao); text-decoration: none; }
+    .area-kpis { display: flex; gap: var(--sp-5); }
+    .area-kpis > div { display: flex; flex-direction: column; }
+    .area-kpis strong { font-size: var(--txt-xl); font-weight: var(--peso-medio); }
+    .area-kpis span { font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+</style>
