@@ -2,10 +2,12 @@
 // Cada gráfico é referenciado pelo id do canvas; chamadas subsequentes
 // destroem a instância anterior para evitar duplicação ao re-renderizar.
 //
-// Diretrizes de data-viz (docs/redesign/11-batch2-melhorias.md §E):
+// Diretrizes de data-viz (docs/redesign/11-batch2-melhorias.md §E,
+// docs/redesign/21-pizza-fatia-pequena.md):
 //  - comparar magnitude entre muitas categorias  -> barra HORIZONTAL, 1 tom, ordenada
 //  - tendência no tempo                           -> linha
-//  - parte-do-todo (<= 6 segmentos, só relance)   -> rosca
+//  - parte-do-todo (<= 6 segmentos, TODOS >= 10%) -> rosca
+//  - parte-do-todo com alguma fatia < 10%         -> barra VERTICAL (rosca fica ilegível)
 //  - distinguir 2-5 séries                        -> paleta categórica, ordem fixa
 //  - nunca eixo duplo; 9a categoria -> "Outros"
 
@@ -21,6 +23,37 @@ const TINTA = '#1a1a1a', TINTA3 = '#888', LINHA = '#ececec';
 Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 Chart.defaults.font.size = 12;
 Chart.defaults.color = TINTA3;
+
+// Plugin nativo do Chart.js (sem lib externa) — desenha o valor formatado
+// acima de cada barra. Só ativa por gráfico, via
+// options.plugins.valorAcimaDaBarra = { enabled: true, unidade }; gráfico
+// que não passa essa opção não é afetado. Usado pelas barras verticais que
+// substituem a rosca com fatia pequena (ver docs/redesign/21-pizza-fatia-
+// pequena.md) — mesma ideia do "% no hover" que a rosca já mostrava, só
+// que sempre visível em vez de precisar passar o mouse.
+Chart.register({
+    id: 'valorAcimaDaBarra',
+    afterDatasetsDraw: function (chart) {
+        var opts = chart.options.plugins && chart.options.plugins.valorAcimaDaBarra;
+        if (!opts || !opts.enabled) return;
+        var ctx = chart.ctx;
+        ctx.save();
+        ctx.fillStyle = TINTA;
+        ctx.font = '600 11px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        chart.data.datasets.forEach(function (dataset, di) {
+            var meta = chart.getDatasetMeta(di);
+            if (meta.hidden) return;
+            meta.data.forEach(function (bar, i) {
+                var valor = dataset.data[i];
+                if (valor == null) return;
+                ctx.fillText(fmt(valor, opts.unidade), bar.x, bar.y - 6);
+            });
+        });
+        ctx.restore();
+    }
+});
 
 function opcoesBase(extra) {
     return Object.assign({
@@ -47,17 +80,13 @@ window.carstoreChart = {
         return montar(canvasId, { type: type, data: { labels: labels, datasets: datasets }, options: options || opcoesBase() });
     },
 
-    // Barra HORIZONTAL de magnitude: 1 série, ordena desc, agrupa cauda em "Outros".
+    // Barra HORIZONTAL de magnitude: 1 série, ordena desc, corta silenciosamente
+    // após maxItens — sem agregar "Outros" (os que ficam de fora, ficam de
+    // fora mesmo; ver docs/redesign/13-padrao-graficos.md).
     // dados = [{ rotulo, valor }]  ·  unidade opcional ("R$", "un", "dias")
     barraMagnitude: function (canvasId, dados, unidade, maxItens) {
-        maxItens = maxItens || 12;
-        var ord = (dados || []).slice().sort(function (a, b) { return b.valor - a.valor; });
-        if (ord.length > maxItens) {
-            var cabeca = ord.slice(0, maxItens - 1);
-            var resto = ord.slice(maxItens - 1).reduce(function (s, d) { return s + d.valor; }, 0);
-            cabeca.push({ rotulo: 'Outros', valor: resto });
-            ord = cabeca;
-        }
+        maxItens = maxItens || 10;
+        var ord = (dados || []).slice().sort(function (a, b) { return b.valor - a.valor; }).slice(0, maxItens);
         return montar(canvasId, {
             type: 'bar',
             data: {
@@ -77,6 +106,49 @@ window.carstoreChart = {
                 scales: {
                     x: Object.assign(eixoRecessivo(), { ticks: { callback: function (v) { return fmt(v, unidade); }, padding: 8 } }),
                     y: { grid: { display: false }, border: { display: false } }
+                }
+            })
+        });
+    },
+
+    // Barra VERTICAL de magnitude — substitui a rosca quando pelo menos uma
+    // fatia representaria menos de 10% do total (fatia fina em rosca fica
+    // ilegível/sem espaço pro rótulo; ver docs/redesign/21-pizza-fatia-
+    // pequena.md). Mesma ordenação desc de barraMagnitude, mas SEM cortar
+    // em 10 itens — só chega aqui vindo de carstoreChart.comparativo, que
+    // já garante <= 6 categorias antes de decidir entre rosca e esta.
+    // Tooltip mostra o percentual do total, igual a rosca.
+    barraVerticalMagnitude: function (canvasId, dados, unidade) {
+        var ord = (dados || []).slice().sort(function (a, b) { return b.valor - a.valor; });
+        var total = ord.reduce(function (s, d) { return s + d.valor; }, 0);
+        return montar(canvasId, {
+            type: 'bar',
+            data: {
+                labels: ord.map(function (d) { return d.rotulo; }),
+                datasets: [{
+                    data: ord.map(function (d) { return d.valor; }),
+                    backgroundColor: window.CARSTORE_AZUL,
+                    borderRadius: 4, borderSkipped: false, barThickness: 'flex', maxBarThickness: 56
+                }]
+            },
+            options: opcoesBase({
+                layout: { padding: { top: 20 } }, // espaço pro rótulo do valor não cortar no topo
+                plugins: {
+                    legend: { display: false },
+                    valorAcimaDaBarra: { enabled: true, unidade: unidade },
+                    tooltip: {
+                        callbacks: {
+                            label: function (c) {
+                                var pct = total > 0 ? (c.parsed.y / total * 100) : 0;
+                                var pctTxt = pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+                                return pctTxt + ' (' + fmt(c.parsed.y, unidade) + ')';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { display: false }, border: { display: false }, ticks: { padding: 8 } },
+                    y: Object.assign(eixoRecessivo(), { ticks: { callback: function (v) { return fmt(v, unidade); }, padding: 8 } })
                 }
             })
         });
@@ -132,8 +204,12 @@ window.carstoreChart = {
         });
     },
 
-    // Rosca — SÓ parte-do-todo com poucos segmentos (<= 6).
+    // Rosca — SÓ parte-do-todo com poucos segmentos (<= 6) e nenhuma fatia
+    // abaixo de 10% do total (ver comparativo, que decide isso antes de
+    // chamar aqui). Hover mostra o nome e a porcentagem que a fatia ocupa
+    // do total, além do valor.
     rosca: function (canvasId, dados, unidade) {
+        var total = (dados || []).reduce(function (s, d) { return s + d.valor; }, 0);
         return montar(canvasId, {
             type: 'doughnut',
             data: {
@@ -142,9 +218,47 @@ window.carstoreChart = {
             },
             options: opcoesBase({
                 cutout: '62%',
-                plugins: { tooltip: { callbacks: { label: function (c) { return c.label + ': ' + fmt(c.parsed, unidade); } } } }
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (c) {
+                                var pct = total > 0 ? (c.parsed / total * 100) : 0;
+                                var pctTxt = pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+                                return c.label + ': ' + pctTxt + ' (' + fmt(c.parsed, unidade) + ')';
+                            }
+                        }
+                    }
+                }
             })
         });
+    },
+
+    // Padrão único de comparação categórica do sistema (ver
+    // docs/redesign/13-padrao-graficos.md, docs/redesign/21-pizza-fatia-
+    // pequena.md): até 6 categorias E todas com 10% ou mais do total ->
+    // rosca; mais de 6 -> barra horizontal só com as 10 maiores, sem
+    // "Outros"; até 6 categorias mas ALGUMA com menos de 10% do total ->
+    // barra vertical (rosca com fatia fina fica ilegível e some o rótulo).
+    // Todo gráfico que compara "tipos" de um dado (status, marca,
+    // categoria...) deve usar esta função em vez de chamar
+    // rosca/barraMagnitude/barraVerticalMagnitude diretamente.
+    // dados = [{ rotulo, valor }]  ·  unidade opcional ("R$", "un", "dias")
+    comparativo: function (canvasId, dados, unidade) {
+        var ord = (dados || [])
+            .filter(function (d) { return d && d.valor > 0; })
+            .slice()
+            .sort(function (a, b) { return b.valor - a.valor; });
+
+        if (ord.length === 0) {
+            window.carstoreChart.destroy(canvasId);
+            return false;
+        }
+        if (ord.length > 6) return window.carstoreChart.barraMagnitude(canvasId, ord.slice(0, 10), unidade, 10);
+
+        var total = ord.reduce(function (s, d) { return s + d.valor; }, 0);
+        var temFatiaAbaixoDe10Pct = ord.some(function (d) { return total > 0 && (d.valor / total) < 0.10; });
+        if (temFatiaAbaixoDe10Pct) return window.carstoreChart.barraVerticalMagnitude(canvasId, ord, unidade);
+        return window.carstoreChart.rosca(canvasId, ord, unidade);
     },
 
     destroy: function (canvasId) {

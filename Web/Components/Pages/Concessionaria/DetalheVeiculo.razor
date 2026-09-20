@@ -268,6 +268,10 @@ else
                         </AuthorizeView>
                     }
 
+                    <button class="btn-secondary" @onclick="AgendarTestDrive">
+                        🔑 Agendar test drive
+                    </button>
+
                     <button class="btn-secondary" @onclick="AbrirModalEdicao">
                         Editar veículo
                     </button>
@@ -770,6 +774,9 @@ else
 
     private void GerarProposta() =>
         Nav.NavigateTo($"/concessionaria/proposta/nova/{Id}");
+
+    private void AgendarTestDrive() =>
+        Nav.NavigateTo($"/concessionaria/test-drives?veiculoId={Id}");
 
     private async Task LiberarParaVenda()
     {

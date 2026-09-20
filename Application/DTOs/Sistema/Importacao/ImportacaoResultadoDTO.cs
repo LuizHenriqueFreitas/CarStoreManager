@@ -14,11 +14,13 @@ public class ImportacaoResultadoDTO
     public int VeiculosClienteCriados { get; set; }
     public int PropostasVendaCriadas { get; set; }
     public int OrdensServicoCriadas { get; set; }
+    public int TestDrivesCriados { get; set; }
+    public int DespesasExtrasCriadas { get; set; }
 
     public List<string> Avisos { get; set; } = new();
 
     public int TotalCriado =>
         UsuariosCriados + ClientesCriados + FornecedoresCriados + ComponentesCriados + ChecklistPresetsCriados +
         TemplatesDocumentoCriados + DespesasCriadas + VeiculosVendaCriados + VeiculosConsignadosCriados +
-        VeiculosClienteCriados + PropostasVendaCriadas + OrdensServicoCriadas;
+        VeiculosClienteCriados + PropostasVendaCriadas + OrdensServicoCriadas + TestDrivesCriados + DespesasExtrasCriadas;
 }

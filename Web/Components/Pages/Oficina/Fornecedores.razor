@@ -13,7 +13,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Web
 
-<div class="pagina forn-page">
+<div class="pagina">
     <PageHeader Titulo="Fornecedores" Subtitulo="@($"{todosFornecedores.Count} fornecedor(es) · {todosFornecedores.Count(f => f.Ativo)} ativo(s)")">
         <Acao>
             @if (ehAdmin)
@@ -33,36 +33,52 @@
     {
         <div class="loading">Carregando fornecedores...</div>
     }
+    else if (!fornecedoresFiltrados.Any())
+    {
+        <EstadoVazio Mensagem="Nenhum fornecedor com esses filtros." Icone="🏭" />
+    }
     else
     {
-        <div class="forn-lista">
-            @foreach (var f in fornecedoresFiltrados)
-            {
-                <div class="forn-card @(f.Ativo ? "" : "inativo")">
-                    <div class="forn-avatar">@f.Nome[0].ToString().ToUpper()</div>
-                    <div class="forn-info">
-                        <span class="forn-nome">@f.Nome</span>
-                        <span class="forn-detalhe">
-                            @f.Cnpj
-                            @if (!string.IsNullOrWhiteSpace(f.Telefone)) { <text> · @FormatarTelefone(f.Telefone)</text> }
-                            @if (!string.IsNullOrWhiteSpace(f.Email)) { <text> · @f.Email</text> }
-                        </span>
-                    </div>
-                    <span class="forn-status @(f.Ativo ? "ativo-badge" : "inativo-badge")">@(f.Ativo ? "Ativo" : "Inativo")</span>
-                    @if (ehAdmin)
+        <div class="table-scroll">
+            <table class="tab">
+                <thead>
+                    <tr>
+                        <ColunaOrdenavel Coluna="nome" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Nome</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="cnpj" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">CNPJ</ColunaOrdenavel>
+                        <th>Contato</th>
+                        <ColunaOrdenavel Coluna="status" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Status</ColunaOrdenavel>
+                        @if (ehAdmin)
+                        {
+                            <th>Ações</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in fornecedoresFiltrados)
                     {
-                        <div class="forn-acoes">
-                            <button class="btn-mini" @onclick="() => AbrirModalEditar(f)">Editar contato</button>
-                            <button class="btn-mini" @onclick="() => AlternarAtivo(f)">@(f.Ativo ? "Desativar" : "Ativar")</button>
-                            <button class="btn-mini btn-remover" @onclick="() => ConfirmarExcluir(f.Id, f.Nome)">Excluir</button>
-                        </div>
+                        <tr class="@(f.Ativo ? "" : "inativo")">
+                            <td class="forte">@f.Nome</td>
+                            <td class="mono">@f.Cnpj</td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(f.Telefone)) { @FormatarTelefone(f.Telefone) }
+                                @if (!string.IsNullOrWhiteSpace(f.Telefone) && !string.IsNullOrWhiteSpace(f.Email)) { <text> · </text> }
+                                @if (!string.IsNullOrWhiteSpace(f.Email)) { @f.Email }
+                            </td>
+                            <td><span class="forn-status @(f.Ativo ? "ativo-badge" : "inativo-badge")">@(f.Ativo ? "Ativo" : "Inativo")</span></td>
+                            @if (ehAdmin)
+                            {
+                                <td>
+                                    <div class="forn-acoes">
+                                        <button class="btn-mini" @onclick="() => AbrirModalEditar(f)">Editar contato</button>
+                                        <button class="btn-mini" @onclick="() => AlternarAtivo(f)">@(f.Ativo ? "Desativar" : "Ativar")</button>
+                                        <button class="btn-mini btn-remover" @onclick="() => ConfirmarExcluir(f.Id, f.Nome)">Excluir</button>
+                                    </div>
+                                </td>
+                            }
+                        </tr>
                     }
-                </div>
-            }
-            @if (!fornecedoresFiltrados.Any())
-            {
-                <EstadoVazio Mensagem="Nenhum fornecedor com esses filtros." Icone="🏭" />
-            }
+                </tbody>
+            </table>
         </div>
     }
 </div>
@@ -248,6 +264,11 @@
     {
         new("Todos", "Todos"), new("Ativos", "Ativos"), new("Inativos", "Inativos"),
     };
+
+    // Ordenação da tabela — clique na coluna ordena crescente; clique de
+    // novo na mesma coluna inverte pra decrescente (ver ColunaOrdenavel).
+    private string sortColuna = "nome";
+    private bool sortAscendente = true;
     private bool carregando = true;
     private bool ehAdmin;
 
@@ -303,9 +324,25 @@
                 || f.Cnpj.Contains(termo, StringComparison.OrdinalIgnoreCase));
         }
 
-        fornecedoresFiltrados = baseLista
-            .OrderBy(f => f.Nome, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        fornecedoresFiltrados = baseLista.ToList();
+        OrdenarFornecedores();
+    }
+
+    private void Ordenar(string coluna)
+    {
+        if (sortColuna == coluna) sortAscendente = !sortAscendente;
+        else { sortColuna = coluna; sortAscendente = true; }
+        OrdenarFornecedores();
+    }
+
+    private void OrdenarFornecedores()
+    {
+        fornecedoresFiltrados = sortColuna switch
+        {
+            "cnpj" => Ordenacao.Por(fornecedoresFiltrados, f => f.Cnpj, sortAscendente),
+            "status" => Ordenacao.Por(fornecedoresFiltrados, f => f.Ativo, sortAscendente),
+            _ => Ordenacao.Por(fornecedoresFiltrados, f => f.Nome, sortAscendente),
+        };
     }
 
     private void AbrirModalNovo()
@@ -446,93 +483,20 @@
 }
 
 <style>
-    .forn-page {
-        max-width: 980px;
-        margin: 0 auto;
-        padding: 32px 24px;
-    }
-
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 24px;
-    }
-
-    .page-titulo { font-size: 24px; font-weight: 500; margin-bottom: 4px; }
-    .page-sub { font-size: 14px; color: #888; }
-
-    .btn-novo {
-        background: #e02020;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        padding: 9px 16px;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-    }
-
-    .btn-novo:hover { background: #c01818; }
-
-    .toolbar {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-    }
-
-    .busca-input { flex: 1; }
-    .filtro-select { max-width: 180px; }
-
-    .forn-lista {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .vazio-aba {
-        text-align: center;
-        padding: 40px;
-        color: #888;
-        font-size: 14px;
-    }
-
-    .forn-card {
-        background: #fff;
-        border: 0.5px solid #e0e0e0;
-        border-radius: 10px;
-        padding: 14px 16px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-    }
-
-    .forn-card.inativo { opacity: 0.6; }
-
-    .forn-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        font-weight: 500;
-        flex-shrink: 0;
-        background: #f0f4ff;
-        color: #3b5bdb;
-    }
-
-    .forn-info {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        flex: 1;
-        min-width: 0;
-    }
-
-    .forn-nome { font-size: 14px; font-weight: 500; }
-    .forn-detalhe { font-size: 12px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Tabela — mesmo padrão de tabela HTML usado em Recepção/Ordens de
+       serviço/Estoque e em Propostas/Test drives/Consignações da
+       Concessionária: cabeçalho clicável (ColunaOrdenavel) declara as
+       colunas, o navegador garante o alinhamento com as linhas. Zebra pra
+       facilitar a leitura. */
+    .table-scroll { overflow-x: auto; }
+    .tab { width: 100%; border-collapse: collapse; background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); overflow: hidden; }
+    .tab th, .tab td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--cor-linha-suave); font-size: var(--txt-sm); }
+    .tab th { background: var(--cor-fundo); font-size: var(--txt-xs); text-transform: uppercase; letter-spacing: .3px; color: var(--cor-tinta-3); }
+    .tab tbody tr:nth-child(even) { background: var(--cor-zebra); }
+    .tab tbody tr:hover { background: var(--cor-info-bg); }
+    .tab tbody tr.inativo { opacity: 0.6; }
+    .forte { font-weight: var(--peso-medio); }
+    .mono { font-family: monospace; }
 
     .forn-status {
         font-size: 11px;
@@ -674,18 +638,7 @@
     .btn-confirmar:disabled { opacity: 0.5; cursor: not-allowed; }
     .loading { text-align: center; padding: 60px; color: #888; font-size: 14px; }
 
-    @@media (max-width: 640px) {
-        .forn-card {
-            flex-wrap: wrap;
-        }
-
-        .forn-info {
-            min-width: 55%;
-        }
-
-        .forn-acoes {
-            flex-basis: 100%;
-            justify-content: flex-end;
-        }
+    @@media (max-width: 700px) {
+        .tab { min-width: 620px; }
     }
 </style>

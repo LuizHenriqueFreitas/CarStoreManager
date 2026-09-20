@@ -24,17 +24,24 @@ public static partial class RegistroDeTours
                 },
                 new()
                 {
+                    Seletor = "dash-hub-atalhos",
+                    Titulo = "Atalhos rápidos",
+                    Texto = "Mesma barra lateral dos painéis de Oficina e Concessionária — acesso direto às " +
+                        "outras áreas do sistema."
+                },
+                new()
+                {
                     Seletor = "dashboard-periodo",
                     Titulo = "Período dos gráficos",
-                    Texto = "Escolha a janela de tempo (3, 6 ou 12 meses) usada pelas séries temporais " +
-                        "de todos os gráficos da tela."
+                    Texto = "Escolha o intervalo (7, 15, 30, 60 dias ou datas customizadas) usado pelas " +
+                        "séries temporais de todos os gráficos da tela — mesmo seletor do Financeiro."
                 },
                 new()
                 {
                     Seletor = "dashboard-relatorio",
-                    Titulo = "Exportar relatório",
-                    Texto = "Um botão só: escolha o tipo de relatório e o período, e baixe em CSV ou XML. " +
-                        "Os relatórios \"consolidados\" recalculam as métricas inteiras para o período pedido."
+                    Titulo = "Relatórios",
+                    Texto = "Leva para a central de relatórios, com todos os relatórios disponíveis agrupados " +
+                        "por tipo — escolha o período e o formato (CSV ou XML) lá."
                 },
                 new()
                 {
@@ -76,32 +83,6 @@ public static partial class RegistroDeTours
         // ============================================================
         // CONFIGURAÇÕES — índice
         // ============================================================
-        new TourDaPagina
-        {
-            RotaTemplate = "/configuracoes",
-            Titulo = "Configurações",
-            Descricao = "Parâmetros de funcionamento, presets e dados do sistema.",
-            Passos = new List<PassoTour>
-            {
-                new()
-                {
-                    Seletor = null,
-                    Titulo = "Central de configurações",
-                    Texto = "Aqui ficam só coisas de funcionamento do sistema: o formulário mensal de despesas, " +
-                        "os parâmetros de operação, e a importação/exportação de dados. Clientes e Equipe têm " +
-                        "telas próprias no menu de cima."
-                },
-                new()
-                {
-                    Seletor = "config-cards",
-                    Titulo = "Cada card é um atalho",
-                    Texto = "Clique em um card para abrir a área correspondente. Os mesmos destinos também " +
-                        "estão no menu \"Configurações\" da barra superior."
-                }
-            }
-        },
-
-        // ============================================================
         // CLIENTES — lista
         // ============================================================
         new TourDaPagina
@@ -121,6 +102,14 @@ public static partial class RegistroDeTours
                 },
                 new()
                 {
+                    Seletor = "clientes-btn-novo",
+                    Titulo = "Adicionar cliente",
+                    Texto = "Abre um formulário pra cadastrar um cliente novo direto por aqui — nome, CPF, " +
+                        "contato e endereço. O mesmo cadastro também pode nascer durante a abertura de uma OS " +
+                        "ou proposta de venda, buscando por CPF."
+                },
+                new()
+                {
                     Seletor = "clientes-busca",
                     Titulo = "Busca",
                     Texto = "Filtra a lista por nome, CPF ou telefone conforme você digita."
@@ -129,8 +118,9 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "clientes-card-exemplo",
                     Titulo = "Abrir a ficha",
-                    Texto = "Clique no cartão do cliente para abrir a ficha completa (histórico, veículos, " +
-                        "valores). O botão \"Editar\" abre só o formulário de dados cadastrais."
+                    Texto = "Clique no título de uma coluna pra reordenar a lista por ela. Clique na linha do " +
+                        "cliente para abrir a ficha completa (histórico, veículos, valores) — o botão " +
+                        "\"Editar\" abre só o formulário de dados cadastrais."
                 }
             }
         },
@@ -213,9 +203,10 @@ public static partial class RegistroDeTours
                 new()
                 {
                     Seletor = "usuarios-card-exemplo",
-                    Titulo = "Card de um funcionário",
-                    Texto = "A cor do avatar e do selo identificam o tipo do funcionário. Seu próprio usuário " +
-                        "aparece marcado como \"você\", sem o botão de desativar."
+                    Titulo = "Lista de funcionários",
+                    Texto = "Clique no título de uma coluna pra reordenar por ela. A cor do selo identifica o " +
+                        "tipo do funcionário. Seu próprio usuário aparece marcado como \"você\", sem o botão " +
+                        "de desativar."
                 },
                 new()
                 {
@@ -228,11 +219,11 @@ public static partial class RegistroDeTours
         },
 
         // ============================================================
-        // CONFIGURAÇÕES DO SISTEMA — menu de botões
+        // CONFIGURAÇÕES DO SISTEMA — página default de /configuracoes
         // ============================================================
         new TourDaPagina
         {
-            RotaTemplate = "/configuracoes/sistema",
+            RotaTemplate = "/configuracoes",
             Titulo = "Configurações do sistema",
             Descricao = "Integrações, checklists, modo operante, documentos e importação.",
             Passos = new List<PassoTour>
@@ -243,6 +234,14 @@ public static partial class RegistroDeTours
                     Titulo = "Configurações administrativas",
                     Texto = "Parâmetros que afetam o sistema inteiro. Só o administrador acessa. Escolha uma " +
                         "das áreas nos cartões — cada uma abre sua própria tela."
+                },
+                new()
+                {
+                    Seletor = "config-cards",
+                    Titulo = "Cada card é um atalho",
+                    Texto = "Clique em um card para abrir a área correspondente — inclusive o formulário " +
+                        "mensal de despesas. Os mesmos destinos também estão no menu \"Configurações\" da " +
+                        "barra superior."
                 },
                 new()
                 {

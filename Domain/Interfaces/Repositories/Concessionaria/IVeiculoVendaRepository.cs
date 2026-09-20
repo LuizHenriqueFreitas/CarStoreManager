@@ -8,4 +8,6 @@ public interface IVeiculoVendaRepository : IRepository<VeiculoVenda>
     Task<IEnumerable<VeiculoVenda>> ObterDisponiveisAsync();
     Task<IEnumerable<VeiculoVenda>> ObterPorDisponibilidadeAsync(DisponibilidadeVeiculo disponibilidade);
     Task<VeiculoVenda?> ObterPorPlacaAsync(string placa);
+
+    Task<IEnumerable<VeiculoVenda>> PesquisarAsync(string termo);
 }

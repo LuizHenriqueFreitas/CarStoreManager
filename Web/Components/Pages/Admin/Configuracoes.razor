@@ -1,3 +1,4 @@
+@page "/configuracoes"
 @page "/configuracoes/sistema"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 
@@ -25,7 +26,10 @@
     <PageHeader Titulo="Configurações do sistema"
                 Subtitulo="Parâmetros de funcionamento gerenciados pelo administrador">
         <Acao>
-            <a class="btn btn-neutro" href="@(abaAtiva == "menu" ? "/configuracoes" : "/configuracoes/sistema")">← Voltar</a>
+            @if (abaAtiva != "menu")
+            {
+                <a class="btn btn-neutro" href="/configuracoes">← Voltar</a>
+            }
         </Acao>
     </PageHeader>
 
@@ -38,18 +42,20 @@
 
     @if (abaAtiva == "menu")
     {
-        <div class="cfg-menu-grid">
-            <SecaoCard Titulo="Integrações" Icone="🔌" Href="/configuracoes/sistema?aba=geral"
+        <div class="cfg-menu-grid" data-tour="config-cards">
+            <SecaoCard Titulo="Formulário mensal de despesas" Icone="🧾" Href="/configuracoes/formulario-despesas"
+                       Descricao="Modelo das despesas mensais e dia de fechamento do balanço." />
+            <SecaoCard Titulo="Integrações" Icone="🔌" Href="/configuracoes?aba=geral"
                        Descricao="Conexão com Mercado Livre e gerenciamento de anúncios." />
-            <SecaoCard Titulo="Checklists" Icone="✅" Href="/configuracoes/sistema?aba=checklists"
+            <SecaoCard Titulo="Checklists" Icone="✅" Href="/configuracoes?aba=checklists"
                        Descricao="Modelos de checklist usados na abertura de ordens de serviço." />
-            <SecaoCard Titulo="Modo operante" Icone="⚙️" Href="/configuracoes/sistema?aba=operacao"
+            <SecaoCard Titulo="Modo operante" Icone="⚙️" Href="/configuracoes?aba=operacao"
                        Descricao="Ativa/desativa módulos e ajusta parâmetros globais de operação." />
-            <SecaoCard Titulo="Documentos" Icone="📄" Href="/configuracoes/sistema?aba=documentos"
+            <SecaoCard Titulo="Documentos" Icone="📄" Href="/configuracoes?aba=documentos"
                        Descricao="Templates dos documentos gerados pelo sistema (termos, propostas)." />
-            <SecaoCard Titulo="Importar dados" Icone="📥" Href="/configuracoes/sistema?aba=importar"
+            <SecaoCard Titulo="Importar dados" Icone="📥" Href="/configuracoes?aba=importar"
                        Descricao="Carrega uma base de dados a partir de um arquivo." />
-            <SecaoCard Titulo="Exportar dados" Icone="📤" Href="/configuracoes/sistema?aba=exportar"
+            <SecaoCard Titulo="Exportar dados" Icone="📤" Href="/configuracoes?aba=exportar"
                        Descricao="Baixa todo o banco de dados da aplicação em um arquivo JSON." />
         </div>
     }
@@ -423,7 +429,12 @@
 
 <style>
     .cfg-page { padding:24px; max-width:1100px; margin:0 auto; }
-    .cfg-menu-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; }
+    .cfg-menu-grid { 
+        display: flex;
+        flex-direction: column;
+        grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); 
+        gap:16px; 
+    }
     .page-titulo { margin:0; font-size:1.6rem; }
     .page-sub { margin:4px 0 24px; color:#666; }
     .banner { padding:12px 16px; border-radius:6px; margin-bottom:16px; }

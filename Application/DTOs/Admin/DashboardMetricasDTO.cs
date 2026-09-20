@@ -61,6 +61,20 @@ public class DashboardMetricasDTO
     public List<MesValorDTO> SerieReceitaServicos { get; set; } = new();
     public List<MesValorDTO> SerieReceitaVendas { get; set; } = new();
 
+    /// <summary>
+    /// Despesa por ponto da série (mesmos rótulos de <see cref="SerieReceitaServicos"/> —
+    /// dia ou mês, conforme a granularidade escolhida pelo período). Quando a
+    /// granularidade é diária, cada ponto é o total REAL do mês daquele dia
+    /// (balanço salvo, ou estimativa do modelo se não houver balanço)
+    /// dividido pelos dias do mês — nunca o total do mês inteiro repetido em
+    /// cada dia (ver docs/redesign/16-granularidade-despesas.md). Quando a
+    /// granularidade é mensal, cada ponto é o valor cheio daquele mês, sem
+    /// divisão nenhuma.
+    /// </summary>
+    public List<MesValorDTO> SerieDespesas { get; set; } = new();
+    public List<MesValorDTO> SerieDespesasOficina { get; set; } = new();
+    public List<MesValorDTO> SerieDespesasConcessionaria { get; set; } = new();
+
     /// <summary>Receita de serviços acumulada mês a mês, últimos 12 meses.</summary>
     public List<MesValorDTO> SerieReceitaServicosAcumulada12m { get; set; } = new();
 
@@ -91,9 +105,6 @@ public class GraficoAnaliseDTO
     /// <summary>Agrupamento usado pelo seletor da aba Geral: "Financeiro", "Pessoas", "Concessionária", "Oficina", "Estoque".</summary>
     public string Categoria { get; set; } = "";
 
-    /// <summary>"doughnut" para comparativos de quantidade/proporção; "bar" para médias e outras magnitudes.</summary>
-    public string TipoGrafico { get; set; } = "doughnut";
-
     public List<CategoriaValorDTO> Dados { get; set; } = new();
 }
 
@@ -105,7 +116,8 @@ public class CategoriaValorDTO
 
 public class MesValorDTO
 {
-    public string MesLabel { get; set; } = "";
+    /// <summary>Rótulo do ponto — "dd/MM" quando agrupado por dia, "MMM/yy" quando por mês (ver <see cref="CarStoreManager.Application.Services.Admin.DashboardService"/>).</summary>
+    public string Label { get; set; } = "";
     public decimal Valor { get; set; }
 }
 
@@ -123,7 +135,8 @@ public class VendaMarcaDTO
 
 public class PropostaTimelineDTO
 {
-    public string MesLabel { get; set; } = "";
+    /// <summary>Rótulo do ponto — "dd/MM" quando agrupado por dia, "MMM/yy" quando por mês.</summary>
+    public string Label { get; set; } = "";
     public int Aprovadas { get; set; }
     public int Rejeitadas { get; set; }
 }

@@ -25,6 +25,10 @@
 
     <SubNav Itens="SubNavFinanceiro.Itens" />
 
+    <div class="hub-layout">
+    <MenuAtalhos Itens="atalhos" data-tour="fin-hub-atalhos" />
+    <div class="hub-conteudo">
+
     <div class="area-filtro" data-tour="fin-area">
         <span>Área:</span>
         @foreach (var a in new[] { ("", "Tudo"), ("oficina", "Oficina"), ("concessionaria", "Concessionária") })
@@ -52,10 +56,12 @@
             <MetricCard Rotulo="Lucro líquido" Valor="@FBRL(Lucro)" Tom="@(Lucro >= 0 ? "ok" : "erro")"
                         Variacao="@Variacao(Lucro, lucroAnterior)" TextoComparacao="vs período anterior" />
             <MetricCard Rotulo="Margem líquida" Valor="@($"{Margem:0.#}%")" Tom="info" />
+            <MetricCard Rotulo="Capital imobilizado em estoque" Valor="@FBRL(CapitalImobilizado)"
+                        Sub="Não é fluxo de caixa — dinheiro parado em veículos/peças" />
         </StatCardGrid>
         </div>
 
-        <p class="regime-nota">Valores em regime de caixa — considera o que efetivamente entrou e saiu no período. Despesas de período com mais de um mês são estimadas pelo valor mensal cadastrado.</p>
+        <p class="regime-nota">Valores em regime de caixa — considera o que efetivamente entrou e saiu no período. Despesas de período com mais de um mês são estimadas pelo valor mensal cadastrado. O capital imobilizado em estoque não entra nesse cálculo — é o valor de veículos/peças parados, não dinheiro que saiu do caixa.</p>
 
         <div data-tour="fin-grafico">
         <Secao Titulo="Receitas e despesas — evolução mensal">
@@ -63,16 +69,26 @@
         </Secao>
         </div>
 
-        <div class="fin-grid-2">
-            <Secao Titulo="Composição da receita">
-                <div class="grafico-card"><div class="grafico-area"><canvas id="finReceita"></canvas></div></div>
-            </Secao>
+        <div class="@(area == "" ? "fin-grid-2" : "fin-grid-1")">
+            @if (area == "")
+            {
+                <Secao Titulo="Composição da receita">
+                    <div class="grafico-card"><div class="grafico-area"><canvas id="finReceita"></canvas></div></div>
+                </Secao>
+            }
             <Secao Titulo="Composição da despesa (mensal)">
                 <div class="grafico-card"><div class="grafico-area"><canvas id="finDespesa"></canvas></div></div>
             </Secao>
         </div>
 
-        <Secao Titulo="Resultado por área (mês corrente)" data-tour="fin-areas">
+        <Secao Titulo="Capital imobilizado (não é fluxo de caixa)" data-tour="fin-capital">
+            <div class="capital-grid">
+                <div class="cap"><span>Veículos em estoque (valor de venda)</span><strong>@FBRL(m.CapitalEstoqueVeiculos)</strong></div>
+                <div class="cap"><span>Peças em estoque</span><strong>@FBRL(m.CapitalEstoqueComponentes)</strong></div>
+            </div>
+        </Secao>
+
+        <Secao Titulo="@($"Resultado por área ({subtitulo})")" data-tour="fin-areas">
             <div class="areas-grid">
                 <div class="area-card">
                     <h3>Oficina</h3>
@@ -90,16 +106,10 @@
                 </div>
             </div>
         </Secao>
-
-        <Secao Titulo="Capital imobilizado (não é fluxo de caixa)" data-tour="fin-capital">
-            <div class="capital-grid">
-                <div class="cap"><span>Veículos em estoque (valor de venda)</span><strong>@FBRL(m.CapitalEstoqueVeiculos)</strong></div>
-                <div class="cap"><span>Veículos em estoque (custo de aquisição)</span><strong>@FBRL(m.CapitalAquisicaoVeiculosDisponiveis)</strong></div>
-                <div class="cap"><span>Margem potencial do estoque</span><strong class="pos">@FBRL(m.CapitalEstoqueVeiculos - m.CapitalAquisicaoVeiculosDisponiveis)</strong></div>
-                <div class="cap"><span>Peças em estoque</span><strong>@FBRL(m.CapitalEstoqueComponentes)</strong></div>
-            </div>
-        </Secao>
     }
+
+    </div>
+    </div>
 </div>
 
 @code {
@@ -128,6 +138,24 @@
     };
     private decimal Lucro => Receita - Despesa;
     private decimal Margem => Receita > 0 ? Lucro / Receita * 100 : 0;
+    private decimal CapitalImobilizado => area switch
+    {
+        "oficina" => m!.CapitalEstoqueComponentes,
+        "concessionaria" => m!.CapitalEstoqueVeiculos,
+        _ => m!.CapitalEstoqueVeiculos + m!.CapitalEstoqueComponentes
+    };
+
+    private static IEnumerable<MenuAtalhos.Item> atalhos
+    {
+        get
+        {
+            yield return new("Despesas", "💸", "/financeiro/despesas", "Balanço mensal de despesas.");
+            yield return new("A receber", "📥", "/financeiro/a-receber", "Cobranças pendentes.");
+            yield return new("Relatórios", "📑", "/financeiro/relatorios", "Exportar dados por período.");
+            yield return new("Análises", "📊", "/dashboard", "Gráficos e comparativos.");
+            yield return new("Início", "🏠", "/", "Painel geral do sistema.");
+        }
+    }
 
     protected override void OnInitialized()
     {
@@ -153,12 +181,9 @@
 
         var tAtual = DashboardService.ObterMetricasPeriodoAsync(inicio.ToDateTime(TimeOnly.MinValue), fim.ToDateTime(TimeOnly.MaxValue));
         var tAnterior = DashboardService.ObterMetricasPeriodoAsync(antInicio.ToDateTime(TimeOnly.MinValue), antFim.ToDateTime(TimeOnly.MaxValue));
-        // Séries mensais completas (6m) para o gráfico principal
-        var tSerie = DashboardService.ObterMetricasAsync(6);
-        await Task.WhenAll(tAtual, tAnterior, tSerie);
+        await Task.WhenAll(tAtual, tAnterior);
 
         m = tAtual.Result.IsSuccess ? tAtual.Result.Value : null;
-        serie = tSerie.Result.IsSuccess ? tSerie.Result.Value : m;
 
         if (tAnterior.Result.IsSuccess && tAnterior.Result.Value is { } ant)
         {
@@ -172,8 +197,6 @@
         graficosPendentes = true;
         StateHasChanged();
     }
-
-    private DashboardMetricasDTO? serie;
 
     private async Task TrocarArea(string a)
     {
@@ -189,35 +212,102 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (graficosPendentes && serie is not null && m is not null)
+        if (graficosPendentes && m is not null)
         {
             graficosPendentes = false;
             await RenderGraficos();
         }
     }
 
+    // Rótulo da série de despesa no gráfico — quando o período é curto o
+    // bastante pra granularidade diária (mesmo limiar de AgruparPorPeriodo,
+    // ver docs/redesign/14 e 16), cada barra é uma FATIA pro-rateada do mês,
+    // não o mês inteiro; o rótulo avisa isso em vez de dizer "estim." pra
+    // tudo (às vezes é dado real, só rateado por dia).
+    private string RotuloDespesa => (fim.DayNumber - inicio.DayNumber + 1) <= 62
+        ? "Despesa (rateada por dia)"
+        : "Despesa";
+
     private async Task RenderGraficos()
     {
-        var s = serie!;
-        var labels = s.SerieReceitaServicos.Select(x => x.MesLabel).ToArray();
-        var despesaMensal = s.TotalDespesasFixasMensal;
+        var s = m!;
+        var labels = s.SerieReceitaServicos.Select(x => x.Label).ToArray();
+        var rotuloDespesa = RotuloDespesa;
 
-        await JS.InvokeVoidAsync("carstoreChart.render", "finPrincipal", "bar", labels, new object[]
+        // Receita de oficina e de concessionária NUNCA viram um número só —
+        // sempre barras/linhas separadas, e quando um recorte de área está
+        // ativo (botões "Oficina"/"Concessionária" no topo), o gráfico só
+        // traz o dinheiro daquele recorte, igual aos KPIs acima. Despesa vem
+        // de SerieDespesas* (uma por ponto, já rateada quando o período é
+        // diário) — nunca mais um total do período repetido em cada barra
+        // (ver docs/redesign/16-granularidade-despesas.md).
+        object[] datasetsPrincipal;
+        if (area == "oficina")
         {
-            new { label = "Receita", data = s.SerieReceitaServicos.Zip(s.SerieReceitaVendas, (a,b) => a.Valor + b.Valor).ToArray(), backgroundColor = "#16a34a" },
-            new { label = "Despesa (estim.)", data = labels.Select(_ => despesaMensal).ToArray(), backgroundColor = "#ea580c" },
-            new { label = "Lucro", type = "line", data = s.SerieReceitaServicos.Zip(s.SerieReceitaVendas, (a,b) => a.Valor + b.Valor - despesaMensal).ToArray(), borderColor = "#2563eb", tension = 0.3 },
-        }, new { responsive = true, maintainAspectRatio = false });
-
-        await JS.InvokeVoidAsync("carstoreChart.render", "finReceita", "doughnut",
-            new[] { "Serviços", "Vendas" },
-            new object[] { new { data = new[] { m!.ReceitaServicosMesAtual, m.ReceitaVendasMesAtual }, backgroundColor = new[] { "#16a34a", "#2563eb" } } },
+            var despesa = s.SerieDespesasOficina.Select(x => x.Valor).ToArray();
+            var receita = s.SerieReceitaServicos.Select(x => x.Valor).ToArray();
+            datasetsPrincipal = new object[]
+            {
+                new { label = "Receita (oficina)", data = receita, backgroundColor = "#16a34a" },
+                new { label = rotuloDespesa, data = despesa, backgroundColor = "#ea580c" },
+                new { label = "Lucro", type = "line", data = receita.Zip(despesa, (r, d) => r - d).ToArray(), borderColor = "#7c3aed", tension = 0.3 },
+            };
+        }
+        else if (area == "concessionaria")
+        {
+            var despesa = s.SerieDespesasConcessionaria.Select(x => x.Valor).ToArray();
+            var receita = s.SerieReceitaVendas.Select(x => x.Valor).ToArray();
+            datasetsPrincipal = new object[]
+            {
+                new { label = "Receita (concessionária)", data = receita, backgroundColor = "#2563eb" },
+                new { label = rotuloDespesa, data = despesa, backgroundColor = "#ea580c" },
+                new { label = "Lucro", type = "line", data = receita.Zip(despesa, (r, d) => r - d).ToArray(), borderColor = "#7c3aed", tension = 0.3 },
+            };
+        }
+        else
+        {
+            var despesa = s.SerieDespesas.Select(x => x.Valor).ToArray();
+            var lucro = s.SerieReceitaServicos.Zip(s.SerieReceitaVendas, (a, b) => a.Valor + b.Valor)
+                .Zip(despesa, (receitaTotal, d) => receitaTotal - d).ToArray();
+            datasetsPrincipal = new object[]
+            {
+                new { label = "Receita Oficina", data = s.SerieReceitaServicos.Select(x => x.Valor).ToArray(), backgroundColor = "#16a34a" },
+                new { label = "Receita Concessionária", data = s.SerieReceitaVendas.Select(x => x.Valor).ToArray(), backgroundColor = "#2563eb" },
+                new { label = rotuloDespesa, data = despesa, backgroundColor = "#ea580c" },
+                new { label = "Lucro", type = "line", data = lucro, borderColor = "#7c3aed", tension = 0.3 },
+            };
+        }
+        await JS.InvokeVoidAsync("carstoreChart.render", "finPrincipal", "bar", labels, datasetsPrincipal,
             new { responsive = true, maintainAspectRatio = false });
 
-        await JS.InvokeVoidAsync("carstoreChart.render", "finDespesa", "doughnut",
-            new[] { "Geral", "Oficina", "Concessionária" },
-            new object[] { new { data = new[] { m.TotalDespesasGeralMensal, m.TotalDespesasOficinaMensal, m.TotalDespesasConcessionariaMensal }, backgroundColor = new[] { "#94a3b8", "#f97316", "#3b82f6" } } },
-            new { responsive = true, maintainAspectRatio = false });
+        // "Composição da receita" (Serviços vs. Vendas) só faz sentido com as
+        // duas áreas juntas — com um recorte ativo só haveria 1 categoria,
+        // então o gráfico é destruído em vez de mostrar uma pizza de fatia
+        // única (redundante com o KPI "Receita do período" logo acima).
+        if (area == "")
+        {
+            // Padrão único de comparação categórica (docs/redesign/13-padrao-graficos.md):
+            // carstoreChart.comparativo decide rosca (<=6, com % no hover) ou
+            // barra (>6, top 10, sem "Outros") — nunca mais tipo fixo na mão.
+            await JS.InvokeVoidAsync("carstoreChart.comparativo", "finReceita",
+                new object[]
+                {
+                    new { rotulo = "Serviços", valor = s.ReceitaServicosMesAtual },
+                    new { rotulo = "Vendas", valor = s.ReceitaVendasMesAtual },
+                }, "R$");
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("carstoreChart.destroy", "finReceita");
+        }
+
+        await JS.InvokeVoidAsync("carstoreChart.comparativo", "finDespesa",
+            new object[]
+            {
+                new { rotulo = "Geral", valor = s.TotalDespesasGeralMensal },
+                new { rotulo = "Oficina", valor = s.TotalDespesasOficinaMensal },
+                new { rotulo = "Concessionária", valor = s.TotalDespesasConcessionariaMensal },
+            }, "R$");
     }
 
     public async ValueTask DisposeAsync()
@@ -232,6 +322,12 @@
 }
 
 <style>
+    /* Mesmo padrão de sidebar de atalhos usado nos hubs de Oficina e
+       Concessionária — ver docs/redesign/12-padronizacao-paineis.md. */
+    .hub-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--sp-5); align-items: start; }
+    .hub-conteudo { min-width: 0; }
+    @@media (max-width: 1000px) { .hub-layout { grid-template-columns: 1fr; } }
+
     .area-filtro { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-5); font-size: var(--txt-sm); color: var(--cor-tinta-3); }
     .af-btn { background: var(--cor-superficie-2); border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 5px 12px; font-size: var(--txt-sm); cursor: pointer; color: var(--cor-tinta-2); }
     .af-btn.ativo { background: var(--cor-tinta); color: #fff; border-color: var(--cor-tinta); }
@@ -241,6 +337,8 @@
     .grafico-area { position: relative; height: 280px; }
     .fin-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); }
     .fin-grid-2 .grafico-area { height: 220px; }
+    .fin-grid-1 { display: grid; grid-template-columns: 1fr; gap: var(--sp-5); }
+    .fin-grid-1 .grafico-area { height: 220px; }
 
     .areas-grid, .capital-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
     .area-card { background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); padding: var(--sp-4); }

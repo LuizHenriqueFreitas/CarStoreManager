@@ -5,8 +5,7 @@ public static class SubNavConfiguracoes
 {
     public static List<SubNav.Item> Itens => new()
     {
-        new("/configuracoes", "Visão geral"),
+        new("/configuracoes", "Sistema"),
         new("/configuracoes/formulario-despesas", "Formulário de despesas"),
-        new("/configuracoes/sistema", "Sistema"),
     };
 }

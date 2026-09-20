@@ -496,31 +496,44 @@ public class OrdemServicoService : IOrdemServicoService
     }
 
     /// <summary>
-    /// Mecânico declara que terminou o serviço técnico. NÃO exige pagamento —
-    /// a OS vai para Finalizada e fica aguardando a recepção cobrar e entregar
-    /// (EntregarAsync). Gera NF de venda automaticamente nesse momento.
+    /// Mecânico declara que terminou o serviço técnico. EXIGE que a OS já
+    /// esteja totalmente paga (entrada + pagamentos registrados durante o
+    /// serviço cobrem o valor total) — sem isso, a finalização é bloqueada e
+    /// quem estiver tentando finalizar precisa registrar o pagamento restante
+    /// primeiro (painel de pagamento já aceita registro a qualquer momento,
+    /// mesmo com a OS em andamento). Uma vez paga, pula direto pra Finalizada
+    /// (nunca fica pendurada em "Pagamento Pendente" esperando cobrança
+    /// depois do trabalho pronto). Gera NF de venda automaticamente.
     /// </summary>
     public async Task<Result> FinalizarAsync(Guid ordemId)
     {
         var ordem = await _repository.GetByIdAsync(ordemId);
         if (ordem is null) return Result.Fail("Ordem de serviço não encontrada");
 
+        // Valida status/checklist primeiro (erros estruturais têm prioridade
+        // sobre o aviso de pagamento) — muta a entidade em memória, mas só é
+        // persistido depois de confirmado o pagamento (SaveChangesAsync só é
+        // chamado no fim); se falhar antes disso, nada é gravado.
+        try { ordem.Finalizar(); }
+        catch (Exception ex) { return Result.Fail(ex.Message); }
+
+        if (_pagamentoRepo is not null)
+        {
+            var pagamentos = await _pagamentoRepo.ObterPorOrdemAsync(ordemId);
+            var pago = pagamentos.Sum(p => p.Valor.GetValorDinheiro());
+            var total = ordem.GetValorTotal();
+            if (pago < total)
+            {
+                var restante = total - pago;
+                return Result.Fail(
+                    $"Não é possível finalizar: falta receber R$ {restante:N2} de R$ {total:N2}. " +
+                    "Registre o pagamento antes de finalizar o serviço.");
+            }
+        }
+
         try
         {
-            ordem.Finalizar();
-
-            // Se a OS já nasceu totalmente paga (ex.: entrada mínima cobriu o
-            // valor todo), confirma na hora — sem isso ela ficaria presa em
-            // "Pagamento Pendente" com saldo zerado, exigindo um pagamento de
-            // R$ 0,00 pra sair do estado.
-            if (_pagamentoRepo is not null)
-            {
-                var pagamentos = await _pagamentoRepo.ObterPorOrdemAsync(ordemId);
-                var pago = pagamentos.Sum(p => p.Valor.GetValorDinheiro());
-                if (pago >= ordem.GetValorTotal())
-                    ordem.ConfirmarPagamentoCompleto();
-            }
-
+            ordem.ConfirmarPagamentoCompleto();
             _repository.Update(ordem);
             await _repository.SaveChangesAsync();
             return Result.Ok();

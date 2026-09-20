@@ -2,6 +2,7 @@ using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs.Auth;
 using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda;
 using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda.Pagamento;
+using CarStoreManager.Application.DTOs.Concessionaria.TestDrive;
 using CarStoreManager.Application.DTOs.Concessionaria.VeiculoConsignacao;
 using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda;
 using CarStoreManager.Application.DTOs.Oficina.OrdemServico;
@@ -55,6 +56,9 @@ public class ImportacaoDadosService : IImportacaoDadosService
     private readonly IOrdemServicoService _ordemServicoService;
     private readonly IPagamentoOrdemServicoService _pagamentoOrdemServicoService;
     private readonly IRequisicaoPecaService _requisicaoPecaService;
+    private readonly IAlertaOSService _alertaOSService;
+    private readonly ITestDriveService _testDriveService;
+    private readonly IBalancoMensalDespesaService _balancoDespesaService;
     private readonly IBackdateService _backdate;
     private readonly ILogger<ImportacaoDadosService> _logger;
 
@@ -75,6 +79,9 @@ public class ImportacaoDadosService : IImportacaoDadosService
         IOrdemServicoService ordemServicoService,
         IPagamentoOrdemServicoService pagamentoOrdemServicoService,
         IRequisicaoPecaService requisicaoPecaService,
+        IAlertaOSService alertaOSService,
+        ITestDriveService testDriveService,
+        IBalancoMensalDespesaService balancoDespesaService,
         IBackdateService backdate,
         ILogger<ImportacaoDadosService> logger)
     {
@@ -94,6 +101,9 @@ public class ImportacaoDadosService : IImportacaoDadosService
         _ordemServicoService = ordemServicoService;
         _pagamentoOrdemServicoService = pagamentoOrdemServicoService;
         _requisicaoPecaService = requisicaoPecaService;
+        _alertaOSService = alertaOSService;
+        _testDriveService = testDriveService;
+        _balancoDespesaService = balancoDespesaService;
         _backdate = backdate;
         _logger = logger;
     }
@@ -116,8 +126,14 @@ public class ImportacaoDadosService : IImportacaoDadosService
             await ImportarVeiculosVendaAsync(dados.VeiculosVenda, chaves, resultado);
             await ImportarVeiculosConsignadosAsync(dados.VeiculosConsignados, chaves, resultado);
             await ImportarVeiculosClienteAsync(dados.VeiculosCliente, chaves, resultado);
+            // TestDrives ANTES de PropostasVenda: propostas concluídas marcam o
+            // veículo como Vendido, e agendar test drive de um veículo vendido é
+            // bloqueado — então test drive precisa "acontecer" enquanto o carro
+            // ainda está disponível, na ordem natural do funil real também.
+            await ImportarTestDrivesAsync(dados.TestDrives, chaves, resultado);
             await ImportarPropostasAsync(dados.PropostasVenda, chaves, resultado);
             await ImportarOrdensServicoAsync(dados.OrdensServico, chaves, resultado);
+            await ImportarDespesasExtrasAsync(dados.DespesasExtras, resultado);
 
             return Result<ImportacaoResultadoDTO>.Ok(resultado);
         }
@@ -296,7 +312,26 @@ public class ImportacaoDadosService : IImportacaoDadosService
                 if (item.QuantidadeMinima > 0)
                     await _estoqueService.CriarOuAtualizarMinimoAsync(r.Value, item.QuantidadeMinima);
 
-                if (item.QuantidadeEstoque > 0)
+                if (item.ReposicoesEstoque is { Count: > 0 })
+                {
+                    // Cada reposição vira sua própria entrada (e sua própria
+                    // despesa "Compra de componentes") — move pra competência
+                    // histórica ANTES da próxima, senão duas reposições com a
+                    // mesma quantidade ficariam ambíguas dentro do balanço de
+                    // "hoje" (mesmo nome de despesa).
+                    foreach (var rep in item.ReposicoesEstoque)
+                    {
+                        var rEntrada = await _estoqueService.EntradaAsync(r.Value, rep.Quantidade);
+                        if (!rEntrada.IsSuccess)
+                        {
+                            resultado.Avisos.Add($"Componente \"{item.Chave}\": reposição de {rep.Quantidade} un. falhou — {rEntrada.Error}");
+                            continue;
+                        }
+                        await MoverDespesaParaCompetenciaHistoricaAsync(
+                            $"Compra de componente: {item.Nome} — {item.SKUInterno} (x{rep.Quantidade})", rep.Data);
+                    }
+                }
+                else if (item.QuantidadeEstoque > 0)
                 {
                     var rEntrada = await _estoqueService.EntradaAsync(r.Value, item.QuantidadeEstoque);
                     if (!rEntrada.IsSuccess)
@@ -458,13 +493,100 @@ public class ImportacaoDadosService : IImportacaoDadosService
 
                 RegistrarChave(chaves, item.Chave, r.Value, resultado.Avisos, "veículo (concessionária)");
                 if (item.DataCriacao.HasValue)
+                {
                     await _backdate.AplicarAsync<Domain.Entities.Concessionaria.VeiculoVenda>(r.Value, ("DataCriacao", item.DataCriacao.Value));
+
+                    // VeiculoVendaService.AddAsync já lançou a despesa de
+                    // "compra de veículo" na competência de HOJE (é o que
+                    // acontece de verdade no uso real do sistema) — pra uma
+                    // importação de dado histórico, essa despesa precisa
+                    // migrar pra competência real da compra, senão o mês
+                    // corrente acumula uma "compra de veículo" por veículo
+                    // importado e nenhum mês histórico reflete o gasto.
+                    var nomeDespesa = $"Compra de veículo para concessionária: {item.Marca} {item.Modelo} — {item.Placa}";
+                    await MoverDespesaParaCompetenciaHistoricaAsync(nomeDespesa, item.DataCriacao.Value);
+                }
                 resultado.VeiculosVendaCriados++;
             }
             catch (Exception ex)
             {
                 resultado.Avisos.Add($"Veículo (concessionária) \"{item.Chave}\": erro inesperado ao criar ({ex.GetType().Name}).");
                 _logger.LogError(ex, "Erro ao importar veículo de venda {Chave}", item.Chave);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Move um item de despesa (achado pelo nome exato) da competência de
+    /// hoje pra uma competência histórica — usado só na importação, pra
+    /// corrigir a despesa de "compra de veículo" que
+    /// <see cref="VeiculoVendaService.AddAsync"/> lança sempre em hoje (certo
+    /// pro uso real do sistema, errado pra um veículo com data histórica).
+    /// Silencioso se o item não for encontrado (não deveria acontecer, mas
+    /// não é motivo pra abortar a importação).
+    /// </summary>
+    private async Task MoverDespesaParaCompetenciaHistoricaAsync(string nomeItem, DateTime dataHistorica)
+    {
+        var hoje = DateTime.Today;
+        var rHoje = await _balancoDespesaService.ObterAsync(hoje.Year, hoje.Month);
+        if (!rHoje.IsSuccess || rHoje.Value is null) return;
+
+        var item = rHoje.Value.Itens.FirstOrDefault(i => i.Nome == nomeItem);
+        if (item is null) return;
+
+        await _balancoDespesaService.RemoverItemAsync(hoje.Year, hoje.Month, item.Id);
+
+        // Garante as despesas recorrentes do modelo na competência histórica
+        // antes de somar o item — mesma lógica de VeiculoVendaService
+        // .RegistrarDespesaCompraAsync; "já existe" é esperado e ignorado.
+        await _balancoDespesaService.GerarDoModeloAsync(dataHistorica.Year, dataHistorica.Month);
+        await _balancoDespesaService.SalvarItemAsync(new SalvarItemBalancoDTO
+        {
+            Ano = dataHistorica.Year,
+            Mes = dataHistorica.Month,
+            Nome = item.Nome,
+            Setor = item.Setor,
+            Categoria = item.Categoria,
+            Valor = item.Valor
+        });
+    }
+
+    // ============================================================
+    // DESPESAS EXTRAS — variação histórica (compra de equipamento,
+    // manutenção fora do comum, perda de veículo etc.), pra meses de
+    // gasto alto se destacarem dos meses "só o básico" no histórico.
+    // ============================================================
+    private async Task ImportarDespesasExtrasAsync(
+        List<DespesaExtraImportDTO> itens, ImportacaoResultadoDTO resultado)
+    {
+        foreach (var item in itens)
+        {
+            try
+            {
+                // Garante as despesas recorrentes do modelo nessa competência
+                // antes de somar o item extra — "já existe" é esperado
+                // (mês pode já ter balanço por causa de uma compra de
+                // veículo caindo no mesmo mês) e ignorado.
+                await _balancoDespesaService.GerarDoModeloAsync(item.Data.Year, item.Data.Month);
+
+                var r = await _balancoDespesaService.SalvarItemAsync(new SalvarItemBalancoDTO
+                {
+                    Ano = item.Data.Year,
+                    Mes = item.Data.Month,
+                    Nome = item.Nome,
+                    Setor = item.Setor,
+                    Categoria = item.Categoria,
+                    Valor = item.Valor
+                });
+                if (!r.IsSuccess)
+                    resultado.Avisos.Add($"Despesa extra \"{item.Nome}\" ({item.Data:MM/yyyy}): {r.Error}");
+                else
+                    resultado.DespesasExtrasCriadas++;
+            }
+            catch (Exception ex)
+            {
+                resultado.Avisos.Add($"Despesa extra \"{item.Nome}\": erro inesperado ao criar ({ex.GetType().Name}).");
+                _logger.LogError(ex, "Erro ao importar despesa extra {Nome}", item.Nome);
             }
         }
     }
@@ -903,14 +1025,55 @@ public class ImportacaoDadosService : IImportacaoDadosService
 
         var ri = await _ordemServicoService.IniciarAsync(ordemId);
         if (!ri.IsSuccess) return Parar("pendente", "iniciar a OS", ri.Error);
+
+        // Desistência no meio do serviço — diferente de "cancelada" (que
+        // cancela ainda pendente, antes de qualquer trabalho começar).
+        if (item.Cenario == "canceladaEmAndamento")
+        {
+            var rcEm = await _ordemServicoService.CancelarAsync(ordemId);
+            return rcEm.IsSuccess ? "canceladaEmAndamento" : Parar("emAndamento", "cancelar a OS em andamento", rcEm.Error);
+        }
+
+        // Novo problema encontrado durante o serviço: mecânico emite alerta
+        // (pausa a OS) e a decisão do cliente (aprovado) já é registrada na
+        // mesma importação — a OS volta pra EmAndamento e o funil continua.
+        if (item.ComAlerta)
+        {
+            var ra = await _alertaOSService.EmitirAsync(ordemId, mecanicoId, new CriarAlertaOSDTO
+            {
+                Descricao = "Mecânico identificou um problema adicional durante o serviço."
+            });
+            if (!ra.IsSuccess || ra.Value is null)
+                avisos.Add($"OS \"{item.Chave}\": não foi possível emitir alerta de problema adicional — {ra.Error}.");
+            else
+            {
+                var rr = await _alertaOSService.ResolverAsync(ra.Value.Id, mecanicoId, new ResolverAlertaDTO
+                {
+                    Aprovou = true,
+                    ObservacaoCliente = "Cliente aprovou o serviço adicional."
+                });
+                if (!rr.IsSuccess)
+                    avisos.Add($"OS \"{item.Chave}\": alerta emitido mas não resolvido — {rr.Error}.");
+            }
+        }
+
         if (item.Cenario == "emAndamento") return "emAndamento";
 
-        var rf = await _ordemServicoService.FinalizarAsync(ordemId);
-        if (!rf.IsSuccess) return Parar("emAndamento", "finalizar a OS", rf.Error);
+        // Finalizar exige a checklist inteira concluída (OrdemServico.Finalizar).
+        var rConcluirChecklist = await ConcluirChecklistAsync(ordemId);
+        if (!rConcluirChecklist.IsSuccess) return Parar("emAndamento", "concluir a checklist da OS", rConcluirChecklist.Error);
+
+        // "finalizadaPendente" pára AQUI, sem pagar — checklist concluída,
+        // pronta pra finalizar, mas ainda em EmAndamento. Desde que
+        // OrdemServicoService.FinalizarAsync passou a exigir pagamento total
+        // ANTES de finalizar, o antigo estágio "Pagamento Pendente" deixou de
+        // ser alcançável por este caminho — o que esse cenário representa
+        // ("serviço pronto, falta cobrar") continua igual, só que sem mudar
+        // o Status pra além de EmAndamento.
         if (item.Cenario == "finalizadaPendente") return "finalizadaPendente";
 
         var detalhe = await _ordemServicoService.GetByIdAsync(ordemId);
-        if (!detalhe.IsSuccess || detalhe.Value is null) return Parar("finalizadaPendente", "reler a OS antes do pagamento", detalhe.Error);
+        if (!detalhe.IsSuccess || detalhe.Value is null) return Parar("emAndamento", "reler a OS antes do pagamento", detalhe.Error);
 
         var modo = string.IsNullOrWhiteSpace(item.ModoPagamento) ? "Pix" : item.ModoPagamento;
         var rp = await _pagamentoOrdemServicoService.RegistrarPagamentoAsync(ordemId, mecanicoId, new RegistrarPagamentoDTO
@@ -919,12 +1082,90 @@ public class ImportacaoDadosService : IImportacaoDadosService
             Valor = detalhe.Value.ValorTotal,
             Observacoes = "Pagamento integral registrado na recepção."
         });
+        if (!rp.IsSuccess) return Parar("emAndamento", "registrar o pagamento", rp.Error);
 
-        if (!rp.IsSuccess) return Parar("finalizadaPendente", "registrar o pagamento", rp.Error);
+        var rf = await _ordemServicoService.FinalizarAsync(ordemId);
+        if (!rf.IsSuccess) return Parar("emAndamento", "finalizar a OS", rf.Error);
         if (item.Cenario == "finalizadaPaga") return "finalizadaPaga";
 
         var re = await _ordemServicoService.EntregarAsync(ordemId);
         return re.IsSuccess ? "entregue" : Parar("finalizadaPaga", "marcar a OS como entregue", re.Error);
+    }
+
+    private async Task<Result> ConcluirChecklistAsync(Guid ordemId)
+    {
+        var detalhe = await _ordemServicoService.GetByIdAsync(ordemId);
+        if (!detalhe.IsSuccess || detalhe.Value is null) return Result.Fail(detalhe.Error ?? "OS não encontrada.");
+
+        foreach (var itemChecklist in detalhe.Value.Checklist.Where(c => c.Status != "Concluido"))
+        {
+            var r = await _ordemServicoService.AtualizarStatusChecklistAsync(new AtualizarStatusChecklistDTO
+            {
+                OrdemServicoId = ordemId,
+                ItemId = itemChecklist.Id,
+                NovoStatus = "Concluido"
+            });
+            if (!r.IsSuccess) return r;
+        }
+        return Result.Ok();
+    }
+
+    // ============================================================
+    // TEST DRIVES (CONCESSIONÁRIA)
+    // ============================================================
+    private async Task ImportarTestDrivesAsync(
+        List<TestDriveImportDTO> itens, Dictionary<string, Guid> chaves, ImportacaoResultadoDTO resultado)
+    {
+        foreach (var item in itens)
+        {
+            try
+            {
+                if (!TentarResolver(chaves, item.VeiculoVendaChave, out var veiculoId, resultado.Avisos, "test drive", item.Chave, "veículo")) continue;
+                if (!TentarResolver(chaves, item.ClienteChave, out var clienteId, resultado.Avisos, "test drive", item.Chave, "cliente")) continue;
+                if (!TentarResolver(chaves, item.VendedorChave, out var vendedorId, resultado.Avisos, "test drive", item.Chave, "vendedor")) continue;
+
+                var r = await _testDriveService.AgendarAsync(new CriarTestDriveDTO
+                {
+                    VeiculoVendaId = veiculoId,
+                    ClienteId = clienteId,
+                    VendedorId = vendedorId,
+                    DataHora = item.DataHora,
+                    Observacao = item.Observacao
+                });
+                if (!r.IsSuccess)
+                {
+                    resultado.Avisos.Add($"Test drive \"{item.Chave}\": {r.Error}");
+                    continue;
+                }
+
+                var testDriveId = r.Value;
+                var statusFinal = item.Cenario switch
+                {
+                    "realizado" => "Realizado",
+                    "cancelado" => "Cancelado",
+                    "naoCompareceu" => "NaoCompareceu",
+                    _ => null
+                };
+                if (statusFinal is not null)
+                {
+                    var rs = await _testDriveService.AtualizarStatusAsync(new AtualizarStatusTestDriveDTO
+                    {
+                        Id = testDriveId,
+                        Status = statusFinal
+                    });
+                    if (!rs.IsSuccess)
+                        resultado.Avisos.Add($"Test drive \"{item.Chave}\": não foi possível marcar como \"{item.Cenario}\" — {rs.Error}");
+                }
+
+                RegistrarChave(chaves, item.Chave, testDriveId, resultado.Avisos, "test drive");
+                resultado.TestDrivesCriados++;
+            }
+            catch (Exception ex)
+            {
+                resultado.Avisos.Add($"Test drive \"{item.Chave}\": erro inesperado ao criar ({ex.GetType().Name}).");
+                _logger.LogError(ex, "Erro ao importar test drive {Chave}", item.Chave);
+            }
+        }
     }
 
     // ============================================================

@@ -43,6 +43,7 @@ node_modules/
 *.db*
 *.db-shm
 *.db-wal
+*.sql
 
 # Chaves do DataProtection — SEGREDO, nunca versionar.
 # Criptografam os tokens do Mercado Livre e os cookies de autenticação.

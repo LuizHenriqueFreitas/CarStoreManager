@@ -6,4 +6,6 @@ namespace CarStoreManager.Domain.Repositories;
 public interface IVendedorRepository : IRepository<Vendedor>
 {
     Task<IEnumerable<Vendedor>> ObterPorNivelAsync(NivelFuncionario nivel);
+
+    Task<IEnumerable<Vendedor>> PesquisarAsync(string termo);
 }

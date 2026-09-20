@@ -16,7 +16,7 @@
 @using CarStoreManager.Application.DTOs.Shared.Cliente
 @using CarStoreManager.Web.Components.Shared
 
-<div class="pagina recepcao-page">
+<div class="pagina">
     <PageHeader Titulo="Recepção" Subtitulo="Atendimento, abertura de OS, cobrança e entrega">
         <Acao>
             <button class="btn btn-primario" data-tour="recepcao-btn-nova" @onclick='() => Nav.NavigateTo("/oficina/os/nova")'>
@@ -28,13 +28,6 @@
     <SubNav Itens="SubNavOficina.Itens(false)" />
 
     <div class="recepcao-topo">
-        <a class="abrir-os-card" href="/oficina/os/nova">
-            <span class="aoc-icone">＋</span>
-            <div>
-                <strong>Abrir ordem de serviço</strong>
-                <span>Registrar um novo atendimento</span>
-            </div>
-        </a>
         <div class="busca-rapida">
             <label>Buscar OS</label>
             <input type="text" placeholder="Nº da OS, cliente ou placa..." @bind="buscaOs" @bind:event="oninput" />
@@ -54,22 +47,33 @@
         </div>
     </div>
 
-    <div class="metricas-grid" data-tour="recepcao-metricas">
-        <div class="metrica-card destaque-pronta">
-            <span class="metrica-label">⚠ Aguardando cobrança</span>
-            <span class="metrica-valor pronta">@prontasParaCobrar.Count</span>
+    <div data-tour="recepcao-metricas">
+        <StatCardGrid MinColuna="150">
+            <MetricCard Rotulo="Aguardando cobrança" Valor="@prontasParaCobrar.Count.ToString()" Tom="@(prontasParaCobrar.Count > 0 ? "atencao" : "")" />
+            <MetricCard Rotulo="Pendentes" Valor="@pendentes.ToString()" />
+            <MetricCard Rotulo="Em andamento" Valor="@emAndamento.ToString()" Tom="info" />
+            <MetricCard Rotulo="Atrasadas" Valor="@osAbertas.Count(EhAtrasada).ToString()" Tom="@(osAbertas.Count(EhAtrasada) > 0 ? "erro" : "")" />
+            <MetricCard Rotulo="Mecânicos disponíveis" Valor="@($"{mecanicosDisponiveis}/{mapaMecanicos.Count}")" Tom="@(mecanicosDisponiveis == 0 ? "erro" : "ok")" />
+            <MetricCard Rotulo="Entregues (mês)" Valor="@entreguesMes.ToString()" Tom="ok" Sub="@FormatoData.MesAno(DateTime.Today)" />
+        </StatCardGrid>
+    </div>
+
+    <div class="secao" data-tour="recepcao-ocupacao">
+        <div class="secao-header">
+            <h2 class="secao-titulo">🔧 Ocupação da oficina</h2>
+            <span class="muted">Quem está livre agora pra receber um carro novo</span>
         </div>
-        <div class="metrica-card">
-            <span class="metrica-label">Pendentes</span>
-            <span class="metrica-valor pendentes">@pendentes</span>
-        </div>
-        <div class="metrica-card">
-            <span class="metrica-label">Em andamento</span>
-            <span class="metrica-valor andamento">@emAndamento</span>
-        </div>
-        <div class="metrica-card">
-            <span class="metrica-label">Entregues (mês)</span>
-            <span class="metrica-valor finalizadas">@entreguesMes</span>
+        <div class="mecanicos-grid">
+            @foreach (var mec in mecanicosOrdenados)
+            {
+                <div class="mec-chip">
+                    <div class="mec-info">
+                        <strong>@mec.Nome</strong>
+                        <span class="muted">@mec.Especialidade</span>
+                    </div>
+                    <StatusBadge Status="@mec.Ocupado" Familia="mecanico" />
+                </div>
+            }
         </div>
     </div>
 
@@ -80,68 +84,156 @@
                 <h2 class="secao-titulo">🔔 Prontas para cobrança e entrega</h2>
                 <span class="muted">Mecânico concluiu o serviço — receba o pagamento e marque como entregue</span>
             </div>
-            <div class="ordens-lista">
-                @foreach (var os in prontasParaCobrar)
-                {
-                    <div class="os-card pronta-card" @onclick="() => AbrirDetalhe(os.Id)">
-                        <div class="os-cabecalho">
-                            <span class="os-numero">@os.NumeroPublico</span>
-                            <span class="os-status status-pronta">Aguardando cobrança</span>
-                        </div>
-                        <div class="os-corpo">
-                            <div class="os-coluna">
-                                <span class="rotulo">Cliente</span>
-                                <span class="dado-principal">@NomeCliente(os.ClienteId)</span>
-                                <span class="dado-sub">@CpfCliente(os.ClienteId)</span>
-                            </div>
-                            <div class="os-coluna">
-                                <span class="rotulo">Veículo</span>
-                                <span class="dado-principal">@DescricaoVeiculo(os.VeiculoClienteId)</span>
-                                <span class="dado-sub">@AnoVeiculo(os.VeiculoClienteId)</span>
-                            </div>
-                            <div class="os-coluna">
-                                <span class="rotulo">Mecânico</span>
-                                <span class="dado-principal">@NomeMecanico(os.MecanicoId)</span>
-                                <span class="dado-sub">@os.Tipo</span>
-                            </div>
-                            <div class="os-coluna alinhado-direita">
-                                <span class="rotulo">Total a cobrar</span>
-                                <span class="dado-principal valor">
-                                    @os.ValorTotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                }
+            <div class="table-scroll">
+                <table class="tab">
+                    <thead>
+                        <tr>
+                            <ColunaOrdenavel Coluna="numero" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Número</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="cliente" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Cliente</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="veiculo" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Veículo</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="mecanico" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Mecânico</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="valor" Class="r" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Total a cobrar</ColunaOrdenavel>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var os in prontasParaCobrar)
+                        {
+                            <tr class="linha" @onclick="() => AbrirOs(os.Id)">
+                                <td class="num">@os.NumeroPublico</td>
+                                <td>@NomeCliente(os.ClienteId)</td>
+                                <td>@DescricaoVeiculo(os.VeiculoClienteId)</td>
+                                <td>@NomeMecanico(os.MecanicoId)</td>
+                                <td class="r valor">@os.ValorTotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     }
 
-    <div class="secao">
+    <div class="secao" data-tour="recepcao-abertas">
         <div class="secao-header">
-            <h2 class="secao-titulo">Ordens de serviço</h2>
+            <h2 class="secao-titulo">Ordens de serviço abertas</h2>
             <a class="link-link" href="/oficina/ordens">Ver e filtrar todas →</a>
         </div>
-        <p class="muted">
-            A lista completa de OS, com filtros e busca, fica em
-            <a href="/oficina/ordens">Ordens de serviço</a>.
-            O painel geral da oficina fica em <a href="/oficina">Visão geral</a>.
-        </p>
+        @if (!osAbertas.Any())
+        {
+            <EstadoVazio Mensagem="Nenhuma ordem de serviço aberta no momento." Icone="🔧" />
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="tab">
+                    <thead>
+                        <tr>
+                            <ColunaOrdenavel Coluna="numero" ColunaAtiva="@sortColunaAbertas" Ascendente="@sortAscendenteAbertas" OnOrdenar="OrdenarAbertas">Número</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="cliente" ColunaAtiva="@sortColunaAbertas" Ascendente="@sortAscendenteAbertas" OnOrdenar="OrdenarAbertas">Cliente</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="veiculo" ColunaAtiva="@sortColunaAbertas" Ascendente="@sortAscendenteAbertas" OnOrdenar="OrdenarAbertas">Veículo</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="mecanico" ColunaAtiva="@sortColunaAbertas" Ascendente="@sortAscendenteAbertas" OnOrdenar="OrdenarAbertas">Mecânico</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="prazo" ColunaAtiva="@sortColunaAbertas" Ascendente="@sortAscendenteAbertas" OnOrdenar="OrdenarAbertas">Prazo</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="status" ColunaAtiva="@sortColunaAbertas" Ascendente="@sortAscendenteAbertas" OnOrdenar="OrdenarAbertas">Etapa</ColunaOrdenavel>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var os in osAbertas)
+                        {
+                            <tr class="linha" @onclick="() => AbrirOs(os.Id)">
+                                <td class="num">@os.NumeroPublico</td>
+                                <td>@NomeCliente(os.ClienteId)</td>
+                                <td>@DescricaoVeiculo(os.VeiculoClienteId)</td>
+                                <td>@NomeMecanico(os.MecanicoId)</td>
+                                <td class="@(EhAtrasada(os) ? "vencido" : "")">@os.PrazoEstimado.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    @if (EhAtrasada(os))
+                                    {
+                                        <span class="tag-atraso">Atrasada</span>
+                                    }
+                                    <StatusBadge Status="@os.Status" Familia="os" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
     </div>
 </div>
 
 @code {
     private List<OrdemServicoListaDTO> todas = new();
-    private List<OrdemServicoListaDTO> recentes = new();
+    private List<OrdemServicoListaDTO> osAbertas = new();
     private List<OrdemServicoListaDTO> prontasParaCobrar = new();
     private Dictionary<Guid, ClienteListaDTO> mapaClientes = new();
     private Dictionary<Guid, MecanicoListaDTO> mapaMecanicos = new();
     private Dictionary<Guid, VeiculoClienteListaDTO> mapaVeiculos = new();
+    private List<MecanicoListaDTO> mecanicosOrdenados = new();
+    private int mecanicosDisponiveis;
     private int pendentes;
     private int emAndamento;
     private int entreguesMes;
     private bool carregando = true;
     private string buscaOs = "";
+
+    // Etapas que ainda não chegaram em "aguardando cobrança"/entregue/cancelada
+    // — mesma lista usada em OrdensServico.razor pra decidir o que conta como
+    // "aberta" e o que conta como "atrasada" (prazo já vencido, ainda aberta).
+    private static readonly string[] StatusAbertos =
+        { "Pendente", "EmAnalise", "AguardandoCliente", "BuscandoPecasParaOrcamento", "Aprovada", "EmAndamento", "Pausada" };
+
+    private bool EhAtrasada(OrdemServicoListaDTO o) =>
+        StatusAbertos.Contains(o.Status) && o.PrazoEstimado.Date < DateTime.Today;
+
+    // Ordenação da tabela "Prontas para cobrança" — clique na coluna ordena
+    // crescente; clique de novo na mesma coluna inverte pra decrescente.
+    private string sortColuna = "prazo";
+    private bool sortAscendente = true;
+
+    // Mesmo padrão pra tabela "Ordens de serviço abertas", ordenação própria.
+    private string sortColunaAbertas = "prazo";
+    private bool sortAscendenteAbertas = true;
+
+    private void Ordenar(string coluna)
+    {
+        if (sortColuna == coluna) sortAscendente = !sortAscendente;
+        else { sortColuna = coluna; sortAscendente = true; }
+        OrdenarProntas();
+    }
+
+    private void OrdenarAbertas(string coluna)
+    {
+        if (sortColunaAbertas == coluna) sortAscendenteAbertas = !sortAscendenteAbertas;
+        else { sortColunaAbertas = coluna; sortAscendenteAbertas = true; }
+        OrdenarAbertasLista();
+    }
+
+    private void AbrirOs(Guid id) => Nav.NavigateTo($"/oficina/os/{id}");
+
+    private void OrdenarProntas()
+    {
+        prontasParaCobrar = sortColuna switch
+        {
+            "numero" => Ordenacao.Por(prontasParaCobrar, o => o.NumeroPublico, sortAscendente),
+            "cliente" => Ordenacao.Por(prontasParaCobrar, o => NomeCliente(o.ClienteId), sortAscendente),
+            "veiculo" => Ordenacao.Por(prontasParaCobrar, o => DescricaoVeiculo(o.VeiculoClienteId), sortAscendente),
+            "mecanico" => Ordenacao.Por(prontasParaCobrar, o => NomeMecanico(o.MecanicoId), sortAscendente),
+            "valor" => Ordenacao.Por(prontasParaCobrar, o => o.ValorTotal, sortAscendente),
+            _ => Ordenacao.Por(prontasParaCobrar, o => o.PrazoEstimado, sortAscendente),
+        };
+    }
+
+    private void OrdenarAbertasLista()
+    {
+        osAbertas = sortColunaAbertas switch
+        {
+            "numero" => Ordenacao.Por(osAbertas, o => o.NumeroPublico, sortAscendenteAbertas),
+            "cliente" => Ordenacao.Por(osAbertas, o => NomeCliente(o.ClienteId), sortAscendenteAbertas),
+            "veiculo" => Ordenacao.Por(osAbertas, o => DescricaoVeiculo(o.VeiculoClienteId), sortAscendenteAbertas),
+            "mecanico" => Ordenacao.Por(osAbertas, o => NomeMecanico(o.MecanicoId), sortAscendenteAbertas),
+            "status" => Ordenacao.Por(osAbertas, o => o.Status, sortAscendenteAbertas),
+            _ => Ordenacao.Por(osAbertas, o => o.PrazoEstimado, sortAscendenteAbertas),
+        };
+    }
 
     private IEnumerable<OrdemServicoListaDTO> ResultadosBusca
     {
@@ -195,31 +287,32 @@
         // OrdemServico.ConfirmarPagamentoCompleto) — não entra mais aqui.
         prontasParaCobrar = todas
             .Where(o => o.Status == "PagamentoPendente")
-            .OrderBy(o => o.PrazoEstimado)
             .ToList();
+        OrdenarProntas();
 
-        recentes = todas
-            .Where(o => o.Status != "PagamentoPendente") // já estão em destaque acima
-            .OrderByDescending(o => o.PrazoEstimado)
-            .Take(8)
+        // Todas as OS ainda em curso, exceto as já destacadas acima em
+        // "Prontas para cobrança" — é essa lista que dá pra recepção a visão
+        // do que está rolando na oficina agora (interface entre cliente e
+        // mecânico), sem precisar ir pra tela cheia de Ordens de Serviço.
+        osAbertas = todas
+            .Where(o => StatusAbertos.Contains(o.Status))
             .ToList();
+        OrdenarAbertasLista();
+
+        mecanicosOrdenados = mapaMecanicos.Values
+            .OrderBy(m => m.Ocupado == "Disponivel" ? 0 : m.Ocupado == "Ocupado" ? 1 : 2)
+            .ThenBy(m => m.Nome)
+            .ToList();
+        mecanicosDisponiveis = mapaMecanicos.Values.Count(m => m.Ocupado == "Disponivel");
 
         carregando = false;
     }
 
-    private void AbrirDetalhe(Guid id) => Nav.NavigateTo($"/oficina/os/{id}");
-
     private string NomeCliente(Guid id)
         => mapaClientes.TryGetValue(id, out var c) ? c.Nome : "Cliente não encontrado";
 
-    private string CpfCliente(Guid id)
-        => mapaClientes.TryGetValue(id, out var c) ? $"CPF {c.Cpf}" : "";
-
     private string DescricaoVeiculo(Guid id)
         => mapaVeiculos.TryGetValue(id, out var v) ? $"{v.Marca} {v.Modelo}" : "Veículo não encontrado";
-
-    private string AnoVeiculo(Guid id)
-        => mapaVeiculos.TryGetValue(id, out var v) ? $"{v.Cor} · {v.Ano}" : "";
 
     private string NomeMecanico(Guid id)
     {
@@ -229,255 +322,77 @@
 
     private string EspecialidadeDoMecanico(Guid id)
         => mapaMecanicos.TryGetValue(id, out var m) ? m.Especialidade : "";
-
-    private string StatusClass(string status) => status switch
-    {
-        "Pendente"                    => "status-pendente",
-        "EmAndamento"                 => "status-andamento",
-        "PagamentoPendente"           => "status-pronta",
-        "Finalizada"                  => "status-finalizada",
-        "Entregue"                    => "status-finalizada",
-        "Cancelada"                   => "status-cancelada",
-        "Pausada"                     => "status-pausada",
-        "BuscandoPecasParaOrcamento"  => "status-pausada",
-        _                             => "status-pendente"
-    };
-
-    private string StatusLabel(string status) => status switch
-    {
-        "EmAndamento"                 => "Em andamento",
-        "BuscandoPecasParaOrcamento"  => "Buscando peças",
-        "PagamentoPendente"           => "Aguardando cobrança",
-        "Finalizada"                  => "Pronta para entrega",
-        _                             => status
-    };
 }
 
 <style>
-    .recepcao-topo { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: var(--sp-4); margin-bottom: var(--sp-5); align-items: start; }
-    .abrir-os-card {
-        display: flex; align-items: center; gap: var(--sp-3);
-        background: var(--cor-marca); color: #fff;
-        border-radius: var(--raio-lg); padding: var(--sp-4); text-decoration: none;
+    /* Busca de OS centralizada vertical e horizontalmente no topo da tela —
+       é a ação mais comum da recepção, ganha destaque em vez de ficar
+       espremida num canto. */
+    .recepcao-topo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: var(--sp-5);
     }
-    .abrir-os-card:hover { background: var(--cor-marca-hover); }
-    .aoc-icone { font-size: 26px; line-height: 1; }
-    .abrir-os-card strong { display: block; font-size: var(--txt-md); }
-    .abrir-os-card span { font-size: var(--txt-xs); opacity: .85; }
-
-    .busca-rapida { position: relative; }
-    .busca-rapida label { display: block; font-size: var(--txt-xs); color: var(--cor-tinta-3); margin-bottom: 4px; font-weight: var(--peso-medio); }
-    .busca-rapida input { width: 100%; border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 10px 12px; font-size: var(--txt-sm); font-family: inherit; }
+    .busca-rapida { position: relative; width: 100%; max-width: 560px; }
+    .busca-rapida label {
+        display: block; text-align: center; font-size: var(--txt-sm); color: var(--cor-tinta-2);
+        margin-bottom: var(--sp-2); font-weight: var(--peso-medio);
+    }
+    .busca-rapida input {
+        width: 100%; border: 1px solid var(--cor-linha); border-radius: var(--raio-lg);
+        padding: 16px 18px; font-size: var(--txt-lg); font-family: inherit;
+        text-align: center; box-shadow: var(--sombra-menu);
+    }
+    .busca-rapida input:focus { border-color: var(--cor-acao); outline: none; }
     .busca-drop { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; background: #fff; border: 1px solid var(--cor-linha); border-radius: var(--raio-md); box-shadow: var(--sombra-menu); margin-top: 4px; overflow: hidden; }
     .busca-item { display: grid; grid-template-columns: 90px 1fr auto; gap: var(--sp-2); align-items: center; padding: 8px 12px; text-decoration: none; color: inherit; font-size: var(--txt-sm); }
     .busca-item:hover { background: var(--cor-info-bg); }
     .bi-num { font-family: monospace; color: var(--cor-acao); font-weight: var(--peso-forte); }
     .bi-status { font-size: var(--txt-xs); color: var(--cor-tinta-3); }
-    @@media (max-width: 640px) { .recepcao-topo { grid-template-columns: 1fr; } }
-    .recepcao-page {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 32px 24px;
-    }
 
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 24px;
-    }
-
-    .page-titulo { font-size: 24px; font-weight: 500; margin-bottom: 4px; }
-    .page-sub { font-size: 14px; color: #888; }
-
-    .btn-novo {
-        background: #e02020;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        padding: 10px 18px;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-    }
-
-    .btn-novo:hover { background: #c01818; }
-
-    .metricas-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin-bottom: 28px;
-    }
-
-    .metrica-card.destaque-pronta {
-        background: #fff7ed;
-        border: 0.5px solid #fdba74;
-    }
-    .metrica-valor.pronta { color: #ea580c; }
-
-    .metrica-card {
-        background: #f4f4f4;
-        border-radius: 10px;
-        padding: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .metrica-label { font-size: 12px; color: #888; }
-
-    .metrica-valor { font-size: 32px; font-weight: 500; color: #1a1a1a; }
-    .metrica-valor.pendentes  { color: #ea580c; }
-    .metrica-valor.andamento  { color: #2563eb; }
-    .metrica-valor.finalizadas { color: #16a34a; }
-
-    .secao { margin-bottom: 24px; }
-
+    .secao { margin-bottom: var(--sp-6); }
     .secao-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 12px;
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: var(--sp-3);
+    }
+    .secao-titulo { font-size: var(--txt-lg); font-weight: var(--peso-medio); margin: 0; }
+    .link-link { background: none; border: none; color: var(--cor-acao); font-size: var(--txt-sm); cursor: pointer; }
+    .muted { color: var(--cor-tinta-3); font-size: var(--txt-xs); }
+
+    /* Tabela — mesmo padrão de tabela HTML usado em Propostas/Test
+       drives/Consignações (Concessionária): cabeçalho clicável
+       (ColunaOrdenavel) declara as colunas, o navegador garante o
+       alinhamento entre cabeçalho e linhas. Zebra pra facilitar a leitura. */
+    .table-scroll { overflow-x: auto; }
+    .tab { width: 100%; border-collapse: collapse; background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); overflow: hidden; }
+    .tab th, .tab td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--cor-linha-suave); font-size: var(--txt-sm); }
+    .tab th { background: var(--cor-fundo); font-size: var(--txt-xs); text-transform: uppercase; letter-spacing: .3px; color: var(--cor-tinta-3); }
+    .tab th.r, .tab td.r { text-align: right; }
+    .tab tbody tr:nth-child(even) { background: var(--cor-zebra); }
+    .linha { cursor: pointer; transition: background .1s; }
+    .linha:hover { background: var(--cor-info-bg); }
+    .num { font-family: monospace; font-weight: var(--peso-forte); color: var(--cor-acao); }
+    .valor { font-weight: var(--peso-forte); }
+    .vencido { color: var(--cor-erro-tx); }
+    .tag-atraso {
+        font-size: var(--txt-xs); font-weight: var(--peso-forte);
+        color: var(--cor-erro-tx); background: var(--cor-erro-bg);
+        padding: 2px 8px; border-radius: var(--raio-full); margin-right: 6px;
     }
 
-    .secao-titulo { font-size: 16px; font-weight: 500; }
-
-    .link-link {
-        background: none;
-        border: none;
-        color: #2563eb;
-        font-size: 13px;
-        cursor: pointer;
+    /* Chips de ocupação dos mecânicos — visão rápida de quem está livre
+       agora, sem precisar abrir a ficha de cada um. */
+    .mecanicos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-3); }
+    .mec-chip {
+        background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-md);
+        padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
     }
+    .mec-info { display: flex; flex-direction: column; gap: 2px; }
+    .mec-info strong { font-size: var(--txt-sm); }
 
-    .ordens-lista {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
+    .loading, .vazio { text-align: center; padding: 60px; color: var(--cor-tinta-3); font-size: var(--txt-sm); }
 
-    .os-card {
-        background: #fff;
-        border: 0.5px solid #e0e0e0;
-        border-radius: 12px;
-        padding: 16px 18px;
-        cursor: pointer;
-        transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    .os-card:hover {
-        border-color: #2563eb;
-        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
-    }
-
-    .os-cabecalho {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 12px;
-        padding-bottom: 10px;
-        border-bottom: 0.5px solid #f0f0f0;
-    }
-
-    .os-numero {
-        font-family: monospace;
-        font-size: 13px;
-        font-weight: 600;
-        color: #2563eb;
-        background: #eff6ff;
-        padding: 4px 10px;
-        border-radius: 6px;
-    }
-
-    .os-corpo {
-        display: grid;
-        grid-template-columns: 1.4fr 1.4fr 1.2fr 1.2fr 0.9fr;
-        gap: 14px;
-    }
-
-    .os-coluna {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        min-width: 0;
-    }
-
-    .os-coluna.alinhado-direita {
-        align-items: flex-end;
-        text-align: right;
-    }
-
-    .rotulo {
-        font-size: 10px;
-        color: #999;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-weight: 600;
-    }
-
-    .dado-principal {
-        font-size: 13px;
-        font-weight: 500;
-        color: #1a1a1a;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .dado-principal.valor {
-        font-size: 15px;
-        color: #1a1a1a;
-        font-weight: 700;
-    }
-
-    .dado-sub {
-        font-size: 11px;
-        color: #888;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .os-status {
-        font-size: 11px;
-        padding: 3px 10px;
-        border-radius: 20px;
-        font-weight: 500;
-        flex-shrink: 0;
-    }
-
-    .status-pendente   { background: #fef9c3; color: #854d0e; }
-    .status-andamento  { background: #eff6ff; color: #1d4ed8; }
-    .status-pronta     { background: #fff7ed; color: #c2410c; font-weight: 600; }
-    .status-finalizada { background: #dcfce7; color: #166534; }
-    .status-cancelada  { background: #fff5f5; color: #e02020; }
-    .status-pausada    { background: #f3e8ff; color: #6b21a8; }
-
-    .pronta-card {
-        border-color: #fdba74 !important;
-        background: linear-gradient(to right, #fff7ed 0%, #ffffff 30%);
-    }
-    .pronta-card:hover {
-        border-color: #ea580c !important;
-        box-shadow: 0 2px 8px rgba(234, 88, 12, 0.15);
-    }
-
-    .muted { color: #888; font-size: 12px; }
-
-    .loading, .vazio {
-        text-align: center;
-        padding: 60px;
-        color: #888;
-        font-size: 14px;
-    }
-
-    @@media (max-width: 900px) {
-        .os-corpo { grid-template-columns: 1fr 1fr; }
-        .os-coluna.alinhado-direita { align-items: flex-start; text-align: left; }
-    }
-
-    @@media (max-width: 560px) {
-        .os-corpo { grid-template-columns: 1fr; }
-    }
+    @@media (max-width: 700px) { .tab { min-width: 560px; } }
 </style>

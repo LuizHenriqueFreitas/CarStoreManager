@@ -20,7 +20,7 @@
 
 @using Microsoft.AspNetCore.Components.Web
 
-<div class="pagina comp-page">
+<div class="pagina">
     <PageHeader Titulo="Estoque de peças" Subtitulo="@($"{componentes.Count} componente(s) cadastrado(s)")">
         <Acao>
             @if (ehAdmin)
@@ -57,45 +57,52 @@
     }
     else
     {
-        <div class="comp-tabela" data-tour="comp-tabela">
-            <div class="tabela-header">
-                <span>Nome</span>
-                <span>Part Number</span>
-                <span>Sistema</span>
-                <span>Estoque</span>
-                <span>Mínimo</span>
-                @if (ehAdmin)
-                {
-                    <span>Ações</span>
-                }
-            </div>
-
-            @foreach (var c in componentesFiltrados)
-            {
-                var est = ObterEstoque(c.Id);
-                <div class="tabela-row @(est is null || est.SemEstoque ? "sem-estoque" : "")">
-                    <span class="comp-nome clicavel" @onclick="() => AbrirModalDetalhe(c)">@c.Nome</span>
-                    <span class="comp-pn">@c.PartNumber</span>
-                    <span class="comp-sistema">@c.Sistema</span>
-                    <span class="comp-qtd @EstoqueClass(est)">
-                        @(est?.QuantidadeAtual ?? 0)
-                    </span>
-                    <span class="comp-min">@(est?.QuantidadeMinima ?? 0)</span>
-                    @if (ehAdmin)
+        <div class="table-scroll" data-tour="comp-tabela">
+            <table class="tab">
+                <thead>
+                    <tr>
+                        <ColunaOrdenavel Coluna="nome" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Nome</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="partnumber" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Part Number</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="sistema" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Sistema</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="estoque" Class="r" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Estoque</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="minimo" Class="r" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Mínimo</ColunaOrdenavel>
+                        @if (ehAdmin)
+                        {
+                            <th>Ações</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in componentesFiltrados)
                     {
-                        <div class="comp-acoes" data-tour="comp-row-acoes">
-                            <button class="btn-mini verde"
-                                    @onclick="() => AbrirModalEntrada(c)">
-                                + Entrada
-                            </button>
-                            <button class="btn-mini"
-                                    @onclick="() => AbrirModalMinimo(c, est)">
-                                Mínimo
-                            </button>
-                        </div>
+                        var est = ObterEstoque(c.Id);
+                        <tr class="@(est is null || est.SemEstoque ? "sem-estoque" : "")">
+                            <td class="comp-nome clicavel" @onclick="() => AbrirModalDetalhe(c)">@c.Nome</td>
+                            <td class="comp-pn">@c.PartNumber</td>
+                            <td>@c.Sistema</td>
+                            <td class="r comp-qtd @EstoqueClass(est)">
+                                @(est?.QuantidadeAtual ?? 0)
+                            </td>
+                            <td class="r">@(est?.QuantidadeMinima ?? 0)</td>
+                            @if (ehAdmin)
+                            {
+                                <td>
+                                    <div class="comp-acoes" data-tour="comp-row-acoes">
+                                        <button class="btn-mini verde"
+                                                @onclick="() => AbrirModalEntrada(c)">
+                                            + Entrada
+                                        </button>
+                                        <button class="btn-mini"
+                                                @onclick="() => AbrirModalMinimo(c, est)">
+                                            Mínimo
+                                        </button>
+                                    </div>
+                                </td>
+                            }
+                        </tr>
                     }
-                </div>
-            }
+                </tbody>
+            </table>
         </div>
     }
 </div>
@@ -429,6 +436,11 @@
     private string filtroSistema = "";
     private string termoBusca = string.Empty;
 
+    // Ordenação da tabela — clique na coluna ordena crescente; clique de
+    // novo na mesma coluna inverte pra decrescente (ver ColunaOrdenavel).
+    private string sortColuna = "nome";
+    private bool sortAscendente = true;
+
     private static readonly List<FiltroSelect.Opcao> opcoesSituacao = new()
     {
         new("Todos", "Todas"), new("EstoqueBaixo", "Abaixo do mínimo"), new("SemEstoque", "Sem estoque"),
@@ -516,27 +528,46 @@
         if (!string.IsNullOrEmpty(filtroSistema))
             base_ = base_.Where(c => c.Sistema == filtroSistema).ToList();
 
-        if (string.IsNullOrWhiteSpace(termoBusca))
+        if (!string.IsNullOrWhiteSpace(termoBusca))
         {
-            componentesFiltrados = base_;
-            return;
+            var termo = termoBusca.Trim();
+            base_ = base_.Where(c =>
+                Match(c.Nome, termo)
+                || Match(c.SKUInterno, termo)
+                || Match(c.PartNumber, termo)
+                || Match(c.CodigoOEM, termo)
+                || Match(c.MarcaFabricante, termo)
+                || Match(c.Categoria, termo)
+                || Match(c.Sistema, termo)
+                || Match(c.CodigoBarras, termo)
+            ).ToList();
         }
 
-        var termo = termoBusca.Trim();
-        componentesFiltrados = base_.Where(c =>
-            Match(c.Nome, termo)
-            || Match(c.SKUInterno, termo)
-            || Match(c.PartNumber, termo)
-            || Match(c.CodigoOEM, termo)
-            || Match(c.MarcaFabricante, termo)
-            || Match(c.Categoria, termo)
-            || Match(c.Sistema, termo)
-            || Match(c.CodigoBarras, termo)
-        ).ToList();
+        componentesFiltrados = base_;
+        OrdenarComponentes();
 
         static bool Match(string? campo, string termo)
             => !string.IsNullOrEmpty(campo)
                && campo.Contains(termo, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void Ordenar(string coluna)
+    {
+        if (sortColuna == coluna) sortAscendente = !sortAscendente;
+        else { sortColuna = coluna; sortAscendente = true; }
+        OrdenarComponentes();
+    }
+
+    private void OrdenarComponentes()
+    {
+        componentesFiltrados = sortColuna switch
+        {
+            "partnumber" => Ordenacao.Por(componentesFiltrados, c => c.PartNumber, sortAscendente),
+            "sistema" => Ordenacao.Por(componentesFiltrados, c => c.Sistema, sortAscendente),
+            "estoque" => Ordenacao.Por(componentesFiltrados, c => ObterEstoque(c.Id)?.QuantidadeAtual ?? 0, sortAscendente),
+            "minimo" => Ordenacao.Por(componentesFiltrados, c => ObterEstoque(c.Id)?.QuantidadeMinima ?? 0, sortAscendente),
+            _ => Ordenacao.Por(componentesFiltrados, c => c.Nome, sortAscendente),
+        };
     }
 
     private void AbrirModalNovo()
@@ -744,164 +775,31 @@
 }
 
 <style>
-    .comp-page {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 32px 24px;
-    }
-
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 20px;
-    }
-
-    .page-titulo { font-size: 24px; font-weight: 500; margin-bottom: 4px; }
-    .page-sub { font-size: 14px; color: #888; }
-
-    .btn-novo {
-        background: #2563eb;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        padding: 9px 16px;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-    }
-
-    .btn-novo:hover { background: #1d4ed8; }
-
-    .header-acoes { display: flex; align-items: center; gap: 10px; }
-
-    .btn-secundario {
-        background: #fff;
-        color: #333;
-        border: 0.5px solid #ccc;
-        border-radius: 8px;
-        padding: 9px 16px;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-    }
-
-    .btn-secundario:hover { border-color: #2563eb; color: #2563eb; }
-
-    .alerta-estoque {
-        background: #fff7ed;
-        border: 0.5px solid #fed7aa;
-        border-radius: 10px;
-        padding: 12px 16px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 16px;
-        font-size: 13px;
-        color: #9a3412;
-    }
-
-    .alerta-icone { font-size: 16px; }
-
-    .alerta-btn {
-        margin-left: auto;
-        background: #ea580c;
-        color: #fff;
-        border: none;
-        border-radius: 6px;
-        padding: 4px 12px;
-        font-size: 12px;
-        cursor: pointer;
-    }
-
-    .filtros-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 16px;
-        flex-wrap: wrap;
-    }
-
-    .filtros-status {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-
-    .filtro-os {
-        background: #f4f4f4;
-        border: 0.5px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 5px 12px;
-        font-size: 12px;
-        color: #555;
-        cursor: pointer;
-    }
-
-    .filtro-os.ativo {
-        background: #1a1a1a;
-        border-color: #1a1a1a;
-        color: #fff;
-    }
-
-    .busca-input {
-        border: 0.5px solid #ccc;
-        border-radius: 8px;
-        padding: 7px 12px;
-        font-size: 13px;
-        outline: none;
-        min-width: 200px;
-    }
-
-    .busca-input:focus { border-color: #3b82f6; }
-
-    .comp-tabela {
-        background: #fff;
-        border: 0.5px solid #e0e0e0;
-        border-radius: 12px;
-        overflow: hidden;
-    }
-
-    .tabela-header {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr 80px 80px 160px;
-        padding: 10px 16px;
-        background: #f4f4f4;
-        font-size: 11px;
-        color: #888;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .tabela-row {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr 80px 80px 160px;
-        padding: 12px 16px;
-        border-top: 0.5px solid #f0f0f0;
-        align-items: center;
-        font-size: 13px;
-        transition: background 0.15s;
-    }
-
-    .tabela-row:hover { background: #fafafa; }
+    /* Tabela — mesmo padrão de tabela HTML usado em Recepção/Ordens de
+       serviço/Fornecedores e em Propostas/Test drives/Consignações da
+       Concessionária: cabeçalho clicável (ColunaOrdenavel) declara as
+       colunas, o navegador garante o alinhamento com as linhas. Zebra pra
+       facilitar a leitura. */
+    .table-scroll { overflow-x: auto; }
+    .tab { width: 100%; border-collapse: collapse; background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); overflow: hidden; }
+    .tab th, .tab td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--cor-linha-suave); font-size: var(--txt-sm); }
+    .tab th { background: var(--cor-fundo); font-size: var(--txt-xs); text-transform: uppercase; letter-spacing: .3px; color: var(--cor-tinta-3); }
+    .tab th.r, .tab td.r { text-align: right; }
+    .tab tbody tr:nth-child(even) { background: var(--cor-zebra); }
+    .tab tbody tr:hover { background: var(--cor-info-bg); }
     .sem-estoque { opacity: 0.6; }
 
-    .comp-nome { font-weight: 500; }
-    .comp-nome.clicavel { cursor: pointer; color: #2563eb; }
+    .comp-nome { font-weight: var(--peso-medio); }
+    .comp-nome.clicavel { cursor: pointer; color: var(--cor-acao); }
     .comp-nome.clicavel:hover { text-decoration: underline; }
-    .comp-pn { font-family: monospace; color: #555; font-size: 12px; }
-    .comp-sistema { color: #888; font-size: 12px; }
+    .comp-pn { font-family: monospace; color: var(--cor-tinta-2); }
 
-    .comp-qtd { font-weight: 600; }
-    .qtd-ok   { color: #16a34a; }
+    .comp-qtd { font-weight: var(--peso-forte); }
+    .qtd-ok   { color: var(--cor-ok-tx); }
     .qtd-baixo { color: #ea580c; }
-    .qtd-zero  { color: #e02020; }
+    .qtd-zero  { color: var(--cor-erro-tx); }
 
-    .comp-min { color: #aaa; font-size: 12px; }
-
-    .comp-acoes { display: flex; gap: 6px; }
+    .comp-acoes { display: flex; gap: 6px; justify-content: flex-end; }
 
     .btn-mini {
         background: #f4f4f4;
@@ -1123,7 +1021,6 @@
     @@media (max-width: 700px) {
         /* Tabela larga (6 colunas) — em vez de espremer/cortar, rola por
            dentro; min-width mantém cada coluna legível. */
-        .comp-tabela { overflow-x: auto; }
-        .tabela-header, .tabela-row { min-width: 640px; }
+        .tab { min-width: 640px; }
     }
 </style>

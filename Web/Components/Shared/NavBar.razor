@@ -39,15 +39,25 @@
             </NavLink>
         </AuthorizeView>
 
+        @* NavLink comum usaria prefixo — "/financeiro/relatorios" ficaria
+           destacado aqui TAMBÉM, já que Relatórios tem link próprio agora
+           (linha abaixo). Por isso classe calculada na mão, excluindo esse
+           sub-caminho especificamente. *@
         <AuthorizeView Roles="Admin,GerenteVendas,ChefeOficina" Context="c3">
-            <NavLink href="/financeiro" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMobile">
+            <a href="/financeiro" class="@ClasseFinanceiro" @onclick="FecharMobile">
                 Financeiro
-            </NavLink>
+            </a>
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin,GerenteVendas,ChefeOficina" Context="c4">
             <NavLink href="/dashboard" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMobile">
                 Análises
+            </NavLink>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin,GerenteVendas,ChefeOficina" Context="c6">
+            <NavLink href="/financeiro/relatorios" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMobile">
+                Relatórios
             </NavLink>
         </AuthorizeView>
 
@@ -134,15 +144,25 @@
 
     private static NavArea.Item[] ItensConfiguracoes(System.Security.Claims.ClaimsPrincipal u)
     {
-        var lista = new List<NavArea.Item>
-        {
-            new("/configuracoes", "Visão geral"),
-        };
+        var lista = new List<NavArea.Item>();
+        if (u.IsInRole("Admin"))
+            lista.Add(new("/configuracoes", "Sistema"));
         if (u.IsInRole("Admin") || u.IsInRole("GerenteVendas") || u.IsInRole("ChefeOficina"))
             lista.Add(new("/configuracoes/formulario-despesas", "Formulário de despesas"));
-        if (u.IsInRole("Admin"))
-            lista.Add(new("/configuracoes/sistema", "Sistema"));
         return lista.ToArray();
+    }
+
+    // Ativo em qualquer sub-rota de /financeiro (despesas, a-receber, etc.),
+    // exceto /financeiro/relatorios — essa tem o próprio link na navbar.
+    private string ClasseFinanceiro
+    {
+        get
+        {
+            var caminho = "/" + Navigation.ToBaseRelativePath(Navigation.Uri).TrimEnd('/');
+            var ativo = (caminho == "/financeiro" || caminho.StartsWith("/financeiro/"))
+                && !caminho.StartsWith("/financeiro/relatorios");
+            return ativo ? "nav-link nav-link-active" : "nav-link";
+        }
     }
 
     protected override void OnInitialized() => Navigation.LocationChanged += OnLoc;

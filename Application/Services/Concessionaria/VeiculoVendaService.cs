@@ -3,7 +3,9 @@
 using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs;
 using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda;
+using CarStoreManager.Application.DTOs.Sistema;
 using CarStoreManager.Application.Interfaces;
+using CarStoreManager.Application.Interfaces.Sistema;
 using CarStoreManager.Application.Mappings.Concessionaria;
 using CarStoreManager.Domain.Repositories;
 
@@ -20,10 +22,12 @@ namespace CarStoreManager.Application.Services;
 public class VeiculoVendaService : IVeiculoVendaService
 {
     private readonly IVeiculoVendaRepository _repository;
+    private readonly IBalancoMensalDespesaService _balancoDespesaService;
 
-    public VeiculoVendaService(IVeiculoVendaRepository repository)
+    public VeiculoVendaService(IVeiculoVendaRepository repository, IBalancoMensalDespesaService balancoDespesaService)
     {
         _repository = repository;
+        _balancoDespesaService = balancoDespesaService;
     }
 
     /*
@@ -56,6 +60,14 @@ public class VeiculoVendaService : IVeiculoVendaService
             veiculos.Select(VeiculoVendaMapping.ToListaDto));
     }
 
+    //busca veiculos por marca, modelo ou placa, para autocomplete
+    public async Task<Result<List<VeiculoVendaListaDTO>>> PesquisarAsync(string termo)
+    {
+        var veiculos = await _repository.PesquisarAsync(termo);
+        return Result<List<VeiculoVendaListaDTO>>.Ok(
+            veiculos.Select(VeiculoVendaMapping.ToListaDto).ToList());
+    }
+
     public async Task<Result<IEnumerable<string>>> ListarMarcasDistintasAsync()
     {
         var veiculos = await _repository.GetAllAsync();
@@ -76,12 +88,45 @@ public class VeiculoVendaService : IVeiculoVendaService
             var veiculo = VeiculoVendaMapping.ToEntity(dto);
             await _repository.AddAsync(veiculo);
             await _repository.SaveChangesAsync();
+
+            // Decisão firmada (CLAUDE.md): compra de veículo próprio = despesa
+            // de investimento em estoque no mês da compra. Lançada automaticamente
+            // no balanço mensal — best-effort: se não der (ex.: balanço do mês já
+            // fechado), o cadastro do veículo já foi concluído mesmo assim, não
+            // desfazemos por causa disso.
+            await RegistrarDespesaCompraAsync(veiculo, DateTime.Today);
+
             return Result<Guid>.Ok(veiculo.Id);
         }
         catch (Exception ex)
         {
             return Result<Guid>.Fail($"Erro ao criar veículo: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Lança o valor de aquisição do veículo como item de despesa no balanço
+    /// mensal da competência informada — categoria "Compra de veículo",
+    /// setor Concessionária. Garante primeiro que o balanço daquela
+    /// competência já tenha as despesas recorrentes do modelo (aluguel, luz
+    /// etc.) antes de somar o item de compra — se o balanço já existir (mês
+    /// corrente já em edição, ou outra compra no mesmo mês), a falha
+    /// "já existe" do <see cref="IBalancoMensalDespesaService.GerarDoModeloAsync"/>
+    /// é esperada e ignorada.
+    /// </summary>
+    private async Task RegistrarDespesaCompraAsync(Domain.Entities.Concessionaria.VeiculoVenda veiculo, DateTime dataCompra)
+    {
+        await _balancoDespesaService.GerarDoModeloAsync(dataCompra.Year, dataCompra.Month);
+
+        await _balancoDespesaService.SalvarItemAsync(new SalvarItemBalancoDTO
+        {
+            Ano = dataCompra.Year,
+            Mes = dataCompra.Month,
+            Nome = $"Compra de veículo para concessionária: {veiculo.GetMarca()} {veiculo.GetModelo()} — {veiculo.GetPlacaCarro()}",
+            Setor = "Concessionaria",
+            Categoria = "Compra de veículo",
+            Valor = veiculo.GetValorAquisicao()
+        });
     }
 
     /*

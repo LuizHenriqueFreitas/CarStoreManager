@@ -584,7 +584,7 @@ else
         => await TratarResultado(await OrdemService.IniciarAsync(Id), "Serviço iniciado.");
 
     private async Task FinalizarOS()
-        => await TratarResultado(await OrdemService.FinalizarAsync(Id), "Serviço finalizado. OS aguardando cobrança/entrega na recepção.");
+        => await TratarResultado(await OrdemService.FinalizarAsync(Id), "Serviço finalizado. OS pronta para entrega.");
 
     private async Task EntregarOS()
         => await TratarResultado(await OrdemService.EntregarAsync(Id), "OS entregue ao cliente.");

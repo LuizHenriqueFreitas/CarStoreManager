@@ -120,7 +120,7 @@ public static partial class RegistroDeTours
                     Titulo = "Painel da recepção",
                     Texto = "Esta é a tela de trabalho de quem atende o cliente no balcão — abre novas ordens de " +
                         "serviço e recebe o pagamento na entrega do veículo. O painel geral da oficina (KPIs, " +
-                        "board de etapas) fica em \"Visão geral\"."
+                        "resumo de OS) fica em \"Visão geral\"."
                 },
                 new()
                 {
@@ -132,7 +132,15 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "recepcao-metricas",
                     Titulo = "Métricas do dia",
-                    Texto = "Contagem rápida — em destaque, quantas ordens estão aguardando cobrança."
+                    Texto = "Contagem rápida — quantas ordens aguardam cobrança, quantas estão atrasadas e quantos " +
+                        "mecânicos estão livres agora pra receber um carro novo."
+                },
+                new()
+                {
+                    Seletor = "recepcao-ocupacao",
+                    Titulo = "Ocupação da oficina",
+                    Texto = "Quem está disponível, ocupado ou indisponível agora — informação que a recepção usa " +
+                        "toda hora pra saber se dá pra aceitar um carro na hora ou se o cliente precisa esperar."
                 },
                 new()
                 {
@@ -141,6 +149,13 @@ public static partial class RegistroDeTours
                     Texto = "Quando o mecânico termina o serviço, a ordem cai aqui com status \"Aguardando " +
                         "cobrança\" — falta receber do cliente antes de liberar o veículo. Clique na ordem para " +
                         "abrir o painel de pagamento e registrar o recebimento."
+                },
+                new()
+                {
+                    Seletor = "recepcao-abertas",
+                    Titulo = "Ordens de serviço abertas",
+                    Texto = "Todas as OS ainda em curso — cliente, veículo, mecânico responsável, prazo e etapa " +
+                        "atual. Clique numa linha para abrir a ordem completa."
                 }
             }
         },
@@ -169,9 +184,9 @@ public static partial class RegistroDeTours
                 new()
                 {
                     Seletor = "oficina-hub-board",
-                    Titulo = "Ordens por etapa",
-                    Texto = "Cada coluna é uma etapa do fluxo da OS. Clique num card para abrir a ordem. Para a " +
-                        "lista completa com filtros e busca, use \"Ordens de serviço\"."
+                    Titulo = "Ordens de serviço",
+                    Texto = "Resumo rápido: OS em aberto, em andamento, aguardando cobrança e atrasadas. Clique " +
+                        "no card pra abrir a lista completa, com filtros e busca por coluna."
                 },
                 new()
                 {
@@ -208,8 +223,9 @@ public static partial class RegistroDeTours
                 {
                     Seletor = null,
                     Titulo = "Todas as ordens",
-                    Texto = "Lista completa das OS. Filtre por status (incluindo \"Atrasadas\") ou busque por " +
-                        "número, cliente ou placa. Clique em qualquer card para abrir o detalhe."
+                    Texto = "Lista completa das OS, em formato de tabela. Filtre por status (incluindo " +
+                        "\"Atrasadas\"), busque por número, cliente ou placa, ou clique no título de uma coluna " +
+                        "pra reordenar por ela. Clique em qualquer linha para abrir o detalhe."
                 }
             }
         },
@@ -291,9 +307,9 @@ public static partial class RegistroDeTours
                 {
                     Seletor = null,
                     Titulo = "Do orçamento à entrega",
-                    Texto = "O mecânico finaliza o serviço sem precisar do pagamento — a ordem vai para " +
-                        "\"Pagamento pendente\" e só é liberada para entrega depois que a recepção recebe o " +
-                        "valor total pelo painel de pagamento."
+                    Texto = "O pagamento total precisa ser registrado no painel de pagamento ANTES de finalizar " +
+                        "o serviço — não dá para finalizar com saldo em aberto. Uma vez paga, a ordem já sai " +
+                        "pronta para entrega."
                 }
             }
         },

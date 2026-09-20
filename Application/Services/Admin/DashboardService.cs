@@ -20,7 +20,27 @@ public class DashboardService : IDashboardService
     private const int JANELA_MESES_PADRAO = 6;
     private static readonly int[] JANELAS_MESES_PERMITIDAS = { 3, 6, 12 };
     private const int JANELA_MESES_ACUMULADA = 12;
-    private const int TOP_CATEGORIAS = 6;
+    // Ver docs/redesign/14-granularidade-diaria-graficos.md — períodos de até
+    // ~2 meses agrupam por dia (senão um período de 7/15 dias, o padrão do
+    // SeletorPeriodo, virava 1 ponto só de gráfico); acima disso, por mês.
+    private const int LIMITE_DIAS_GRANULARIDADE_DIARIA = 62;
+    // Teto de segurança pro payload — a decisão final de quantas categorias
+    // aparecem (pizza com todas se <=6, ou barra com só as 10 maiores) é do
+    // JS (carstoreChart.comparativo, Web/wwwroot/js/charts.js), não daqui.
+    private const int TOP_CATEGORIAS = 15;
+
+    /// <summary>
+    /// OS com trabalho técnico terminado E já pago — <see cref="StatusOrdemServico.Finalizada"/>
+    /// é esse estado logo após o pagamento (aguardando retirada);
+    /// <see cref="StatusOrdemServico.Entregue"/> é a MESMA OS depois que o
+    /// cliente retirou o carro — ainda paga, só avançou de status. Filtrar
+    /// só por "Finalizada" (como o código fazia antes) exclui toda OS já
+    /// entregue da receita — na prática, a maioria das OS pagas, já que
+    /// "Finalizada" é só uma parada de passagem rumo a "Entregue". Ver
+    /// docs/redesign/19-bug-receita-os-entregue.md.
+    /// </summary>
+    private static bool EhServicoConcluidoEPago(StatusOrdemServico status)
+        => status == StatusOrdemServico.Finalizada || status == StatusOrdemServico.Entregue;
 
     private readonly IDespesaRepository _despesas;
     private readonly IBalancoMensalDespesaRepository _balancos;
@@ -129,7 +149,7 @@ public class DashboardService : IDashboardService
             .ToDictionary(g => g.Key, g => g.Count());
 
         var ordensFinalizadas = todasOrdens
-            .Where(o => o.Status == StatusOrdemServico.Finalizada)
+            .Where(o => EhServicoConcluidoEPago(o.Status))
             .ToList();
 
         dto.ReceitaServicosMesAtual = ordensFinalizadas
@@ -153,7 +173,7 @@ public class DashboardService : IDashboardService
 
         decimal acumulado = 0;
         dto.SerieReceitaServicosAcumulada12m = serie12m
-            .Select(s => new MesValorDTO { MesLabel = s.MesLabel, Valor = acumulado += s.Valor })
+            .Select(s => new MesValorDTO { Label = s.Label, Valor = acumulado += s.Valor })
             .ToList();
 
         // === Receita por mecânico (top 5, OS finalizadas) ===
@@ -210,7 +230,7 @@ public class DashboardService : IDashboardService
             var chave = (mes.Year, mes.Month);
             timeline.Add(new PropostaTimelineDTO
             {
-                MesLabel = $"{ciProp.DateTimeFormat.AbbreviatedMonthNames[mes.Month - 1]}/{mes.Year % 100:D2}",
+                Label = $"{ciProp.DateTimeFormat.AbbreviatedMonthNames[mes.Month - 1]}/{mes.Year % 100:D2}",
                 Aprovadas = aprovadasPorMes.TryGetValue(chave, out var a) ? a : 0,
                 Rejeitadas = rejeitadasPorMes.TryGetValue(chave, out var r) ? r : 0
             });
@@ -268,7 +288,6 @@ public class DashboardService : IDashboardService
             Id = "financeiro-composicao",
             Titulo = "Composição financeira do mês",
             Categoria = "Financeiro",
-            TipoGrafico = "doughnut",
             Dados = new List<CategoriaValorDTO>
             {
                 new() { Rotulo = "Receita serviços", Valor = dto.ReceitaServicosMesAtual },
@@ -303,25 +322,42 @@ public class DashboardService : IDashboardService
     {
         var inicioPeriodo = dataInicio.Date;
         var fimPeriodo = dataFim.Date.AddDays(1).AddTicks(-1); // fim do dia, inclusive
-        var mesesNoPeriodo = (fimPeriodo.Year - inicioPeriodo.Year) * 12 + fimPeriodo.Month - inicioPeriodo.Month + 1;
 
         var dto = new DashboardMetricasDTO();
 
-        // === Despesas — são um valor mensal recorrente cadastrado (sem data
-        // própria por lançamento), então para um período com mais de um mês o
-        // valor é uma ESTIMATIVA: valor mensal cadastrado × nº de meses do
-        // período (contagem inclusiva de meses parciais nas pontas). ===
+        // === Despesas — para cada mês tocado pelo período, usa o balanço
+        // MENSAL REAL daquele mês se ele existir (histórico de verdade, com
+        // as variações — compra de veículo, manutenção extra, mês mais
+        // enxuto etc.); só cai pra ESTIMATIVA (valor mensal recorrente
+        // cadastrado hoje) nos meses que nunca tiveram um balanço fechado —
+        // antes disso era sempre a estimativa, mesmo pra meses com balanço
+        // real já registrado, escondendo qualquer variação histórica. ===
         var despesasAtivas = (await _despesas.GetAtivasAsync()).ToList();
-        dto.TotalDespesasFixasMensal = despesasAtivas.Sum(d => d.GetValor()) * mesesNoPeriodo;
-        dto.TotalDespesasGeralMensal = despesasAtivas
-            .Where(d => d.Setor == SetorDespesa.Geral)
-            .Sum(d => d.GetValor()) * mesesNoPeriodo;
-        dto.TotalDespesasOficinaMensal = despesasAtivas
-            .Where(d => d.Setor == SetorDespesa.Oficina)
-            .Sum(d => d.GetValor()) * mesesNoPeriodo;
-        dto.TotalDespesasConcessionariaMensal = despesasAtivas
-            .Where(d => d.Setor == SetorDespesa.Concessionaria)
-            .Sum(d => d.GetValor()) * mesesNoPeriodo;
+        var somaModeloMensal = despesasAtivas.Sum(d => d.GetValor());
+        var somaModeloGeral = despesasAtivas.Where(d => d.Setor == SetorDespesa.Geral).Sum(d => d.GetValor());
+        var somaModeloOficina = despesasAtivas.Where(d => d.Setor == SetorDespesa.Oficina).Sum(d => d.GetValor());
+        var somaModeloConcessionaria = despesasAtivas.Where(d => d.Setor == SetorDespesa.Concessionaria).Sum(d => d.GetValor());
+
+        // Série por ponto (dia ou mês, mesma granularidade da receita) —
+        // ver docs/redesign/16-granularidade-despesas.md. Quando a
+        // granularidade é diária, cada dia recebe uma fatia pro-rateada do
+        // mês a que pertence — os KPIs escalares abaixo SOMAM essa mesma
+        // série (em vez de somar o mês inteiro de cada competência tocada,
+        // como um código anterior fazia) pra não contar um mês inteiro de
+        // despesa quando o período só toca uma fração dele. Isso era a
+        // causa raiz de uma janela de 30 dias que cruza virada de mês
+        // aparecer com margem de -140%+: um período de 22/08 a 20/09 somava
+        // AGOSTO INTEIRO + SETEMBRO INTEIRO de despesa (2 meses cheios,
+        // incluindo compras de veículo de dias fora da janela), contra
+        // receita de só os ~29 dias reais — ver docs/redesign/19-bug-
+        // margem-mensal-negativa.md.
+        (dto.SerieDespesas, dto.SerieDespesasOficina, dto.SerieDespesasConcessionaria) =
+            await ConstruirSeriesDespesaAsync(inicioPeriodo, fimPeriodo, somaModeloMensal, somaModeloOficina, somaModeloConcessionaria);
+
+        dto.TotalDespesasOficinaMensal = dto.SerieDespesasOficina.Sum(s => s.Valor);
+        dto.TotalDespesasConcessionariaMensal = dto.SerieDespesasConcessionaria.Sum(s => s.Valor);
+        dto.TotalDespesasFixasMensal = dto.SerieDespesas.Sum(s => s.Valor);
+        dto.TotalDespesasGeralMensal = dto.TotalDespesasFixasMensal - dto.TotalDespesasOficinaMensal - dto.TotalDespesasConcessionariaMensal;
 
         // === Ordens de serviço criadas no período ===
         var ordensNoPeriodo = (await _ordens.GetAllAsync())
@@ -333,18 +369,18 @@ public class DashboardService : IDashboardService
             .ToDictionary(g => g.Key, g => g.Count());
 
         var ordensFinalizadas = ordensNoPeriodo
-            .Where(o => o.Status == StatusOrdemServico.Finalizada)
+            .Where(o => EhServicoConcluidoEPago(o.Status))
             .ToList();
 
         dto.ReceitaServicosMesAtual = ordensFinalizadas.Sum(o => o.GetValorTotal());
 
-        dto.SerieReceitaServicos = AgruparPorMesNoPeriodo(
+        dto.SerieReceitaServicos = AgruparPorPeriodo(
             ordensFinalizadas.Select(o => (Data: o.DataCriacao, Valor: o.GetValorTotal())),
             inicioPeriodo, fimPeriodo);
 
         decimal acumulado = 0;
         dto.SerieReceitaServicosAcumulada12m = dto.SerieReceitaServicos
-            .Select(s => new MesValorDTO { MesLabel = s.MesLabel, Valor = acumulado += s.Valor })
+            .Select(s => new MesValorDTO { Label = s.Label, Valor = acumulado += s.Valor })
             .ToList();
 
         var mecanicosPorId = (await _mecanicos.GetAllAsync()).ToDictionary(m => m.Id, m => m.Nome);
@@ -368,35 +404,65 @@ public class DashboardService : IDashboardService
 
         dto.ReceitaVendasMesAtual = propostasFechadasPeriodo.Sum(p => p.GetValorFinal());
 
-        dto.SerieReceitaVendas = AgruparPorMesNoPeriodo(
+        dto.SerieReceitaVendas = AgruparPorPeriodo(
             propostasFechadasPeriodo.Select(p => (Data: p.DataAprovacao!.Value, Valor: p.GetValorFinal())),
             inicioPeriodo, fimPeriodo);
 
-        // === Propostas aprovadas vs rejeitadas, mês a mês dentro do período ===
-        var aprovadasPorMes = todasPropostas
-            .Where(p => p.DataAprovacao.HasValue && p.DataAprovacao.Value >= inicioPeriodo && p.DataAprovacao.Value <= fimPeriodo)
-            .GroupBy(p => new { p.DataAprovacao!.Value.Year, p.DataAprovacao.Value.Month })
-            .ToDictionary(g => (g.Key.Year, g.Key.Month), g => g.Count());
-
-        var rejeitadasPorMes = todasPropostas
-            .Where(p => p.Status == StatusPropostaVenda.Rejeitada && p.DataCriacao >= inicioPeriodo && p.DataCriacao <= fimPeriodo)
-            .GroupBy(p => new { p.DataCriacao.Year, p.DataCriacao.Month })
-            .ToDictionary(g => (g.Key.Year, g.Key.Month), g => g.Count());
-
-        var ciProp = CultureInfo.GetCultureInfo("pt-BR");
+        // === Propostas aprovadas vs rejeitadas dentro do período — por dia se
+        // o período for curto (ver LIMITE_DIAS_GRANULARIDADE_DIARIA / doc 14),
+        // por mês senão. ===
         var timeline = new List<PropostaTimelineDTO>();
-        var cursor = new DateTime(inicioPeriodo.Year, inicioPeriodo.Month, 1);
-        var cursorFim = new DateTime(fimPeriodo.Year, fimPeriodo.Month, 1);
-        while (cursor <= cursorFim)
+        var diasPeriodoPropostas = (fimPeriodo.Date - inicioPeriodo.Date).Days + 1;
+
+        if (diasPeriodoPropostas <= LIMITE_DIAS_GRANULARIDADE_DIARIA)
         {
-            var chave = (cursor.Year, cursor.Month);
-            timeline.Add(new PropostaTimelineDTO
+            var aprovadasPorDia = todasPropostas
+                .Where(p => p.DataAprovacao.HasValue && p.DataAprovacao.Value >= inicioPeriodo && p.DataAprovacao.Value <= fimPeriodo)
+                .GroupBy(p => p.DataAprovacao!.Value.Date)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            var rejeitadasPorDia = todasPropostas
+                .Where(p => p.Status == StatusPropostaVenda.Rejeitada && p.DataCriacao >= inicioPeriodo && p.DataCriacao <= fimPeriodo)
+                .GroupBy(p => p.DataCriacao.Date)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            for (int i = 0; i < diasPeriodoPropostas; i++)
             {
-                MesLabel = $"{ciProp.DateTimeFormat.AbbreviatedMonthNames[cursor.Month - 1]}/{cursor.Year % 100:D2}",
-                Aprovadas = aprovadasPorMes.TryGetValue(chave, out var a) ? a : 0,
-                Rejeitadas = rejeitadasPorMes.TryGetValue(chave, out var r) ? r : 0
-            });
-            cursor = cursor.AddMonths(1);
+                var dia = inicioPeriodo.Date.AddDays(i);
+                timeline.Add(new PropostaTimelineDTO
+                {
+                    Label = dia.ToString("dd/MM"),
+                    Aprovadas = aprovadasPorDia.TryGetValue(dia, out var a) ? a : 0,
+                    Rejeitadas = rejeitadasPorDia.TryGetValue(dia, out var r) ? r : 0
+                });
+            }
+        }
+        else
+        {
+            var aprovadasPorMes = todasPropostas
+                .Where(p => p.DataAprovacao.HasValue && p.DataAprovacao.Value >= inicioPeriodo && p.DataAprovacao.Value <= fimPeriodo)
+                .GroupBy(p => new { p.DataAprovacao!.Value.Year, p.DataAprovacao.Value.Month })
+                .ToDictionary(g => (g.Key.Year, g.Key.Month), g => g.Count());
+
+            var rejeitadasPorMes = todasPropostas
+                .Where(p => p.Status == StatusPropostaVenda.Rejeitada && p.DataCriacao >= inicioPeriodo && p.DataCriacao <= fimPeriodo)
+                .GroupBy(p => new { p.DataCriacao.Year, p.DataCriacao.Month })
+                .ToDictionary(g => (g.Key.Year, g.Key.Month), g => g.Count());
+
+            var ciProp = CultureInfo.GetCultureInfo("pt-BR");
+            var cursor = new DateTime(inicioPeriodo.Year, inicioPeriodo.Month, 1);
+            var cursorFim = new DateTime(fimPeriodo.Year, fimPeriodo.Month, 1);
+            while (cursor <= cursorFim)
+            {
+                var chave = (cursor.Year, cursor.Month);
+                timeline.Add(new PropostaTimelineDTO
+                {
+                    Label = $"{ciProp.DateTimeFormat.AbbreviatedMonthNames[cursor.Month - 1]}/{cursor.Year % 100:D2}",
+                    Aprovadas = aprovadasPorMes.TryGetValue(chave, out var a) ? a : 0,
+                    Rejeitadas = rejeitadasPorMes.TryGetValue(chave, out var r) ? r : 0
+                });
+                cursor = cursor.AddMonths(1);
+            }
         }
         dto.PropostasTimeline = timeline;
 
@@ -428,6 +494,50 @@ public class DashboardService : IDashboardService
             .Take(5)
             .ToList();
 
+        // === Catálogo modular de gráficos comparativos ===
+        // Mesmo catálogo de ObterMetricasInternoAsync — na prática são
+        // "retratos" do estado atual/histórico completo (não recortados pelo
+        // período escolhido, igual a "Veículos por status" ou "Top clientes"
+        // já eram antes desta tela existir), então busca os dados completos
+        // de novo em vez de reaproveitar as variáveis já filtradas acima.
+        var todasOrdensCompleto = (await _ordens.GetAllAsync()).ToList();
+        var propostasFechadasCompleto = todasPropostas
+            .Where(p => p.Status == StatusPropostaVenda.Concluida && p.DataAprovacao.HasValue)
+            .ToList();
+        var todosUsuarios = (await _usuarios.GetAllAsync()).ToList();
+        var todasConsignacoes = (await _consignacoes.GetAllAsync()).ToList();
+        var todosVeiculosCliente = (await _veiculosCliente.GetAllAsync()).ToList();
+        var veiculosClientePorId = todosVeiculosCliente.ToDictionary(v => v.Id);
+        var todosComponentes = (await _componentes.GetAllAsync()).ToList();
+        var componentesPorId = todosComponentes.ToDictionary(c => c.Id);
+        var todasVendasML = (await _vendasMercadoLivre.GetAllAsync()).ToList();
+        var mecanicosLista = (await _mecanicos.GetAllAsync()).ToList();
+        var todosClientes = (await _clientes.GetAllAsync()).ToList();
+        var clientesPorId = todosClientes.ToDictionary(c => c.Id, c => c.Nome);
+
+        dto.Graficos = MontarGraficos(
+            despesasAtivas, todasOrdensCompleto, todasPropostas, propostasFechadasCompleto, veiculos,
+            todosUsuarios, todasConsignacoes, todosVeiculosCliente, veiculosClientePorId,
+            componentesPorId, todoEstoque, todasVendasML, mecanicosLista, clientesPorId);
+
+        // "financeiro-composicao" usa os totais do PERÍODO escolhido (não do
+        // mês corrente) — mesma régua da opção padrão do seletor em
+        // ObterMetricasInternoAsync, só que recortada pro intervalo pedido.
+        dto.Graficos.Insert(0, new GraficoAnaliseDTO
+        {
+            Id = "financeiro-composicao",
+            Titulo = "Composição financeira do período",
+            Categoria = "Financeiro",
+            Dados = new List<CategoriaValorDTO>
+            {
+                new() { Rotulo = "Receita serviços", Valor = dto.ReceitaServicosMesAtual },
+                new() { Rotulo = "Receita vendas", Valor = dto.ReceitaVendasMesAtual },
+                new() { Rotulo = "Despesas Geral", Valor = dto.TotalDespesasGeralMensal },
+                new() { Rotulo = "Despesas Oficina", Valor = dto.TotalDespesasOficinaMensal },
+                new() { Rotulo = "Despesas Concessionária", Valor = dto.TotalDespesasConcessionariaMensal }
+            }.Where(c => c.Valor > 0).ToList()
+        });
+
         return Result<DashboardMetricasDTO>.Ok(dto);
     }
 
@@ -445,6 +555,141 @@ public class DashboardService : IDashboardService
         var mesInicio = new DateTime(inicio.Year, inicio.Month, 1);
         var meses = (fim.Year - inicio.Year) * 12 + fim.Month - inicio.Month + 1;
         return AgruparPorMes(lancamentos, mesInicio, meses);
+    }
+
+    /// <summary>
+    /// Agrupa lançamentos por DIA dentro de [inicio, inicio + dias - 1],
+    /// preenchendo dias sem movimento com zero — mesma lógica de
+    /// <see cref="AgruparPorMes"/>, granularidade diária em vez de mensal.
+    /// </summary>
+    private static List<MesValorDTO> AgruparPorDia(
+        IEnumerable<(DateTime Data, decimal Valor)> lancamentos,
+        DateTime inicio,
+        int dias)
+    {
+        var serie = new List<MesValorDTO>();
+
+        var agrupado = lancamentos
+            .GroupBy(x => x.Data.Date)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Valor));
+
+        for (int i = 0; i < dias; i++)
+        {
+            var dia = inicio.Date.AddDays(i);
+            var valor = agrupado.TryGetValue(dia, out var v) ? v : 0m;
+            serie.Add(new MesValorDTO { Label = dia.ToString("dd/MM"), Valor = valor });
+        }
+        return serie;
+    }
+
+    /// <summary>
+    /// Escolhe a granularidade certa pra série temporal de um período livre
+    /// (ver docs/redesign/14-granularidade-diaria-graficos.md): períodos
+    /// curtos (até <see cref="LIMITE_DIAS_GRANULARIDADE_DIARIA"/> dias) viram
+    /// série diária — senão um período de 7/15 dias (padrão do
+    /// SeletorPeriodo) caía quase sempre num único mês e virava 1 ponto só de
+    /// gráfico; períodos mais longos continuam mensais, senão um intervalo
+    /// customizado de meses/anos viraria uma série de centenas de barras.
+    /// </summary>
+    private static List<MesValorDTO> AgruparPorPeriodo(
+        IEnumerable<(DateTime Data, decimal Valor)> lancamentos,
+        DateTime inicio,
+        DateTime fim)
+    {
+        var lista = lancamentos.ToList();
+        var dias = (fim.Date - inicio.Date).Days + 1;
+        return dias <= LIMITE_DIAS_GRANULARIDADE_DIARIA
+            ? AgruparPorDia(lista, inicio, dias)
+            : AgruparPorMesNoPeriodo(lista, inicio, fim);
+    }
+
+    /// <summary>
+    /// Série de despesa (total/oficina/concessionária) com a MESMA
+    /// granularidade de <see cref="AgruparPorPeriodo"/> (dia ou mês,
+    /// conforme o tamanho do período) — ver
+    /// docs/redesign/16-granularidade-despesas.md. Diferente de receita,
+    /// despesa não tem lançamento por dia (só por competência/mês), então
+    /// granularidade diária aqui significa "fatia pro-rateada do mês",
+    /// nunca "o mês inteiro repetido em cada dia".
+    /// </summary>
+    private async Task<(List<MesValorDTO> Total, List<MesValorDTO> Oficina, List<MesValorDTO> Concessionaria)> ConstruirSeriesDespesaAsync(
+        DateTime inicio, DateTime fim,
+        decimal somaModeloMensal, decimal somaModeloOficina, decimal somaModeloConcessionaria)
+    {
+        var dias = (fim.Date - inicio.Date).Days + 1;
+        return dias <= LIMITE_DIAS_GRANULARIDADE_DIARIA
+            ? await ConstruirSeriesDespesaDiariaAsync(inicio, dias, somaModeloMensal, somaModeloOficina, somaModeloConcessionaria)
+            : await ConstruirSeriesDespesaMensalAsync(inicio, fim, somaModeloMensal, somaModeloOficina, somaModeloConcessionaria);
+    }
+
+    private async Task<(List<MesValorDTO> Total, List<MesValorDTO> Oficina, List<MesValorDTO> Concessionaria)> ConstruirSeriesDespesaDiariaAsync(
+        DateTime inicio, int dias,
+        decimal somaModeloMensal, decimal somaModeloOficina, decimal somaModeloConcessionaria)
+    {
+        var total = new List<MesValorDTO>();
+        var oficina = new List<MesValorDTO>();
+        var concessionaria = new List<MesValorDTO>();
+
+        // Cache por mês — vários dias do laço caem no mesmo mês, evita
+        // reconsultar o mesmo balanço repetidas vezes.
+        var cachePorMes = new Dictionary<(int Ano, int Mes), (decimal Total, decimal Oficina, decimal Concessionaria, int DiasNoMes)>();
+
+        for (int i = 0; i < dias; i++)
+        {
+            var dia = inicio.Date.AddDays(i);
+            var chave = (dia.Year, dia.Month);
+
+            if (!cachePorMes.TryGetValue(chave, out var doMes))
+            {
+                var balancoMes = await _balancos.ObterPorCompetenciaAsync(new DateOnly(dia.Year, dia.Month, 1));
+                var diasNoMes = DateTime.DaysInMonth(dia.Year, dia.Month);
+                doMes = balancoMes is not null
+                    ? (balancoMes.Total(), balancoMes.TotalPorSetor(SetorDespesa.Oficina), balancoMes.TotalPorSetor(SetorDespesa.Concessionaria), diasNoMes)
+                    : (somaModeloMensal, somaModeloOficina, somaModeloConcessionaria, diasNoMes);
+                cachePorMes[chave] = doMes;
+            }
+
+            var label = dia.ToString("dd/MM");
+            total.Add(new MesValorDTO { Label = label, Valor = Math.Round(doMes.Total / doMes.DiasNoMes, 2) });
+            oficina.Add(new MesValorDTO { Label = label, Valor = Math.Round(doMes.Oficina / doMes.DiasNoMes, 2) });
+            concessionaria.Add(new MesValorDTO { Label = label, Valor = Math.Round(doMes.Concessionaria / doMes.DiasNoMes, 2) });
+        }
+
+        return (total, oficina, concessionaria);
+    }
+
+    private async Task<(List<MesValorDTO> Total, List<MesValorDTO> Oficina, List<MesValorDTO> Concessionaria)> ConstruirSeriesDespesaMensalAsync(
+        DateTime inicio, DateTime fim,
+        decimal somaModeloMensal, decimal somaModeloOficina, decimal somaModeloConcessionaria)
+    {
+        var ci = CultureInfo.GetCultureInfo("pt-BR");
+        var total = new List<MesValorDTO>();
+        var oficina = new List<MesValorDTO>();
+        var concessionaria = new List<MesValorDTO>();
+
+        var cursor = new DateOnly(inicio.Year, inicio.Month, 1);
+        var ultimoMes = new DateOnly(fim.Year, fim.Month, 1);
+        while (cursor <= ultimoMes)
+        {
+            var balancoMes = await _balancos.ObterPorCompetenciaAsync(cursor);
+            var label = $"{ci.DateTimeFormat.AbbreviatedMonthNames[cursor.Month - 1]}/{cursor.Year % 100:D2}";
+
+            if (balancoMes is not null)
+            {
+                total.Add(new MesValorDTO { Label = label, Valor = balancoMes.Total() });
+                oficina.Add(new MesValorDTO { Label = label, Valor = balancoMes.TotalPorSetor(SetorDespesa.Oficina) });
+                concessionaria.Add(new MesValorDTO { Label = label, Valor = balancoMes.TotalPorSetor(SetorDespesa.Concessionaria) });
+            }
+            else
+            {
+                total.Add(new MesValorDTO { Label = label, Valor = somaModeloMensal });
+                oficina.Add(new MesValorDTO { Label = label, Valor = somaModeloOficina });
+                concessionaria.Add(new MesValorDTO { Label = label, Valor = somaModeloConcessionaria });
+            }
+            cursor = cursor.AddMonths(1);
+        }
+
+        return (total, oficina, concessionaria);
     }
 
     /// <summary>
@@ -484,21 +729,19 @@ public class DashboardService : IDashboardService
             Id = "despesas-por-tipo",
             Titulo = "Despesas por tipo (valor gasto)",
             Categoria = "Financeiro",
-            TipoGrafico = "barraH",
-            Dados = TopComOutros(
+            Dados = Top(
                 despesasAtivas.GroupBy(d => d.Tipo.ToString())
                     .Select(g => (Rotulo: g.Key, Valor: g.Sum(d => d.GetValor()))))
         });
 
         var ticketVeiculoLoja = MediaOuZero(propostasFechadas.Select(p => p.GetValorFinal()));
-        var ticketOS = MediaOuZero(todasOrdens.Where(o => o.Status == StatusOrdemServico.Finalizada).Select(o => o.GetValorTotal()));
+        var ticketOS = MediaOuZero(todasOrdens.Where(o => EhServicoConcluidoEPago(o.Status)).Select(o => o.GetValorTotal()));
         var ticketConsignacao = MediaOuZero(consignacoesVendidas.Select(c => c.Comissao.ValorVendaEsperado.GetValorDinheiro()));
         graficos.Add(new GraficoAnaliseDTO
         {
             Id = "valores-medios",
             Titulo = "Valores médios (ticket)",
             Categoria = "Financeiro",
-            TipoGrafico = "bar",
             Dados = new()
             {
                 new() { Rotulo = "Venda de veículo (loja)", Valor = ticketVeiculoLoja },
@@ -514,7 +757,6 @@ public class DashboardService : IDashboardService
             Id = "funcionarios-por-tipo",
             Titulo = "Funcionários cadastrados por tipo",
             Categoria = "Pessoas",
-            TipoGrafico = "barraH",
             Dados = todosUsuarios
                 .GroupBy(u => RotuloRole(u.GetRole()))
                 .Select(g => new CategoriaValorDTO { Rotulo = g.Key, Valor = g.Count() })
@@ -532,8 +774,7 @@ public class DashboardService : IDashboardService
             Id = "marcas-vendidas",
             Titulo = "Marcas mais vendidas",
             Categoria = "Concessionária",
-            TipoGrafico = "barraH",
-            Dados = TopComOutros(ContarPorTexto(
+            Dados = Top(ContarPorTexto(
                 veiculosVendidos.Select(v => v.Marca).Concat(consignacoesVendidas.Select(c => c.Marca))))
         });
 
@@ -542,8 +783,7 @@ public class DashboardService : IDashboardService
             Id = "modelos-vendidos",
             Titulo = "Modelos mais vendidos",
             Categoria = "Concessionária",
-            TipoGrafico = "barraH",
-            Dados = TopComOutros(ContarPorTexto(
+            Dados = Top(ContarPorTexto(
                 veiculosVendidos.Select(v => v.Modelo).Concat(consignacoesVendidas.Select(c => c.Modelo))))
         });
 
@@ -552,8 +792,7 @@ public class DashboardService : IDashboardService
             Id = "cores-vendidas",
             Titulo = "Cores mais vendidas",
             Categoria = "Concessionária",
-            TipoGrafico = "barraH",
-            Dados = TopComOutros(ContarPorTexto(
+            Dados = Top(ContarPorTexto(
                 veiculosVendidos.Select(v => v.Cor).Concat(consignacoesVendidas.Select(c => c.Cor))))
         });
 
@@ -562,8 +801,7 @@ public class DashboardService : IDashboardService
             Id = "combustivel-vendido",
             Titulo = "Combustível mais vendido",
             Categoria = "Concessionária",
-            TipoGrafico = "doughnut",
-            Dados = TopComOutros(ContarPorTexto(
+            Dados = Top(ContarPorTexto(
                 veiculosVendidos.Select(v => v.Combustivel.ToString())
                     .Concat(consignacoesVendidas.Select(c => c.Combustivel.ToString()))))
         });
@@ -573,8 +811,7 @@ public class DashboardService : IDashboardService
             Id = "cambio-vendido",
             Titulo = "Câmbio mais vendido",
             Categoria = "Concessionária",
-            TipoGrafico = "doughnut",
-            Dados = TopComOutros(ContarPorTexto(
+            Dados = Top(ContarPorTexto(
                 veiculosVendidos.Select(v => v.Cambio.ToString())
                     .Concat(consignacoesVendidas.Select(c => c.Cambio.ToString()))))
         });
@@ -584,8 +821,7 @@ public class DashboardService : IDashboardService
             Id = "acessorios-veiculos",
             Titulo = "Acessórios mais comuns no estoque",
             Categoria = "Concessionária",
-            TipoGrafico = "barraH",
-            Dados = TopComOutros(ContarAcessorios(veiculos.Select(v => v.Acessorios)))
+            Dados = Top(ContarAcessorios(veiculos.Select(v => v.Acessorios)))
         });
 
         graficos.Add(new GraficoAnaliseDTO
@@ -593,7 +829,6 @@ public class DashboardService : IDashboardService
             Id = "vendas-consignacao-loja",
             Titulo = "Vendas: consignação vs. loja própria",
             Categoria = "Concessionária",
-            TipoGrafico = "doughnut",
             Dados = new()
             {
                 new() { Rotulo = "Loja própria", Valor = veiculosVendidos.Count },
@@ -606,13 +841,11 @@ public class DashboardService : IDashboardService
             Id = "modos-pagamento",
             Titulo = "Modos de pagamento (propostas)",
             Categoria = "Concessionária",
-            TipoGrafico = "barraH",
-            Dados = TopComOutros(
+            Dados = Top(
                 todasPropostas
                     .Where(p => p.ModoPagamento != ModoPagamento.NaoDefinido)
                     .GroupBy(p => p.ModoPagamento.ToString())
-                    .Select(g => (Rotulo: g.Key, Valor: (decimal)g.Count())),
-                top: 8)
+                    .Select(g => (Rotulo: g.Key, Valor: (decimal)g.Count())))
         });
 
         graficos.Add(new GraficoAnaliseDTO
@@ -620,7 +853,6 @@ public class DashboardService : IDashboardService
             Id = "veiculos-status",
             Titulo = "Veículos por status",
             Categoria = "Concessionária",
-            TipoGrafico = "barraH",
             Dados = veiculos
                 .GroupBy(v => v.Disponibilidade.ToString())
                 .Select(g => new CategoriaValorDTO { Rotulo = g.Key, Valor = g.Count() })
@@ -632,7 +864,6 @@ public class DashboardService : IDashboardService
             Id = "vendas-canal",
             Titulo = "Vendas: e-commerce vs. loja física",
             Categoria = "Concessionária",
-            TipoGrafico = "doughnut",
             Dados = new()
             {
                 new() { Rotulo = "Loja física", Valor = propostasFechadas.Count },
@@ -645,7 +876,6 @@ public class DashboardService : IDashboardService
             Id = "top-clientes-compradores",
             Titulo = "Top 5 clientes que mais compraram veículos",
             Categoria = "Concessionária",
-            TipoGrafico = "bar",
             Dados = propostasFechadas
                 .GroupBy(p => p.ClienteId)
                 .Select(g => new CategoriaValorDTO { Rotulo = NomeCliente(clientesPorId, g.Key), Valor = g.Count() })
@@ -659,7 +889,6 @@ public class DashboardService : IDashboardService
             Id = "top-clientes-consignantes",
             Titulo = "Top 5 clientes com mais veículos consignados",
             Categoria = "Concessionária",
-            TipoGrafico = "bar",
             Dados = todasConsignacoes
                 .GroupBy(c => c.ClienteProprietarioId)
                 .Select(g => new CategoriaValorDTO { Rotulo = NomeCliente(clientesPorId, g.Key), Valor = g.Count() })
@@ -680,7 +909,6 @@ public class DashboardService : IDashboardService
             Id = "mecanicos-por-especializacao",
             Titulo = "Mecânicos por especialização",
             Categoria = "Oficina",
-            TipoGrafico = "barraH",
             Dados = mecanicosLista
                 .GroupBy(m => m.GetEspecialidade())
                 .Select(g => new CategoriaValorDTO { Rotulo = g.Key, Valor = g.Count() })
@@ -693,7 +921,6 @@ public class DashboardService : IDashboardService
             Id = "servicos-tipo",
             Titulo = "Tipos de serviço mais realizados",
             Categoria = "Oficina",
-            TipoGrafico = "barraH",
             Dados = todasOrdens
                 .GroupBy(o => o.Tipo.ToString())
                 .Select(g => new CategoriaValorDTO { Rotulo = g.Key, Valor = g.Count() })
@@ -706,7 +933,6 @@ public class DashboardService : IDashboardService
             Id = "os-status",
             Titulo = "Ordens de serviço por status",
             Categoria = "Oficina",
-            TipoGrafico = "barraH",
             Dados = todasOrdens
                 .GroupBy(o => o.Status.ToString())
                 .Select(g => new CategoriaValorDTO { Rotulo = g.Key, Valor = g.Count() })
@@ -718,8 +944,7 @@ public class DashboardService : IDashboardService
             Id = "marcas-visitam-oficina",
             Titulo = "Marcas que mais visitam a oficina",
             Categoria = "Oficina",
-            TipoGrafico = "barraH",
-            Dados = TopComOutros(ContarPorTexto(
+            Dados = Top(ContarPorTexto(
                 todasOrdens
                     .Where(o => veiculosClientePorId.ContainsKey(o.VeiculoClienteId))
                     .Select(o => veiculosClientePorId[o.VeiculoClienteId].Marca)))
@@ -730,8 +955,7 @@ public class DashboardService : IDashboardService
             Id = "modelos-visitam-oficina",
             Titulo = "Modelos que mais visitam a oficina",
             Categoria = "Oficina",
-            TipoGrafico = "barraH",
-            Dados = TopComOutros(ContarPorTexto(
+            Dados = Top(ContarPorTexto(
                 todasOrdens
                     .Where(o => veiculosClientePorId.ContainsKey(o.VeiculoClienteId))
                     .Select(o => veiculosClientePorId[o.VeiculoClienteId].Modelo)))
@@ -745,7 +969,6 @@ public class DashboardService : IDashboardService
             Id = "prazo-medio-servico",
             Titulo = "Prazo médio estimado por tipo de serviço (dias)",
             Categoria = "Oficina",
-            TipoGrafico = "bar",
             Dados = todasOrdens
                 .GroupBy(o => o.Tipo.ToString())
                 .Select(g => new CategoriaValorDTO
@@ -762,7 +985,6 @@ public class DashboardService : IDashboardService
             Id = "top-clientes-oficina",
             Titulo = "Top 5 clientes que mais levaram veículos à oficina",
             Categoria = "Oficina",
-            TipoGrafico = "bar",
             Dados = todasOrdens
                 .GroupBy(o => o.ClienteId)
                 .Select(g => new CategoriaValorDTO { Rotulo = NomeCliente(clientesPorId, g.Key), Valor = g.Count() })
@@ -782,8 +1004,7 @@ public class DashboardService : IDashboardService
             Id = "estoque-por-sistema",
             Titulo = "Componentes em estoque por sistema (quantidade)",
             Categoria = "Estoque",
-            TipoGrafico = "barraH",
-            Dados = TopComOutros(estoquePorSistema, top: 8)
+            Dados = Top(estoquePorSistema)
         });
 
         return graficos;
@@ -825,22 +1046,21 @@ public class DashboardService : IDashboardService
         => clientesPorId.TryGetValue(clienteId, out var nome) ? nome : "Cliente removido";
 
     /// <summary>
-    /// Reduz uma distribuição para as N maiores categorias, somando o resto
-    /// em "Outros" — evita gráfico de pizza com dezenas de fatias minúsculas.
+    /// Reduz uma distribuição às N maiores categorias — sem agregar o resto
+    /// em "Outros" (o padrão do sistema é ocultar silenciosamente o que não
+    /// entra no top, nunca somar num pseudo-categoria; ver
+    /// docs/redesign/13-padrao-graficos.md). Quem decide entre pizza
+    /// (categorias <= 6, mostra todas) e barra (top 10) é o JS
+    /// (carstoreChart.comparativo) — este corte aqui é só um teto de
+    /// segurança pro tamanho do payload.
     /// </summary>
-    private static List<CategoriaValorDTO> TopComOutros(
+    private static List<CategoriaValorDTO> Top(
         IEnumerable<(string Rotulo, decimal Valor)> itens, int top = TOP_CATEGORIAS)
-    {
-        var ordenado = itens.Where(i => i.Valor > 0).OrderByDescending(i => i.Valor).ToList();
-        var principais = ordenado.Take(top)
+        => itens.Where(i => i.Valor > 0)
+            .OrderByDescending(i => i.Valor)
+            .Take(top)
             .Select(i => new CategoriaValorDTO { Rotulo = i.Rotulo, Valor = i.Valor })
             .ToList();
-
-        var resto = ordenado.Skip(top).Sum(i => i.Valor);
-        if (resto > 0) principais.Add(new CategoriaValorDTO { Rotulo = "Outros", Valor = resto });
-
-        return principais;
-    }
 
     /// <summary>
     /// Agrupa lançamentos por mês, preenchendo meses sem movimento com zero.
@@ -867,7 +1087,7 @@ public class DashboardService : IDashboardService
             var valor = agrupado.TryGetValue(chave, out var v) ? v : 0m;
             serie.Add(new MesValorDTO
             {
-                MesLabel = $"{ci.DateTimeFormat.AbbreviatedMonthNames[mes.Month - 1]}/{mes.Year % 100:D2}",
+                Label = $"{ci.DateTimeFormat.AbbreviatedMonthNames[mes.Month - 1]}/{mes.Year % 100:D2}",
                 Valor = valor
             });
         }

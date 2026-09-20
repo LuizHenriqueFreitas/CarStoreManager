@@ -22,4 +22,6 @@ public interface IVeiculoVendaService : IService<
 
     /// <summary>Lista marcas distintas (já normalizadas) para alimentar dropdowns de filtro.</summary>
     Task<Result<IEnumerable<string>>> ListarMarcasDistintasAsync();
+
+    Task<Result<List<VeiculoVendaListaDTO>>> PesquisarAsync(string termo);
 }

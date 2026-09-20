@@ -66,6 +66,13 @@
             "NaoCompareceu" => "Não compareceu",
             _               => Humanizar(s)
         },
+        "mecanico" => s switch
+        {
+            "Disponivel"   => "Disponível",
+            "Ocupado"      => "Ocupado",
+            "Indisponivel" => "Indisponível",
+            _              => Humanizar(s)
+        },
         _ => s switch // os
         {
             "Pendente"                   => "Pendente",
@@ -119,6 +126,13 @@
             "Cancelado"     => "neutro",
             "NaoCompareceu" => "erro",
             _               => "info"
+        },
+        "mecanico" => s switch
+        {
+            "Disponivel"   => "ok",
+            "Ocupado"      => "atencao",
+            "Indisponivel" => "neutro",
+            _              => "info"
         },
         _ => s switch // os
         {

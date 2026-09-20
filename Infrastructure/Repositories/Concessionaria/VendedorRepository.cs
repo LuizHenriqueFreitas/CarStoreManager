@@ -32,6 +32,19 @@ public class VendedorRepository : IVendedorRepository
         return todos.Where(v => v.DadosFuncionario.GetNivel() == nivel);
     }
 
+    public async Task<IEnumerable<Vendedor>> PesquisarAsync(string termo)
+    {
+        if (string.IsNullOrWhiteSpace(termo))
+            return new List<Vendedor>();
+
+        var termoLower = termo.Trim().ToLower();
+        return await _context.Usuarios
+            .OfType<Vendedor>()
+            .Where(v => v.Nome.ToLower().Contains(termoLower))
+            .Take(20)
+            .ToListAsync();
+    }
+
     public async Task AddAsync(Vendedor vendedor)
         => await _context.Usuarios.AddAsync(vendedor);
 

@@ -20,6 +20,13 @@ public static partial class RegistroDeTours
                 },
                 new()
                 {
+                    Seletor = "inicio-hub-atalhos",
+                    Titulo = "Atalhos rápidos",
+                    Texto = "Mesma barra lateral dos painéis de Oficina e Concessionária — acesso direto às " +
+                        "áreas que você tem permissão de ver."
+                },
+                new()
+                {
                     Seletor = "inicio-alertas",
                     Titulo = "Alertas",
                     Texto = "Só aparecem quando há algo pendente — ordens aguardando cobrança, consignações " +
@@ -27,17 +34,24 @@ public static partial class RegistroDeTours
                 },
                 new()
                 {
+                    Seletor = "inicio-periodo",
+                    Titulo = "Período",
+                    Texto = "Escolhe o intervalo (7, 15, 30, 60 dias ou datas customizadas) usado pelos " +
+                        "números do negócio logo abaixo — mesmo seletor do Financeiro e de Análises."
+                },
+                new()
+                {
                     Seletor = "inicio-kpis",
                     Titulo = "Números do negócio",
-                    Texto = "Receita, despesa, lucro e capital em estoque do mês — visível para administração " +
-                        "e gestão. Clique para abrir o Financeiro."
+                    Texto = "Receita, despesa, lucro e capital em estoque no período escolhido — visível para " +
+                        "administração e gestão. Clique para abrir o Financeiro."
                 },
                 new()
                 {
                     Seletor = "inicio-faturamento",
-                    Titulo = "Faturamento dos últimos meses",
-                    Texto = "Linha com a receita total (serviços + vendas) mês a mês dos últimos 6 meses — " +
-                        "uma leitura rápida da tendência. Aparece para administração e gestão."
+                    Titulo = "Faturamento",
+                    Texto = "Linha com a receita total (oficina + concessionária somadas) mês a mês, dentro " +
+                        "do período escolhido no seletor acima. Aparece para administração e gestão."
                 },
                 new()
                 {

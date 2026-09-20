@@ -40,6 +40,24 @@ public class VeiculoVendaRepository : IVeiculoVendaRepository
         => await _context.VeiculosVenda
             .FirstOrDefaultAsync(v => v.Placa.Valor == placa);
 
+    public async Task<IEnumerable<VeiculoVenda>> PesquisarAsync(string termo)
+    {
+        if (string.IsNullOrWhiteSpace(termo))
+            return new List<VeiculoVenda>();
+
+        var termoLower = termo.Trim().ToLower();
+        // Placa é armazenada normalizada (maiúscula, sem hífen/espaço).
+        var termoPlaca = termo.Replace("-", "").Replace(" ", "").Trim().ToUpper();
+
+        return await _context.VeiculosVenda
+            .Include(v => v.Fotos)
+            .Where(v => v.Marca.ToLower().Contains(termoLower)
+                     || v.Modelo.ToLower().Contains(termoLower)
+                     || (termoPlaca.Length > 0 && v.Placa.Valor.Contains(termoPlaca)))
+            .Take(20)
+            .ToListAsync();
+    }
+
     public async Task AddAsync(VeiculoVenda veiculo)
         => await _context.VeiculosVenda.AddAsync(veiculo);
 

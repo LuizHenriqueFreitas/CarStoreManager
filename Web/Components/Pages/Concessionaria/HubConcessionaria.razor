@@ -12,14 +12,15 @@
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
 @inject IJSRuntime JS
-@using Microsoft.JSInterop
-@using CarStoreManager.Application.Interfaces
-@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
-@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoConsignacao
-@using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda
+@using System.Diagnostics.Metrics
 @using CarStoreManager.Application.DTOs.Admin
+@using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoConsignacao
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
+@using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
 
 <div class="pagina">
     <PageHeader Titulo="Concessionária" Subtitulo="@subtitulo">
@@ -46,13 +47,13 @@
             <MetricCard Rotulo="Em preparação" Valor="@emPreparacao.ToString()" Tom="atencao" />
             <MetricCard Rotulo="Propostas aguardando" Valor="@propostasAtencao.Count.ToString()"
                         Tom="@(propostasAtencao.Count > 0 ? "atencao" : "")" Href="/concessionaria/propostas" />
-            <MetricCard Rotulo="Vendas no mês" Valor="@vendasMes.ToString()" Tom="ok" />
+            <MetricCard Rotulo="Vendas no mês" Valor="@vendasMes.ToString()" Tom="ok" Sub="@FormatoData.MesAno(DateTime.Today)" />
             <MetricCard Rotulo="Consignações ativas" Valor="@consignacoesAtivas.ToString()" Href="/concessionaria/consignacoes" />
-            <MetricCard Rotulo="Ticket médio (mês)" Valor="@FBRL(ticketMedio)" />
+            <MetricCard Rotulo="Ticket médio (mês)" Valor="@FBRL(ticketMedio)" Sub="@FormatoData.MesAno(DateTime.Today)" />
         </StatCardGrid>
 
         <div class="hub-grid">
-            <div>
+            <div class="hub-card">
                 <Secao Titulo="Propostas que precisam de atenção">
                     @if (!propostasAtencao.Any())
                     {
@@ -61,7 +62,7 @@
                     else
                     {
                         <div class="lista">
-                            @foreach (var p in propostasAtencao.Take(6))
+                            @foreach (var p in propostasAtencao.Take(LimiteListaHub))
                             {
                                 <a class="lista-item" href="@($"/concessionaria/proposta/{p.Id}")">
                                     <div>
@@ -71,10 +72,16 @@
                                     <StatusBadge Status="@p.Status" Familia="proposta" />
                                 </a>
                             }
+                            @if (propostasAtencao.Count > LimiteListaHub)
+                            {
+                                <a class="ver-mais" href="/concessionaria/propostas">Ver todas (@propostasAtencao.Count) →</a>
+                            }
                         </div>
                     }
                 </Secao>
+            </div>
 
+            <div class="hub-card">
                 <Secao Titulo="Veículos parados no salão">
                     @if (!veiculosParados.Any())
                     {
@@ -83,7 +90,7 @@
                     else
                     {
                         <div class="lista">
-                            @foreach (var v in veiculosParados.Take(6))
+                            @foreach (var v in veiculosParados.Take(LimiteListaHub))
                             {
                                 <a class="lista-item" href="@($"/concessionaria/veiculo/{v.Id}")">
                                     <div>
@@ -93,12 +100,16 @@
                                     <span class="li-tag">rever preço</span>
                                 </a>
                             }
+                            @if (veiculosParados.Count > LimiteListaHub)
+                            {
+                                <a class="ver-mais" href="/concessionaria/salao">Ver todos (@veiculosParados.Count) →</a>
+                            }
                         </div>
                     }
                 </Secao>
             </div>
 
-            <div>
+            <div class="hub-card">
                 <Secao Titulo="Consignações vencendo">
                     @if (!consignacoesVencendo.Any())
                     {
@@ -107,7 +118,7 @@
                     else
                     {
                         <div class="lista">
-                            @foreach (var c in consignacoesVencendo)
+                            @foreach (var c in consignacoesVencendo.Take(LimiteListaHub))
                             {
                                 <a class="lista-item" href="@($"/concessionaria/veiculo/{c.Id}")">
                                     <div>
@@ -117,13 +128,19 @@
                                     <span class="li-tag alerta">@(c.EstaVencido ? "vencida" : "vence")</span>
                                 </a>
                             }
+                            @if (consignacoesVencendo.Count > LimiteListaHub)
+                            {
+                                <a class="ver-mais" href="/concessionaria/consignacoes">Ver todas (@consignacoesVencendo.Count) →</a>
+                            }
                         </div>
                     }
                 </Secao>
+            </div>
 
-                @if (podeVerFinanceiro && metricas is not null)
-                {
-                    <Secao Titulo="Resumo financeiro do mês">
+            @if (podeVerFinanceiro && metricas is not null)
+            {
+                <div class="hub-card">
+                    <Secao Titulo="@($"Resumo financeiro — {FormatoData.MesAno(DateTime.Today)}")">
                         <div class="card">
                             <div class="fin-linha"><span>Receita de vendas</span><strong>@FBRL(metricas.ReceitaVendasMesAtual)</strong></div>
                             <div class="fin-linha"><span>Despesas da concessionária</span><strong>@FBRL(metricas.TotalDespesasConcessionariaMensal)</strong></div>
@@ -132,8 +149,8 @@
                             <a class="fin-link" href="/financeiro?area=concessionaria">Ver no Financeiro →</a>
                         </div>
                     </Secao>
-                }
-            </div>
+                </div>
+            }
         </div>
 
         @if (podeVerFinanceiro && metricas is not null)
@@ -159,6 +176,10 @@
     private static readonly System.Globalization.CultureInfo Cultura = new("pt-BR");
     private static string FBRL(decimal v) => v.ToString("C", Cultura);
 
+    // Cada card do hub-grid tem altura fixa (22vh) — só cabem ~2 itens de
+    // lista; o restante fica atrás do link "Ver mais/todas" para a tela cheia.
+    private const int LimiteListaHub = 2;
+
     private bool graficosPendentes;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -166,13 +187,13 @@
         if (graficosPendentes && metricas is not null)
         {
             graficosPendentes = false;
-            var labels = metricas.SerieReceitaVendas.Select(x => x.MesLabel).ToArray();
+            var labels = metricas.SerieReceitaVendas.Select(x => x.Label).ToArray();
             await JS.InvokeVoidAsync("carstoreChart.linhaTempo", "concVendas", labels,
                 new object[] { new { nome = "Vendas", dados = metricas.SerieReceitaVendas.Select(x => x.Valor).ToArray() } }, "R$");
 
             var porStatus = metricas.VeiculosPorStatus
                 .Select(kv => new { rotulo = kv.Key, valor = kv.Value }).Where(x => x.valor > 0).ToArray();
-            await JS.InvokeVoidAsync("carstoreChart.barraMagnitude", "concStatus", porStatus, "un", 8);
+            await JS.InvokeVoidAsync("carstoreChart.comparativo", "concStatus", porStatus, "un");
         }
     }
 
@@ -280,10 +301,33 @@
 }
 
 <style>
-    .hub-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--sp-5); align-items: start; }
-    .hub-conteudo { min-width: 0; }
-    .hub-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: var(--sp-5); align-items: start; }
-    .lista { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .hub-layout { 
+        display: grid; 
+        grid-template-columns: 240px minmax(0, 1fr); 
+        gap: var(--sp-5); 
+        align-items: start; 
+    }
+    .hub-conteudo { 
+        min-width: 0; 
+    }
+    .hub-grid {
+        display: flex;
+        flex-direction: row;
+        gap: 2.5vh;
+        justify-content: center;
+        max-height: 22vh;
+    }
+    /* Cada card tem a mesma altura fixa do .hub-grid — o conteúdo que passar
+       disso fica escondido atrás do link "Ver mais/todas" (não estoura pros
+       elementos vizinhos/abaixo). */
+    .hub-card { flex: 1 1 0; min-width: 0; max-height: 22vh; overflow: hidden; }
+    .hub-card ::deep .secao-bloco { margin-bottom: 0; height: 100%; display: flex; flex-direction: column; min-height: 0; }
+    .lista { display: flex; flex-direction: column; gap: var(--sp-2); min-height: 0; overflow: hidden; }
+    .ver-mais {
+        font-size: var(--txt-xs); color: var(--cor-acao); text-decoration: none;
+        text-align: center; padding: var(--sp-1) 0;
+    }
+    .ver-mais:hover { text-decoration: underline; }
     .lista-item {
         display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3);
         background: var(--cor-superficie);

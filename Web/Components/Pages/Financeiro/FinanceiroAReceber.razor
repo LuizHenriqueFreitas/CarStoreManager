@@ -45,7 +45,14 @@
             <div class="table-scroll" data-tour="areceber-lista">
                 <table class="tab">
                     <thead>
-                        <tr><th>OS</th><th>Cliente</th><th>Serviço</th><th>Aberta em</th><th>Dias</th><th class="r">Valor</th></tr>
+                        <tr>
+                            <ColunaOrdenavel Coluna="numero" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">OS</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="cliente" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Cliente</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="servico" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Serviço</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="aberta" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Aberta em</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="dias" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Dias</ColunaOrdenavel>
+                            <ColunaOrdenavel Coluna="valor" Class="r" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Valor</ColunaOrdenavel>
+                        </tr>
                     </thead>
                     <tbody>
                         @foreach (var o in aReceber)
@@ -76,6 +83,11 @@
     private int maxDias;
     private bool carregando = true;
 
+    // Ordenação da tabela — clique na coluna ordena crescente; clique de
+    // novo na mesma coluna inverte pra decrescente (ver ColunaOrdenavel).
+    private string sortColuna = "dias";
+    private bool sortAscendente = false;
+
     protected override async Task OnInitializedAsync()
     {
         var tO = OrdemService.GetAllAsync();
@@ -86,12 +98,31 @@
         if (tC.Result.IsSuccess && tC.Result.Value is not null)
             mapaClientes = tC.Result.Value.ToDictionary(c => c.Id);
 
-        aReceber = ordens.Where(o => o.Status == "PagamentoPendente")
-                         .OrderByDescending(o => (DateTime.Today - o.DataCriacao.Date).Days)
-                         .ToList();
+        aReceber = ordens.Where(o => o.Status == "PagamentoPendente").ToList();
         total = aReceber.Sum(o => o.ValorTotal);
         maxDias = aReceber.Any() ? aReceber.Max(Dias) : 0;
+        OrdenarLista();
         carregando = false;
+    }
+
+    private void Ordenar(string coluna)
+    {
+        if (sortColuna == coluna) sortAscendente = !sortAscendente;
+        else { sortColuna = coluna; sortAscendente = true; }
+        OrdenarLista();
+    }
+
+    private void OrdenarLista()
+    {
+        aReceber = sortColuna switch
+        {
+            "numero" => Ordenacao.Por(aReceber, o => o.NumeroPublico, sortAscendente),
+            "cliente" => Ordenacao.Por(aReceber, o => NomeCliente(o.ClienteId), sortAscendente),
+            "servico" => Ordenacao.Por(aReceber, o => o.Tipo, sortAscendente),
+            "aberta" => Ordenacao.Por(aReceber, o => o.DataCriacao, sortAscendente),
+            "valor" => Ordenacao.Por(aReceber, o => o.ValorTotal, sortAscendente),
+            _ => Ordenacao.Por(aReceber, Dias, sortAscendente),
+        };
     }
 
     private int Dias(OrdemServicoListaDTO o) => (DateTime.Today - o.DataCriacao.Date).Days;
@@ -105,6 +136,7 @@
     .tab th, .tab td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--cor-linha-suave); font-size: var(--txt-sm); }
     .tab th { background: var(--cor-fundo); font-size: var(--txt-xs); text-transform: uppercase; color: var(--cor-tinta-3); }
     .tab th.r, .tab td.r { text-align: right; }
+    .tab tbody tr:nth-child(even) { background: var(--cor-zebra); }
     .linha { cursor: pointer; }
     .linha:hover { background: var(--cor-info-bg); }
     .num { font-family: monospace; font-weight: var(--peso-forte); color: var(--cor-acao); }

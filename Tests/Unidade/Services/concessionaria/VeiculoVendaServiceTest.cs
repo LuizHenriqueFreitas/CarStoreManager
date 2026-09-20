@@ -6,6 +6,7 @@ using FluentAssertions;
 using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda;
 using CarStoreManager.Application.Interfaces;
+using CarStoreManager.Application.Interfaces.Sistema;
 using CarStoreManager.Application.Mappings.Concessionaria;
 using CarStoreManager.Application.Services;
 using CarStoreManager.Domain.Entities.Concessionaria;
@@ -19,12 +20,14 @@ namespace CarStoreManager.Tests.Unidade.Services.Concessionaria;
 public class VeiculoVendaServiceTests
 {
     private readonly Mock<IVeiculoVendaRepository> _repoMock;
+    private readonly Mock<IBalancoMensalDespesaService> _balancoDespesaMock;
     private readonly VeiculoVendaService _service;
 
     public VeiculoVendaServiceTests()
     {
         _repoMock = new Mock<IVeiculoVendaRepository>();
-        _service = new VeiculoVendaService(_repoMock.Object);
+        _balancoDespesaMock = new Mock<IBalancoMensalDespesaService>();
+        _service = new VeiculoVendaService(_repoMock.Object, _balancoDespesaMock.Object);
     }
 
     // ==================== GetByIdAsync ====================

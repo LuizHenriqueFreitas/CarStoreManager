@@ -15,14 +15,15 @@ Diferente do Geradores em C# (que sorteia valores e decide aleatoriamente que
 fração de cada entidade chega a cada estágio), este script é EXAUSTIVO: gera
 pelo menos um registro pra cada combinação de cenário relevante que a
 aplicação oferece (todo status de Proposta x forma de pagamento onde isso
-muda o fluxo, toda combinação Tipo x Status de Ordem de Serviço, todo cenário
-de consignação x tipo de comissão) — e cada combinação se repete algumas
-vezes com valores/datas diferentes (REPETICOES_*), pra dashboard não mostrar
-tudo empatado.
+muda o fluxo, toda combinação Tipo x Status de Ordem de Serviço — incluindo
+cancelamento em etapas diferentes e "novos problemas encontrados" via
+alerta —, todo cenário de consignação x tipo de comissão, todo status de
+test drive) — e cada combinação se repete algumas vezes com valores/datas
+diferentes (REPETICOES_*), pra dashboard não mostrar tudo empatado.
 
 Valores continuam redondos (múltiplos de 50/100/500, nunca centavos) mas
 sorteados dentro de uma faixa ampla — redondo != idêntico. Mesma lógica pras
-datas: espalhadas pelos últimos ~2 anos com alguma aleatoriedade, não em
+datas: espalhadas pelos últimos ~3 anos com alguma aleatoriedade, não em
 degraus perfeitamente uniformes.
 
 Uso:
@@ -44,11 +45,12 @@ HOJE = datetime.now().replace(hour=10, minute=0, second=0, microsecond=0)
 # se repete, cada vez com cliente/valor/data diferentes — sobe o volume e
 # evita barras empatadas no dashboard sem perder a cobertura exaustiva.
 # Repetições da parte "fechada"/pendente do funil (aprovada..termoEnviado,
-# rejeitada, criada; e OS pendente/cancelada/emAndamento/finalizadaPendente):
-# baixo de propósito — pra demonstração, vendas paradas no meio do caminho e
-# OS aguardando pagamento devem ser a MINORIA, não a maior parte do volume.
+# rejeitada, criada; e OS pendente/cancelada/canceladaEmAndamento/
+# emAndamento/finalizadaPendente): baixo de propósito — pra demonstração,
+# vendas paradas no meio do caminho e OS aguardando pagamento devem ser a
+# MINORIA, não a maior parte do volume.
 REPETICOES_PROPOSTA_PENDENTE = 1
-REPETICOES_OS_PENDENTE = 1
+REPETICOES_OS_PENDENTE = 6
 
 # Repetições da parte CONCLUÍDA (proposta vendida, OS paga): alto de
 # propósito — dominam o volume total e são o que sustenta um fluxo de caixa
@@ -58,15 +60,41 @@ REPETICOES_OS_PENDENTE = 1
 # dividida: a maioria vira "entregue" (paga E retirada — fim de fluxo real,
 # equivalente a "concluida"), sobrando só uma minoria em "finalizadaPaga"
 # (paga, aguardando retirada) — mesma soma de antes, mesma densidade total.
-REPETICOES_PROPOSTA_CONCLUIDA = 10
-REPETICOES_OS_PAGA = 3
-REPETICOES_OS_ENTREGUE = 7
+#
+# REPETICOES_OS_PENDENTE=6 + OS_PAGA=25 + OS_ENTREGUE=65 dá (5*5*6) + (5*25) +
+# (5*65) = 150+125+325 = 600 ordens de serviço nos 36 meses (~156 semanas) —
+# "entregue" sozinha já passa de 300 (pedido explícito: "pelo menos 300
+# ordens finalizadas e recebidas"), e 450 de 600 chegam a
+# "finalizadaPaga"/"entregue": passam de verdade pelo painel de pagamento
+# real (RegistrarPagamentoAsync via ImportacaoDadosService, não INSERT
+# direto) antes de fechar.
+#
+# REPETICOES_PROPOSTA_CONCLUIDA=30 dá (3+5)*30 = 240 propostas concluídas —
+# subiu de 20 (160 vendas) pra reduzir a variância de receita por janela de
+# 30 dias: com só ~4-5 vendas/mês, uma janela podia pegar um "buraco" sem
+# nenhuma venda por acaso (ver docs/redesign/19-bug-margem-mensal-negativa.md)
+# — com ~6-7/mês distribuídas por `ciclo_meses`, isso fica bem mais raro.
+REPETICOES_PROPOSTA_CONCLUIDA = 30
+REPETICOES_OS_PAGA = 25
+REPETICOES_OS_ENTREGUE = 65
 
 REPETICOES_CONSIGNACAO = 3
 
-# Janela operacional: 2 anos "sem lacunas" — todo mês precisa ter pelo menos
+# Test drive: "agendado" sempre no futuro próximo (compromisso de verdade pra
+# mostrar na agenda, nunca backdatado) — minoria, igual aos outros estágios
+# não concluídos (cancelado/naoCompareceu). "Realizado" domina o volume, é
+# o que efetivamente alimenta propostas de venda depois.
+REPETICOES_TESTDRIVE_PENDENTE = 5
+REPETICOES_TESTDRIVE_REALIZADO = 20
+
+# Janela operacional: 3 anos "sem lacunas" — todo mês precisa ter pelo menos
 # um registro de cada operação (proposta, OS, veículo anunciado/consignado).
-MESES_OPERACAO = 24
+MESES_OPERACAO = 36
+
+# Compra de veículo: ver gerar_veiculos_venda — todo mês recebe pelo menos
+# uma compra, com uma fração sorteada como "mês de pico" (peso maior), pra
+# manter contraste com os meses mais fracos sem o salto extremo de lote
+# único que existia antes (ver docs/redesign/17-margem-financeira-realista.md).
 
 
 def valor_redondo(minimo: int, maximo: int, passo: int) -> int:
@@ -258,7 +286,7 @@ def ciclo_meses(tamanho: int, meses_max: int = MESES_OPERACAO) -> list:
     rodada — cada subcenário (ex. "concluída à vista") fica grudado nos
     mesmos 2-3 meses pra sempre, nunca aparecendo no mês atual. Embaralhar
     cada bloco quebra esse alinhamento: mesma garantia de cobertura (todo
-    bloco tem os 24 meses uma vez), mas em ordem diferente a cada volta."""
+    bloco tem os MESES_OPERACAO meses uma vez), mas em ordem diferente a cada volta."""
     sequencia = []
     while len(sequencia) < tamanho:
         bloco = list(range(meses_max))
@@ -526,7 +554,7 @@ def gerar_usuarios():
             }
             if tipo != "Admin":
                 usuario["nivel"] = niveis[i % len(niveis)]
-                usuario["dataContratacao"] = data_aleatoria(4, 24)
+                usuario["dataContratacao"] = data_aleatoria(4, 36)
             if tipo == "Mecanico":
                 usuario["especialidade"] = especialidades[i % len(especialidades)]
             usuarios.append(usuario)
@@ -604,7 +632,7 @@ def gerar_checklist_presets():
 
 # Catálogo de despesas fixas mensais — sem data própria (são um valor "atual"
 # cadastrado, não lançamentos pontuais), por isso não entram na estratificação
-# de 24 meses. Setor Geral é compartilhado; Oficina/Concessionária ficam
+# de MESES_OPERACAO meses. Setor Geral é compartilhado; Oficina/Concessionária ficam
 # equilibradas em quantidade e variedade de Tipo, pro dashboard de cada setor
 # ter dado real pra mostrar.
 #
@@ -660,6 +688,70 @@ def gerar_despesas():
     ]
 
 
+# Eventos extraordinários espalhados pelo histórico — o que faz um mês
+# "gastar mais" além das despesas básicas recorrentes: compra/troca de
+# equipamento da oficina, reforma, ou a perda de um veículo próprio (motor
+# fundido). Não inclui "compra de veículo para concessionária" — isso já
+# é lançado automaticamente pelo próprio sistema quando o veículo é
+# cadastrado (VeiculoVendaService.AddAsync), então cada um dos ~110 veículos
+# gerados já cria sozinho sua linha de despesa na competência certa. Meses
+# que NÃO aparecem aqui ficam só com o básico recorrente (nenhum balanço
+# especial é criado pra eles — o dashboard cai no valor do modelo).
+DESPESAS_EXTRAS_CATALOGO = [
+    # (meses_atras, nome, setor, categoria, valor)
+    (34, "Troca do elevador hidráulico principal da oficina", "Oficina", "Investimento", 8500),
+    (30, "Motor fundido — troca de motor do veículo de apoio da loja", "Concessionaria", "Manutencao", 9800),
+    (26, "Reforma do telhado do galpão da oficina", "Geral", "Manutencao", 6200),
+    (22, "Compra de scanner automotivo novo", "Oficina", "Investimento", 4200),
+    (18, "Recall do fabricante — troca do compressor de ar-condicionado da oficina", "Oficina", "Manutencao", 2100),
+    (15, "Reforma do showroom da concessionária", "Concessionaria", "Investimento", 7300),
+    (11, "Substituição de elevador de 2 colunas", "Oficina", "Investimento", 6700),
+    (8, "Manutenção corretiva do gerador de energia", "Geral", "Manutencao", 1850),
+    (5, "Troca do compressor de ar do setor de pintura", "Oficina", "Manutencao", 3400),
+    (2, "Reparo emergencial no sistema elétrico do galpão", "Geral", "Manutencao", 2600),
+]
+
+
+def gerar_despesas_extras():
+    return [
+        {
+            "data": data_estratificada_dt(meses_atras).isoformat(),
+            "nome": nome,
+            "setor": setor,
+            "categoria": categoria,
+            "valor": valor,
+        }
+        for meses_atras, nome, setor, categoria, valor in DESPESAS_EXTRAS_CATALOGO
+    ]
+
+
+def gerar_reposicoes_estoque(quantidade_total):
+    """Divide a quantidade final de estoque em 1-3 reposições históricas
+    espalhadas pelos MESES_OPERACAO meses, em vez de uma entrada só "hoje"
+    com a quantidade toda — cada reposição vira sua própria despesa
+    "Compra de componentes" na competência certa (ver ImportacaoDadosService
+    .ImportarComponentesAsync), em vez de empilhar o custo de compra de
+    todo o catálogo no dia da importação. Ver docs/redesign/18-despesa-
+    compra-componente.md."""
+    if quantidade_total <= 0:
+        return []
+    n_entregas = 1 if quantidade_total <= 3 else random.randint(2, 3)
+    meses = random.sample(range(MESES_OPERACAO), k=n_entregas)
+
+    partes = []
+    restante = quantidade_total
+    for i in range(n_entregas - 1):
+        parte = max(1, restante // (n_entregas - i))
+        partes.append(parte)
+        restante -= parte
+    partes.append(restante)
+
+    return [
+        {"data": data_estratificada(mes), "quantidade": qtd}
+        for mes, qtd in zip(meses, partes)
+    ]
+
+
 def gerar_componentes(fornecedores_chaves):
     """Um bom número de peças por sistema, com preço/margem/estoque variados
     (inclusive alguns propositalmente abaixo do mínimo, pra mostrar o alerta
@@ -670,10 +762,16 @@ def gerar_componentes(fornecedores_chaves):
     for sistema, itens in COMPONENTES_POR_SISTEMA.items():
         for nome, categoria in itens:
             chave = next(seq)
-            custo = valor_redondo(20, 900, 10)
+            # Faixas calibradas pra o VALOR TOTAL do estoque (custo × quantidade,
+            # somado por todos os componentes) ficar realista pra uma oficina
+            # pequena/média — algo entre R$25 mil e R$50 mil no total, nunca
+            # centenas de milhares (o dono sinalizou que 100 mil já é alto
+            # demais pra ser normal). Peça isolada custa pouco; é o volume de
+            # SKUs diferentes que soma, não estoque gigante de cada uma.
+            custo = valor_redondo(15, 150, 5)
             estoque_baixo = random.random() < 0.15  # ~15% dos itens já perto de faltar
-            minimo = valor_redondo(5, 20, 5)
-            estoque = random.randint(0, minimo - 1) if estoque_baixo else valor_redondo(minimo, 200, 5)
+            minimo = valor_redondo(2, 6, 1)
+            estoque = random.randint(0, minimo - 1) if estoque_baixo else valor_redondo(minimo, 20, 1)
 
             componentes.append({
                 "chave": chave,
@@ -692,7 +790,7 @@ def gerar_componentes(fornecedores_chaves):
                 "garantiaDias": random.choice([90, 180, 365]),
                 "custoUnitario": custo,
                 "margemLucroPct": random.choice([20, 25, 30, 35, 40, 45, 50]),
-                "quantidadeEstoque": estoque,
+                "reposicoesEstoque": gerar_reposicoes_estoque(estoque),
                 "quantidadeMinima": minimo,
             })
 
@@ -702,10 +800,26 @@ def gerar_componentes(fornecedores_chaves):
 def gerar_veiculos_venda(qtd_disponiveis, qtd_em_preparacao=10):
     """Devolve (lista_json, lista_de_chaves_disponiveis) — uma entrada por
     proposta que vai precisar de um veículo "reservável", mais alguns extras
-    só pra mostrar o estoque em preparação."""
+    só pra mostrar o estoque em preparação.
+
+    Cadastrar um veículo lança automaticamente uma despesa de "compra de
+    veículo" na competência da dataCriacao (ver VeiculoVendaService
+    .AddAsync). Duas rodadas de ajuste já passaram por aqui: primeiro
+    (~60% dos meses recebiam um LOTE de 6-10 carros de uma vez), depois
+    peso aleatório 2,2x pra ~30% dos meses "pico" — ambas ainda deixavam
+    variância grande demais: qualquer janela de 30 dias podia cair bem em
+    cima de um mês de pico (ver docs/redesign/19-bug-margem-mensal-
+    negativa.md — uma janela real chegou a -336% de margem só por causa de
+    disso). Agora usa `ciclo_meses`, o mesmo mecanismo já usado pras
+    propostas — cada mês recebe uma contagem quase idêntica de compras
+    (distribuição determinística, não aleatória), o que reduz a amplitude
+    do "dente de serra" sem eliminar toda variação (o VALOR de cada compra
+    ainda varia — carros diferentes, preços diferentes)."""
     veiculos = []
     chaves_disponiveis = []
     seq = id_seq("vv")
+
+    ciclo_compra = iter(ciclo_meses(qtd_disponiveis))
 
     total = qtd_disponiveis + qtd_em_preparacao
     for i in range(total):
@@ -736,9 +850,14 @@ def gerar_veiculos_venda(qtd_disponiveis, qtd_em_preparacao=10):
             "acessorios": random.sample(acessorios_possiveis, k=random.randint(2, 6)),
             "anoUltimoIpvaPago": random.randint(ano, HOJE.year),
             "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
-            # "disponivel" cobre os 24 meses inteiros sem lacuna (estoque
-            # histórico); "emPreparacao" é sempre recente (chegou há pouco).
-            "dataCriacao": data_estratificada(i) if cenario == "disponivel" else data_aleatoria(0, 2),
+            # "disponivel" segue o ciclo de meses quase uniforme (ver
+            # ciclo_compra acima); "emPreparacao" é recente, mas espalhada
+            # pelos últimos ~6 meses (não só os últimos 2) — concentrar
+            # poucos meses recentes empurrava demais a despesa de compra
+            # bem no período que qualquer usuário vê primeiro ("últimos 30
+            # dias"), distorcendo justo a janela mais olhada (ver
+            # docs/redesign/19-bug-margem-mensal-negativa.md).
+            "dataCriacao": data_estratificada(next(ciclo_compra)) if cenario == "disponivel" else data_aleatoria(0, 5),
             "cenario": cenario,
         }
         veiculos.append(veiculo)
@@ -804,6 +923,46 @@ def gerar_veiculos_consignados(clientes_chaves, vendedores_chaves):
     return consignacoes
 
 
+def gerar_test_drives(veiculos_disponiveis_chaves, clientes_chaves, vendedores_chaves):
+    """Cenários: agendado (minoria, sempre no futuro próximo — compromisso de
+    verdade pra aparecer na agenda, nunca backdatado), cancelado e
+    naoCompareceu (minoria, espalhados pelo histórico) e realizado (maioria,
+    domina o volume — é o que normalmente leva a uma proposta de venda
+    depois). Mesmo padrão "minoria pendente / maioria concluída" já usado em
+    propostas e OS."""
+    test_drives = []
+    seq = id_seq("td")
+
+    def novo(cenario, mes_idx=None):
+        if cenario == "agendado":
+            data_hora = (HOJE + timedelta(days=random.randint(1, 14))).replace(
+                hour=random.choice([9, 10, 11, 14, 15, 16]), minute=0, second=0, microsecond=0)
+        else:
+            data_hora = data_estratificada_dt(mes_idx)
+        return {
+            "chave": next(seq),
+            "veiculoVendaChave": random.choice(veiculos_disponiveis_chaves),
+            "clienteChave": random.choice(clientes_chaves),
+            "vendedorChave": random.choice(vendedores_chaves),
+            "dataHora": data_hora.isoformat(),
+            "cenario": cenario,
+        }
+
+    for _ in range(REPETICOES_TESTDRIVE_PENDENTE):
+        test_drives.append(novo("agendado"))
+
+    ciclo_pendente = iter(ciclo_meses(2 * REPETICOES_TESTDRIVE_PENDENTE))
+    for _ in range(REPETICOES_TESTDRIVE_PENDENTE):
+        test_drives.append(novo("cancelado", next(ciclo_pendente)))
+        test_drives.append(novo("naoCompareceu", next(ciclo_pendente)))
+
+    ciclo_realizado = iter(ciclo_meses(REPETICOES_TESTDRIVE_REALIZADO))
+    for _ in range(REPETICOES_TESTDRIVE_REALIZADO):
+        test_drives.append(novo("realizado", next(ciclo_realizado)))
+
+    return test_drives
+
+
 def gerar_veiculos_cliente(clientes_chaves, qtd=25):
     veiculos = []
     seq = id_seq("vcli")
@@ -821,16 +980,38 @@ def gerar_veiculos_cliente(clientes_chaves, qtd=25):
     return veiculos
 
 
-def gerar_propostas(veiculos_disponiveis_chaves, clientes_chaves, vendedores_chaves):
+def gerar_propostas(veiculos_disponiveis_chaves, clientes_chaves, vendedores_chaves, valor_aquisicao_por_chave):
     """Cobertura exaustiva (todo estágio do funil x forma de pagamento onde
     isso já foi escolhido). O funil aberto (aprovada..termoEnviado) e
     rejeitada repetem pouco (REPETICOES_PROPOSTA_PENDENTE) — minoria de
     propósito, pra demonstração não parecer cheia de vendas travadas. As
     concluídas (à vista/financiada) repetem muito mais
-    (REPETICOES_PROPOSTA_CONCLUIDA) — maioria do volume e da receita."""
+    (REPETICOES_PROPOSTA_CONCLUIDA) — maioria do volume e da receita.
+
+    `valorBase` era sorteado solto (`valor_redondo(38000,220000,500)`), sem
+    nenhuma relação com o veículo realmente sendo vendido — resultado
+    medido: quase 4 em cada 10 vendas concluídas saíam abaixo do custo de
+    aquisição daquele carro (prejuízo por unidade, às vezes de -280%). Uma
+    concessionária de verdade não opera assim: o preço de venda parte do
+    custo de aquisição DAQUELE veículo específico, com uma margem de
+    tabela — só existe prejuízo no caso raro de um problema descoberto
+    depois da compra, que o comprador de carros deveria evitar ao máximo.
+    `valor_base_por_veiculo` modela exatamente isso: ~96% das vendas usa
+    uma margem de 12% a 32% sobre o custo; só ~4% (minoria de propósito,
+    "problema oculto") cai numa faixa que pode ficar perto ou abaixo do
+    custo — nunca a maioria. Ver docs/redesign/17-margem-financeira-realista.md."""
     propostas = []
     seq = id_seq("prop")
     idx_veiculo = 0
+
+    def valor_base_por_veiculo(chave):
+        aquisicao = valor_aquisicao_por_chave[chave]
+        if random.random() < 0.04:
+            multiplicador = random.uniform(0.85, 1.05)  # problema oculto — raro, prejuízo limitado
+        else:
+            multiplicador = random.uniform(1.18, 1.40)  # margem de tabela normal
+        alvo = aquisicao * multiplicador
+        return valor_redondo(int(alvo - 1000), int(alvo + 1000), 500)
 
     def proximo_veiculo():
         nonlocal idx_veiculo
@@ -849,12 +1030,13 @@ def gerar_propostas(veiculos_disponiveis_chaves, clientes_chaves, vendedores_cha
     for _ in range(REPETICOES_PROPOSTA_PENDENTE):
         for estagio in estagios_com_modo:
             for modo in MODOS_PAGAMENTO_PROPOSTA:
+                veiculo_chave = proximo_veiculo()
                 propostas.append({
                     "chave": next(seq),
-                    "veiculoVendaChave": proximo_veiculo(),
+                    "veiculoVendaChave": veiculo_chave,
                     "clienteChave": random.choice(clientes_chaves),
                     "vendedorChave": random.choice(vendedores_chaves),
-                    "valorBase": valor_redondo(38000, 220000, 500),
+                    "valorBase": valor_base_por_veiculo(veiculo_chave),
                     "descontoPercentual": random.choice([0, 3, 5, 8, 10, 12, 15]),
                     "modoPagamento": modo,
                     "dataCriacao": data_estratificada(next(ciclo_pendente)),
@@ -862,12 +1044,13 @@ def gerar_propostas(veiculos_disponiveis_chaves, clientes_chaves, vendedores_cha
                 })
 
         for motivo in MOTIVOS_REJEICAO:
+            veiculo_chave = proximo_veiculo()
             propostas.append({
                 "chave": next(seq),
-                "veiculoVendaChave": proximo_veiculo(),
+                "veiculoVendaChave": veiculo_chave,
                 "clienteChave": random.choice(clientes_chaves),
                 "vendedorChave": random.choice(vendedores_chaves),
-                "valorBase": valor_redondo(38000, 220000, 500),
+                "valorBase": valor_base_por_veiculo(veiculo_chave),
                 "descontoPercentual": random.choice([0, 5, 10]),
                 "motivoRejeicao": motivo,
                 "dataCriacao": data_estratificada(next(ciclo_pendente)),
@@ -875,28 +1058,30 @@ def gerar_propostas(veiculos_disponiveis_chaves, clientes_chaves, vendedores_cha
             })
 
         for motivo in MOTIVOS_NEGATIVA_FINANCIADORA:
+            veiculo_chave = proximo_veiculo()
             propostas.append({
                 "chave": next(seq),
-                "veiculoVendaChave": proximo_veiculo(),
+                "veiculoVendaChave": veiculo_chave,
                 "clienteChave": random.choice(clientes_chaves),
                 "vendedorChave": random.choice(vendedores_chaves),
-                "valorBase": valor_redondo(38000, 220000, 500),
+                "valorBase": valor_base_por_veiculo(veiculo_chave),
                 "descontoPercentual": random.choice([0, 5, 10]),
                 "motivoRejeicao": motivo,
                 "dataCriacao": data_estratificada(next(ciclo_pendente)),
                 "cenario": "financiamentoNegado",
             })
 
+        veiculo_chave = proximo_veiculo()
         propostas.append({
             "chave": next(seq),
-            "veiculoVendaChave": proximo_veiculo(),
+            "veiculoVendaChave": veiculo_chave,
             "clienteChave": random.choice(clientes_chaves),
             "vendedorChave": random.choice(vendedores_chaves),
-            "valorBase": valor_redondo(38000, 220000, 500),
+            "valorBase": valor_base_por_veiculo(veiculo_chave),
             "descontoPercentual": random.choice([0, 5]),
             # Sem dataCriacao de propósito: "criada" é o estágio inicial ainda em
             # aberto — a proposta expira 7 dias após a criação, então backdatar
-            # pra qualquer ponto dos últimos 24 meses faria TODAS caírem como
+            # pra qualquer ponto dos últimos MESES_OPERACAO meses faria TODAS caírem como
             # "Expirada" antes mesmo da demonstração começar. Fica com a data
             # real de importação, garantindo que sempre haja propostas "Criada"
             # genuinamente abertas pra mostrar.
@@ -904,35 +1089,52 @@ def gerar_propostas(veiculos_disponiveis_chaves, clientes_chaves, vendedores_cha
         })
 
     # ---- Concluídas: dominam o volume ----
+    # A receita é reconhecida por DataAprovacao (ver DashboardService), não
+    # por DataCriacao — então é o MÊS DE APROVAÇÃO que precisa ficar bem
+    # distribuído pelo ciclo_meses, não o de criação. Gerar criacao primeiro
+    # e derivar aprovacao = criacao + alguns dias fazia ~1/3 dos casos
+    # "vazar" pro mês seguinte (dia sorteado tarde no mês + delta de até 15
+    # dias), destruindo a uniformidade mesmo com ciclo_meses garantindo
+    # contagem quase igual por mês de CRIAÇÃO — sobrava receita variando de
+    # 2 a 11 vendas num mesmo mês por acaso (ver docs/redesign/19-bug-
+    # margem-mensal-negativa.md). Corrigido invertendo a ordem: sorteia o
+    # mês/dia de APROVAÇÃO direto do ciclo, e a criação é só um pouco antes.
     dated_concluida = len(MODOS_PAGAMENTO_PROPOSTA) + 5  # à vista + financiada (5 opções de parcelas)
     ciclo_concluida = iter(ciclo_meses(dated_concluida * REPETICOES_PROPOSTA_CONCLUIDA))
 
+    def aprovacao_e_criacao(mes_idx, dias_min=3, dias_max=15):
+        aprovacao = data_estratificada_dt(mes_idx)
+        criacao = aprovacao - timedelta(days=random.randint(dias_min, dias_max))
+        return criacao, aprovacao
+
     for _ in range(REPETICOES_PROPOSTA_CONCLUIDA):
         for modo in MODOS_PAGAMENTO_PROPOSTA:
-            criacao = data_estratificada_dt(next(ciclo_concluida))
+            criacao, aprovacao = aprovacao_e_criacao(next(ciclo_concluida))
+            veiculo_chave = proximo_veiculo()
             propostas.append({
                 "chave": next(seq),
-                "veiculoVendaChave": proximo_veiculo(),
+                "veiculoVendaChave": veiculo_chave,
                 "clienteChave": random.choice(clientes_chaves),
                 "vendedorChave": random.choice(vendedores_chaves),
-                "valorBase": valor_redondo(38000, 220000, 500),
+                "valorBase": valor_base_por_veiculo(veiculo_chave),
                 "descontoPercentual": random.choice([0, 5, 10]),
                 "modoPagamento": modo,
                 "dataCriacao": criacao.isoformat(),
-                "dataAprovacao": apos(criacao, 3, 15),
+                "dataAprovacao": min(aprovacao, HOJE).isoformat(),
                 "cenario": "concluidaAVista",
             })
 
         for parcelas in [12, 24, 36, 48, 60]:
-            criacao = data_estratificada_dt(next(ciclo_concluida))
+            criacao, aprovacao = aprovacao_e_criacao(next(ciclo_concluida), dias_min=5, dias_max=20)
             valor_parcela = valor_redondo(500, 4000, 100)
             taxa = random.choice([1, 1.5, 2, 2.5])
+            veiculo_chave = proximo_veiculo()
             propostas.append({
                 "chave": next(seq),
-                "veiculoVendaChave": proximo_veiculo(),
+                "veiculoVendaChave": veiculo_chave,
                 "clienteChave": random.choice(clientes_chaves),
                 "vendedorChave": random.choice(vendedores_chaves),
-                "valorBase": valor_redondo(45000, 230000, 500),
+                "valorBase": valor_base_por_veiculo(veiculo_chave),
                 "descontoPercentual": random.choice([0, 5]),
                 # Texto livre — o sistema não simula/calcula financiamento, o
                 # vendedor negocia com a financiadora por fora e anota aqui o
@@ -943,7 +1145,7 @@ def gerar_propostas(veiculos_disponiveis_chaves, clientes_chaves, vendedores_cha
                     f"cadastral final na assinatura."
                 ),
                 "dataCriacao": criacao.isoformat(),
-                "dataAprovacao": apos(criacao, 5, 20),
+                "dataAprovacao": min(aprovacao, HOJE).isoformat(),
                 "cenario": "concluidaFinanciada",
             })
 
@@ -969,20 +1171,45 @@ def gerar_itens_os(componentes_chaves):
 
 
 def gerar_ordens_servico(veiculos_cliente_chaves, clientes_por_veiculo, mecanicos_chaves, componentes_chaves, checklist_chaves):
-    """5 tipos de serviço em cada status. Status pendente/cancelada/
-    emAndamento/finalizadaPendente ("aguardando pagamento") repetem pouco
-    (REPETICOES_OS_PENDENTE) — minoria de propósito, pra demonstração não
-    parecer cheia de OS travada esperando cobrança. A parte paga se divide em
-    finalizadaPaga (paga, aguardando retirada — minoria, REPETICOES_OS_PAGA) e
-    entregue (paga E retirada pelo cliente — conclusão real do fluxo, maioria,
-    REPETICOES_OS_ENTREGUE), nivelando a oficina com o funil da concessionária
-    onde "concluida" já é o fim de fluxo. Cada OS ganha de 1 a 4 componentes
-    (estoque, cliente ou encomenda) e, na maioria das vezes, um preset de
-    checklist."""
+    """5 tipos de serviço em cada status.
+
+    Ponto importante (bug corrigido depois de detectado na demonstração):
+    status ainda ABERTOS — pendente, emAndamento, finalizadaPendente ("pronta
+    pra finalizar, falta cobrar") — só fazem sentido como "recentes". Uma OS
+    "pendente" datada de 2 anos atrás não é realidade de oficina nenhuma —
+    é uma OS que qualquer negócio real teria resolvido (ou cancelado) há
+    muito tempo, e como o prazo dela (poucos dias após a criação) também
+    ficaria no passado, ela contava como "atrasada" pro resto da vida do
+    sistema. Por isso esses 3 status usam DIAS recentes (últimas
+    ~3-4 semanas), não os MESES_OPERACAO meses inteiros do histórico —
+    resultado: poucas OS realmente atrasadas (prazo curto + criada há pouco
+    tempo), a maioria ainda dentro do prazo, do jeito que uma oficina de
+    verdade opera no dia a dia.
+
+    "cancelada"/"canceladaEmAndamento" são ESTADOS TERMINAIS (não contam como
+    "atrasada" — o trabalho não vai mais acontecer), então essas sim ficam
+    espalhadas pelos MESES_OPERACAO meses inteiros do histórico, como
+    qualquer outro registro concluído. "cancelada" simula desistência ainda
+    na etapa de orçamento (antes do mecânico começar); "canceladaEmAndamento"
+    simula desistência no meio do serviço já iniciado.
+
+    A parte paga se divide em finalizadaPaga (paga, aguardando retirada —
+    minoria, REPETICOES_OS_PAGA) e entregue (paga E retirada pelo cliente —
+    conclusão real do fluxo, maioria, REPETICOES_OS_ENTREGUE), nivelando a
+    oficina com o funil da concessionária onde "concluida" já é o fim de
+    fluxo — essas também ficam espalhadas pelo histórico inteiro (são
+    trabalho já concluído, o "quando" pode ser qualquer época).
+
+    Cada OS ganha de 1 a 4 componentes (estoque, cliente ou encomenda) e, na
+    maioria das vezes, um preset de checklist. Uma fração das OS que chegam
+    a iniciar o serviço (todo status exceto pendente/cancelada) ganha
+    "comAlerta" — simula o mecânico encontrando um problema novo durante o
+    serviço, pausando a OS até o cliente aprovar o escopo maior (ver
+    IAlertaOSService)."""
     ordens = []
     seq = id_seq("os")
 
-    def nova_ordem(status, tipo, mes_idx):
+    def nova_ordem(status, tipo, data_criacao_iso, prazo_dias=None):
         veiculo_chave = random.choice(veiculos_cliente_chaves)
         ordem = {
             "chave": next(seq),
@@ -991,11 +1218,15 @@ def gerar_ordens_servico(veiculos_cliente_chaves, clientes_por_veiculo, mecanico
             "mecanicoChave": random.choice(mecanicos_chaves),
             "tipo": tipo,
             "descricao": random.choice(DESCRICOES_OS[tipo]),
-            "prazoDiasAPartirDaCriacao": random.choice([2, 3, 5, 7, 10, 15, 20]),
-            "custoServico": valor_redondo(120, 2200, 50),
-            # Estratificada pelos 24 meses inteiros — garante que nenhum mês
-            # do histórico fique sem OS (mesma lógica das propostas).
-            "dataCriacao": data_estratificada(mes_idx),
+            "prazoDiasAPartirDaCriacao": prazo_dias if prazo_dias is not None else random.choice([2, 3, 5, 7, 10, 15, 20]),
+            # Faixa calibrada (ver docs/redesign/17-margem-financeira-realista.md)
+            # pra que a margem líquida agregada da oficina (receita de mão de
+            # obra + peças - custo de peças - despesa recorrente) feche entre
+            # 3% e 10%, não os ~47% que a faixa antiga (120-2200) produzia —
+            # mão de obra cobrada não pode crescer sem limite em relação à
+            # despesa recorrente real da oficina (salários, aluguel etc.).
+            "custoServico": valor_redondo(550, 1250, 50),
+            "dataCriacao": data_criacao_iso,
             "cenario": status,
             "itens": gerar_itens_os(componentes_chaves),
         }
@@ -1003,27 +1234,56 @@ def gerar_ordens_servico(veiculos_cliente_chaves, clientes_por_veiculo, mecanico
             ordem["checklistPresetChave"] = random.choice(checklist_chaves)
         if status in ("finalizadaPaga", "entregue"):
             ordem["modoPagamento"] = random.choice(MODOS_PAGAMENTO_OS)
+        # "novos problemas encontrados" — só faz sentido pra quem chega a
+        # EmAndamento (pendente/cancelada nunca iniciam o serviço).
+        if status not in ("pendente", "cancelada") and random.random() < 0.25:
+            ordem["comAlerta"] = True
         return ordem
 
-    # ---- Status pendentes/em curso/aguardando pagamento: minimizado ----
-    status_pendentes = ["pendente", "cancelada", "emAndamento", "finalizadaPendente"]
-    ciclo_pendente = iter(ciclo_meses(len(status_pendentes) * len(TIPOS_OS) * REPETICOES_OS_PENDENTE))
+    def nova_ordem_estratificada(status, tipo, mes_idx):
+        return nova_ordem(status, tipo, data_estratificada(mes_idx))
+
+    def nova_ordem_recente(status, tipo):
+        # Últimas ~3 semanas — janela de "trabalho em curso agora" de uma
+        # oficina real, nunca anos de profundidade. Prazo e data de criação
+        # são escolhidos JUNTOS (não independentes) pra maioria (~75%) ficar
+        # dentro do prazo e só uma minoria realista ficar atrasada — sorteando
+        # os dois soltos, quase tudo virava "atrasada" por acaso (prazo curto
+        # de 2-3 dias quase sempre já vencido se a criação for de 2+ semanas
+        # atrás, mesmo a OS sendo genuinamente recente).
+        prazo_dias = random.choice([2, 3, 5, 7, 10, 15, 20])
+        if random.random() < 0.75:
+            dias_atras = random.randint(0, max(0, prazo_dias - 1))  # ainda dentro do prazo
+        else:
+            dias_atras = prazo_dias + random.randint(1, 10)  # atrasada de propósito
+        return nova_ordem(status, tipo, (HOJE - timedelta(days=dias_atras)).isoformat(), prazo_dias=prazo_dias)
+
+    # ---- Ainda abertas (pendente/emAndamento/finalizadaPendente): só recentes ----
+    status_abertos_recentes = ["pendente", "emAndamento", "finalizadaPendente"]
+    for status in status_abertos_recentes:
+        for tipo in TIPOS_OS:
+            for _ in range(REPETICOES_OS_PENDENTE):
+                ordens.append(nova_ordem_recente(status, tipo))
+
+    # ---- Canceladas (estado terminal, não conta como atrasada): espalhadas ----
+    status_cancelados = ["cancelada", "canceladaEmAndamento"]
+    ciclo_cancelado = iter(ciclo_meses(len(status_cancelados) * len(TIPOS_OS) * REPETICOES_OS_PENDENTE))
     for _ in range(REPETICOES_OS_PENDENTE):
-        for status in status_pendentes:
+        for status in status_cancelados:
             for tipo in TIPOS_OS:
-                ordens.append(nova_ordem(status, tipo, next(ciclo_pendente)))
+                ordens.append(nova_ordem_estratificada(status, tipo, next(ciclo_cancelado)))
 
     # ---- Paga mas ainda não retirada: minoria dentro da parte concluída ----
     ciclo_paga = iter(ciclo_meses(len(TIPOS_OS) * REPETICOES_OS_PAGA))
     for _ in range(REPETICOES_OS_PAGA):
         for tipo in TIPOS_OS:
-            ordens.append(nova_ordem("finalizadaPaga", tipo, next(ciclo_paga)))
+            ordens.append(nova_ordem_estratificada("finalizadaPaga", tipo, next(ciclo_paga)))
 
     # ---- Entregue: paga E retirada — domina o volume, fim de fluxo real ----
     ciclo_entregue = iter(ciclo_meses(len(TIPOS_OS) * REPETICOES_OS_ENTREGUE))
     for _ in range(REPETICOES_OS_ENTREGUE):
         for tipo in TIPOS_OS:
-            ordens.append(nova_ordem("entregue", tipo, next(ciclo_entregue)))
+            ordens.append(nova_ordem_estratificada("entregue", tipo, next(ciclo_entregue)))
 
     return ordens
 
@@ -1048,6 +1308,7 @@ def main():
     templates_documento = gerar_templates_documento()
 
     despesas = gerar_despesas()
+    despesas_extras = gerar_despesas_extras()
 
     # Conta quantas propostas serão geradas (mesma matemática de gerar_propostas)
     # pra saber quantos veículos "disponíveis" preparar antes.
@@ -1060,15 +1321,18 @@ def main():
     )
 
     veiculos_venda, veiculos_disponiveis_chaves = gerar_veiculos_venda(
-        qtd_disponiveis=qtd_propostas, qtd_em_preparacao=10)
+        qtd_disponiveis=qtd_propostas, qtd_em_preparacao=6)
+    valor_aquisicao_por_chave = {v["chave"]: v["valorAquisicao"] for v in veiculos_venda}
 
     veiculos_consignados = gerar_veiculos_consignados(clientes_chaves, vendedores_chaves)
+
+    test_drives = gerar_test_drives(veiculos_disponiveis_chaves, clientes_chaves, vendedores_chaves)
 
     veiculos_cliente = gerar_veiculos_cliente(clientes_chaves, qtd=50)
     veiculos_cliente_chaves = [v["chave"] for v in veiculos_cliente]
     clientes_por_veiculo = {v["chave"]: v["clienteChave"] for v in veiculos_cliente}
 
-    propostas = gerar_propostas(veiculos_disponiveis_chaves, clientes_chaves, vendedores_chaves)
+    propostas = gerar_propostas(veiculos_disponiveis_chaves, clientes_chaves, vendedores_chaves, valor_aquisicao_por_chave)
     ordens_servico = gerar_ordens_servico(
         veiculos_cliente_chaves, clientes_por_veiculo, mecanicos_chaves, componentes_chaves, checklist_chaves)
 
@@ -1085,6 +1349,8 @@ def main():
         "veiculosCliente": veiculos_cliente,
         "propostasVenda": propostas,
         "ordensServico": ordens_servico,
+        "testDrives": test_drives,
+        "despesasExtras": despesas_extras,
     }
 
     saida = Path(__file__).parent / "dataset_demo.json"

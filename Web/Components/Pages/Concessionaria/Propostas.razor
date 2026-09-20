@@ -28,7 +28,6 @@
         <FiltroSelect Rotulo="Situação" @bind-Valor="filtroSituacao" OnMudou="AplicarFiltro" Opcoes="opcoesSituacao" />
         <FiltroSelect Rotulo="Status" @bind-Valor="filtroStatus" OnMudou="AplicarFiltro" Opcoes="opcoesStatus" />
         <FiltroSelect Rotulo="Pagamento" @bind-Valor="filtroPagamento" OnMudou="AplicarFiltro" Opcoes="opcoesPagamento" />
-        <FiltroSelect Rotulo="Ordenar" @bind-Valor="ordenacao" OnMudou="AplicarFiltro" Opcoes="opcoesOrdem" />
     </FiltroBar>
 
     @if (carregando)
@@ -45,8 +44,14 @@
             <table class="tab">
                 <thead>
                     <tr>
-                        <th>Nº</th><th>Cliente</th><th>Veículo</th><th>Pagamento</th>
-                        <th class="r">Valor</th><th>Criada</th><th>Status</th><th></th>
+                        <ColunaOrdenavel Coluna="numero" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Nº</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="cliente" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Cliente</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="veiculo" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Veículo</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="pagamento" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Pagamento</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="valor" Class="r" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Valor</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="criada" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Criada</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="status" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Status</ColunaOrdenavel>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -85,7 +90,11 @@
     private string filtroSituacao = "abertas";
     private string filtroStatus = "";
     private string filtroPagamento = "";
-    private string ordenacao = "recentes";
+
+    // Ordenação da tabela — clique na coluna ordena crescente; clique de
+    // novo na mesma coluna inverte pra decrescente (ver ColunaOrdenavel).
+    private string sortColuna = "criada";
+    private bool sortAscendente = false;
 
     private static readonly List<FiltroSelect.Opcao> opcoesSituacao = new()
     {
@@ -107,12 +116,6 @@
         new("CartaoDebito", "Cartão débito"), new("CartaoCredito", "Cartão crédito"),
         new("Financiamento", "Financiamento"), new("Boleto", "Boleto"), new("Transferencia", "TED/DOC")
     };
-    private static readonly List<FiltroSelect.Opcao> opcoesOrdem = new()
-    {
-        new("recentes", "Mais recentes"), new("antigas", "Mais antigas"),
-        new("valor-desc", "Maior valor"), new("valor-asc", "Menor valor")
-    };
-
     private static readonly string[] Atencao = { "PropostaFinanciadoraRecebida", "Aprovada", "VistoriaConcluida", "AguardandoAssinaturaTermo" };
     private static readonly string[] Terminal = { "Concluida", "Rejeitada", "Cancelada", "Expirada" };
 
@@ -149,15 +152,29 @@
                 || ($"{p.VeiculoMarca} {p.VeiculoModelo}".Contains(t, StringComparison.OrdinalIgnoreCase)));
         }
 
-        q = ordenacao switch
-        {
-            "antigas" => q.OrderBy(p => p.DataCriacao),
-            "valor-desc" => q.OrderByDescending(p => p.ValorFinal),
-            "valor-asc" => q.OrderBy(p => p.ValorFinal),
-            _ => q.OrderByDescending(p => p.DataCriacao)
-        };
-
         filtradas = q.ToList();
+        OrdenarFiltradas();
+    }
+
+    private void Ordenar(string coluna)
+    {
+        if (sortColuna == coluna) sortAscendente = !sortAscendente;
+        else { sortColuna = coluna; sortAscendente = true; }
+        OrdenarFiltradas();
+    }
+
+    private void OrdenarFiltradas()
+    {
+        filtradas = sortColuna switch
+        {
+            "numero" => Ordenacao.Por(filtradas, p => p.Id, sortAscendente),
+            "cliente" => Ordenacao.Por(filtradas, p => p.ClienteNome, sortAscendente),
+            "veiculo" => Ordenacao.Por(filtradas, p => $"{p.VeiculoMarca} {p.VeiculoModelo}", sortAscendente),
+            "pagamento" => Ordenacao.Por(filtradas, p => ModoLabel(p.ModoPagamento), sortAscendente),
+            "valor" => Ordenacao.Por(filtradas, p => p.ValorFinal, sortAscendente),
+            "status" => Ordenacao.Por(filtradas, p => p.Status, sortAscendente),
+            _ => Ordenacao.Por(filtradas, p => p.DataCriacao, sortAscendente),
+        };
     }
 
     private void Abrir(Guid id) => Nav.NavigateTo($"/concessionaria/proposta/{id}");
@@ -184,6 +201,7 @@
     .tab th, .tab td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--cor-linha-suave); font-size: var(--txt-sm); vertical-align: middle; }
     .tab th { background: var(--cor-fundo); font-size: var(--txt-xs); text-transform: uppercase; color: var(--cor-tinta-3); letter-spacing: .3px; }
     .tab th.r, .tab td.r { text-align: right; }
+    .tab tbody tr:nth-child(even) { background: var(--cor-zebra); }
     .linha { cursor: pointer; transition: background .1s; }
     .linha:hover { background: var(--cor-info-bg); }
     .linha.destaque { background: #fffbeb; }

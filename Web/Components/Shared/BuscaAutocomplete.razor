@@ -1,0 +1,106 @@
+@namespace CarStoreManager.Web.Components.Shared
+@typeparam TItem where TItem : class
+
+<div class="busca-autocomplete">
+    @if (Selecionado is not null)
+    {
+        <div class="busca-selecionado">
+            <span>@TextoSelecionado(Selecionado)</span>
+            <button type="button" class="busca-remover" @onclick="Remover">×</button>
+        </div>
+    }
+    else
+    {
+        <input class="campo-input" type="text" value="@termo" @oninput="OnTermoChanged" placeholder="@Placeholder" autocomplete="off" />
+        @if (mostrarResultados)
+        {
+            <div class="busca-resultados">
+                @if (buscando)
+                {
+                    <div class="busca-info">Buscando...</div>
+                }
+                else if (resultados is not null && resultados.Count > 0)
+                {
+                    @foreach (var item in resultados)
+                    {
+                        <div class="busca-item" @onclick="() => Selecionar(item)">
+                            @ItemTemplate(item)
+                        </div>
+                    }
+                }
+                else if (termo.Length >= 2)
+                {
+                    <div class="busca-info">Nenhum resultado encontrado.</div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string Placeholder { get; set; } = "Buscar...";
+    [Parameter, EditorRequired] public Func<string, Task<List<TItem>>> BuscarFunc { get; set; } = null!;
+    [Parameter, EditorRequired] public RenderFragment<TItem> ItemTemplate { get; set; } = null!;
+    [Parameter, EditorRequired] public Func<TItem, string> TextoSelecionado { get; set; } = null!;
+    [Parameter] public TItem? Selecionado { get; set; }
+    [Parameter] public EventCallback<TItem?> SelecionadoChanged { get; set; }
+
+    private string termo = "";
+    private bool mostrarResultados;
+    private bool buscando;
+    private List<TItem>? resultados;
+    private CancellationTokenSource? _buscaCts;
+
+    private async Task OnTermoChanged(ChangeEventArgs e)
+    {
+        termo = e.Value?.ToString() ?? string.Empty;
+        mostrarResultados = true;
+
+        // Cancela busca anterior pra debouncar
+        _buscaCts?.Cancel();
+        _buscaCts = new CancellationTokenSource();
+        var ct = _buscaCts.Token;
+
+        if (string.IsNullOrWhiteSpace(termo) || termo.Length < 2)
+        {
+            resultados = null;
+            buscando = false;
+            return;
+        }
+
+        buscando = true;
+        try
+        {
+            await Task.Delay(250, ct);
+            resultados = await BuscarFunc(termo);
+        }
+        catch (TaskCanceledException) { /* nova digitação cancelou — OK */ }
+        finally { buscando = false; }
+    }
+
+    private async Task Selecionar(TItem item)
+    {
+        Selecionado = item;
+        mostrarResultados = false;
+        termo = "";
+        resultados = null;
+        await SelecionadoChanged.InvokeAsync(item);
+    }
+
+    private async Task Remover()
+    {
+        Selecionado = null;
+        await SelecionadoChanged.InvokeAsync(null);
+    }
+}
+
+<style>
+    .busca-autocomplete { position: relative; }
+    .busca-resultados { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0; background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-md); max-height: 220px; overflow-y: auto; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+    .busca-item { padding: 8px 12px; font-size: var(--txt-sm); cursor: pointer; border-bottom: 1px solid var(--cor-linha-suave); }
+    .busca-item:last-child { border-bottom: none; }
+    .busca-item:hover { background: var(--cor-superficie-2); }
+    .busca-info { padding: 10px 12px; font-size: var(--txt-sm); color: var(--cor-tinta-3); text-align: center; }
+    .busca-selecionado { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--cor-superficie-2); border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 8px 10px; font-size: var(--txt-sm); }
+    .busca-remover { background: none; border: none; font-size: 16px; color: var(--cor-tinta-3); cursor: pointer; line-height: 1; }
+</style>

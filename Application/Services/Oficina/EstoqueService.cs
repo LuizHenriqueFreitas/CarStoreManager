@@ -1,6 +1,8 @@
 using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs.Oficina.Componente;
+using CarStoreManager.Application.DTOs.Sistema;
 using CarStoreManager.Application.Interfaces;
+using CarStoreManager.Application.Interfaces.Sistema;
 using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Repositories;
 
@@ -11,15 +13,18 @@ public class EstoqueService : IEstoqueService
     private readonly IEstoqueRepository _estoqueRepo;
     private readonly IComponenteRepository _componenteRepo;
     private readonly IOrdemServicoRepository _ordemRepo;
+    private readonly IBalancoMensalDespesaService _balancoDespesaService;
 
     public EstoqueService(
         IEstoqueRepository estoqueRepo,
         IComponenteRepository componenteRepo,
-        IOrdemServicoRepository ordemRepo)
+        IOrdemServicoRepository ordemRepo,
+        IBalancoMensalDespesaService balancoDespesaService)
     {
         _estoqueRepo = estoqueRepo;
         _componenteRepo = componenteRepo;
         _ordemRepo = ordemRepo;
+        _balancoDespesaService = balancoDespesaService;
     }
 
     public async Task<Result<IEnumerable<EstoqueComponenteDTO>>> ListarAsync()
@@ -99,12 +104,41 @@ public class EstoqueService : IEstoqueService
             // a chegada deste componente.
             await ConciliarItensAguardandoAsync(componenteId);
 
+            var componente = await _componenteRepo.GetByIdAsync(componenteId);
+            if (componente is not null)
+                await RegistrarDespesaCompraComponenteAsync(componente, quantidade, DateTime.Today);
+
             return Result.Ok();
         }
         catch (Exception ex)
         {
             return Result.Fail(ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Lança o custo da reposição de estoque como item de despesa no
+    /// balanço mensal da competência informada — categoria "Compra de
+    /// componentes", setor Oficina. Mesmo padrão de
+    /// <see cref="Concessionaria.VeiculoVendaService"/> pra compra de
+    /// veículo: garante as despesas recorrentes do modelo antes de somar
+    /// o item ("já existe" é esperado e ignorado quando outra entrada de
+    /// estoque já tocou essa competência).
+    /// </summary>
+    private async Task RegistrarDespesaCompraComponenteAsync(
+        Domain.Entities.Oficina.Componente componente, int quantidade, DateTime dataCompra)
+    {
+        await _balancoDespesaService.GerarDoModeloAsync(dataCompra.Year, dataCompra.Month);
+
+        await _balancoDespesaService.SalvarItemAsync(new SalvarItemBalancoDTO
+        {
+            Ano = dataCompra.Year,
+            Mes = dataCompra.Month,
+            Nome = $"Compra de componente: {componente.Nome} — {componente.SKUInterno} (x{quantidade})",
+            Setor = "Oficina",
+            Categoria = "Compra de componentes",
+            Valor = componente.CustoUnitario * quantidade
+        });
     }
 
     public async Task<Result> SaidaAsync(Guid componenteId, int quantidade)

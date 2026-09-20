@@ -1,0 +1,37 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* <th> clicável para as tabelas de listagem (<table class="tab">) — 1º
+   clique ordena crescente, 2º clique na mesma coluna inverte pra
+   decrescente. Usar dentro de <thead><tr>, substituindo um <th> comum.
+   Como é um <th> de verdade (não div-grid), o alinhamento com as células
+   do <tbody> é garantido pelo próprio layout de tabela do navegador. *@
+
+<th class="th-ordenavel @Class @(Coluna == ColunaAtiva ? "ativo" : "")"
+    role="button" tabindex="0"
+    @onclick="() => OnOrdenar.InvokeAsync(Coluna)"
+    @onkeydown="OnKeyDown">
+    @ChildContent<span class="col-seta">@Seta</span>
+</th>
+
+@code {
+    [Parameter, EditorRequired] public string Coluna { get; set; } = "";
+    [Parameter] public string? ColunaAtiva { get; set; }
+    [Parameter] public bool Ascendente { get; set; }
+    [Parameter, EditorRequired] public EventCallback<string> OnOrdenar { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Classe extra do &lt;th&gt; (ex.: "r" pra alinhar coluna numérica à direita).</summary>
+    [Parameter] public string? Class { get; set; }
+
+    private string Seta => Coluna != ColunaAtiva ? "" : (Ascendente ? " ▲" : " ▼");
+
+    private Task OnKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+        => (e.Key is "Enter" or " ") ? OnOrdenar.InvokeAsync(Coluna) : Task.CompletedTask;
+}
+
+<style>
+    .th-ordenavel { cursor: pointer; user-select: none; }
+    .th-ordenavel:hover { color: var(--cor-acao); }
+    .th-ordenavel.ativo { color: var(--cor-tinta); }
+    .col-seta { font-size: 8px; }
+</style>

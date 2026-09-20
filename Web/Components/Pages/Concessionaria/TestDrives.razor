@@ -42,7 +42,14 @@
         <div class="table-scroll">
             <table class="tab">
                 <thead>
-                    <tr><th>Data / hora</th><th>Veículo</th><th>Cliente</th><th>Vendedor</th><th>Status</th><th></th></tr>
+                    <tr>
+                        <ColunaOrdenavel Coluna="datahora" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Data / hora</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="veiculo" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Veículo</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="cliente" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Cliente</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="vendedor" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Vendedor</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="status" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Status</ColunaOrdenavel>
+                        <th></th>
+                    </tr>
                 </thead>
                 <tbody>
                     @foreach (var t in Filtrados)
@@ -78,34 +85,34 @@
             <h2>Agendar test drive</h2>
             <div class="campo">
                 <label>Veículo</label>
-                <select @bind="form.VeiculoVendaId">
-                    <option value="@Guid.Empty">Selecione...</option>
-                    @foreach (var v in veiculosDisponiveis)
-                    {
-                        <option value="@v.Id">@v.Marca @v.Modelo @v.Ano · @v.Placa</option>
-                    }
-                </select>
+                <BuscaAutocomplete TItem="VeiculoVendaListaDTO"
+                                   Placeholder="Nome, marca ou placa..."
+                                   @bind-Selecionado="veiculoSelecionado"
+                                   BuscarFunc="BuscarVeiculos"
+                                   TextoSelecionado="@(v => $"{v.Marca} {v.Modelo} {v.Ano} · {v.Placa}")">
+                    <ItemTemplate Context="v">@v.Marca @v.Modelo @v.Ano · @v.Placa</ItemTemplate>
+                </BuscaAutocomplete>
             </div>
             <div class="campo">
                 <label>Cliente</label>
-                <select @bind="form.ClienteId">
-                    <option value="@Guid.Empty">Selecione...</option>
-                    @foreach (var c in clientes)
-                    {
-                        <option value="@c.Id">@c.Nome — @c.Cpf</option>
-                    }
-                </select>
+                <BuscaAutocomplete TItem="ClienteListaDTO"
+                                   Placeholder="Nome ou CPF..."
+                                   @bind-Selecionado="clienteSelecionado"
+                                   BuscarFunc="BuscarClientes"
+                                   TextoSelecionado="@(c => $"{c.Nome} — {c.Cpf}")">
+                    <ItemTemplate Context="c">@c.Nome — @c.Cpf</ItemTemplate>
+                </BuscaAutocomplete>
                 <span class="dica">Cliente não cadastrado? Cadastre em Cadastros → Clientes.</span>
             </div>
             <div class="campo">
                 <label>Vendedor</label>
-                <select @bind="form.VendedorId">
-                    <option value="@Guid.Empty">Selecione...</option>
-                    @foreach (var vd in vendedores)
-                    {
-                        <option value="@vd.Id">@vd.Nome</option>
-                    }
-                </select>
+                <BuscaAutocomplete TItem="VendedorListaDTO"
+                                   Placeholder="Nome do vendedor..."
+                                   @bind-Selecionado="vendedorSelecionado"
+                                   BuscarFunc="BuscarVendedores"
+                                   TextoSelecionado="@(vd => vd.Nome)">
+                    <ItemTemplate Context="vd">@vd.Nome</ItemTemplate>
+                </BuscaAutocomplete>
             </div>
             <div class="campo">
                 <label>Data e hora</label>
@@ -127,14 +134,30 @@
 }
 
 @code {
+    // Preenchido quando se chega vindo do botão "Agendar test drive" na tela
+    // de detalhe do veículo (?veiculoId=...) — abre o modal com o veículo já selecionado.
+    [SupplyParameterFromQuery(Name = "veiculoId")]
+    [Parameter] public Guid? VeiculoIdQuery { get; set; }
+
     private List<TestDriveListaDTO> lista = new();
-    private List<VeiculoVendaListaDTO> veiculosDisponiveis = new();
-    private List<ClienteListaDTO> clientes = new();
-    private List<VendedorListaDTO> vendedores = new();
+    private ClienteListaDTO? clienteSelecionado;
+    private VendedorListaDTO? vendedorSelecionado;
+    private VeiculoVendaListaDTO? veiculoSelecionado;
 
     private string filtro = "";
     private string filtroQuando = "";
     private string busca = "";
+
+    // Ordenação da tabela — clique na coluna ordena crescente; clique de
+    // novo na mesma coluna inverte pra decrescente (ver ColunaOrdenavel).
+    private string sortColuna = "datahora";
+    private bool sortAscendente = false;
+
+    private void Ordenar(string coluna)
+    {
+        if (sortColuna == coluna) sortAscendente = !sortAscendente;
+        else { sortColuna = coluna; sortAscendente = true; }
+    }
     private bool carregando = true;
     private string? msg; private bool msgErro;
 
@@ -174,34 +197,74 @@
                 q = q.Where(t => $"{t.VeiculoDescricao} {t.ClienteNome} {t.VendedorNome}"
                     .Contains(b, StringComparison.OrdinalIgnoreCase));
             }
-            return q.OrderByDescending(t => t.DataHora);
+            return sortColuna switch
+            {
+                "veiculo" => Ordenacao.Por(q, t => t.VeiculoDescricao, sortAscendente),
+                "cliente" => Ordenacao.Por(q, t => t.ClienteNome, sortAscendente),
+                "vendedor" => Ordenacao.Por(q, t => t.VendedorNome, sortAscendente),
+                "status" => Ordenacao.Por(q, t => t.Status, sortAscendente),
+                _ => Ordenacao.Por(q, t => t.DataHora, sortAscendente),
+            };
         }
     }
 
-    protected override async Task OnInitializedAsync() => await Carregar();
+    protected override async Task OnInitializedAsync()
+    {
+        await Carregar();
+
+        if (VeiculoIdQuery is { } veiculoId && veiculoId != Guid.Empty)
+        {
+            var rv = await VeiculoService.GetByIdAsync(veiculoId);
+            if (rv.IsSuccess && rv.Value is not null)
+            {
+                var v = rv.Value;
+                AbrirModal();
+                veiculoSelecionado = new VeiculoVendaListaDTO
+                {
+                    Id = v.Id,
+                    Marca = v.Marca,
+                    Modelo = v.Modelo,
+                    Ano = v.Ano,
+                    Placa = v.Placa,
+                    Disponibilidade = v.Disponibilidade
+                };
+            }
+        }
+    }
 
     private async Task Carregar()
     {
         carregando = true;
-        var tL = TestDriveService.GetAllAsync();
-        var tV = VeiculoService.GetAllAsync();
-        var tC = ClienteService.GetAllAsync();
-        var tD = VendedorService.GetAllAsync();
-        await Task.WhenAll(tL, tV, tC, tD);
-
-        lista = tL.Result.IsSuccess ? tL.Result.Value?.ToList() ?? new() : new();
-        veiculosDisponiveis = (tV.Result.IsSuccess ? tV.Result.Value?.ToList() ?? new() : new())
-            .Where(v => v.Disponibilidade is "Disponivel" or "Reservado").ToList();
-        clientes = (tC.Result.IsSuccess ? tC.Result.Value?.ToList() ?? new() : new())
-            .OrderBy(c => c.Nome).ToList();
-        vendedores = (tD.Result.IsSuccess ? tD.Result.Value?.ToList() ?? new() : new())
-            .OrderBy(v => v.Nome).ToList();
+        var r = await TestDriveService.GetAllAsync();
+        lista = r.IsSuccess ? r.Value?.ToList() ?? new() : new();
         carregando = false;
+    }
+
+    private async Task<List<VeiculoVendaListaDTO>> BuscarVeiculos(string termo)
+    {
+        var r = await VeiculoService.PesquisarAsync(termo);
+        var itens = r.IsSuccess ? r.Value ?? new() : new();
+        return itens.Where(v => v.Disponibilidade is "Disponivel" or "Reservado").ToList();
+    }
+
+    private async Task<List<ClienteListaDTO>> BuscarClientes(string termo)
+    {
+        var r = await ClienteService.PesquisarAsync(termo);
+        return r.IsSuccess ? r.Value ?? new() : new();
+    }
+
+    private async Task<List<VendedorListaDTO>> BuscarVendedores(string termo)
+    {
+        var r = await VendedorService.PesquisarAsync(termo);
+        return r.IsSuccess ? r.Value ?? new() : new();
     }
 
     private void AbrirModal()
     {
         form = new();
+        clienteSelecionado = null;
+        vendedorSelecionado = null;
+        veiculoSelecionado = null;
         dataHora = DateTime.Now.AddHours(1);
         modalErro = null;
         modalAberto = true;
@@ -210,11 +273,14 @@
     private async Task Agendar()
     {
         modalErro = null;
-        if (form.VeiculoVendaId == Guid.Empty || form.ClienteId == Guid.Empty || form.VendedorId == Guid.Empty)
+        if (veiculoSelecionado is null || clienteSelecionado is null || vendedorSelecionado is null)
         {
             modalErro = "Escolha veículo, cliente e vendedor.";
             return;
         }
+        form.VeiculoVendaId = veiculoSelecionado.Id;
+        form.ClienteId = clienteSelecionado.Id;
+        form.VendedorId = vendedorSelecionado.Id;
         form.DataHora = dataHora;
 
         salvando = true;
@@ -248,6 +314,7 @@
     .tab { width: 100%; border-collapse: collapse; background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); overflow: hidden; }
     .tab th, .tab td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--cor-linha-suave); font-size: var(--txt-sm); }
     .tab th { background: var(--cor-fundo); font-size: var(--txt-xs); text-transform: uppercase; color: var(--cor-tinta-3); }
+    .tab tbody tr:nth-child(even) { background: var(--cor-zebra); }
     .acoes { display: flex; gap: 4px; }
     .btn-mini { background: var(--cor-superficie-2); border: 1px solid var(--cor-linha); border-radius: var(--raio-sm); padding: 4px 8px; font-size: var(--txt-xs); cursor: pointer; }
     .btn-mini.ok { background: var(--cor-ok-bg); color: var(--cor-ok-tx); border-color: transparent; }

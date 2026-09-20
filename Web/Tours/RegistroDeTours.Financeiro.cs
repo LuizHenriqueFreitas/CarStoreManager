@@ -20,6 +20,13 @@ public static partial class RegistroDeTours
                 },
                 new()
                 {
+                    Seletor = "fin-hub-atalhos",
+                    Titulo = "Atalhos rápidos",
+                    Texto = "Mesma barra lateral dos painéis de Oficina e Concessionária — acesso direto às " +
+                        "outras telas do Financeiro e às Análises."
+                },
+                new()
+                {
                     Seletor = "fin-periodo",
                     Titulo = "Período",
                     Texto = "Escolha a janela — 7, 15, 30 ou 60 dias, ou um intervalo personalizado. Vale para " +
@@ -36,7 +43,10 @@ public static partial class RegistroDeTours
                     Seletor = "fin-kpis",
                     Titulo = "Indicadores",
                     Texto = "Receita, despesa, lucro líquido e margem. A seta e o percentual comparam com o " +
-                        "período anterior de mesma duração. Valores em regime de caixa — o que entrou e saiu."
+                        "período anterior de mesma duração. Valores em regime de caixa — o que entrou e saiu. " +
+                        "O último card, capital imobilizado em estoque, é diferente: não é fluxo de caixa, é " +
+                        "quanto vale o que está parado em veículos e peças — dinheiro que já saiu do caixa, mas " +
+                        "virou mercadoria, não prejuízo."
                 },
                 new()
                 {
@@ -150,8 +160,9 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "areceber-lista",
                     Titulo = "Detalhamento",
-                    Texto = "Ordenada da mais antiga para a mais recente. Linhas em vermelho estão abertas há " +
-                        "mais de 7 dias. Clique para abrir a OS e registrar o pagamento."
+                    Texto = "Por padrão, ordenada da mais antiga para a mais recente — clique no título de " +
+                        "uma coluna pra reordenar por ela. Linhas em vermelho estão abertas há mais de 7 dias. " +
+                        "Clique na linha para abrir a OS e registrar o pagamento."
                 }
             }
         },

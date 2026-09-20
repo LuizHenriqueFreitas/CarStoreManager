@@ -17,6 +17,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 
 <div class="salao-topo">
+    <PageHeader Titulo="Salão" Subtitulo="@subtitulo" />
     <SubNav Itens="SubNavConcessionaria.Itens" />
 </div>
 
@@ -161,8 +162,18 @@
         @if (consignacoesVencendoEmBreve.Any())
         {
             <div class="banner-vencimento" data-tour="conc-banner-vencimento">
-                ⚠ @consignacoesVencendoEmBreve.Count consignação(ões) vencendo em breve:
-                @string.Join(", ", consignacoesVencendoEmBreve.Select(c => $"{c.Marca} {c.Modelo} ({(c.EstaVencido ? "vencida" : $"{c.DiasRestantes}d")})"))
+                <span class="banner-texto">
+                    ⚠ @consignacoesVencendoEmBreve.Count consignação(ões) vencendo em breve:
+                    @string.Join(", ", consignacoesVencendoEmBreve.Take(LimiteBannerVencimento).Select(c => $"{c.Marca} {c.Modelo} ({(c.EstaVencido ? "vencida" : $"{c.DiasRestantes}d")})"))
+                    @if (consignacoesVencendoEmBreve.Count > LimiteBannerVencimento)
+                    {
+                        <text> e mais @(consignacoesVencendoEmBreve.Count - LimiteBannerVencimento)</text>
+                    }
+                </span>
+                @if (consignacoesVencendoEmBreve.Count > LimiteBannerVencimento)
+                {
+                    <a class="banner-vermais" href="/concessionaria/consignacoes">Ver todas →</a>
+                }
             </div>
         }
 
@@ -196,12 +207,18 @@
     @ref="modalCadastroRef" />
 
 <style>
-    .salao-topo { max-width: 1400px; margin: 0 auto; padding: 24px 24px 0; }
+    .salao-topo {
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 24px 24px 0;
+    }
     .conc-layout {
         display: grid;
-        grid-template-columns: 260px 1fr;
+        /* Coluna de filtros mais larga (pedido do dono) — 312px = 260px + 20%.
+           Precisa do gap pra não encostar/sobrepor o main ao lado. */
+        grid-template-columns: 312px 1fr;
         gap: 24px;
-        max-width: 1400px;
+        max-width: 100%;
         margin: 0 auto;
         padding: 8px 24px 24px;
     }
@@ -268,9 +285,22 @@
     }
     .btn-novo-secundario:hover { background: #f5f5f5; }
     .banner-vencimento {
-        background: #fff7ed; border: 0.5px solid #fed7aa; color: #9a3412;
-        border-radius: 8px; padding: 12px 16px; font-size: 0.85em; margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: #fff7ed;
+        border: 0.5px solid #fed7aa;
+        color: #9a3412;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 0.85em;
+        margin-bottom: 16px;
+        max-height: 2cm;
+        overflow: hidden;
     }
+    .banner-texto { overflow: hidden; text-overflow: ellipsis; }
+    .banner-vermais { flex-shrink: 0; color: #9a3412; font-weight: 600; text-decoration: underline; white-space: nowrap; }
     .estoque-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -307,7 +337,12 @@
 
     // === Busca e ordenação (barra acima dos cards) ===
     private string buscaTexto = "";
+    private string subtitulo = "";
     private string ordenacao = "DataDesc";
+
+    // O banner de vencimento tem altura fixa (2cm) — só cabem uns 3 nomes
+    // antes de estourar; o resto fica atrás do link "Ver todas".
+    private const int LimiteBannerVencimento = 3;
 
     private bool carregando = true;
     private bool modalCadastroVisivel;
@@ -373,6 +408,10 @@
                 .Where(v => v.IsConsignado && v.StatusLabel == "Ativa" && (v.EstaVencido || v.DiasRestantes <= 7))
                 .OrderBy(v => v.DiasRestantes)
                 .ToList();
+
+            var proprioDisponivel = veiculos.Count(v => !v.IsConsignado && v.StatusLabel == "Disponivel");
+            var consignadoDisponivel = veiculos.Count(v => v.IsConsignado && v.StatusLabel == "Ativa");
+            subtitulo = $"{proprioDisponivel} veículo(s) disponível(is) · {consignadoDisponivel} em consignação disponível(is)";
 
             // Extrai metadados para alimentar dropdowns/checkboxes
             marcasDisponiveis = veiculos

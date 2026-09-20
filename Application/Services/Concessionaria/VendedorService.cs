@@ -45,6 +45,14 @@ public class VendedorService : IVendedorService
             vendedores.Select(VendedorMapping.ToListaDto));
     }
 
+    //busca vendedores por nome, para autocomplete
+    public async Task<Result<List<VendedorListaDTO>>> PesquisarAsync(string termo)
+    {
+        var vendedores = await _repository.PesquisarAsync(termo);
+        return Result<List<VendedorListaDTO>>.Ok(
+            vendedores.Select(VendedorMapping.ToListaDto).ToList());
+    }
+
     //metodo para criar novo vendedor
     public async Task<Result<Guid>> AddAsync(CriarVendedorDTO dto)
     {

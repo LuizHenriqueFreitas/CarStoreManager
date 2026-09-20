@@ -23,7 +23,6 @@
 
     <FiltroBar @bind-Busca="busca" BuscaPlaceholder="Buscar por veículo, placa ou proprietário..." OnBusca="Aplicar">
         <FiltroSelect Rotulo="Situação" @bind-Valor="filtroAtivo" OnMudou="Aplicar" Opcoes="opcoesFiltro" />
-        <FiltroSelect Rotulo="Ordenar" @bind-Valor="ordenacao" OnMudou="Aplicar" Opcoes="opcoesOrdem" />
     </FiltroBar>
 
     @if (carregando)
@@ -40,8 +39,13 @@
             <table class="tab">
                 <thead>
                     <tr>
-                        <th>Veículo</th><th>Proprietário</th><th>Vendedor</th>
-                        <th>Valor esperado</th><th>Prazo</th><th>Status</th><th></th>
+                        <ColunaOrdenavel Coluna="veiculo" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Veículo</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="proprietario" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Proprietário</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="vendedor" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Vendedor</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="valor" Class="r" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Valor esperado</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="prazo" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Prazo</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="status" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Status</ColunaOrdenavel>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -54,7 +58,7 @@
                             </td>
                             <td>@c.ClienteProprietarioNome</td>
                             <td>@c.VendedorResponsavelNome</td>
-                            <td>@c.ValorVendaEsperado.ToString("C", Cultura)</td>
+                            <td class="r">@c.ValorVendaEsperado.ToString("C", Cultura)</td>
                             <td>
                                 @if (c.Status == "Ativa")
                                 {
@@ -90,8 +94,12 @@
     private List<VeiculoConsignacaoListaDTO> consignacoes = new();
     private List<VeiculoConsignacaoListaDTO> filtradas = new();
     private string filtroAtivo = "Ativa";
-    private string ordenacao = "recentes";
     private string busca = "";
+
+    // Ordenação da tabela — clique na coluna ordena crescente; clique de
+    // novo na mesma coluna inverte pra decrescente (ver ColunaOrdenavel).
+    private string sortColuna = "criada";
+    private bool sortAscendente = false;
     private bool carregando = true;
     private int ativas;
     private string? msg;
@@ -102,12 +110,6 @@
         new("VendidoAguardandoPagamento", "Vendidas"), new("Concluida", "Concluídas"),
         new("Devolvida", "Devolvidas"), new("Cancelada", "Canceladas"),
     };
-    private static readonly List<FiltroSelect.Opcao> opcoesOrdem = new()
-    {
-        new("recentes", "Mais recentes"), new("antigas", "Mais antigas"),
-        new("vencimento", "Vencendo primeiro"), new("valor-desc", "Maior valor"),
-    };
-
     protected override async Task OnInitializedAsync() => await Carregar();
 
     private async Task Carregar()
@@ -138,15 +140,29 @@
                 .Contains(t, StringComparison.OrdinalIgnoreCase));
         }
 
-        q = ordenacao switch
-        {
-            "antigas" => q.OrderBy(c => c.DataCriacao),
-            "vencimento" => q.OrderBy(c => c.DiasRestantes),
-            "valor-desc" => q.OrderByDescending(c => c.ValorVendaEsperado),
-            _ => q.OrderByDescending(c => c.DataCriacao)
-        };
-
         filtradas = q.ToList();
+        OrdenarFiltradas();
+    }
+
+    private void Ordenar(string coluna)
+    {
+        if (sortColuna == coluna) sortAscendente = !sortAscendente;
+        else { sortColuna = coluna; sortAscendente = true; }
+        OrdenarFiltradas();
+    }
+
+    private void OrdenarFiltradas()
+    {
+        filtradas = sortColuna switch
+        {
+            "veiculo" => Ordenacao.Por(filtradas, c => $"{c.Marca} {c.Modelo}", sortAscendente),
+            "proprietario" => Ordenacao.Por(filtradas, c => c.ClienteProprietarioNome, sortAscendente),
+            "vendedor" => Ordenacao.Por(filtradas, c => c.VendedorResponsavelNome, sortAscendente),
+            "valor" => Ordenacao.Por(filtradas, c => c.ValorVendaEsperado, sortAscendente),
+            "prazo" => Ordenacao.Por(filtradas, c => c.DiasRestantes, sortAscendente),
+            "status" => Ordenacao.Por(filtradas, c => c.Status, sortAscendente),
+            _ => Ordenacao.Por(filtradas, c => c.DataCriacao, sortAscendente),
+        };
     }
 
     private async Task Renovar(Guid id)
@@ -171,6 +187,8 @@
     .tab { width: 100%; border-collapse: collapse; background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); overflow: hidden; }
     .tab th, .tab td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--cor-linha-suave); font-size: var(--txt-sm); }
     .tab th { background: var(--cor-fundo); font-size: var(--txt-xs); text-transform: uppercase; letter-spacing: .3px; color: var(--cor-tinta-3); }
+    .tab th.r, .tab td.r { text-align: right; }
+    .tab tbody tr:nth-child(even) { background: var(--cor-zebra); }
     .linha { cursor: pointer; }
     .linha:hover { background: var(--cor-info-bg); }
     .tab .sub { display: block; font-size: var(--txt-xs); color: var(--cor-tinta-3); }

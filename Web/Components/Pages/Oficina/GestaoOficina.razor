@@ -9,7 +9,6 @@
 @inject IEstoqueService EstoqueService
 @inject IDashboardService DashboardService
 @inject CarStoreManager.Application.Interfaces.Sistema.IBalancoMensalDespesaService BalancoService
-@inject IClienteService ClienteService
 @inject IVeiculoClienteService VeiculoClienteService
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
@@ -18,7 +17,6 @@
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Oficina.OrdemServico
 @using CarStoreManager.Application.DTOs.Oficina.Componente
-@using CarStoreManager.Application.DTOs.Shared.Cliente
 @using CarStoreManager.Application.DTOs.Oficina.VeiculoCliente
 @using CarStoreManager.Application.DTOs.Admin
 @using CarStoreManager.Web.Components.Shared
@@ -55,48 +53,31 @@
             <MetricCard Rotulo="Em andamento" Valor="@Contar("EmAndamento").ToString()" Tom="info" />
             <MetricCard Rotulo="Aguardando cobrança" Valor="@aguardandoCobranca.Count.ToString()"
                         Tom="@(aguardandoCobranca.Count > 0 ? "atencao" : "")" />
-            <MetricCard Rotulo="Entregues no mês" Valor="@entreguesMes.ToString()" Tom="ok" />
+            <MetricCard Rotulo="Entregues no mês" Valor="@entreguesMes.ToString()" Tom="ok" Sub="@FormatoData.MesAno(DateTime.Today)" />
             <MetricCard Rotulo="Prazo médio estimado" Valor="@($"{prazoMedioDias:0.#} dias")" />
         </StatCardGrid>
         </div>
 
         <div class="hub-grid">
-            <div class="hub-principal" data-tour="oficina-hub-board">
-                <Secao Titulo="Ordens por etapa">
-                    <div class="board">
-                        @foreach (var col in Colunas)
-                        {
-                            var lista = PorEtapa(col.status);
-                            <div class="board-col">
-                                <div class="board-col-head">
-                                    <span>@col.label</span>
-                                    <span class="board-col-count">@lista.Count</span>
-                                </div>
-                                <div class="board-col-body">
-                                    @foreach (var os in lista.Take(6))
-                                    {
-                                        <a class="mini-os" href="@($"/oficina/os/{os.Id}")">
-                                            <span class="mini-os-num">@os.NumeroPublico</span>
-                                            <span class="mini-os-tipo">@os.Tipo</span>
-                                            <span class="mini-os-cli">@NomeCliente(os.ClienteId)</span>
-                                        </a>
-                                    }
-                                    @if (lista.Count > 6)
-                                    {
-                                        <a class="mini-os-mais" href="/oficina/ordens">+@(lista.Count - 6) mais</a>
-                                    }
-                                    @if (lista.Count == 0)
-                                    {
-                                        <span class="board-col-vazio">—</span>
-                                    }
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </Secao>
+            <div class="hub-card" data-tour="oficina-hub-board">
+                <a class="resumo-os-link" href="/oficina/ordens">
+                    <Secao Titulo="Ordens de serviço">
+                        <div class="card">
+                        <div class="resumo-destaque">
+                            <span class="resumo-valor">@abertasCount</span>
+                            <span class="resumo-label">OS em aberto</span>
+                        </div>
+                        <div class="resumo-linhas">
+                            <div class="fin-linha"><span>Em andamento</span><strong>@Contar("EmAndamento")</strong></div>
+                            <div class="fin-linha"><span>Aguardando cobrança</span><strong>@aguardandoCobranca.Count</strong></div>
+                            <div class="fin-linha"><span>Atrasadas</span><strong class="@(atrasadasCount > 0 ? "neg" : "")">@atrasadasCount</strong></div>
+                        </div>
+                        </div>
+                    </Secao>
+                </a>
             </div>
 
-            <div class="hub-lateral" data-tour="oficina-hub-atencao">
+            <div class="hub-card" data-tour="oficina-hub-atencao">
                 <Secao Titulo="Precisa de atenção">
                     @if (!atencao.Any())
                     {
@@ -104,21 +85,27 @@
                     }
                     else
                     {
-                        <div class="atencao-lista">
-                            @foreach (var a in atencao)
+                        <div class="lista atencao-lista">
+                            @foreach (var a in atencao.Take(LimiteListaHub))
                             {
                                 <a class="atencao-item" href="@a.Href">
                                     <span class="atencao-item-txt">@a.Texto</span>
                                     <span class="atencao-item-seta">→</span>
                                 </a>
                             }
+                            @if (atencao.Count > LimiteListaHub)
+                            {
+                                <a class="ver-mais" href="/oficina/ordens">Ver mais (@atencao.Count) →</a>
+                            }
                         </div>
                     }
                 </Secao>
+            </div>
 
-                @if (podeVerFinanceiro && metricas is not null)
-                {
-                    <Secao Titulo="Resumo financeiro do mês">
+            @if (podeVerFinanceiro && metricas is not null)
+            {
+                <div class="hub-card">
+                    <Secao Titulo="@($"Resumo financeiro — {FormatoData.MesAno(DateTime.Today)}")">
                         <div class="card">
                             <div class="fin-linha">
                                 <span>Receita de serviços</span>
@@ -135,7 +122,9 @@
                             <a class="fin-link" href="/financeiro?area=oficina">Ver no Financeiro →</a>
                         </div>
                     </Secao>
+                </div>
 
+                <div class="hub-card">
                     <Secao Titulo="Capital em peças">
                         <div class="card">
                             <div class="capital-valor">@FBRL(metricas.CapitalEstoqueComponentes)</div>
@@ -143,8 +132,8 @@
                             <a class="fin-link" href="/oficina/componentes">Ver estoque →</a>
                         </div>
                     </Secao>
-                }
-            </div>
+                </div>
+            }
         </div>
 
         @if (podeVerFinanceiro && metricas is not null)
@@ -170,9 +159,13 @@
     private static readonly System.Globalization.CultureInfo Cultura = new("pt-BR");
     private static string FBRL(decimal v) => v.ToString("C", Cultura);
 
+    // Mesma régua do hub da Concessionária: cada card do hub-grid tem altura
+    // fixa (22vh) — só cabem ~2 itens de lista; o resto fica atrás do link
+    // "ver mais" (ver docs/redesign/12-padronizacao-paineis.md).
+    private const int LimiteListaHub = 2;
+
     private List<OrdemServicoListaDTO> ordens = new();
     private List<OrdemServicoListaDTO> aguardandoCobranca = new();
-    private Dictionary<Guid, ClienteListaDTO> mapaClientes = new();
     private DashboardMetricasDTO? metricas;
 
     private List<FaixaAlertas.Alerta> alertas = new();
@@ -180,6 +173,8 @@
 
     private int entreguesMes;
     private double prazoMedioDias;
+    private int abertasCount;
+    private int atrasadasCount;
     private bool carregando = true;
     private bool ehMecanico;
     private bool podeVerFinanceiro;
@@ -208,17 +203,6 @@
         }
     }
 
-    private readonly (string status, string label)[] Colunas =
-    {
-        ("Pendente",                    "Orçamento"),
-        ("EmAnalise",                   "Revisão mecânico"),
-        ("AguardandoCliente",           "Aguardando cliente"),
-        ("Aprovada",                    "Aprovada"),
-        ("EmAndamento",                 "Em andamento"),
-        ("PagamentoPendente",           "Pgto pendente"),
-        ("Finalizada",                  "Pronta p/ entrega"),
-    };
-
     protected override async Task OnInitializedAsync()
     {
         var state = await AuthState.GetAuthenticationStateAsync();
@@ -229,16 +213,12 @@
         if (claim is not null) mecanicoId = Guid.Parse(claim.Value);
 
         var tOrdens = OrdemService.GetAllAsync();
-        var tClientes = ClienteService.GetAllAsync();
         var tEstoqueBaixo = EstoqueService.ListarComEstoqueBaixoAsync();
         var tMetricas = podeVerFinanceiro ? DashboardService.ObterMetricasAsync(6) : Task.FromResult<CarStoreManager.Application.Common.Result<DashboardMetricasDTO>>(null!);
-        await Task.WhenAll(tOrdens, tClientes, tEstoqueBaixo, tMetricas);
+        await Task.WhenAll(tOrdens, tEstoqueBaixo, tMetricas);
 
         var todas = tOrdens.Result.IsSuccess ? tOrdens.Result.Value?.ToList() ?? new() : new();
         ordens = ehMecanico ? todas.Where(o => o.MecanicoId == mecanicoId).ToList() : todas;
-
-        if (tClientes.Result.IsSuccess && tClientes.Result.Value is not null)
-            mapaClientes = tClientes.Result.Value.ToDictionary(c => c.Id);
 
         var estoqueBaixo = tEstoqueBaixo.Result.IsSuccess ? tEstoqueBaixo.Result.Value?.ToList() ?? new() : new();
 
@@ -258,6 +238,9 @@
 
         var atrasadas = abertas.Where(o => o.PrazoEstimado.Date < DateTime.Today).ToList();
         var paradas = ordens.Where(o => o.Status is "BuscandoPecasParaOrcamento" or "Pausada").ToList();
+
+        abertasCount = abertas.Count;
+        atrasadasCount = atrasadas.Count;
 
         // ---- Faixa de alertas ----
         alertas = new();
@@ -300,14 +283,14 @@
         if (graficosPendentes && metricas is not null)
         {
             graficosPendentes = false;
-            var labels = metricas.SerieReceitaServicos.Select(x => x.MesLabel).ToArray();
+            var labels = metricas.SerieReceitaServicos.Select(x => x.Label).ToArray();
             await JS.InvokeVoidAsync("carstoreChart.linhaTempo", "ofReceita", labels,
                 new object[] { new { nome = "Serviços", dados = metricas.SerieReceitaServicos.Select(x => x.Valor).ToArray() } }, "R$");
 
             var porStatus = metricas.OrdensServicoPorStatus
                 .Select(kv => new { rotulo = LabelStatus(kv.Key), valor = kv.Value })
                 .Where(x => x.valor > 0).ToArray();
-            await JS.InvokeVoidAsync("carstoreChart.barraMagnitude", "ofStatus", porStatus, "un", 10);
+            await JS.InvokeVoidAsync("carstoreChart.comparativo", "ofStatus", porStatus, "un");
         }
     }
 
@@ -334,15 +317,61 @@
         { "Pendente", "EmAnalise", "AguardandoCliente", "BuscandoPecasParaOrcamento", "Aprovada", "EmAndamento", "Pausada" };
 
     private int Contar(string status) => ordens.Count(o => o.Status == status);
-    private List<OrdemServicoListaDTO> PorEtapa(string status) =>
-        ordens.Where(o => o.Status == status).OrderBy(o => o.PrazoEstimado).ToList();
-    private string NomeCliente(Guid id) => mapaClientes.TryGetValue(id, out var c) ? c.Nome : "—";
 }
 
 <style>
-    .hub-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: var(--sp-5); align-items: start; }
-    .hub-conteudo { min-width: 0; }
-    .hub-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--sp-5); align-items: start; }
+    /* Bloco idêntico ao hub-layout/hub-grid/hub-card de
+       Web/Components/Pages/Concessionaria/HubConcessionaria.razor — ver
+       docs/redesign/12-padronizacao-paineis.md. Não alterar sem alterar o
+       espelho lá também. */
+    .hub-layout {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr);
+        gap: var(--sp-5);
+        align-items: start;
+    }
+    .hub-conteudo {
+        min-width: 0;
+    }
+    .hub-grid {
+        display: flex;
+        flex-direction: row;
+        gap: 2.5vh;
+        justify-content: center;
+        max-height: 22vh;
+    }
+    /* Cada card tem a mesma altura fixa do .hub-grid — o conteúdo que passar
+       disso fica escondido atrás do link "Ver mais/todas" (não estoura pros
+       elementos vizinhos/abaixo). */
+    .hub-card { flex: 1 1 0; min-width: 0; max-height: 22vh; overflow: hidden; }
+    .hub-card ::deep .secao-bloco { 
+        margin-bottom: 0; 
+        height: 100%; 
+        display: flex; 
+        flex-direction: 
+        column; min-height: 0; 
+    }
+    .lista { 
+        display: flex; 
+        flex-direction: column; 
+        gap: var(--sp-2); 
+        min-height: 0; 
+        overflow: hidden; 
+    }
+    .ver-mais {
+        font-size: var(--txt-xs); color: var(--cor-acao); text-decoration: none;
+        text-align: center; padding: var(--sp-1) 0;
+    }
+    .ver-mais:hover { text-decoration: underline; }
+
+    /* Card-resumo "Ordens de serviço" — o quadro por etapa (kanban) virou
+       um resumo clicável que leva pra /oficina/ordens, igual em espírito aos
+       cards de lista da Concessionária. */
+    .resumo-os-link { display: block; height: 100%; text-decoration: none; color: inherit; }
+    .resumo-destaque { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--sp-2) 0 var(--sp-3); }
+    .resumo-valor { font-size: var(--txt-2xl); font-weight: var(--peso-bold); color: var(--cor-tinta); line-height: 1; }
+    .resumo-label { font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+    .resumo-linhas .fin-linha .neg { color: var(--cor-erro-tx); font-weight: var(--peso-forte); }
 
     .graf-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); margin-bottom: var(--sp-6); }
     .grafico-card { background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); padding: var(--sp-4); }
@@ -350,36 +379,6 @@
     .grafico-area { position: relative; height: 240px; }
     .atalhos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
     @@media (max-width: 900px) { .graf-row { grid-template-columns: 1fr; } }
-
-    .board { display: flex; gap: var(--sp-2); overflow-x: auto; padding-bottom: var(--sp-2); }
-    .board-col {
-        flex: 1 0 150px;
-        background: var(--cor-superficie-2);
-        border-radius: var(--raio-md);
-        padding: var(--sp-2);
-    }
-    .board-col-head {
-        display: flex; justify-content: space-between; align-items: center;
-        font-size: var(--txt-xs); font-weight: var(--peso-forte);
-        color: var(--cor-tinta-2); text-transform: uppercase; letter-spacing: .3px;
-        padding: var(--sp-1) var(--sp-1) var(--sp-2);
-    }
-    .board-col-count { background: var(--cor-superficie); border-radius: var(--raio-full); padding: 0 6px; }
-    .board-col-body { display: flex; flex-direction: column; gap: var(--sp-1); }
-    .board-col-vazio { color: var(--cor-tinta-3); text-align: center; font-size: var(--txt-sm); padding: var(--sp-2); }
-    .mini-os {
-        display: flex; flex-direction: column; gap: 1px;
-        background: var(--cor-superficie);
-        border: 1px solid var(--cor-linha);
-        border-radius: var(--raio-sm);
-        padding: 6px 8px;
-        text-decoration: none; color: inherit;
-    }
-    .mini-os:hover { border-color: var(--cor-acao); }
-    .mini-os-num { font-family: monospace; font-size: 11px; font-weight: var(--peso-forte); color: var(--cor-acao); }
-    .mini-os-tipo { font-size: var(--txt-xs); color: var(--cor-tinta); }
-    .mini-os-cli { font-size: 11px; color: var(--cor-tinta-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .mini-os-mais { font-size: var(--txt-xs); color: var(--cor-acao); text-align: center; padding: 4px; text-decoration: none; }
 
     .atencao-lista { display: flex; flex-direction: column; gap: var(--sp-2); }
     .atencao-item {

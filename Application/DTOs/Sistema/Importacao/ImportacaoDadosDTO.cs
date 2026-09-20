@@ -10,17 +10,23 @@ namespace CarStoreManager.Application.DTOs.Sistema.Importacao;
 /// de antemão. Ex.: uma proposta usa "clienteChave": "cli-joao" em vez do
 /// Guid do cliente, e o importador resolve isso na hora de criar):
 ///
-///   1. Usuarios         (vendedores/mecânicos/etc. — referenciado por 9 e 10)
-///   2. Clientes                                    (referenciado por 7, 8, 9, 10)
+///   1. Usuarios         (vendedores/mecânicos/etc. — referenciado por 9, 10 e 12)
+///   2. Clientes                                    (referenciado por 7, 8, 9, 10, 12)
 ///   3. Fornecedores                                 (referenciado por Componentes)
 ///   4. Componentes                                  (referenciado por 10)
 ///   5. ChecklistPresets                             (referenciado por 10)
 ///   6. Despesas                                     (sem dependências, sem "chave")
-///   7. VeiculosVenda                                (referenciado por 10)
+///   7. VeiculosVenda                                (referenciado por 10, 12)
 ///   8. VeiculosConsignados
 ///   9. VeiculosCliente                              (referenciado por 11)
-///   10. PropostasVenda
-///   11. OrdensServico
+///   10. TestDrives     (ANTES de PropostasVenda — precisa do veículo ainda
+///                        "Disponivel"; proposta concluída marca como Vendido)
+///   11. PropostasVenda
+///   12. OrdensServico   (compra de veículo em 7 já lançou despesa automática
+///                        — ver VeiculoVendaService.AddAsync — então 13 só
+///                        precisa cobrir eventos que NÃO são compra de carro)
+///   13. DespesasExtras — itens extras num mês específico, pra variação
+///       histórica (compra de equipamento, motor fundido etc.); sem "chave".
 /// </summary>
 public class ImportacaoDadosDTO
 {
@@ -36,6 +42,8 @@ public class ImportacaoDadosDTO
     public List<VeiculoClienteImportDTO> VeiculosCliente { get; set; } = new();
     public List<PropostaVendaImportDTO> PropostasVenda { get; set; } = new();
     public List<OrdemServicoImportDTO> OrdensServico { get; set; } = new();
+    public List<TestDriveImportDTO> TestDrives { get; set; } = new();
+    public List<DespesaExtraImportDTO> DespesasExtras { get; set; } = new();
 }
 
 /// <summary>Despesa mensal fixa (recorrente) — sem data própria, é um valor "atual" cadastrado, não um lançamento pontual.</summary>
@@ -47,6 +55,22 @@ public class DespesaImportDTO
     public string Setor { get; set; } = "Geral";
     /// <summary>Salario, Aluguel, Utilidades, Manutencao, Marketing, Impostos, Seguro, Investimento, Servicos ou Outros.</summary>
     public string Tipo { get; set; } = "Outros";
+}
+
+/// <summary>
+/// Lançamento pontual num mês específico do histórico — usado pra variação
+/// (compra de equipamento, manutenção fora do comum, perda de um veículo
+/// próprio com motor fundido etc.), somado às despesas recorrentes do
+/// modelo naquela competência (não as substitui). "Data" só usa Ano/Mês.
+/// </summary>
+public class DespesaExtraImportDTO
+{
+    public DateTime Data { get; set; }
+    public string Nome { get; set; } = "";
+    public decimal Valor { get; set; }
+    /// <summary>Geral, Oficina ou Concessionaria.</summary>
+    public string Setor { get; set; } = "Geral";
+    public string? Categoria { get; set; }
 }
 
 /// <summary>Modelo de checklist reutilizável entre OS (ex.: "Revisão Geral", "Troca de Óleo").</summary>
@@ -131,10 +155,29 @@ public class ComponenteImportDTO
     public decimal CustoUnitario { get; set; }
     /// <summary>Margem em % sobre o custo (ex.: 30 = 30%). Se omitida, usa o padrão configurado pro Sistema.</summary>
     public decimal? MargemLucroPct { get; set; }
-    /// <summary>Quantidade já em estoque (entrada inicial) — 0 se omitida.</summary>
+    /// <summary>
+    /// Quantidade já em estoque (entrada inicial), lançada como uma única
+    /// despesa "hoje" — 0 se omitida. Ignorado quando <see cref="ReposicoesEstoque"/>
+    /// vem preenchido (uma vale a outra, nunca as duas).
+    /// </summary>
     public int QuantidadeEstoque { get; set; }
+    /// <summary>
+    /// Reposições históricas de estoque — cada uma vira sua própria entrada
+    /// (e sua própria despesa "Compra de componentes", movida pra
+    /// competência de <c>Data</c>) em vez de uma única entrada "hoje" com a
+    /// quantidade toda. Preferível a <see cref="QuantidadeEstoque"/> quando
+    /// se quer espalhar o custo de compra pelo histórico, como já acontece
+    /// com veículo.
+    /// </summary>
+    public List<ReposicaoEstoqueImportDTO>? ReposicoesEstoque { get; set; }
     /// <summary>Quantidade mínima antes de disparar alerta de estoque baixo.</summary>
     public int QuantidadeMinima { get; set; } = 5;
+}
+
+public class ReposicaoEstoqueImportDTO
+{
+    public DateTime Data { get; set; }
+    public int Quantidade { get; set; }
 }
 
 /// <summary>Cenário: "emPreparacao" (padrão, nada feito) ou "disponivel" (liberado pra venda).</summary>
@@ -229,10 +272,15 @@ public class PropostaVendaImportDTO
 }
 
 /// <summary>
-/// Cenário: "pendente" (padrão, recém-aberta), "cancelada", "emAndamento"
-/// (iniciada, mecânico trabalhando), "finalizadaPendente" (serviço pronto,
-/// cobrança em aberto), "finalizadaPaga" (paga, aguardando retirada) ou
-/// "entregue" (paga E retirada pelo cliente — conclusão real do fluxo).
+/// Cenário: "pendente" (padrão, recém-aberta), "cancelada" (cancelada ainda
+/// pendente, antes de iniciar), "canceladaEmAndamento" (iniciada e depois
+/// cancelada — simula desistência no meio do serviço), "emAndamento"
+/// (iniciada, mecânico trabalhando), "finalizadaPendente" (checklist
+/// concluída, pronta pra finalizar, mas ainda em EmAndamento — cobrança tem
+/// que acontecer antes de finalizar, ver <see cref="OrdemServicoImportDTO"/>
+/// abaixo e OrdemServicoService.FinalizarAsync), "finalizadaPaga" (paga,
+/// aguardando retirada) ou "entregue" (paga E retirada pelo cliente —
+/// conclusão real do fluxo).
 /// </summary>
 public class OrdemServicoImportDTO
 {
@@ -252,6 +300,25 @@ public class OrdemServicoImportDTO
     public string? ChecklistPresetChave { get; set; }
     /// <summary>Componentes usados na OS, com sua origem (Estoque, Cliente ou Encomenda).</summary>
     public List<ItemOrdemServicoImportDTO> Itens { get; set; } = new();
+    /// <summary>
+    /// Se true (e o cenário chegar a "emAndamento" ou além), simula o
+    /// mecânico encontrando um problema novo durante o serviço: emite um
+    /// alerta (pausa a OS) e já registra a aprovação do cliente pra o
+    /// aumento de escopo, retomando o serviço — ver IAlertaOSService.
+    /// </summary>
+    public bool ComAlerta { get; set; }
+}
+
+/// <summary>Cenário: "agendado" (padrão), "realizado", "cancelado" ou "naoCompareceu".</summary>
+public class TestDriveImportDTO
+{
+    public string Chave { get; set; } = "";
+    public string VeiculoVendaChave { get; set; } = "";
+    public string ClienteChave { get; set; } = "";
+    public string VendedorChave { get; set; } = "";
+    public DateTime DataHora { get; set; }
+    public string? Observacao { get; set; }
+    public string Cenario { get; set; } = "agendado";
 }
 
 /// <summary>Origem: "Estoque" (peça já cadastrada, padrão), "Cliente" (cliente trouxe a peça) ou "Encomenda" (oficina precisou comprar — entra via fluxo de requisição de peça atendida).</summary>
