@@ -6,6 +6,7 @@
 @rendermode Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer
 @inject IFornecedorService FornecedorService
 @inject AuthenticationStateProvider AuthState
+@inject CarStoreManager.Application.Interfaces.Sistema.IPermissaoAcessoService PermissaoService
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Oficina.Fornecedor
 @using CarStoreManager.Application.DTOs.Shared.Cliente
@@ -16,14 +17,14 @@
 <div class="pagina">
     <PageHeader Titulo="Fornecedores" Subtitulo="@($"{todosFornecedores.Count} fornecedor(es) · {todosFornecedores.Count(f => f.Ativo)} ativo(s)")">
         <Acao>
-            @if (ehAdmin)
+            @if (podeNovoFornecedor)
             {
-                <button class="btn btn-primario" data-tour="forn-btn-novo" @onclick="AbrirModalNovo">+ Novo fornecedor</button>
+                <button type="button" class="btn btn-primario" data-tour="forn-btn-novo" @onclick="AbrirModalNovo">+ Novo fornecedor</button>
             }
         </Acao>
     </PageHeader>
 
-    <SubNav Itens="SubNavOficina.Itens(false)" />
+    <SubNav Itens="subNavItens" />
 
     <FiltroBar @bind-Busca="termoBusca" BuscaPlaceholder="Buscar por nome ou CNPJ..." OnBusca="AplicarFiltro">
         <FiltroSelect Rotulo="Situação" @bind-Valor="filtroStatus" OnMudou="AplicarFiltro" Opcoes="opcoesStatus" />
@@ -69,9 +70,9 @@
                             {
                                 <td>
                                     <div class="forn-acoes">
-                                        <button class="btn-mini" @onclick="() => AbrirModalEditar(f)">Editar contato</button>
-                                        <button class="btn-mini" @onclick="() => AlternarAtivo(f)">@(f.Ativo ? "Desativar" : "Ativar")</button>
-                                        <button class="btn-mini btn-remover" @onclick="() => ConfirmarExcluir(f.Id, f.Nome)">Excluir</button>
+                                        <button type="button" class="btn-mini" @onclick="() => AbrirModalEditar(f)">Editar contato</button>
+                                        <button type="button" class="btn-mini" @onclick="() => AlternarAtivo(f)">@(f.Ativo ? "Desativar" : "Ativar")</button>
+                                        <button type="button" class="btn-mini btn-remover" @onclick="() => ConfirmarExcluir(f.Id, f.Nome)">Excluir</button>
                                     </div>
                                 </td>
                             }
@@ -89,7 +90,7 @@
         <div class="modal-form" @onclick:stopPropagation>
             <div class="modal-header">
                 <span class="modal-titulo">Novo fornecedor</span>
-                <button class="modal-fechar" @onclick="() => modalNovoVisivel = false">×</button>
+                <button type="button" class="modal-fechar" @onclick="() => modalNovoVisivel = false">×</button>
             </div>
 
             <div class="form-grid">
@@ -152,8 +153,8 @@
             }
 
             <div class="modal-acoes">
-                <button class="btn-cancelar" @onclick="() => modalNovoVisivel = false">Cancelar</button>
-                <button class="btn-confirmar" @onclick="CriarFornecedor" disabled="@salvandoNovo">
+                <button type="button" class="btn-cancelar" @onclick="() => modalNovoVisivel = false">Cancelar</button>
+                <button type="button" class="btn-confirmar" @onclick="CriarFornecedor" disabled="@salvandoNovo">
                     @(salvandoNovo ? "Criando..." : "Criar fornecedor")
                 </button>
             </div>
@@ -167,7 +168,7 @@
         <div class="modal-form" @onclick:stopPropagation>
             <div class="modal-header">
                 <span class="modal-titulo">Editar contato — @fornecedorEditando.Nome</span>
-                <button class="modal-fechar" @onclick="() => modalEditarVisivel = false">×</button>
+                <button type="button" class="modal-fechar" @onclick="() => modalEditarVisivel = false">×</button>
             </div>
 
             <p class="muted">CNPJ @fornecedorEditando.Cnpj</p>
@@ -221,8 +222,8 @@
             }
 
             <div class="modal-acoes">
-                <button class="btn-cancelar" @onclick="() => modalEditarVisivel = false">Cancelar</button>
-                <button class="btn-confirmar" @onclick="SalvarEdicao" disabled="@salvandoEdicao">
+                <button type="button" class="btn-cancelar" @onclick="() => modalEditarVisivel = false">Cancelar</button>
+                <button type="button" class="btn-confirmar" @onclick="SalvarEdicao" disabled="@salvandoEdicao">
                     @(salvandoEdicao ? "Salvando..." : "Salvar contato")
                 </button>
             </div>
@@ -236,7 +237,7 @@
         <div class="modal-form modal-confirmacao" @onclick:stopPropagation>
             <div class="modal-header">
                 <span class="modal-titulo">Excluir fornecedor</span>
-                <button class="modal-fechar" @onclick="() => modalExcluirVisivel = false">×</button>
+                <button type="button" class="modal-fechar" @onclick="() => modalExcluirVisivel = false">×</button>
             </div>
             <p>Excluir <strong>@nomeParaExcluir</strong>? Essa ação não pode ser desfeita.</p>
 
@@ -246,8 +247,8 @@
             }
 
             <div class="modal-acoes">
-                <button class="btn-cancelar" @onclick="() => modalExcluirVisivel = false">Cancelar</button>
-                <button class="btn-confirmar btn-perigo" @onclick="ExecutarExclusao" disabled="@excluindo">
+                <button type="button" class="btn-cancelar" @onclick="() => modalExcluirVisivel = false">Cancelar</button>
+                <button type="button" class="btn-confirmar btn-perigo" @onclick="ExecutarExclusao" disabled="@excluindo">
                     @(excluindo ? "Excluindo..." : "Excluir")
                 </button>
             </div>
@@ -271,6 +272,8 @@
     private bool sortAscendente = true;
     private bool carregando = true;
     private bool ehAdmin;
+    private bool podeNovoFornecedor;
+    private List<SubNav.Item> subNavItens = new();
 
     private bool modalNovoVisivel;
     private bool salvandoNovo;
@@ -292,6 +295,13 @@
     {
         var state = await AuthState.GetAuthenticationStateAsync();
         ehAdmin = state.User.IsInRole("Admin");
+
+        var roleClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        if (Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out var role))
+        {
+            subNavItens = await SubNavOficina.ItensAsync(false, role, PermissaoService);
+            podeNovoFornecedor = await PermissaoService.PodeAcessarAsync(role, "acao:oficina.novo-fornecedor");
+        }
 
         await CarregarFornecedores();
     }

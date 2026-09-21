@@ -17,7 +17,7 @@
 @using Microsoft.JSInterop
 @using System.Text.Json
 
-<button class="tour-btn-ajuda tour-btn-ajuda-canto" @onclick="AbrirTourAsync" title="Ajuda desta tela" aria-label="Ajuda desta tela">
+<button type="button" class="tour-btn-ajuda tour-btn-ajuda-canto" @onclick="AbrirTourAsync" title="Ajuda desta tela" aria-label="Ajuda desta tela">
     ?
 </button>
 <CarStoreManager.Web.Components.Shared.TourGuiado />
@@ -55,7 +55,7 @@
                 <div class="erro-banner">@erro</div>
             }
 
-            <button class="btn-entrar" @onclick="Entrar" disabled="@carregando">
+            <button type="button" class="btn-entrar" @onclick="Entrar" disabled="@carregando">
                 @(carregando ? "Entrando..." : "Entrar")
             </button>
         </div>

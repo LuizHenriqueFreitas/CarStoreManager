@@ -9,6 +9,7 @@
 @inject IVeiculoConsignacaoService ConsignacaoService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IAuthService AuthService
+@inject CarStoreManager.Application.Interfaces.Sistema.IPermissaoAcessoService PermissaoService
 @inject NavigationManager Nav
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
 @using CarStoreManager.Application.Interfaces
@@ -130,7 +131,7 @@
             }
         </section>
 
-        <button class="sb-limpar" @onclick="LimparFiltros">Limpar todos os filtros</button>
+        <button type="button" class="sb-limpar" @onclick="LimparFiltros">Limpar todos os filtros</button>
     </aside>
 
     <main class="conc-main">
@@ -152,10 +153,16 @@
                 </select>
             </div>
             <div class="conc-header-acoes">
-                <button class="btn-novo" data-tour="conc-btn-cadastrar" @onclick="AbrirModalCadastro">+ Cadastrar veículo</button>
-                <button class="btn-novo-secundario" data-tour="conc-btn-cadastrar-consignado" @onclick='() => Nav.NavigateTo("/concessionaria/veiculo-consignado/novo")'>
-                    + Cadastrar consignação
-                </button>
+                @if (podeCadastrarVeiculo)
+                {
+                    <button type="button" class="btn-novo" data-tour="conc-btn-cadastrar" @onclick="AbrirModalCadastro">+ Cadastrar veículo</button>
+                }
+                @if (podeCadastrarConsignado)
+                {
+                    <button type="button" class="btn-novo-secundario" data-tour="conc-btn-cadastrar-consignado" @onclick='() => Nav.NavigateTo("/concessionaria/veiculo-consignado/novo")'>
+                        + Cadastrar consignação
+                    </button>
+                }
             </div>
         </header>
 
@@ -348,6 +355,8 @@
     private bool modalCadastroVisivel;
     private ConfirmacaoSenhaModal? modalCadastroRef;
     private Guid UsuarioAtualId;
+    private bool podeCadastrarVeiculo;
+    private bool podeCadastrarConsignado;
 
     private int AnoAtual => DateTime.Now.Year;
 
@@ -356,6 +365,13 @@
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var claim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
         if (claim is not null) UsuarioAtualId = Guid.Parse(claim.Value);
+
+        var roleClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        if (Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out var role))
+        {
+            podeCadastrarVeiculo = await PermissaoService.PodeAcessarAsync(role, "acao:concessionaria.cadastrar-veiculo");
+            podeCadastrarConsignado = await PermissaoService.PodeAcessarAsync(role, "acao:concessionaria.cadastrar-veiculo-consignado");
+        }
 
         try
         {

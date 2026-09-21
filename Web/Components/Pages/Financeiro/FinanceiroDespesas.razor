@@ -46,7 +46,7 @@
     {
         <div class="card iniciar">
             <p>Ainda não há balanço para <strong>@Mes(balanco.Mes)/@balanco.Ano</strong>.</p>
-            <button class="btn btn-primario" @onclick="Gerar">Gerar a partir do formulário</button>
+            <button type="button" class="btn btn-primario" @onclick="Gerar">Gerar a partir do formulário</button>
         </div>
     }
     else
@@ -62,11 +62,11 @@
             @if (balanco.Fechado)
             {
                 <span class="tag-fechado">Balanço fechado em @balanco.DataFechamento?.ToLocalTime().ToString("dd/MM/yyyy")</span>
-                <button class="btn btn-neutro" @onclick="Reabrir">Reabrir para editar</button>
+                <button type="button" class="btn btn-neutro" @onclick="Reabrir">Reabrir para editar</button>
             }
             else
             {
-                <button class="btn btn-primario" @onclick="Fechar">Fechar balanço</button>
+                <button type="button" class="btn btn-primario" @onclick="Fechar">Fechar balanço</button>
             }
         </div>
 
@@ -93,8 +93,8 @@
                             <td class="acoes">
                                 @if (!balanco.Fechado)
                                 {
-                                    <button class="btn-mini ok" @onclick="() => SalvarItem(it)">Salvar</button>
-                                    <button class="btn-mini neg" @onclick="() => RemoverItem(it.Id)">Excluir</button>
+                                    <button type="button" class="btn-mini ok" @onclick="() => SalvarItem(it)">Salvar</button>
+                                    <button type="button" class="btn-mini neg" @onclick="() => RemoverItem(it.Id)">Excluir</button>
                                 }
                             </td>
                         </tr>
@@ -112,7 +112,7 @@
                             </td>
                             <td><input @bind="nova.Categoria" placeholder="categoria" /></td>
                             <td><input type="number" step="0.01" @bind="nova.Valor" /></td>
-                            <td class="acoes"><button class="btn-mini ok" @onclick="AdicionarItem">Adicionar</button></td>
+                            <td class="acoes"><button type="button" class="btn-mini ok" @onclick="AdicionarItem">Adicionar</button></td>
                         </tr>
                     }
                 </tbody>

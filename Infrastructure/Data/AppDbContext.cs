@@ -60,6 +60,7 @@ public class AppDbContext : DbContext
     public DbSet<TemplateDocumento> TemplatesDocumento { get; set; }
     public DbSet<Despesa> Despesas { get; set; }
     public DbSet<BalancoMensalDespesa> BalancosMensaisDespesa { get; set; }
+    public DbSet<PermissaoAcesso> PermissoesAcesso { get; set; }
 
     // =========================
     // INTEGRAÇÕES — MERCADO LIVRE
@@ -547,6 +548,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Despesa>()
             .OwnsOne(d => d.Valor, vo =>
                 vo.Property("Valor").HasColumnName("Valor").HasPrecision(18, 2));
+
+        // === Permissões de acesso por papel (doc 23) ===
+        modelBuilder.Entity<PermissaoAcesso>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.Property(p => p.Role).HasConversion<string>();
+            e.Property(p => p.RecursoChave).IsRequired();
+            e.HasIndex(p => new { p.Role, p.RecursoChave }).IsUnique();
+        });
 
         // === Balanço mensal de despesas ===
         modelBuilder.Entity<BalancoMensalDespesa>(e =>

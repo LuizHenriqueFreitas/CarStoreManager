@@ -24,7 +24,7 @@
             <span class="logo-texto">DE</span><span class="logo-destaque">LORE</span>
         </div>
         <div class="topo-acoes">
-            <button class="tour-btn-ajuda" @onclick="AbrirTourAsync" title="Ajuda desta tela" aria-label="Ajuda desta tela">?</button>
+            <button type="button" class="tour-btn-ajuda" @onclick="AbrirTourAsync" title="Ajuda desta tela" aria-label="Ajuda desta tela">?</button>
             <a class="link-login" href="/login">Acesso interno →</a>
         </div>
     </div>
@@ -43,7 +43,7 @@
                 <input class="busca-input @(erro is not null ? "erro" : "")" type="text"
                        placeholder="Placa (ex: ABC1D23)" maxlength="8" @bind="placa" @bind:event="oninput"
                        @onkeydown="TeclaPressionada" style="text-transform:uppercase" />
-                <button class="btn-buscar" @onclick="Buscar" disabled="@buscando">
+                <button type="button" class="btn-buscar" @onclick="Buscar" disabled="@buscando">
                     @(buscando ? "Buscando..." : "Consultar")
                 </button>
             </div>

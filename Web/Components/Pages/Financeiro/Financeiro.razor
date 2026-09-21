@@ -33,7 +33,7 @@
         <span>Área:</span>
         @foreach (var a in new[] { ("", "Tudo"), ("oficina", "Oficina"), ("concessionaria", "Concessionária") })
         {
-            <button class="@(area == a.Item1 ? "af-btn ativo" : "af-btn")" @onclick="() => TrocarArea(a.Item1)">@a.Item2</button>
+            <button type="button" class="@(area == a.Item1 ? "af-btn ativo" : "af-btn")" @onclick="() => TrocarArea(a.Item1)">@a.Item2</button>
         }
     </div>
 

@@ -34,7 +34,7 @@
                         <td>@item.Quantidade</td>
                         <td>R$ @item.ValorUnitario.ToString("N2")</td>
                         <td>R$ @((item.Quantidade * item.ValorUnitario).ToString("N2"))</td>
-                        <td><button class="btn-remover-pequeno" @onclick="() => RemoverItem(item)">×</button></td>
+                        <td><button type="button" class="btn-remover-pequeno" @onclick="() => RemoverItem(item)">×</button></td>
                     </tr>
                 }
             </tbody>
@@ -66,7 +66,7 @@
                        @bind="nomeLivre" @bind:event="oninput" />
                 <div class="selecionado-campos">
                     <input type="number" class="campo-input qtd" @bind="quantidade" placeholder="Qtd" min="1" />
-                    <button class="btn-adicionar-item" @onclick="AdicionarItem"
+                    <button type="button" class="btn-adicionar-item" @onclick="AdicionarItem"
                             disabled="@(quantidade < 1 || string.IsNullOrWhiteSpace(nomeLivre))">
                         + Adicionar
                     </button>
@@ -138,11 +138,11 @@
                     <div class="selecionado-campos">
                         <input type="number" class="campo-input qtd" @bind="quantidade" placeholder="Qtd" min="1" />
                         <input type="number" step="0.01" class="campo-input valor" @bind="valorUnitario" placeholder="Valor Unit." />
-                        <button class="btn-adicionar-item" @onclick="AdicionarItem"
+                        <button type="button" class="btn-adicionar-item" @onclick="AdicionarItem"
                                 disabled="@(quantidade < 1 || valorUnitario <= 0)">
                             + Adicionar
                         </button>
-                        <button class="btn-cancelar-sel" @onclick="LimparSelecao">Cancelar</button>
+                        <button type="button" class="btn-cancelar-sel" @onclick="LimparSelecao">Cancelar</button>
                     </div>
                     @if (origemSelecionada == "Estoque" && componenteSelecionado.QuantidadeEmEstoque < quantidade)
                     {

@@ -9,6 +9,7 @@
 @inject IEstoqueService EstoqueService
 @inject IDashboardService DashboardService
 @inject CarStoreManager.Application.Interfaces.Sistema.IBalancoMensalDespesaService BalancoService
+@inject CarStoreManager.Application.Interfaces.Sistema.IPermissaoAcessoService PermissaoService
 @inject IVeiculoClienteService VeiculoClienteService
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
@@ -27,12 +28,12 @@
         <Acao>
             @if (!ehMecanico)
             {
-                <button class="btn btn-primario" @onclick='() => Nav.NavigateTo("/oficina/os/nova")'>+ Nova OS</button>
+                <button type="button" class="btn btn-primario" @onclick='() => Nav.NavigateTo("/oficina/os/nova")'>+ Nova OS</button>
             }
         </Acao>
     </PageHeader>
 
-    <SubNav Itens="SubNavOficina.Itens(ehMecanico)" />
+    <SubNav Itens="subNavItens" />
 
     @if (carregando)
     {
@@ -177,30 +178,40 @@
     private int atrasadasCount;
     private bool carregando = true;
     private bool ehMecanico;
+    private List<SubNav.Item> subNavItens = new();
     private bool podeVerFinanceiro;
     private Guid mecanicoId;
     private string subtitulo = "";
 
-    private IEnumerable<MenuAtalhos.Item> atalhos
+    private List<MenuAtalhos.Item> atalhos = new();
+
+    /// <summary>
+    /// "Fornecedores" aqui era decidido só por `!ehMecanico`, um 3º lugar
+    /// (além de NavBar e SubNavOficina) repetindo a mesma regra — agora os
+    /// três consultam a mesma matriz de permissões (doc 23).
+    /// </summary>
+    private async Task<List<MenuAtalhos.Item>> ObterAtalhosAsync(CarStoreManager.Domain.Enums.RoleUsuario role)
     {
-        get
+        var lista = new List<MenuAtalhos.Item>
         {
-            yield return new("Ordens de serviço", "🔧", "/oficina/ordens", "Lista completa com filtros e busca.");
-            yield return new("Estoque de peças", "📦", "/oficina/componentes", "Componentes, mínimos e alertas.");
-            if (!ehMecanico)
-            {
-                yield return new("Recepção", "📋", "/oficina/recepcao", "Abrir OS e busca rápida.");
-                yield return new("Fornecedores", "🏭", "/oficina/fornecedores", "Cadastro de fornecedores de peças.");
-                yield return new("Clientes", "👤", "/clientes", "Cadastro e histórico de clientes.");
-            }
-            if (podeVerFinanceiro)
-            {
-                yield return new("Financeiro da oficina", "💰", "/financeiro?area=oficina", "Receita de serviços, despesas e lucro.");
-                yield return new("Despesas da oficina", "💸", "/financeiro/despesas", "Balanço mensal de despesas.");
-                yield return new("Relatórios", "📄", "/financeiro/relatorios", "Exportar dados por período.");
-                yield return new("Análises", "📊", "/dashboard", "Gráficos e comparativos da oficina.");
-            }
+            new("Ordens de serviço", "🔧", "/oficina/ordens", "Lista completa com filtros e busca."),
+            new("Estoque de peças", "📦", "/oficina/componentes", "Componentes, mínimos e alertas."),
+        };
+        if (!ehMecanico)
+        {
+            lista.Add(new("Recepção", "📋", "/oficina/recepcao", "Abrir OS e busca rápida."));
+            if (await PermissaoService.PodeAcessarAsync(role, "pagina:/oficina/fornecedores"))
+                lista.Add(new("Fornecedores", "🏭", "/oficina/fornecedores", "Cadastro de fornecedores de peças."));
+            lista.Add(new("Clientes", "👤", "/clientes", "Cadastro e histórico de clientes."));
         }
+        if (podeVerFinanceiro)
+        {
+            lista.Add(new("Financeiro da oficina", "💰", "/financeiro?area=oficina", "Receita de serviços, despesas e lucro."));
+            lista.Add(new("Despesas da oficina", "💸", "/financeiro/despesas", "Balanço mensal de despesas."));
+            lista.Add(new("Relatórios", "📄", "/financeiro/relatorios", "Exportar dados por período."));
+            lista.Add(new("Análises", "📊", "/dashboard", "Gráficos e comparativos da oficina."));
+        }
+        return lista;
     }
 
     protected override async Task OnInitializedAsync()
@@ -211,6 +222,13 @@
         podeVerFinanceiro = user.IsInRole("Admin") || user.IsInRole("ChefeOficina");
         var claim = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
         if (claim is not null) mecanicoId = Guid.Parse(claim.Value);
+
+        var roleClaim = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        if (Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out var role))
+        {
+            subNavItens = await SubNavOficina.ItensAsync(ehMecanico, role, PermissaoService);
+            atalhos = await ObterAtalhosAsync(role);
+        }
 
         var tOrdens = OrdemService.GetAllAsync();
         var tEstoqueBaixo = EstoqueService.ListarComEstoqueBaixoAsync();

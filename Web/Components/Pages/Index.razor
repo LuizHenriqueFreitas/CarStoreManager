@@ -54,7 +54,7 @@
 
         @if (podeVerFinanceiro && serieFaturamento.Count >= 1)
         {
-            <Secao Titulo="@($"Faturamento — {inicio:dd/MM} a {fim:dd/MM}")" data-tour="inicio-faturamento">
+            <Secao Titulo="@($"Receitas e despesas — {inicio:dd/MM} a {fim:dd/MM}")" data-tour="inicio-faturamento">
                 <div class="grafico-inicio"><canvas id="inicioFaturamento"></canvas></div>
             </Secao>
         }
@@ -124,7 +124,7 @@
     // linhas separadas, nunca somadas).
     private DashboardMetricasDTO? metricas;
     private DateOnly inicio, fim;
-    private List<(string Label, decimal Oficina, decimal Concessionaria)> serieFaturamento = new();
+    private List<(string Label, decimal Oficina, decimal Concessionaria, decimal Despesa)> serieFaturamento = new();
     private bool graficoPendente;
     private List<FaixaAlertas.Alerta> alertas = new();
     private int veiculosDisponiveis, propostasAbertas, consignacoesVencendo;
@@ -257,21 +257,24 @@
         StateHasChanged();
     }
 
-    /// <summary>Receita de serviços (oficina) e de vendas (concessionária)
-    /// mês a mês, mantidas separadas — o gráfico "Faturamento" mostra as
-    /// duas áreas como linhas distintas, nunca somadas numa só (dinheiro de
+    /// <summary>Receita de serviços (oficina), de vendas (concessionária) e
+    /// despesa mês a mês, mantidas separadas — o gráfico "Faturamento" mostra
+    /// as três como linhas distintas, nunca somadas numa só (dinheiro de
     /// setores diferentes não deve virar um número só, confunde o usuário).</summary>
     private void AtualizarSerieFaturamento(DashboardMetricasDTO dto)
     {
         var servicos = dto.SerieReceitaServicos ?? new();
         var vendas = dto.SerieReceitaVendas ?? new();
+        var despesas = dto.SerieDespesas ?? new();
         var meses = servicos.Select(s => s.Label)
             .Union(vendas.Select(v => v.Label))
+            .Union(despesas.Select(d => d.Label))
             .ToList();
         serieFaturamento = meses.Select(m => (
             Label: m,
             Oficina: servicos.FirstOrDefault(s => s.Label == m)?.Valor ?? 0m,
-            Concessionaria: vendas.FirstOrDefault(v => v.Label == m)?.Valor ?? 0m
+            Concessionaria: vendas.FirstOrDefault(v => v.Label == m)?.Valor ?? 0m,
+            Despesa: despesas.FirstOrDefault(d => d.Label == m)?.Valor ?? 0m
         )).ToList();
         graficoPendente = true;
     }
@@ -286,8 +289,9 @@
                 serieFaturamento.Select(p => p.Label).ToArray(),
                 new[]
                 {
-                    new { nome = "Receita Oficina", dados = serieFaturamento.Select(p => p.Oficina).ToArray() },
-                    new { nome = "Receita Concessionária", dados = serieFaturamento.Select(p => p.Concessionaria).ToArray() },
+                    new { nome = "Receita Oficina", dados = serieFaturamento.Select(p => p.Oficina).ToArray(), cor = "#16a34a" },
+                    new { nome = "Receita Concessionária", dados = serieFaturamento.Select(p => p.Concessionaria).ToArray(), cor = "#2563eb" },
+                    new { nome = "Despesa", dados = serieFaturamento.Select(p => p.Despesa).ToArray(), cor = "#ea580c" },
                 },
                 "R$");
         }

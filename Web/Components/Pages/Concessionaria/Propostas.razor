@@ -13,22 +13,30 @@
 @using CarStoreManager.Web.Components.Shared
 
 <div class="pagina">
-    <PageHeader Titulo="Propostas de venda"
-                Subtitulo="@($"{propostas.Count} proposta(s) · {precisamAtencao} aguardando ação")" />
+    <div data-tour="prop-lista-header">
+        <PageHeader Titulo="Propostas de venda"
+                    Subtitulo="@($"{propostas.Count} proposta(s) · {precisamAtencao} aguardando ação")" />
+    </div>
 
     <SubNav Itens="SubNavConcessionaria.Itens" />
 
     @if (precisamAtencao > 0)
     {
-        <FaixaAlertas Alertas="@(new List<FaixaAlertas.Alerta> {
-            new($"{precisamAtencao} proposta(s) precisam de uma ação sua", "/concessionaria/propostas", "atencao", "📄") })" />
+        <div data-tour="prop-lista-atencao-banner">
+            <FaixaAlertas Alertas="@(new List<FaixaAlertas.Alerta> {
+                new($"{precisamAtencao} proposta(s) precisam de uma ação sua", "/concessionaria/propostas", "atencao", "📄") })" />
+        </div>
     }
 
-    <FiltroBar @bind-Busca="busca" BuscaPlaceholder="Buscar por cliente, veículo ou nº..." OnBusca="AplicarFiltro">
-        <FiltroSelect Rotulo="Situação" @bind-Valor="filtroSituacao" OnMudou="AplicarFiltro" Opcoes="opcoesSituacao" />
-        <FiltroSelect Rotulo="Status" @bind-Valor="filtroStatus" OnMudou="AplicarFiltro" Opcoes="opcoesStatus" />
-        <FiltroSelect Rotulo="Pagamento" @bind-Valor="filtroPagamento" OnMudou="AplicarFiltro" Opcoes="opcoesPagamento" />
-    </FiltroBar>
+    <div data-tour="prop-lista-busca">
+        <FiltroBar @bind-Busca="busca" BuscaPlaceholder="Buscar por cliente, veículo ou nº..." OnBusca="AplicarFiltro">
+            <div data-tour="prop-lista-filtros" style="display: contents;">
+                <FiltroSelect Rotulo="Situação" @bind-Valor="filtroSituacao" OnMudou="AplicarFiltro" Opcoes="opcoesSituacao" />
+                <FiltroSelect Rotulo="Status" @bind-Valor="filtroStatus" OnMudou="AplicarFiltro" Opcoes="opcoesStatus" />
+                <FiltroSelect Rotulo="Pagamento" @bind-Valor="filtroPagamento" OnMudou="AplicarFiltro" Opcoes="opcoesPagamento" />
+            </div>
+        </FiltroBar>
+    </div>
 
     @if (carregando)
     {
@@ -57,7 +65,7 @@
                 <tbody>
                     @foreach (var p in filtradas)
                     {
-                        <tr class="linha @(PrecisaAtencao(p) ? "destaque" : "")" @onclick="() => Abrir(p.Id)">
+                        <tr class="linha @(PrecisaAtencao(p) ? "destaque" : "")" @onclick="() => Abrir(p.Id)" data-tour="prop-lista-row-exemplo">
                             <td class="num">#@p.Id.ToString()[..6].ToUpper()</td>
                             <td>@(string.IsNullOrEmpty(p.ClienteNome) ? "—" : p.ClienteNome)</td>
                             <td>@p.VeiculoMarca @p.VeiculoModelo</td>

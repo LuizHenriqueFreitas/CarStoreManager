@@ -18,7 +18,7 @@
 <div class="pagina">
     <PageHeader Titulo="Test drives" Subtitulo="@($"{lista.Count} registro(s) · {Hoje} hoje")">
         <Acao>
-            <button class="btn btn-primario" @onclick="() => AbrirModal()">+ Agendar test drive</button>
+            <button type="button" class="btn btn-primario" @onclick="() => AbrirModal()">+ Agendar test drive</button>
         </Acao>
     </PageHeader>
 
@@ -63,9 +63,9 @@
                             <td class="acoes">
                                 @if (t.Status == "Agendado")
                                 {
-                                    <button class="btn-mini ok" @onclick='() => MudarStatus(t.Id, "Realizado")'>Realizado</button>
-                                    <button class="btn-mini" @onclick='() => MudarStatus(t.Id, "NaoCompareceu")'>Faltou</button>
-                                    <button class="btn-mini neg" @onclick='() => MudarStatus(t.Id, "Cancelado")'>Cancelar</button>
+                                    <button type="button" class="btn-mini ok" @onclick='() => MudarStatus(t.Id, "Realizado")'>Realizado</button>
+                                    <button type="button" class="btn-mini" @onclick='() => MudarStatus(t.Id, "NaoCompareceu")'>Faltou</button>
+                                    <button type="button" class="btn-mini neg" @onclick='() => MudarStatus(t.Id, "Cancelado")'>Cancelar</button>
                                 }
                             </td>
                         </tr>
@@ -123,8 +123,8 @@
                 <textarea @bind="form.Observacao" rows="2"></textarea>
             </div>
             <div class="modal-acoes">
-                <button class="btn btn-neutro" @onclick="() => modalAberto = false">Cancelar</button>
-                <button class="btn btn-primario" @onclick="Agendar" disabled="@salvando">
+                <button type="button" class="btn btn-neutro" @onclick="() => modalAberto = false">Cancelar</button>
+                <button type="button" class="btn btn-primario" @onclick="Agendar" disabled="@salvando">
                     @(salvando ? "Salvando..." : "Agendar")
                 </button>
             </div>

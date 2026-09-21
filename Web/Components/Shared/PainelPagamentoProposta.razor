@@ -64,12 +64,12 @@
                                max="@resumo.ValorRestante" />
                         <input type="text" @bind="novo.ReferenciaExterna"
                                placeholder="NSU/end-to-end (opc)" />
-                        <button class="btn-receber" @onclick="Registrar"
+                        <button type="button" class="btn-receber" @onclick="Registrar"
                                 disabled="@(processando || string.IsNullOrEmpty(novo.ModoPagamento) || novo.Valor <= 0)">
                             @(processando ? "..." : "Registrar")
                         </button>
                     </div>
-                    <button class="btn-link" @onclick="ReceberRestante">
+                    <button type="button" class="btn-link" @onclick="ReceberRestante">
                         Receber valor restante (@FmtBRL(resumo.ValorRestante))
                     </button>
                 }
@@ -100,7 +100,7 @@
                                     <AuthorizeView Roles="Admin,GerenteVendas" Context="adminAcao">
                                         <Authorized>
                                             <td>
-                                                <button class="btn-estorno" @onclick="() => Estornar(p.Id)">↩</button>
+                                                <button type="button" class="btn-estorno" @onclick="() => Estornar(p.Id)">↩</button>
                                             </td>
                                         </Authorized>
                                     </AuthorizeView>

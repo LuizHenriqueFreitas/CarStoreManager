@@ -6,7 +6,7 @@
         <div class="modal-box" @onclick:stopPropagation>
             <div class="modal-header">
                 <span class="modal-titulo">@Titulo</span>
-                <button class="modal-fechar" @onclick="Fechar">×</button>
+                <button type="button" class="modal-fechar" @onclick="Fechar">×</button>
             </div>
 
             <p class="modal-desc">@Descricao</p>
@@ -33,8 +33,8 @@
             }
 
             <div class="modal-acoes">
-                <button class="btn-cancelar" @onclick="Fechar">Cancelar</button>
-                <button class="@($"btn-confirmar {(Destrutivo ? "destrutivo" : "")}")"
+                <button type="button" class="btn-cancelar" @onclick="Fechar">Cancelar</button>
+                <button type="button" class="@($"btn-confirmar {(Destrutivo ? "destrutivo" : "")}")"
                         @onclick="Confirmar"
                         disabled="@(string.IsNullOrWhiteSpace(senha) || carregando)">
                     @if (carregando)

@@ -27,7 +27,7 @@
             @if (StatusOrdem == "EmAndamento")
             {
                 <div class="al-novo-detail">
-                    <button class="al-novo-toggle" @onclick="() => formAberto = !formAberto">
+                    <button type="button" class="al-novo-toggle" @onclick="() => formAberto = !formAberto">
                         @(formAberto ? "−" : "+") Encontrei avaria/problema novo → Emitir alerta para a recepção
                     </button>
                     @if (formAberto)
@@ -36,7 +36,7 @@
                             <label>Descreva o problema/avaria encontrado</label>
                             <textarea rows="3" @bind="novoDescricao"
                                       placeholder="O que você encontrou? Por que precisa de novo orçamento?"></textarea>
-                            <button class="al-btn-primary" @onclick='() => PedirConfirmacao("Emitir alerta", "Deseja emitir este alerta? A OS será pausada até o cliente decidir.", Emitir, destrutivo: true)' disabled="@processando">
+                            <button type="button" class="al-btn-primary" @onclick='() => PedirConfirmacao("Emitir alerta", "Deseja emitir este alerta? A OS será pausada até o cliente decidir.", Emitir, destrutivo: true)' disabled="@processando">
                                 🚨 Emitir alerta (pausa a OS)
                             </button>
                             <p class="al-muted">A OS será pausada até o cliente decidir (via recepção) se aprova ou recusa o novo escopo.</p>
@@ -89,10 +89,10 @@
                                 <div class="al-acoes-rec">
                                     <input type="text" @bind="obsCliente"
                                            placeholder="O que o cliente disse (opc)" class="al-obs" />
-                                    <button class="al-btn-ok" @onclick='() => PedirConfirmacao("Registrar decisão", "Confirma que o cliente APROVOU o novo orçamento?", () => Resolver(a.Id, true))' disabled="@processando">
+                                    <button type="button" class="al-btn-ok" @onclick='() => PedirConfirmacao("Registrar decisão", "Confirma que o cliente APROVOU o novo orçamento?", () => Resolver(a.Id, true))' disabled="@processando">
                                         ✓ Cliente APROVOU novo orçamento
                                     </button>
-                                    <button class="al-btn-recusa" @onclick='() => PedirConfirmacao("Registrar decisão", "Confirma que o cliente decidiu manter o escopo original?", () => Resolver(a.Id, false))' disabled="@processando">
+                                    <button type="button" class="al-btn-recusa" @onclick='() => PedirConfirmacao("Registrar decisão", "Confirma que o cliente decidiu manter o escopo original?", () => Resolver(a.Id, false))' disabled="@processando">
                                         ↩ Cliente decidiu manter o original
                                     </button>
                                 </div>

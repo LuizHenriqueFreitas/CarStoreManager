@@ -33,7 +33,7 @@
         </div>
         <div class="cluster">
             <input type="number" min="1" max="28" @bind="diaFechamento" class="dia-input" />
-            <button class="btn btn-primario" @onclick="SalvarDia" disabled="@salvandoDia">Salvar dia</button>
+            <button type="button" class="btn btn-primario" @onclick="SalvarDia" disabled="@salvandoDia">Salvar dia</button>
         </div>
     </div>
 
@@ -66,8 +66,8 @@
                             <td><input type="number" step="0.01" @bind="d.Valor" /></td>
                             <td class="c"><input type="checkbox" @bind="d.Ativa" /></td>
                             <td class="acoes">
-                                <button class="btn-mini ok" @onclick="() => Salvar(d)">Salvar</button>
-                                <button class="btn-mini neg" @onclick="() => Remover(d.Id)">Excluir</button>
+                                <button type="button" class="btn-mini ok" @onclick="() => Salvar(d)">Salvar</button>
+                                <button type="button" class="btn-mini neg" @onclick="() => Remover(d.Id)">Excluir</button>
                             </td>
                         </tr>
                     }
@@ -83,7 +83,7 @@
                         <td><input @bind="nova.Categoria" placeholder="energia, aluguel..." /></td>
                         <td><input type="number" step="0.01" @bind="nova.Valor" /></td>
                         <td class="c">—</td>
-                        <td class="acoes"><button class="btn-mini ok" @onclick="Adicionar">Adicionar</button></td>
+                        <td class="acoes"><button type="button" class="btn-mini ok" @onclick="Adicionar">Adicionar</button></td>
                     </tr>
                 </tbody>
             </table>

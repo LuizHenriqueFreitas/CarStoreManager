@@ -27,7 +27,7 @@
                     <img src="@foto.Url" @onclick="() => AbrirFullscreen(foto)" />
                     @if (PodeEditar)
                     {
-                        <button class="foto-remover" @onclick="() => RemoverFoto(foto)" title="Remover">×</button>
+                        <button type="button" class="foto-remover" @onclick="() => RemoverFoto(foto)" title="Remover">×</button>
                     }
                 </div>
             }
@@ -54,15 +54,15 @@
                         var idx = i;
                         <div class="upload-preview">
                             <img src="@previewsNovas[idx]" />
-                            <button class="upload-preview-remover" @onclick="() => RemoverSelecionado(idx)">×</button>
+                            <button type="button" class="upload-preview-remover" @onclick="() => RemoverSelecionado(idx)">×</button>
                         </div>
                     }
                 </div>
                 <div class="upload-acoes">
-                    <button class="btn-enviar" @onclick="EnviarFotos" disabled="@uploading">
+                    <button type="button" class="btn-enviar" @onclick="EnviarFotos" disabled="@uploading">
                         @(uploading ? "Enviando..." : $"Enviar {arquivosSelecionados.Count} foto(s)")
                     </button>
-                    <button class="btn-cancelar" @onclick="CancelarSelecao" disabled="@uploading">Cancelar</button>
+                    <button type="button" class="btn-cancelar" @onclick="CancelarSelecao" disabled="@uploading">Cancelar</button>
                 </div>
             }
 
@@ -78,7 +78,7 @@
 {
     <div class="fs-overlay" @onclick="FecharFullscreen">
         <img src="@fotoFullscreen.Url" @onclick:stopPropagation />
-        <button class="fs-fechar" @onclick="FecharFullscreen">×</button>
+        <button type="button" class="fs-fechar" @onclick="FecharFullscreen">×</button>
     </div>
 }
 

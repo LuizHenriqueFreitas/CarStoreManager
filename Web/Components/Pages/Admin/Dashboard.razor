@@ -37,7 +37,7 @@
             <div data-tour="dashboard-periodo">
                 <SeletorPeriodo @bind-Inicio="inicio" @bind-Fim="fim" OnAlterado="OnPeriodoAlterado" />
             </div>
-            <button class="btn-relatorio" data-tour="dashboard-relatorio" @onclick='() => Nav.NavigateTo("/financeiro/relatorios")'>
+            <button type="button" class="btn-relatorio" data-tour="dashboard-relatorio" @onclick='() => Nav.NavigateTo("/financeiro/relatorios")'>
                 📄 Relatório
             </button>
             <a class="btn-usuarios" href="/financeiro">Financeiro →</a>
@@ -47,15 +47,15 @@
     <div class="dash-abas" data-tour="dashboard-abas">
         @if (PodeVerOficina && PodeVerConcessionaria)
         {
-            <button class="@AbaClass("geral")" @onclick='() => SetAba("geral")'>Geral</button>
+            <button type="button" class="@AbaClass("geral")" @onclick='() => SetAba("geral")'>Geral</button>
         }
         @if (PodeVerOficina)
         {
-            <button class="@AbaClass("oficina")" @onclick='() => SetAba("oficina")'>Oficina</button>
+            <button type="button" class="@AbaClass("oficina")" @onclick='() => SetAba("oficina")'>Oficina</button>
         }
         @if (PodeVerConcessionaria)
         {
-            <button class="@AbaClass("concessionaria")" @onclick='() => SetAba("concessionaria")'>Concessionária</button>
+            <button type="button" class="@AbaClass("concessionaria")" @onclick='() => SetAba("concessionaria")'>Concessionária</button>
         }
     </div>
 
@@ -179,13 +179,6 @@
                 <div class="grafico-card">
                     <h3 class="grafico-titulo">Receita por mecânico (top 5)</h3>
                     <div class="grafico-area"><canvas id="chartReceitaMecanico"></canvas></div>
-                </div>
-            </div>
-
-            <div class="grafico-row">
-                <div class="grafico-card grafico-largo">
-                    <h3 class="grafico-titulo">Receita de serviços acumulada — últimos 12 meses</h3>
-                    <div class="grafico-area"><canvas id="chartReceitaAcumulada12m"></canvas></div>
                 </div>
             </div>
 
@@ -701,21 +694,6 @@
             await JS.InvokeVoidAsync("carstoreChart.comparativo", "chartReceitaMecanico",
                 metricas.ReceitaPorMecanico.Select(m => new { rotulo = m.MecanicoNome, valor = m.Receita }).ToArray(), "R$");
 
-            var labelsAcumulada = metricas.SerieReceitaServicosAcumulada12m.Select(s => s.Label).ToArray();
-            var dadosAcumulada = metricas.SerieReceitaServicosAcumulada12m.Select(s => s.Valor).ToArray();
-            var datasetAcumulada = new object[]
-            {
-                new {
-                    label = "Receita acumulada",
-                    data = dadosAcumulada,
-                    borderColor = "#16a34a",
-                    backgroundColor = "rgba(22, 163, 74, 0.1)",
-                    tension = 0.3, fill = true
-                }
-            };
-            await JS.InvokeVoidAsync("carstoreChart.render",
-                "chartReceitaAcumulada12m", "line", labelsAcumulada, datasetAcumulada, commonOpts);
-
             await RenderizarGraficoPorId("mecanicos-por-especializacao", "chartMecanicosEspecializacao");
             await RenderizarGraficoPorId("servicos-tipo", "chartServicosTipo");
             await RenderizarGraficoPorId("marcas-visitam-oficina", "chartMarcasVisitamOficina");
@@ -864,7 +842,7 @@
         {
             foreach (var id in new[] {
                 "chartFaturamento6m", "chartAnaliseSelecionada", "chartComparacaoReceita",
-                "chartOficina6m", "chartOSStatusOf", "chartReceitaMecanico", "chartReceitaAcumulada12m",
+                "chartOficina6m", "chartOSStatusOf", "chartReceitaMecanico",
                 "chartMecanicosEspecializacao", "chartServicosTipo", "chartMarcasVisitamOficina",
                 "chartEstoquePorSistema", "chartPrazoMedioServico", "chartAnaliseSelecionadaOficina",
                 "chartConcessionaria6m", "chartVeiculosStatus", "chartVendasMarca", "chartPropostasTimeline",

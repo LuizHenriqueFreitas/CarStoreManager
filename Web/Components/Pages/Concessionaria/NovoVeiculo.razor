@@ -164,11 +164,11 @@
     }
 
     <div class="form-acoes">
-        <button class="btn-cancelar"
+        <button type="button" class="btn-cancelar"
                 @onclick='() => Nav.NavigateTo("/concessionaria")'>
             Cancelar
         </button>
-        <button class="btn-salvar" data-tour="veiculo-novo-salvar-btn" @onclick="IniciarSalvamento" disabled="@salvando">
+        <button type="button" class="btn-salvar" data-tour="veiculo-novo-salvar-btn" @onclick="IniciarSalvamento" disabled="@salvando">
             @(salvando ? "Salvando..." : "Cadastrar veículo")
         </button>
     </div>

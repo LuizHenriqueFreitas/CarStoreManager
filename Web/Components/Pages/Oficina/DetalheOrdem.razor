@@ -33,38 +33,38 @@ else
             <div class="header-acoes" data-tour="os-detalhe-acoes">
                 @if (PodeEnviarRevisao)
                 {
-                    <button class="btn-acao azul" @onclick='() => PedirConfirmacao("Enviar para revisão", "Deseja enviar esta OS para revisão do mecânico?", EnviarRevisao)'>Enviar para revisão</button>
+                    <button type="button" class="btn-acao azul" @onclick='() => PedirConfirmacao("Enviar para revisão", "Deseja enviar esta OS para revisão do mecânico?", EnviarRevisao)'>Enviar para revisão</button>
                 }
                 @if (PodeAprovarMecanico)
                 {
-                    <button class="btn-acao azul" @onclick='() => PedirConfirmacao("Aprovar orçamento", "Deseja aprovar este orçamento?", AprovarMecanico)'>Aprovar orçamento</button>
-                    <button class="btn-acao laranja" @onclick='() => PedirConfirmacao("Pedir ajustes", "Deseja devolver esta OS para ajustes no orçamento?", Devolver)'>Pedir ajustes</button>
+                    <button type="button" class="btn-acao azul" @onclick='() => PedirConfirmacao("Aprovar orçamento", "Deseja aprovar este orçamento?", AprovarMecanico)'>Aprovar orçamento</button>
+                    <button type="button" class="btn-acao laranja" @onclick='() => PedirConfirmacao("Pedir ajustes", "Deseja devolver esta OS para ajustes no orçamento?", Devolver)'>Pedir ajustes</button>
                 }
                 @if (PodeMarcarClienteAprovou)
                 {
-                    <button class="btn-acao verde" @onclick='() => PedirConfirmacao("Cliente aprovou", "Confirma que o cliente aprovou o orçamento?", ClienteAprovou)'>Cliente aprovou</button>
+                    <button type="button" class="btn-acao verde" @onclick='() => PedirConfirmacao("Cliente aprovou", "Confirma que o cliente aprovou o orçamento?", ClienteAprovou)'>Cliente aprovou</button>
                 }
                 @if (PodeIniciar)
                 {
-                    <button class="btn-acao azul" @onclick='() => PedirConfirmacao("Iniciar serviço", "Deseja iniciar o serviço desta OS?", IniciarOS)'>Iniciar serviço</button>
+                    <button type="button" class="btn-acao azul" @onclick='() => PedirConfirmacao("Iniciar serviço", "Deseja iniciar o serviço desta OS?", IniciarOS)'>Iniciar serviço</button>
                 }
                 @if (PodeFinalizar)
                 {
-                    <button class="btn-acao verde" @onclick='() => PedirConfirmacao("Finalizar serviço", "Deseja finalizar o serviço desta OS?", FinalizarOS)'>Finalizar serviço</button>
+                    <button type="button" class="btn-acao verde" @onclick='() => PedirConfirmacao("Finalizar serviço", "Deseja finalizar o serviço desta OS?", FinalizarOS)'>Finalizar serviço</button>
                 }
                 else if (os?.Status == "EmAndamento" && (ehAdmin || ehMecanico) && !ChecklistCompleto)
                 {
-                    <button class="btn-acao verde" disabled title="Conclua todos os itens do checklist para finalizar">
+                    <button type="button" class="btn-acao verde" disabled title="Conclua todos os itens do checklist para finalizar">
                         Finalizar serviço (checklist pendente)
                     </button>
                 }
                 @if (PodeEntregar)
                 {
-                    <button class="btn-acao verde" @onclick='() => PedirConfirmacao("Cobrar e entregar", "Deseja marcar esta OS como entregue ao cliente?", EntregarOS)'>💰 Cobrar e entregar</button>
+                    <button type="button" class="btn-acao verde" @onclick='() => PedirConfirmacao("Cobrar e entregar", "Deseja marcar esta OS como entregue ao cliente?", EntregarOS)'>💰 Cobrar e entregar</button>
                 }
                 @if (PodeCancelar)
                 {
-                    <button class="btn-acao vermelho" @onclick='() => PedirConfirmacao("Cancelar OS", "Deseja cancelar esta ordem de serviço? Essa ação não pode ser desfeita.", CancelarOS, destrutivo: true)'>Cancelar</button>
+                    <button type="button" class="btn-acao vermelho" @onclick='() => PedirConfirmacao("Cancelar OS", "Deseja cancelar esta ordem de serviço? Essa ação não pode ser desfeita.", CancelarOS, destrutivo: true)'>Cancelar</button>
                 }
             </div>
         </div>
@@ -123,7 +123,7 @@ else
                         <h2 class="card-titulo">Checklist</h2>
                         @if (PodeEditarChecklist)
                         {
-                            <button class="btn-mini" @onclick="() => mostrarAdicionarItem = true">
+                            <button type="button" class="btn-mini" @onclick="() => mostrarAdicionarItem = true">
                                 + Adicionar item
                             </button>
                         }
@@ -136,10 +136,10 @@ else
                                    placeholder="Descrição do item..."
                                    @bind="novoItemDescricao"
                                    @onkeydown="TeclaAdicionarItem" />
-                            <button class="btn-mini azul" @onclick='() => PedirConfirmacao("Adicionar item", "Deseja adicionar este item ao checklist?", AdicionarItemChecklist)'>
+                            <button type="button" class="btn-mini azul" @onclick='() => PedirConfirmacao("Adicionar item", "Deseja adicionar este item ao checklist?", AdicionarItemChecklist)'>
                                 Adicionar
                             </button>
-                            <button class="btn-mini" @onclick="() => mostrarAdicionarItem = false">
+                            <button type="button" class="btn-mini" @onclick="() => mostrarAdicionarItem = false">
                                 Cancelar
                             </button>
                         </div>
@@ -158,8 +158,8 @@ else
                                 {
                                     <input class="campo-input-inline" @bind="descricaoEdicao"
                                            @onkeydown="TeclaSalvarDescricao" />
-                                    <button class="btn-mini azul" @onclick='() => PedirConfirmacao("Salvar item", "Deseja salvar a nova descrição deste item?", () => SalvarDescricaoItem(item))'>Salvar</button>
-                                    <button class="btn-mini" @onclick="() => itemEmEdicao = Guid.Empty">Cancelar</button>
+                                    <button type="button" class="btn-mini azul" @onclick='() => PedirConfirmacao("Salvar item", "Deseja salvar a nova descrição deste item?", () => SalvarDescricaoItem(item))'>Salvar</button>
+                                    <button type="button" class="btn-mini" @onclick="() => itemEmEdicao = Guid.Empty">Cancelar</button>
                                 }
                                 else
                                 {
@@ -170,8 +170,8 @@ else
                                     <span class="check-status-label @CheckClass(item.Status)">@item.Status</span>
                                     @if (PodeEditarChecklist)
                                     {
-                                        <button class="btn-mini" @onclick="() => IniciarEdicaoItem(item)">Editar</button>
-                                        <button class="btn-mini btn-remover" @onclick='() => PedirConfirmacao("Remover item", "Deseja remover este item do checklist?", () => RemoverItemChecklist(item), destrutivo: true)'>×</button>
+                                        <button type="button" class="btn-mini" @onclick="() => IniciarEdicaoItem(item)">Editar</button>
+                                        <button type="button" class="btn-mini btn-remover" @onclick='() => PedirConfirmacao("Remover item", "Deseja remover este item do checklist?", () => RemoverItemChecklist(item), destrutivo: true)'>×</button>
                                     }
                                 }
                             </div>
@@ -188,7 +188,7 @@ else
                         <h2 class="card-titulo">Peças utilizadas</h2>
                         @if (PodeEditarItens)
                         {
-                            <button class="btn-mini" @onclick="AbrirModalAdicionarPeca">
+                            <button type="button" class="btn-mini" @onclick="AbrirModalAdicionarPeca">
                                 + Adicionar peça
                             </button>
                         }
@@ -221,7 +221,7 @@ else
                                 </span>
                                 @if (PodeEditarItens)
                                 {
-                                    <button class="btn-mini-icone" title="Remover"
+                                    <button type="button" class="btn-mini-icone" title="Remover"
                                             @onclick='() => PedirConfirmacao("Remover peça", "Deseja remover esta peça da OS?", () => RemoverPeca(item.Id), destrutivo: true)'>×</button>
                                 }
                             </div>
@@ -259,7 +259,7 @@ else
         <div class="modal-form" @onclick:stopPropagation>
             <div class="modal-header">
                 <span class="modal-titulo">Adicionar peça à OS</span>
-                <button class="modal-fechar" @onclick="() => modalPecaVisivel = false">×</button>
+                <button type="button" class="modal-fechar" @onclick="() => modalPecaVisivel = false">×</button>
             </div>
 
             <div class="form-campo">
@@ -365,8 +365,8 @@ else
             }
 
             <div class="modal-acoes">
-                <button class="btn-cancelar" @onclick="() => modalPecaVisivel = false">Cancelar</button>
-                <button class="btn-confirmar"
+                <button type="button" class="btn-cancelar" @onclick="() => modalPecaVisivel = false">Cancelar</button>
+                <button type="button" class="btn-confirmar"
                         @onclick='() => PedirConfirmacao("Adicionar peça", "Deseja adicionar esta peça à OS?", AdicionarPeca)'
                         disabled="@salvandoPeca">
                     @(salvandoPeca ? "Adicionando..." : "Adicionar")

@@ -80,11 +80,11 @@
         <div class="form-acoes">
             @if (config.Conectado)
             {
-                <button class="btn-cancelar" data-tour="ml-btn-desconectar" @onclick="Desconectar" disabled="@processando">Desconectar</button>
+                <button type="button" class="btn-cancelar" data-tour="ml-btn-desconectar" @onclick="Desconectar" disabled="@processando">Desconectar</button>
             }
             else
             {
-                <button class="btn-salvar" data-tour="ml-btn-conectar" @onclick="Conectar" disabled="@processando">
+                <button type="button" class="btn-salvar" data-tour="ml-btn-conectar" @onclick="Conectar" disabled="@processando">
                     @(processando ? "Conectando..." : "Conectar ao Mercado Livre")
                 </button>
             }

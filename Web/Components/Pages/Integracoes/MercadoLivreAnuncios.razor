@@ -17,7 +17,7 @@
             <h1 class="page-titulo">Anúncios no Mercado Livre</h1>
             <p class="lc-sub">@anuncios.Count anúncio(s)</p>
         </div>
-        <button class="btn-novo" data-tour="ml-anuncios-btn-status" @onclick='() => Nav.NavigateTo("/integracoes/mercadolivre")'>
+        <button type="button" class="btn-novo" data-tour="ml-anuncios-btn-status" @onclick='() => Nav.NavigateTo("/integracoes/mercadolivre")'>
             ← Status da conexão
         </button>
     </div>
@@ -57,8 +57,8 @@
                     </div>
                 </div>
                 <div class="form-acoes" style="margin-top: 12px;">
-                    <button class="btn-novo" @onclick="CancelarPublicacao" disabled="@publicando">Cancelar</button>
-                    <button class="btn-salvar" @onclick="ConfirmarPublicacao" disabled="@(publicando || string.IsNullOrWhiteSpace(categoriaEditavel))">
+                    <button type="button" class="btn-novo" @onclick="CancelarPublicacao" disabled="@publicando">Cancelar</button>
+                    <button type="button" class="btn-salvar" @onclick="ConfirmarPublicacao" disabled="@(publicando || string.IsNullOrWhiteSpace(categoriaEditavel))">
                         @(publicando ? "Publicando..." : "Confirmar publicação")
                     </button>
                 </div>
@@ -115,14 +115,14 @@
                     @if (a.Status == "Publicado")
                     {
                         <div class="dc-acoes">
-                            <button class="btn-acao btn-devolver" data-tour="ml-anuncios-btn-pausar" @onclick="() => Pausar(a.Id)" disabled="@processando">Pausar</button>
-                            <button class="btn-acao btn-cancelar-consig" data-tour="ml-anuncios-btn-encerrar" @onclick="() => Encerrar(a.Id)" disabled="@processando">Encerrar</button>
+                            <button type="button" class="btn-acao btn-devolver" data-tour="ml-anuncios-btn-pausar" @onclick="() => Pausar(a.Id)" disabled="@processando">Pausar</button>
+                            <button type="button" class="btn-acao btn-cancelar-consig" data-tour="ml-anuncios-btn-encerrar" @onclick="() => Encerrar(a.Id)" disabled="@processando">Encerrar</button>
                         </div>
                     }
                     else if (a.Status == "Pausado")
                     {
                         <div class="dc-acoes">
-                            <button class="btn-acao btn-cancelar-consig" data-tour="ml-anuncios-btn-encerrar" @onclick="() => Encerrar(a.Id)" disabled="@processando">Encerrar</button>
+                            <button type="button" class="btn-acao btn-cancelar-consig" data-tour="ml-anuncios-btn-encerrar" @onclick="() => Encerrar(a.Id)" disabled="@processando">Encerrar</button>
                         </div>
                     }
                 </div>

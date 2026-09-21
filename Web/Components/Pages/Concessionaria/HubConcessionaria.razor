@@ -10,6 +10,7 @@
 @inject IPropostaVendaService PropostaService
 @inject IDashboardService DashboardService
 @inject AuthenticationStateProvider AuthState
+@inject CarStoreManager.Application.Interfaces.Sistema.IPermissaoAcessoService PermissaoService
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @using System.Diagnostics.Metrics
@@ -25,7 +26,10 @@
 <div class="pagina">
     <PageHeader Titulo="Concessionária" Subtitulo="@subtitulo">
         <Acao>
-            <button class="btn btn-primario" @onclick='() => Nav.NavigateTo("/concessionaria/veiculo/novo")'>+ Cadastrar veículo</button>
+            @if (podeCadastrarVeiculo)
+            {
+                <button type="button" class="btn btn-primario" @onclick='() => Nav.NavigateTo("/concessionaria/veiculo/novo")'>+ Cadastrar veículo</button>
+            }
         </Acao>
     </PageHeader>
 
@@ -216,6 +220,7 @@
     private decimal ticketMedio;
     private bool carregando = true;
     private bool podeVerFinanceiro;
+    private bool podeCadastrarVeiculo;
     private string subtitulo = "";
 
     private IEnumerable<MenuAtalhos.Item> atalhos
@@ -245,6 +250,10 @@
     {
         var state = await AuthState.GetAuthenticationStateAsync();
         podeVerFinanceiro = state.User.IsInRole("Admin") || state.User.IsInRole("GerenteVendas");
+
+        var roleClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        if (Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out var role))
+            podeCadastrarVeiculo = await PermissaoService.PodeAcessarAsync(role, "acao:concessionaria.cadastrar-veiculo");
 
         var tV = VeiculoService.GetAllAsync();
         var tC = ConsignacaoService.GetAllAsync();
@@ -347,6 +356,15 @@
     .fin-linha .pos { color: var(--cor-ok-tx); } .fin-linha .neg { color: var(--cor-erro-tx); }
     .fin-link { display: inline-block; margin-top: var(--sp-2); font-size: var(--txt-sm); color: var(--cor-acao); text-decoration: none; }
 
+    /* Mesmo padrão do hub da Oficina (GestaoOficina.razor) — os dois
+       gráficos lado a lado em cards de mesma altura. CSS é escopado por
+       arquivo no Blazor, então precisa estar repetido aqui, não só lá. */
+    .graf-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); margin-bottom: var(--sp-6); }
+    .grafico-card { background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); padding: var(--sp-4); }
+    .grafico-titulo { font-size: var(--txt-sm); font-weight: var(--peso-medio); color: var(--cor-tinta); margin: 0 0 var(--sp-3); }
+    .grafico-area { position: relative; height: 240px; }
+
     @@media (max-width: 1200px) { .hub-grid { grid-template-columns: 1fr; } }
     @@media (max-width: 1000px) { .hub-layout { grid-template-columns: 1fr; } }
+    @@media (max-width: 900px) { .graf-row { grid-template-columns: 1fr; } }
 </style>

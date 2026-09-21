@@ -20,7 +20,7 @@
             <h1 class="page-titulo">Equipe</h1>
             <p class="page-sub">Funcionários do sistema: vendedores, mecânicos, recepção e gestão</p>
         </div>
-        <button class="btn-novo" data-tour="usuarios-btn-novo" @onclick="AbrirModalNovoUsuario">+ Novo usuário</button>
+        <button type="button" class="btn-novo" data-tour="usuarios-btn-novo" @onclick="AbrirModalNovoUsuario">+ Novo usuário</button>
     </div>
 
     <div class="toolbar">
@@ -67,7 +67,7 @@
                             <td class="acoes">
                                 @if (u.Id != usuarioAtualId)
                                 {
-                                    <button class="btn-desativar" data-tour="usuarios-btn-desativar"
+                                    <button type="button" class="btn-desativar" data-tour="usuarios-btn-desativar"
                                             @onclick="() => ConfirmarDesativar(u.Id, u.Nome)">
                                         Desativar
                                     </button>
@@ -91,7 +91,7 @@
         <div class="modal-form" @onclick:stopPropagation>
             <div class="modal-header">
                 <span class="modal-titulo">Novo usuário</span>
-                <button class="modal-fechar"
+                <button type="button" class="modal-fechar"
                         @onclick="() => modalNovoUsuarioVisivel = false">×</button>
             </div>
 
@@ -154,11 +154,11 @@
             }
 
             <div class="modal-acoes">
-                <button class="btn-cancelar"
+                <button type="button" class="btn-cancelar"
                         @onclick="() => modalNovoUsuarioVisivel = false">
                     Cancelar
                 </button>
-                <button class="btn-confirmar"
+                <button type="button" class="btn-confirmar"
                         @onclick="CriarUsuario"
                         disabled="@salvando">
                     @(salvando ? "Criando..." : "Criar usuário")

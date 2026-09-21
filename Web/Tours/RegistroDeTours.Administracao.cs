@@ -275,6 +275,88 @@ public static partial class RegistroDeTours
                     Texto = "Importar carrega uma base a partir de um arquivo JSON. Exportar baixa todo o banco " +
                         "de dados da aplicação num único arquivo JSON — use para backup. A planilha de despesas " +
                         "mudou de lugar: agora fica no Financeiro."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Permissões de acesso",
+                    Texto = "Escolha quais papéis acessam cada página e ação do sistema — desmarque uma célula " +
+                        "pra tirar o acesso daquele papel. Só é possível restringir dentro do que o sistema já " +
+                        "permite; não dá pra liberar acesso além disso por aqui."
+                }
+            }
+        },
+
+        // ============================================================
+        // CONFIGURAÇÕES DO SISTEMA — "/configuracoes/sistema" é a mesma
+        // tela de "/configuracoes" (Web/Components/Pages/Admin/
+        // Configuracoes.razor tem os dois @page), só que sem nenhum link
+        // na UI apontando pra essa segunda URL (o menu usa "/configuracoes"
+        // sem sufixo) — mesmo assim é uma rota real e alcançável direto, e
+        // precisa do próprio tour (mesmo conteúdo do de cima).
+        // ============================================================
+        new TourDaPagina
+        {
+            RotaTemplate = "/configuracoes/sistema",
+            Titulo = "Configurações do sistema",
+            Descricao = "Integrações, checklists, modo operante, documentos e importação.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Configurações administrativas",
+                    Texto = "Parâmetros que afetam o sistema inteiro. Só o administrador acessa. Escolha uma " +
+                        "das áreas nos cartões — cada uma abre sua própria tela."
+                },
+                new()
+                {
+                    Seletor = "config-cards",
+                    Titulo = "Cada card é um atalho",
+                    Texto = "Clique em um card para abrir a área correspondente — inclusive o formulário " +
+                        "mensal de despesas. Os mesmos destinos também estão no menu \"Configurações\" da " +
+                        "barra superior."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Integrações",
+                    Texto = "Conexão com o Mercado Livre e gerenciamento dos anúncios publicados."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Checklists",
+                    Texto = "Modelos de checklist reaproveitáveis na abertura de uma OS. Ao escolher um preset " +
+                        "na OS, os itens são copiados — editar o preset depois não muda as OS já criadas."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Modo operante",
+                    Texto = "Ajustes globais de operação, como exigir entrada mínima para iniciar um serviço."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Documentos",
+                    Texto = "Templates dos documentos gerados pelo sistema (termos, propostas)."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Importar e Exportar dados",
+                    Texto = "Importar carrega uma base a partir de um arquivo JSON. Exportar baixa todo o banco " +
+                        "de dados da aplicação num único arquivo JSON — use para backup. A planilha de despesas " +
+                        "mudou de lugar: agora fica no Financeiro."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Permissões de acesso",
+                    Texto = "Escolha quais papéis acessam cada página e ação do sistema — desmarque uma célula " +
+                        "pra tirar o acesso daquele papel. Só é possível restringir dentro do que o sistema já " +
+                        "permite; não dá pra liberar acesso além disso por aqui."
                 }
             }
         },

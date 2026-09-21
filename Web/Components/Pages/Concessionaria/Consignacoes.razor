@@ -13,7 +13,7 @@
 <div class="pagina">
     <PageHeader Titulo="Consignações" Subtitulo="@($"{consignacoes.Count} consignação(ões) · {ativas} ativa(s)")">
         <Acao>
-            <button class="btn btn-primario" @onclick='() => Nav.NavigateTo("/concessionaria/veiculo-consignado/novo")'>
+            <button type="button" class="btn btn-primario" @onclick='() => Nav.NavigateTo("/concessionaria/veiculo-consignado/novo")'>
                 + Cadastrar consignação
             </button>
         </Acao>
@@ -72,7 +72,7 @@
                             <td class="acoes" @onclick:stopPropagation="true">
                                 @if (c.Status == "Ativa" && (c.EstaVencido || c.DiasRestantes <= 10))
                                 {
-                                    <button class="btn-mini" @onclick="() => Renovar(c.Id)">Renovar +90d</button>
+                                    <button type="button" class="btn-mini" @onclick="() => Renovar(c.Id)">Renovar +90d</button>
                                 }
                             </td>
                         </tr>

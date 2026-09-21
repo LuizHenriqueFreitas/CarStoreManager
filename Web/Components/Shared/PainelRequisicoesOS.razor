@@ -29,7 +29,7 @@
             @if (PodeRequisitar)
             {
                 <div class="rq-novo-detail">
-                    <button class="rq-novo-toggle" @onclick="() => formRequisicaoAberto = !formRequisicaoAberto">
+                    <button type="button" class="rq-novo-toggle" @onclick="() => formRequisicaoAberto = !formRequisicaoAberto">
                         @(formRequisicaoAberto ? "−" : "+") Não achei a peça que preciso → Requisitar ao admin
                     </button>
                     @if (formRequisicaoAberto)
@@ -48,7 +48,7 @@
                                     <label>Quantidade</label>
                                     <input type="number" min="1" @bind="formNovo.Quantidade" />
                                 </div>
-                                <button class="rq-btn-primary" @onclick='() => PedirConfirmacao("Enviar requisição", "Deseja enviar esta requisição de peça ao admin? A OS ficará pausada até ser atendida.", Abrir)' disabled="@processando">
+                                <button type="button" class="rq-btn-primary" @onclick='() => PedirConfirmacao("Enviar requisição", "Deseja enviar esta requisição de peça ao admin? A OS ficará pausada até ser atendida.", Abrir)' disabled="@processando">
                                     Enviar requisição
                                 </button>
                             </div>
@@ -132,14 +132,14 @@
                                                placeholder="Valor unit." @bind="atenderValor" />
                                     }
                                     <input type="text" @bind="atenderObs" placeholder="Observação (opc)" class="rq-obs" />
-                                    <button class="rq-btn-ok"
+                                    <button type="button" class="rq-btn-ok"
                                             @onclick='() => PedirConfirmacao("Atender requisição", "Deseja atender esta requisição e adicionar o componente à OS como Encomenda?", () => Atender(r.Id))'
                                             disabled="@(componenteSelecionado is null || processando)">
                                         ✓ Atender e adicionar à OS
                                     </button>
 
                                     <input type="text" @bind="rejeitarMotivo" placeholder="Motivo da rejeição" class="rq-obs" />
-                                    <button class="rq-btn-recusa"
+                                    <button type="button" class="rq-btn-recusa"
                                             @onclick='() => PedirConfirmacao("Rejeitar requisição", "Deseja rejeitar esta requisição de peça?", () => Rejeitar(r.Id), destrutivo: true)'
                                             disabled="@(string.IsNullOrWhiteSpace(rejeitarMotivo) || processando)">
                                         ✗ Rejeitar
@@ -156,7 +156,7 @@
             <Authorized>
                 @if (StatusOrdem == "BuscandoPecasParaOrcamento" && requisicoes.All(r => r.Status != "Pendente"))
                 {
-                    <button class="rq-btn-primary rq-liberar" @onclick='() => PedirConfirmacao("Liberar OS", "Deseja liberar esta OS para continuar a montagem do orçamento?", Liberar)' disabled="@processando">
+                    <button type="button" class="rq-btn-primary rq-liberar" @onclick='() => PedirConfirmacao("Liberar OS", "Deseja liberar esta OS para continuar a montagem do orçamento?", Liberar)' disabled="@processando">
                         ▶ Liberar OS para continuar montagem do orçamento
                     </button>
                 }

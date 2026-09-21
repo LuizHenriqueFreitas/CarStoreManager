@@ -9,6 +9,7 @@
 @inject IFornecedorService FornecedorService
 @inject IMercadoLivrePublicacaoService MercadoLivreService
 @inject AuthenticationStateProvider AuthState
+@inject CarStoreManager.Application.Interfaces.Sistema.IPermissaoAcessoService PermissaoService
 @inject NavigationManager Nav
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Oficina.Componente
@@ -25,27 +26,31 @@
         <Acao>
             @if (ehAdmin)
             {
-                <button class="btn btn-primario" data-tour="comp-btn-novo" @onclick="AbrirModalNovo">+ Novo componente</button>
+                <button type="button" class="btn btn-primario" data-tour="comp-btn-novo" @onclick="AbrirModalNovo">+ Novo componente</button>
             }
         </Acao>
     </PageHeader>
 
-    <SubNav Itens="SubNavOficina.Itens(false)" />
+    <SubNav Itens="subNavItens" />
 
     @if (!carregando)
     {
         <StatCardGrid MinColuna="160">
             <MetricCard Rotulo="Componentes" Valor="@componentes.Count.ToString()" />
             <MetricCard Rotulo="Unidades em estoque" Valor="@estoques.Sum(e => e.QuantidadeAtual).ToString()" />
-            <MetricCard Rotulo="Abaixo do mínimo" Valor="@estoquesBaixo.Count.ToString()" Tom="@(estoquesBaixo.Count > 0 ? "alerta" : "")" />
+            <div data-tour="comp-alerta-estoque">
+                <MetricCard Rotulo="Abaixo do mínimo" Valor="@estoquesBaixo.Count.ToString()" Tom="@(estoquesBaixo.Count > 0 ? "alerta" : "")" />
+            </div>
             <MetricCard Rotulo="Sem estoque" Valor="@estoques.Count(e => e.SemEstoque).ToString()" Tom="@(estoques.Any(e => e.SemEstoque) ? "erro" : "")" />
         </StatCardGrid>
     }
 
-    <FiltroBar @bind-Busca="termoBusca" BuscaPlaceholder="Buscar por nome, SKU, OEM, PartNumber, marca..." OnBusca="AplicarFiltro">
-        <FiltroSelect Rotulo="Situação" @bind-Valor="filtroSituacao" OnMudou="AplicarFiltro" Opcoes="opcoesSituacao" />
-        <FiltroSelect Rotulo="Sistema" @bind-Valor="filtroSistema" OnMudou="AplicarFiltro" Opcoes="opcoesSistema" />
-    </FiltroBar>
+    <div data-tour="comp-filtros">
+        <FiltroBar @bind-Busca="termoBusca" BuscaPlaceholder="Buscar por nome, SKU, OEM, PartNumber, marca..." OnBusca="AplicarFiltro">
+            <FiltroSelect Rotulo="Situação" @bind-Valor="filtroSituacao" OnMudou="AplicarFiltro" Opcoes="opcoesSituacao" />
+            <FiltroSelect Rotulo="Sistema" @bind-Valor="filtroSistema" OnMudou="AplicarFiltro" Opcoes="opcoesSistema" />
+        </FiltroBar>
+    </div>
 
     @if (carregando)
     {
@@ -88,11 +93,11 @@
                             {
                                 <td>
                                     <div class="comp-acoes" data-tour="comp-row-acoes">
-                                        <button class="btn-mini verde"
+                                        <button type="button" class="btn-mini verde"
                                                 @onclick="() => AbrirModalEntrada(c)">
                                             + Entrada
                                         </button>
-                                        <button class="btn-mini"
+                                        <button type="button" class="btn-mini"
                                                 @onclick="() => AbrirModalMinimo(c, est)">
                                             Mínimo
                                         </button>
@@ -113,7 +118,7 @@
         <div class="modal-form" @onclick:stopPropagation>
             <div class="modal-header">
                 <span class="modal-titulo">Novo componente</span>
-                <button class="modal-fechar"
+                <button type="button" class="modal-fechar"
                         @onclick="() => modalNovoVisivel = false">×</button>
             </div>
 
@@ -226,9 +231,9 @@
             }
 
             <div class="modal-acoes">
-                <button class="btn-cancelar"
+                <button type="button" class="btn-cancelar"
                         @onclick="() => modalNovoVisivel = false">Cancelar</button>
-                <button class="btn-confirmar"
+                <button type="button" class="btn-confirmar"
                         @onclick="SalvarComponente"
                         disabled="@salvando">
                     @(salvando ? "Salvando..." : "Cadastrar")
@@ -244,7 +249,7 @@
         <div class="modal-form pequeno" @onclick:stopPropagation>
             <div class="modal-header">
                 <span class="modal-titulo">Entrada de estoque</span>
-                <button class="modal-fechar"
+                <button type="button" class="modal-fechar"
                         @onclick="() => modalEntradaVisivel = false">×</button>
             </div>
             <p class="modal-sub">@componenteSelecionado?.Nome</p>
@@ -265,9 +270,9 @@
             }
 
             <div class="modal-acoes">
-                <button class="btn-cancelar"
+                <button type="button" class="btn-cancelar"
                         @onclick="() => modalEntradaVisivel = false">Cancelar</button>
-                <button class="btn-confirmar verde"
+                <button type="button" class="btn-confirmar verde"
                         @onclick="ConfirmarEntrada"
                         disabled="@salvando">
                     @(salvando ? "Salvando..." : "Confirmar entrada")
@@ -283,7 +288,7 @@
         <div class="modal-form pequeno" @onclick:stopPropagation>
             <div class="modal-header">
                 <span class="modal-titulo">Estoque mínimo</span>
-                <button class="modal-fechar"
+                <button type="button" class="modal-fechar"
                         @onclick="() => modalMinimoVisivel = false">×</button>
             </div>
             <p class="modal-sub">@componenteSelecionado?.Nome</p>
@@ -301,9 +306,9 @@
             }
 
             <div class="modal-acoes">
-                <button class="btn-cancelar"
+                <button type="button" class="btn-cancelar"
                         @onclick="() => modalMinimoVisivel = false">Cancelar</button>
-                <button class="btn-confirmar"
+                <button type="button" class="btn-confirmar"
                         @onclick="ConfirmarMinimo"
                         disabled="@salvando">
                     @(salvando ? "Salvando..." : "Salvar")
@@ -319,7 +324,7 @@
         <div class="modal-form" @onclick:stopPropagation>
             <div class="modal-header">
                 <span class="modal-titulo">@componenteDetalhe.Nome</span>
-                <button class="modal-fechar"
+                <button type="button" class="modal-fechar"
                         @onclick="() => modalDetalheVisivel = false">×</button>
             </div>
 
@@ -381,12 +386,12 @@
             }
 
             <div class="detalhe-acoes">
-                <button class="btn-confirmar" @onclick="BuscarEquivalentes" disabled="@buscandoEquivalentes">
+                <button type="button" class="btn-confirmar" @onclick="BuscarEquivalentes" disabled="@buscandoEquivalentes">
                     @(buscandoEquivalentes ? "Buscando..." : "🔎 Buscar equivalentes (OEM)")
                 </button>
                 @if (ehAdmin)
                 {
-                    <button class="btn-confirmar" @onclick="PublicarNoMercadoLivre">
+                    <button type="button" class="btn-confirmar" @onclick="PublicarNoMercadoLivre">
                         Publicar no Mercado Livre
                     </button>
                 }
@@ -449,6 +454,7 @@
         .Concat(todosSistemas.Select(s => new FiltroSelect.Opcao(s, s))).ToList();
     private bool carregando = true;
     private bool ehAdmin = false;
+    private List<SubNav.Item> subNavItens = new();
     private bool modalNovoVisivel = false;
     private bool modalEntradaVisivel = false;
     private bool modalMinimoVisivel = false;
@@ -488,6 +494,10 @@
     {
         var state = await AuthState.GetAuthenticationStateAsync();
         ehAdmin = state.User.IsInRole("Admin");
+
+        var roleClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        if (Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out var role))
+            subNavItens = await SubNavOficina.ItensAsync(false, role, PermissaoService);
 
         await CarregarDados();
     }

@@ -340,8 +340,8 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "comp-alerta-estoque",
                     Titulo = "Estoque abaixo do mínimo",
-                    Texto = "Este aviso aparece quando alguma peça está com quantidade abaixo do mínimo " +
-                        "configurado para ela. Clique para filtrar só as peças nessa situação."
+                    Texto = "Mostra quantas peças estão com quantidade abaixo do mínimo configurado para elas. " +
+                        "Use o filtro \"Situação\" logo abaixo, opção \"Abaixo do mínimo\", pra ver só essas peças."
                 },
                 new()
                 {

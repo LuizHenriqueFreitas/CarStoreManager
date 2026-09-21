@@ -8,7 +8,7 @@
 <div class="nav-area @(aberto ? "aberto" : "")"
      @onmouseenter="() => aberto = true"
      @onmouseleave="() => aberto = false">
-    <button class="nav-link nav-area-trigger @(NaArea ? "nav-link-active" : "")"
+    <button type="button" class="nav-link nav-area-trigger @(NaArea ? "nav-link-active" : "")"
             @onclick="Toggle" aria-haspopup="true" aria-expanded="@aberto.ToString().ToLower()">
         @Titulo <span class="nav-area-seta">▾</span>
     </button>

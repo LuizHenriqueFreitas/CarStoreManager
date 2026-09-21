@@ -31,7 +31,7 @@
                 <input class="campo-input" @bind="form.Telefone" />
             </div>
         </div>
-        <button class="btn-salvar" data-tour="conta-btn-salvar-dados" @onclick="AtualizarDados" disabled="@salvandoDados">
+        <button type="button" class="btn-salvar" data-tour="conta-btn-salvar-dados" @onclick="AtualizarDados" disabled="@salvandoDados">
             @(salvandoDados ? "Salvando..." : "Salvar alterações")
         </button>
         @if (!string.IsNullOrEmpty(mensagemDados))
@@ -56,7 +56,7 @@
                 <input type="password" class="campo-input" @bind="confirmacaoSenha" />
             </div>
         </div>
-        <button class="btn-salvar" data-tour="conta-btn-salvar-senha" @onclick="AlterarSenha" disabled="@salvandoSenha">
+        <button type="button" class="btn-salvar" data-tour="conta-btn-salvar-senha" @onclick="AlterarSenha" disabled="@salvandoSenha">
             @(salvandoSenha ? "Salvando..." : "Alterar senha")
         </button>
         @if (!string.IsNullOrEmpty(mensagemSenha))

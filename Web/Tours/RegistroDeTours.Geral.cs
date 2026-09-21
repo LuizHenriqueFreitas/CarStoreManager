@@ -49,9 +49,10 @@ public static partial class RegistroDeTours
                 new()
                 {
                     Seletor = "inicio-faturamento",
-                    Titulo = "Faturamento",
-                    Texto = "Linha com a receita total (oficina + concessionária somadas) mês a mês, dentro " +
-                        "do período escolhido no seletor acima. Aparece para administração e gestão."
+                    Titulo = "Receitas e despesas",
+                    Texto = "Três linhas separadas — receita da oficina, receita da concessionária e despesa " +
+                        "— mês a mês, dentro do período escolhido no seletor acima. Nunca somadas numa linha só, " +
+                        "pra não misturar dinheiro de setores diferentes. Aparece para administração e gestão."
                 },
                 new()
                 {
@@ -62,7 +63,7 @@ public static partial class RegistroDeTours
                 },
                 new()
                 {
-                    Seletor = "inicio-atalhos",
+                    Seletor = "inicio-hub-atalhos",
                     Titulo = "Atalhos",
                     Texto = "Acesso rápido a clientes, relatórios, análises, despesas do mês e configurações — " +
                         "sem passar pelo menu."

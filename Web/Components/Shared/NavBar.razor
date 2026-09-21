@@ -1,11 +1,13 @@
 @namespace CarStoreManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 @using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.Interfaces.Sistema
 @using CarStoreManager.Web.Tours
 @using Microsoft.JSInterop
 @inject NavigationManager Navigation
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IPermissaoAcessoService PermissaoService
 @inject IJSRuntime JS
 @inject TourEstadoService TourEstado
 @implements IDisposable
@@ -30,7 +32,7 @@
 
         <AuthorizeView Roles="Admin,ChefeOficina,Mecanico,Recepcionista" Context="c2">
             <NavArea Titulo="Oficina" RotaBase="/oficina"
-                     Itens="@ItensOficina(c2.User)" OnNavegar="FecharMobile" />
+                     Itens="@itensOficinaAtual" OnNavegar="FecharMobile" />
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin,GerenteVendas,Vendedor,ChefeOficina,Recepcionista" Context="cCli">
@@ -69,17 +71,17 @@
 
         <AuthorizeView Roles="Admin,GerenteVendas,ChefeOficina" Context="c5">
             <NavArea Titulo="Configurações" RotaBase="/configuracoes"
-                     Itens="@ItensConfiguracoes(c5.User)" OnNavegar="FecharMobile" />
+                     Itens="@itensConfiguracoesAtual" OnNavegar="FecharMobile" />
         </AuthorizeView>
     </div>
 
     <div class="navbar-direita">
-        <button class="tour-btn-ajuda" @onclick="AbrirTourAsync" title="Ajuda desta tela" aria-label="Ajuda desta tela">
+        <button type="button" class="tour-btn-ajuda" @onclick="AbrirTourAsync" title="Ajuda desta tela" aria-label="Ajuda desta tela">
             ?
         </button>
 
         <div class="navbar-user">
-            <button class="navbar-user-btn" @onclick="ToggleDropdown"
+            <button type="button" class="navbar-user-btn" @onclick="ToggleDropdown"
                     aria-haspopup="true" aria-expanded="@dropdownAberto.ToString().ToLower()">
                 <span class="navbar-avatar">@(NomeUsuario.Length > 0 ? NomeUsuario[0].ToString().ToUpper() : "?")</span>
                 <span class="navbar-user-nome">@NomeUsuario</span>
@@ -93,13 +95,13 @@
                         <div class="dropdown-nome">@NomeUsuario</div>
                         <div class="dropdown-role">@Role</div>
                     </div>
-                    <button class="dropdown-item" @onclick="IrParaConta">Minha conta</button>
-                    <button class="dropdown-item" @onclick="Logout">Sair</button>
+                    <button type="button" class="dropdown-item" @onclick="IrParaConta">Minha conta</button>
+                    <button type="button" class="dropdown-item" @onclick="Logout">Sair</button>
                 </div>
             }
         </div>
 
-        <button class="navbar-hamburguer" @onclick="ToggleMenuMobile"
+        <button type="button" class="navbar-hamburguer" @onclick="ToggleMenuMobile"
                 title="Menu" aria-label="Abrir menu" aria-expanded="@menuMobileAberto.ToString().ToLower()">
             <span></span><span></span><span></span>
         </button>
@@ -122,34 +124,47 @@
         new("/concessionaria/consignacoes", "Consignações"),
     };
 
-    private static NavArea.Item[] ItensOficina(System.Security.Claims.ClaimsPrincipal u)
+    private NavArea.Item[] itensOficinaAtual = Array.Empty<NavArea.Item>();
+    private NavArea.Item[] itensConfiguracoesAtual = Array.Empty<NavArea.Item>();
+    private string? roleJaCalculada;
+
+    /// <summary>
+    /// "Fornecedores" (e qualquer item futuro sujeito à matriz de
+    /// permissões) só aparece se `PermissaoService` liberar aquele papel —
+    /// antes disso, o item aparecia pra todo não-mecânico (inclusive
+    /// Recepcionista, que a própria rota já bloqueia — ver docs/redesign/
+    /// 23-permissoes-dinamicas-por-papel.md).
+    /// </summary>
+    private async Task<NavArea.Item[]> ObterItensOficinaAsync(CarStoreManager.Domain.Enums.RoleUsuario role)
     {
-        var mecanico = u.IsInRole("Mecanico") && !u.IsInRole("Admin") && !u.IsInRole("ChefeOficina");
-        return mecanico
-            ? new NavArea.Item[]
-            {
-                new("/oficina", "Visão geral"),
-                new("/oficina/ordens", "Ordens de serviço"),
-                new("/oficina/componentes", "Estoque de peças"),
-            }
-            : new NavArea.Item[]
-            {
-                new("/oficina", "Visão geral"),
-                new("/oficina/recepcao", "Recepção"),
-                new("/oficina/ordens", "Ordens de serviço"),
-                new("/oficina/componentes", "Estoque de peças"),
-                new("/oficina/fornecedores", "Fornecedores"),
-            };
+        var mecanico = role == CarStoreManager.Domain.Enums.RoleUsuario.Mecanico;
+        var lista = new List<NavArea.Item> { new("/oficina", "Visão geral") };
+        if (!mecanico)
+            lista.Add(new("/oficina/recepcao", "Recepção"));
+        lista.Add(new("/oficina/ordens", "Ordens de serviço"));
+        lista.Add(new("/oficina/componentes", "Estoque de peças"));
+        if (!mecanico && await PermissaoService.PodeAcessarAsync(role, "pagina:/oficina/fornecedores"))
+            lista.Add(new("/oficina/fornecedores", "Fornecedores"));
+        return lista.ToArray();
     }
 
-    private static NavArea.Item[] ItensConfiguracoes(System.Security.Claims.ClaimsPrincipal u)
+    private async Task<NavArea.Item[]> ObterItensConfiguracoesAsync(CarStoreManager.Domain.Enums.RoleUsuario role)
     {
         var lista = new List<NavArea.Item>();
-        if (u.IsInRole("Admin"))
+        if (await PermissaoService.PodeAcessarAsync(role, "pagina:/configuracoes"))
             lista.Add(new("/configuracoes", "Sistema"));
-        if (u.IsInRole("Admin") || u.IsInRole("GerenteVendas") || u.IsInRole("ChefeOficina"))
-            lista.Add(new("/configuracoes/formulario-despesas", "Formulário de despesas"));
+        lista.Add(new("/configuracoes/formulario-despesas", "Formulário de despesas"));
         return lista.ToArray();
+    }
+
+    private async Task RecalcularItensAsync()
+    {
+        if (Role == roleJaCalculada) return; // evita reconsultar o serviço a cada re-render sem mudança de papel
+        if (!Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(Role, out var role)) return;
+
+        itensOficinaAtual = await ObterItensOficinaAsync(role);
+        itensConfiguracoesAtual = await ObterItensConfiguracoesAsync(role);
+        roleJaCalculada = Role;
     }
 
     // Ativo em qualquer sub-rota de /financeiro (despesas, a-receber, etc.),
@@ -166,6 +181,7 @@
     }
 
     protected override void OnInitialized() => Navigation.LocationChanged += OnLoc;
+    protected override async Task OnParametersSetAsync() => await RecalcularItensAsync();
     private void OnLoc(object? s, EventArgs e) { dropdownAberto = false; menuMobileAberto = false; InvokeAsync(StateHasChanged); }
     public void Dispose() => Navigation.LocationChanged -= OnLoc;
 

@@ -19,11 +19,13 @@
 <div class="pagina clientes-page">
     <PageHeader Titulo="Clientes" Subtitulo="@($"{todosClientes.Count} cliente(s) cadastrado(s) · oficina e concessionária")">
         <Acao>
-            <button class="btn btn-primario" data-tour="clientes-btn-novo" @onclick="AbrirModalNovo">+ Adicionar cliente</button>
+            <button type="button" class="btn btn-primario" data-tour="clientes-btn-novo" @onclick="AbrirModalNovo">+ Adicionar cliente</button>
         </Acao>
     </PageHeader>
 
-    <FiltroBar @bind-Busca="termoBusca" BuscaPlaceholder="Buscar por nome, CPF, telefone ou e-mail..." OnBusca="AplicarFiltro" />
+    <div data-tour="clientes-busca">
+        <FiltroBar @bind-Busca="termoBusca" BuscaPlaceholder="Buscar por nome, CPF, telefone ou e-mail..." OnBusca="AplicarFiltro" />
+    </div>
 
     @if (carregando)
     {
@@ -55,7 +57,7 @@
                             <td>@c.Telefone</td>
                             <td>@c.Email</td>
                             <td class="acoes" @onclick:stopPropagation="true">
-                                <button class="cliente-editar" @onclick="() => AbrirDetalhe(c)">Editar</button>
+                                <button type="button" class="cliente-editar" @onclick="() => AbrirDetalhe(c)">Editar</button>
                             </td>
                         </tr>
                     }
@@ -71,7 +73,7 @@
         <div class="modal-form" @onclick:stopPropagation>
             <div class="modal-header">
                 <span class="modal-titulo">Adicionar cliente</span>
-                <button class="modal-fechar" @onclick="() => modalNovoVisivel = false">×</button>
+                <button type="button" class="modal-fechar" @onclick="() => modalNovoVisivel = false">×</button>
             </div>
 
             <div class="form-grid">
@@ -131,8 +133,8 @@
             }
 
             <div class="modal-acoes">
-                <button class="btn-cancelar" @onclick="() => modalNovoVisivel = false">Cancelar</button>
-                <button class="btn-confirmar" @onclick="CriarCliente" disabled="@salvandoNovo">
+                <button type="button" class="btn-cancelar" @onclick="() => modalNovoVisivel = false">Cancelar</button>
+                <button type="button" class="btn-confirmar" @onclick="CriarCliente" disabled="@salvandoNovo">
                     @(salvandoNovo ? "Cadastrando..." : "Cadastrar cliente")
                 </button>
             </div>
@@ -146,7 +148,7 @@
         <div class="modal-form" @onclick:stopPropagation>
             <div class="modal-header">
                 <span class="modal-titulo">@clienteSelecionado?.Nome</span>
-                <button class="modal-fechar" @onclick="() => modalDetalheVisivel = false">×</button>
+                <button type="button" class="modal-fechar" @onclick="() => modalDetalheVisivel = false">×</button>
             </div>
 
             @if (carregandoDetalhe)

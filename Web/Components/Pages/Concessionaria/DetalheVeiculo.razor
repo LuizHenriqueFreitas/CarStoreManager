@@ -39,7 +39,7 @@ else
             {
                 @* Mostra a foto principal com object-fit contain (sem esticar/cortar)
                    e prévias parciais das fotos vizinhas nas margens. *@
-                <button class="galeria-arr left" @onclick="FotoAnterior"
+                <button type="button" class="galeria-arr left" @onclick="FotoAnterior"
                         style="@(FotosUrls.Count > 1 ? "" : "display:none")">‹</button>
 
                 @if (FotosUrls.Count > 1)
@@ -63,7 +63,7 @@ else
                     </div>
                 }
 
-                <button class="galeria-arr right" @onclick="ProximaFoto"
+                <button type="button" class="galeria-arr right" @onclick="ProximaFoto"
                         style="@(FotosUrls.Count > 1 ? "" : "display:none")">›</button>
             }
             else
@@ -88,11 +88,11 @@ else
     @if (fotoFullscreenIdx is not null)
     {
         <div class="fs-overlay" @onclick="FecharFullscreen">
-            <button class="fs-fechar" @onclick="FecharFullscreen" @onclick:stopPropagation="true">✕</button>
+            <button type="button" class="fs-fechar" @onclick="FecharFullscreen" @onclick:stopPropagation="true">✕</button>
             @if (FotosUrls.Count > 1)
             {
-                <button class="fs-arr left" @onclick:stopPropagation="true" @onclick="FsAnterior">‹</button>
-                <button class="fs-arr right" @onclick:stopPropagation="true" @onclick="FsProxima">›</button>
+                <button type="button" class="fs-arr left" @onclick:stopPropagation="true" @onclick="FsAnterior">‹</button>
+                <button type="button" class="fs-arr right" @onclick:stopPropagation="true" @onclick="FsProxima">›</button>
             }
             <img src="@FotosUrls[fotoFullscreenIdx.Value]" class="fs-img" @onclick:stopPropagation="true" alt="Foto ampliada" />
         </div>
@@ -232,7 +232,7 @@ else
                 {
                     @if (veiculo!.Disponibilidade == "Disponivel")
                     {
-                        <button class="btn-primary" data-tour="veiculo-detalhe-acao-principal" @onclick="GerarProposta">
+                        <button type="button" class="btn-primary" data-tour="veiculo-detalhe-acao-principal" @onclick="GerarProposta">
                             Gerar proposta de venda
                         </button>
                     }
@@ -243,7 +243,7 @@ else
                         </div>
                         <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxLib">
                             <Authorized>
-                                <button class="btn-primary" data-tour="veiculo-detalhe-acao-principal" @onclick="LiberarParaVenda">
+                                <button type="button" class="btn-primary" data-tour="veiculo-detalhe-acao-principal" @onclick="LiberarParaVenda">
                                     ✓ Liberar para venda
                                 </button>
                             </Authorized>
@@ -254,29 +254,29 @@ else
                     {
                         <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxVolta">
                             <Authorized>
-                                <button class="btn-secondary" @onclick="VoltarParaPreparacao">
+                                <button type="button" class="btn-secondary" @onclick="VoltarParaPreparacao">
                                     ⚙ Voltar para preparação
                                 </button>
                             </Authorized>
                         </AuthorizeView>
                         <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxPublicarMl">
                             <Authorized>
-                                <button class="btn-secondary" @onclick="PublicarNoMercadoLivre">
+                                <button type="button" class="btn-secondary" @onclick="PublicarNoMercadoLivre">
                                     Publicar no Mercado Livre
                                 </button>
                             </Authorized>
                         </AuthorizeView>
                     }
 
-                    <button class="btn-secondary" @onclick="AgendarTestDrive">
+                    <button type="button" class="btn-secondary" @onclick="AgendarTestDrive">
                         🔑 Agendar test drive
                     </button>
 
-                    <button class="btn-secondary" @onclick="AbrirModalEdicao">
+                    <button type="button" class="btn-secondary" @onclick="AbrirModalEdicao">
                         Editar veículo
                     </button>
 
-                    <button class="btn-excluir" @onclick="AbrirModalExclusao">
+                    <button type="button" class="btn-excluir" @onclick="AbrirModalExclusao">
                         Excluir veículo
                     </button>
                 }
@@ -288,7 +288,7 @@ else
                         {
                             <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxRenovar">
                                 <Authorized>
-                                    <button class="btn-secondary" data-tour="consig-detalhe-renovar-btn" @onclick="AbrirModalRenovar" disabled="@processandoConsignacao">Renovar (+90 dias)</button>
+                                    <button type="button" class="btn-secondary" data-tour="consig-detalhe-renovar-btn" @onclick="AbrirModalRenovar" disabled="@processandoConsignacao">Renovar (+90 dias)</button>
                                 </Authorized>
                             </AuthorizeView>
                         }
@@ -302,7 +302,7 @@ else
                         {
                             <AuthorizeView Roles="Admin,GerenteVendas,Vendedor" Context="ctxGerarPropostaConsig">
                                 <Authorized>
-                                    <button class="btn-primary" data-tour="consig-detalhe-gerar-proposta-btn" @onclick="GerarPropostaConsignado">Gerar proposta de venda</button>
+                                    <button type="button" class="btn-primary" data-tour="consig-detalhe-gerar-proposta-btn" @onclick="GerarPropostaConsignado">Gerar proposta de venda</button>
                                 </Authorized>
                             </AuthorizeView>
                         }
@@ -314,12 +314,12 @@ else
                         }
                         <AuthorizeView Roles="Admin,GerenteVendas,Vendedor" Context="ctxDevolver">
                             <Authorized>
-                                <button class="btn-secondary" data-tour="consig-detalhe-devolver-btn" @onclick="Devolver" disabled="@processandoConsignacao">Devolver ao proprietário</button>
+                                <button type="button" class="btn-secondary" data-tour="consig-detalhe-devolver-btn" @onclick="Devolver" disabled="@processandoConsignacao">Devolver ao proprietário</button>
                             </Authorized>
                         </AuthorizeView>
                         <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxPublicarMlConsig">
                             <Authorized>
-                                <button class="btn-secondary" @onclick="PublicarNoMercadoLivre">
+                                <button type="button" class="btn-secondary" @onclick="PublicarNoMercadoLivre">
                                     Publicar no Mercado Livre
                                 </button>
                             </Authorized>
@@ -329,14 +329,14 @@ else
                     {
                         <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxConcluir">
                             <Authorized>
-                                <button class="btn-primary" @onclick="ConcluirVenda" disabled="@processandoConsignacao">Confirmar pagamento e concluir</button>
+                                <button type="button" class="btn-primary" @onclick="ConcluirVenda" disabled="@processandoConsignacao">Confirmar pagamento e concluir</button>
                             </Authorized>
                         </AuthorizeView>
                     }
 
                     <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxEditarContrato">
                         <Authorized>
-                            <button class="btn-secondary" @onclick="AbrirModalEdicao">
+                            <button type="button" class="btn-secondary" @onclick="AbrirModalEdicao">
                                 Editar contrato / fotos
                             </button>
                         </Authorized>
@@ -348,7 +348,7 @@ else
                             <Authorized>
                                 @if (!mostrarCancelamento)
                                 {
-                                    <button class="btn-excluir" @onclick="() => mostrarCancelamento = true" disabled="@processandoConsignacao">
+                                    <button type="button" class="btn-excluir" @onclick="() => mostrarCancelamento = true" disabled="@processandoConsignacao">
                                         Cancelar consignação
                                     </button>
                                 }
@@ -362,8 +362,8 @@ else
                             <label class="campo-label">Motivo do cancelamento *</label>
                             <textarea class="campo-input" rows="3" @bind="motivoCancelamento"></textarea>
                             <div class="cancelamento-acoes">
-                                <button class="btn-cancelar" @onclick="() => mostrarCancelamento = false">Voltar</button>
-                                <button class="btn-excluir" @onclick="Cancelar" disabled="@processandoConsignacao">Confirmar</button>
+                                <button type="button" class="btn-cancelar" @onclick="() => mostrarCancelamento = false">Voltar</button>
+                                <button type="button" class="btn-excluir" @onclick="Cancelar" disabled="@processandoConsignacao">Confirmar</button>
                             </div>
                         </div>
                     }
@@ -374,7 +374,7 @@ else
                     }
                 }
 
-                <button class="btn-voltar" @onclick='() => Nav.NavigateTo("/concessionaria")'>
+                <button type="button" class="btn-voltar" @onclick='() => Nav.NavigateTo("/concessionaria")'>
                     ← Voltar ao estoque
                 </button>
             </div>
@@ -421,7 +421,7 @@ else
             <div class="modal-form" @onclick:stopPropagation>
                 <div class="modal-header">
                     <span class="modal-titulo">@(IsConsignado ? "Editar contrato / fotos" : "Editar veículo")</span>
-                    <button class="modal-fechar" @onclick="() => modalFormEdicaoVisivel = false">×</button>
+                    <button type="button" class="modal-fechar" @onclick="() => modalFormEdicaoVisivel = false">×</button>
                 </div>
 
                 @if (!IsConsignado)
@@ -509,10 +509,10 @@ else
                                 {
                                     <img src="@preview" class="preview-thumb" />
                                 }
-                                <button class="btn-upload" @onclick="UploadNovasFotos" disabled="@uploading">
+                                <button type="button" class="btn-upload" @onclick="UploadNovasFotos" disabled="@uploading">
                                     @(uploading ? "Enviando..." : $"Enviar {arquivosSelecionados.Count} foto(s)")
                                 </button>
-                                <button class="btn-cancelar-upload" @onclick="CancelarUpload">Cancelar</button>
+                                <button type="button" class="btn-cancelar-upload" @onclick="CancelarUpload">Cancelar</button>
                             </div>
                         }
                         @if (erroUpload != null)
@@ -528,11 +528,11 @@ else
                 }
 
                 <div class="modal-acoes">
-                    <button class="btn-cancelar"
+                    <button type="button" class="btn-cancelar"
                             @onclick="() => modalFormEdicaoVisivel = false">
                         Cancelar
                     </button>
-                    <button class="btn-confirmar"
+                    <button type="button" class="btn-confirmar"
                             @onclick="SalvarEdicao"
                             disabled="@salvando">
                         @(salvando ? "Salvando..." : "Salvar alterações")

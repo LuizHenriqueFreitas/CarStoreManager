@@ -8,8 +8,8 @@
             <h3 class="confirm-titulo">@Titulo</h3>
             <p class="confirm-mensagem">@Mensagem</p>
             <div class="confirm-acoes">
-                <button class="confirm-btn-nao" @onclick="Cancelar" disabled="@processando">@TextoCancelar</button>
-                <button class="confirm-btn-sim @(Destrutivo ? "destrutivo" : "")" @onclick="Confirmar" disabled="@processando">
+                <button type="button" class="confirm-btn-nao" @onclick="Cancelar" disabled="@processando">@TextoCancelar</button>
+                <button type="button" class="confirm-btn-sim @(Destrutivo ? "destrutivo" : "")" @onclick="Confirmar" disabled="@processando">
                     @(processando ? "..." : TextoConfirmar)
                 </button>
             </div>

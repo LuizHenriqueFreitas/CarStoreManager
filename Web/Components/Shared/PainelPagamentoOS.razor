@@ -63,13 +63,13 @@
                                max="@resumo.ValorRestante" />
                         <input type="text" @bind="novo.ReferenciaExterna"
                                placeholder="NSU/end-to-end (opc)" />
-                        <button class="btn-receber"
+                        <button type="button" class="btn-receber"
                                 @onclick='() => PedirConfirmacao("Registrar pagamento", $"Deseja registrar um pagamento de {FmtBRL(novo.Valor)}?", Registrar)'
                                 disabled="@(processando || string.IsNullOrEmpty(novo.ModoPagamento) || novo.Valor <= 0)">
                             @(processando ? "..." : "Registrar")
                         </button>
                     </div>
-                    <button class="btn-link" @onclick="ReceberRestante">
+                    <button type="button" class="btn-link" @onclick="ReceberRestante">
                         Receber valor restante (@FmtBRL(resumo.ValorRestante))
                     </button>
                 }
@@ -94,7 +94,7 @@
                                     <AuthorizeView Roles="Admin,ChefeOficina" Context="adminAcao">
                                         <Authorized>
                                             <td>
-                                                <button class="btn-estorno" @onclick='() => PedirConfirmacao("Estornar pagamento", $"Deseja estornar o pagamento de {FmtBRL(p.Valor)}? Essa ação não pode ser desfeita.", () => Estornar(p.Id), destrutivo: true)'>↩</button>
+                                                <button type="button" class="btn-estorno" @onclick='() => PedirConfirmacao("Estornar pagamento", $"Deseja estornar o pagamento de {FmtBRL(p.Valor)}? Essa ação não pode ser desfeita.", () => Estornar(p.Id), destrutivo: true)'>↩</button>
                                             </td>
                                         </Authorized>
                                     </AuthorizeView>

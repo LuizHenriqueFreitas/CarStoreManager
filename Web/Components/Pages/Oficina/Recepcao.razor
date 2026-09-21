@@ -8,6 +8,8 @@
 @inject IClienteService ClienteService
 @inject IMecanicoService MecanicoService
 @inject IVeiculoClienteService VeiculoClienteService
+@inject AuthenticationStateProvider AuthState
+@inject CarStoreManager.Application.Interfaces.Sistema.IPermissaoAcessoService PermissaoService
 @inject NavigationManager Nav
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Oficina.OrdemServico
@@ -15,17 +17,18 @@
 @using CarStoreManager.Application.DTOs.Oficina.VeiculoCliente
 @using CarStoreManager.Application.DTOs.Shared.Cliente
 @using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
 
 <div class="pagina">
     <PageHeader Titulo="Recepção" Subtitulo="Atendimento, abertura de OS, cobrança e entrega">
         <Acao>
-            <button class="btn btn-primario" data-tour="recepcao-btn-nova" @onclick='() => Nav.NavigateTo("/oficina/os/nova")'>
+            <button type="button" class="btn btn-primario" data-tour="recepcao-btn-nova" @onclick='() => Nav.NavigateTo("/oficina/os/nova")'>
                 + Nova ordem de serviço
             </button>
         </Acao>
     </PageHeader>
 
-    <SubNav Itens="SubNavOficina.Itens(false)" />
+    <SubNav Itens="subNavItens" />
 
     <div class="recepcao-topo">
         <div class="busca-rapida">
@@ -162,6 +165,7 @@
 
 @code {
     private List<OrdemServicoListaDTO> todas = new();
+    private List<SubNav.Item> subNavItens = new();
     private List<OrdemServicoListaDTO> osAbertas = new();
     private List<OrdemServicoListaDTO> prontasParaCobrar = new();
     private Dictionary<Guid, ClienteListaDTO> mapaClientes = new();
@@ -253,6 +257,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var state = await AuthState.GetAuthenticationStateAsync();
+        var roleClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        if (Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out var role))
+            subNavItens = await SubNavOficina.ItensAsync(false, role, PermissaoService);
+
         var tarefaOrdens = OrdemService.GetAllAsync();
         var tarefaClientes = ClienteService.GetAllAsync();
         var tarefaMecanicos = MecanicoService.GetAllAsync();

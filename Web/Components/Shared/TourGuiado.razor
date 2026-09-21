@@ -32,18 +32,18 @@
          tabindex="-1" @ref="_balaoRef">
         <div class="tour-balao-header">
             <span class="tour-contador">@(_indice + 1) de @_passosValidos.Count</span>
-            <button class="tour-fechar" @onclick="EncerrarAsync" aria-label="Fechar tour" title="Fechar (Esc)">×</button>
+            <button type="button" class="tour-fechar" @onclick="EncerrarAsync" aria-label="Fechar tour" title="Fechar (Esc)">×</button>
         </div>
         <h3 class="tour-titulo">@PassoAtual.Titulo</h3>
         <p class="tour-texto">@PassoAtual.Texto</p>
         <div class="tour-acoes">
-            <button class="tour-btn-pular" @onclick="PularAsync">Pular</button>
+            <button type="button" class="tour-btn-pular" @onclick="PularAsync">Pular</button>
             <div class="tour-acoes-nav">
                 @if (_indice > 0)
                 {
-                    <button class="tour-btn-anterior" @onclick="AnteriorAsync">Anterior</button>
+                    <button type="button" class="tour-btn-anterior" @onclick="AnteriorAsync">Anterior</button>
                 }
-                <button class="tour-btn-proximo" @onclick="ProximoAsync">
+                <button type="button" class="tour-btn-proximo" @onclick="ProximoAsync">
                     @(_indice == _passosValidos.Count - 1 ? "Concluir" : "Próximo")
                 </button>
             </div>

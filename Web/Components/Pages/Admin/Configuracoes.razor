@@ -11,6 +11,7 @@
 @inject IChecklistPresetService PresetService
 @inject ITemplateDocumentoService TemplateDocService
 @inject IImportacaoDadosService ImportacaoService
+@inject IPermissaoAcessoService PermissaoService
 @inject NavigationManager Nav
 
 @using CarStoreManager.Application.Interfaces.Sistema
@@ -53,6 +54,8 @@
                        Descricao="Ativa/desativa módulos e ajusta parâmetros globais de operação." />
             <SecaoCard Titulo="Documentos" Icone="📄" Href="/configuracoes?aba=documentos"
                        Descricao="Templates dos documentos gerados pelo sistema (termos, propostas)." />
+            <SecaoCard Titulo="Permissões de acesso" Icone="🔐" Href="/configuracoes?aba=permissoes"
+                       Descricao="Escolha quais papéis acessam cada página e ação do sistema." />
             <SecaoCard Titulo="Importar dados" Icone="📥" Href="/configuracoes?aba=importar"
                        Descricao="Carrega uma base de dados a partir de um arquivo." />
             <SecaoCard Titulo="Exportar dados" Icone="📤" Href="/configuracoes?aba=exportar"
@@ -130,8 +133,8 @@
                                 </td>
                                 <td><input type="checkbox" @bind="d.Ativa" /></td>
                                 <td>
-                                    <button class="btn-mini btn-salvar-mini" @onclick="() => SalvarDespesa(d)">Salvar</button>
-                                    <button class="btn-mini btn-remover" @onclick="() => RemoverDespesa(d.Id)">Excluir</button>
+                                    <button type="button" class="btn-mini btn-salvar-mini" @onclick="() => SalvarDespesa(d)">Salvar</button>
+                                    <button type="button" class="btn-mini btn-remover" @onclick="() => RemoverDespesa(d.Id)">Excluir</button>
                                 </td>
                             </tr>
                         }
@@ -155,7 +158,7 @@
                             </td>
                             <td>—</td>
                             <td>
-                                <button class="btn-mini btn-salvar-mini" @onclick="AdicionarDespesa">Adicionar</button>
+                                <button type="button" class="btn-mini btn-salvar-mini" @onclick="AdicionarDespesa">Adicionar</button>
                             </td>
                         </tr>
                     </tbody>
@@ -218,19 +221,19 @@
                                 var idx = i;
                                 <li>
                                     <input @bind="itensEdicao[idx]" />
-                                    <button class="btn-mini btn-remover" @onclick="() => itensEdicao.RemoveAt(idx)">×</button>
+                                    <button type="button" class="btn-mini btn-remover" @onclick="() => itensEdicao.RemoveAt(idx)">×</button>
                                 </li>
                             }
                         </ol>
-                        <button class="btn-mini" @onclick='() => itensEdicao.Add("")'>+ Adicionar item</button>
+                        <button type="button" class="btn-mini" @onclick='() => itensEdicao.Add("")'>+ Adicionar item</button>
 
                         <div class="acoes">
-                            <button class="btn-salvar" @onclick="SalvarPreset">Salvar preset</button>
+                            <button type="button" class="btn-salvar" @onclick="SalvarPreset">Salvar preset</button>
                             @if (presetEditando.Id != Guid.Empty)
                             {
-                                <button class="btn-remover" @onclick="RemoverPreset">Excluir preset</button>
+                                <button type="button" class="btn-remover" @onclick="RemoverPreset">Excluir preset</button>
                             }
-                            <button class="btn-mini" @onclick="CancelarEdicaoPreset">Cancelar</button>
+                            <button type="button" class="btn-mini" @onclick="CancelarEdicaoPreset">Cancelar</button>
                         </div>
                     </div>
                 }
@@ -270,7 +273,7 @@
                 </div>
 
                 <div class="acoes">
-                    <button class="btn-salvar" @onclick="Salvar" disabled="@salvando">
+                    <button type="button" class="btn-salvar" @onclick="Salvar" disabled="@salvando">
                         @(salvando ? "Salvando..." : "Salvar configurações")
                     </button>
                 </div>
@@ -322,12 +325,12 @@
                         <textarea class="campo-textarea" rows="16" @bind="templateDocEditando.Conteudo"></textarea>
 
                         <div class="acoes">
-                            <button class="btn-salvar" @onclick="SalvarTemplateDocumento">Salvar template</button>
+                            <button type="button" class="btn-salvar" @onclick="SalvarTemplateDocumento">Salvar template</button>
                             @if (templateDocEditando.Id != Guid.Empty)
                             {
-                                <button class="btn-remover" @onclick="RemoverTemplateDocumento">Excluir template</button>
+                                <button type="button" class="btn-remover" @onclick="RemoverTemplateDocumento">Excluir template</button>
                             }
-                            <button class="btn-mini" @onclick="CancelarEdicaoTemplateDocumento">Cancelar</button>
+                            <button type="button" class="btn-mini" @onclick="CancelarEdicaoTemplateDocumento">Cancelar</button>
                         </div>
                     </div>
                 }
@@ -361,7 +364,7 @@
                 }
 
                 <div class="acoes">
-                    <button class="btn-salvar" @onclick="ImportarArquivo" disabled="@(importando || arquivoSelecionado is null)">
+                    <button type="button" class="btn-salvar" @onclick="ImportarArquivo" disabled="@(importando || arquivoSelecionado is null)">
                         @(importando ? "Importando..." : "Importar")
                     </button>
                 </div>
@@ -419,6 +422,80 @@
             </section>
         }
 
+        @if (abaAtiva == "permissoes")
+        {
+            <section class="cfg-card-full" data-tour="cfg-permissoes-matriz">
+                <h2>Permissões de acesso</h2>
+                <p class="muted">
+                    Escolha quais papéis acessam cada página e ação do sistema. O sistema já vem
+                    com uma configuração padrão (a mesma que sempre existiu) — desmarque uma
+                    célula pra tirar o acesso daquele papel àquele recurso. Só aparecem papéis que
+                    o próprio sistema já permite pra aquele recurso; não dá pra liberar acesso além
+                    disso por aqui.
+                </p>
+                <p class="muted">
+                    <strong>Cobertura desta versão:</strong> menu/aba/atalho de "Fornecedores" e os
+                    botões "Cadastrar veículo", "Cadastrar veículo consignado" e "Novo fornecedor" já
+                    escondem de verdade quando desmarcados aqui. As demais linhas da matriz já ficam
+                    salvas e prontas pra quando a tela correspondente também passar a consultar essa
+                    configuração — até lá, desmarcar uma delas não muda nada na tela ainda.
+                </p>
+
+                @if (salvandoPermissao is not null)
+                {
+                    <p class="muted">Salvando...</p>
+                }
+                @if (!string.IsNullOrEmpty(erroPermissao))
+                {
+                    <div class="banner banner-erro">@erroPermissao</div>
+                }
+
+                @foreach (var area in matrizPermissoes.Select(m => m.Area).Distinct())
+                {
+                    <h3 class="perm-area-titulo">@area</h3>
+                    <div class="table-scroll">
+                        <table class="tabela perm-tabela">
+                            <thead>
+                                <tr>
+                                    <th style="width:30%">Recurso</th>
+                                    @foreach (var papel in PapeisExibidos)
+                                    {
+                                        <th class="perm-col-papel">@papel</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var recurso in matrizPermissoes.Where(m => m.Area == area))
+                                {
+                                    <tr>
+                                        <td>
+                                            @recurso.Rotulo
+                                            <span class="perm-tipo-tag">@(recurso.Tipo == "Pagina" ? "página" : "ação")</span>
+                                        </td>
+                                        @foreach (var papel in PapeisExibidos)
+                                        {
+                                            <td class="perm-col-papel">
+                                                @if (recurso.PermitidoPorPapel.TryGetValue(papel, out var permitido))
+                                                {
+                                                    <input type="checkbox" checked="@permitido"
+                                                           disabled="@(salvandoPermissao == (recurso.Chave, papel))"
+                                                           @onchange="e => AtualizarPermissaoAsync(recurso, papel, (bool)e.Value!)" />
+                                                }
+                                                else
+                                                {
+                                                    <span class="perm-sem-acesso" title="Este papel não acessa este recurso">—</span>
+                                                }
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        }
+
         @if (config.DataUltimaAtualizacao.HasValue)
         {
             <p class="muted ultima">Última atualização: @config.DataUltimaAtualizacao.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
@@ -430,8 +507,7 @@
 <style>
     .cfg-page { padding:24px; max-width:1100px; margin:0 auto; }
     .cfg-menu-grid { 
-        display: flex;
-        flex-direction: column;
+        display: grid;
         grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); 
         gap:16px; 
     }
@@ -475,6 +551,15 @@
     .tag-ok { background:#dff5e1; color:#1f7a3a; padding:4px 10px; border-radius:12px; font-size:0.85em; }
     .tag-warn { background:#fff5d9; color:#8a6d00; padding:4px 10px; border-radius:12px; font-size:0.85em; }
     .acoes { display:flex; justify-content:space-between; align-items:center; margin-top:20px; gap:12px; flex-wrap:wrap; }
+
+    .perm-area-titulo { font-size:1em; margin:20px 0 8px; color:#333; }
+    .perm-area-titulo:first-of-type { margin-top:4px; }
+    .perm-tabela .perm-col-papel { text-align:center; white-space:nowrap; font-size:0.85em; }
+    .perm-tipo-tag {
+        display:inline-block; margin-left:6px; padding:1px 6px; border-radius:8px;
+        background:#f0f0f0; color:#777; font-size:0.75em;
+    }
+    .perm-sem-acesso { color:#ccc; }
     .btn-salvar {
         background:#0a84ff; color:#fff; padding:10px 24px; border-radius:6px; border:0;
         cursor:pointer; font-weight:500;
@@ -566,6 +651,13 @@
     private Guid? templateSelecionadoId;
     private SalvarTemplateDocumentoDTO? templateDocEditando;
 
+    // Permissões de acesso
+    private List<RecursoPermissaoDTO> matrizPermissoes = new();
+    private (string Chave, string Papel)? salvandoPermissao;
+    private string? erroPermissao;
+    private static readonly string[] PapeisExibidos =
+        Enum.GetNames(typeof(CarStoreManager.Domain.Enums.RoleUsuario));
+
     // Importar dados
     private IBrowserFile? arquivoSelecionado;
     private string? nomeArquivoSelecionado;
@@ -602,7 +694,27 @@
         var rt = await TemplateDocService.GetAllAsync();
         if (rt.IsSuccess) templatesDocumento = rt.Value!.ToList();
 
+        if (abaAtiva == "permissoes")
+            matrizPermissoes = await PermissaoService.ObterMatrizAsync();
+
         carregando = false;
+    }
+
+    private async Task AtualizarPermissaoAsync(RecursoPermissaoDTO recurso, string papel, bool permitido)
+    {
+        if (!Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(papel, out var role)) return;
+
+        salvandoPermissao = (recurso.Chave, papel);
+        erroPermissao = null;
+        StateHasChanged();
+
+        var r = await PermissaoService.AtualizarAsync(role, recurso.Chave, permitido);
+        if (r.IsSuccess)
+            recurso.PermitidoPorPapel[papel] = permitido;
+        else
+            erroPermissao = r.Error;
+
+        salvandoPermissao = null;
     }
 
     private string AbaClass(string aba) => aba == abaAtiva ? "aba aba-ativa" : "aba";

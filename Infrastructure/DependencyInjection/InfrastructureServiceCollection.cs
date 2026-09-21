@@ -116,6 +116,8 @@ public static class InfrastructureServiceCollection
         services.AddScoped<ITemplateDocumentoService, TemplateDocumentoService>();
         services.AddScoped<IDespesaRepository, DespesaRepository>();
         services.AddScoped<IDespesaService, DespesaService>();
+        services.AddScoped<IPermissaoAcessoRepository, PermissaoAcessoRepository>();
+        services.AddScoped<IPermissaoAcessoService, PermissaoAcessoService>();
         services.AddScoped<IBalancoMensalDespesaRepository, CarStoreManager.Infrastructure.Repositories.Sistema.BalancoMensalDespesaRepository>();
         services.AddScoped<CarStoreManager.Application.Interfaces.Sistema.IBalancoMensalDespesaService, CarStoreManager.Application.Services.Sistema.BalancoMensalDespesaService>();
         services.AddScoped<IBackdateService, BackdateService>();
