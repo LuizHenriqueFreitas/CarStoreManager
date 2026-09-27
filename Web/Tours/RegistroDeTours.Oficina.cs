@@ -242,7 +242,7 @@ public static partial class RegistroDeTours
                     Seletor = null,
                     Titulo = "Detalhe da ordem",
                     Texto = "Esta tela concentra todo o ciclo de vida de uma ordem de serviço: orçamento, " +
-                        "revisão técnica, aprovação do cliente, execução, checklist, peças e entrega. Os " +
+                        "vistoria de entrada, aprovação do cliente, execução, checklist, peças e entrega. Os " +
                         "botões disponíveis mudam de acordo com a etapa atual e com o seu papel no sistema."
                 },
                 new()
@@ -257,8 +257,8 @@ public static partial class RegistroDeTours
                     Seletor = "os-detalhe-acoes",
                     Titulo = "Ações da etapa atual",
                     Texto = "Só aparecem os botões válidos para o status e para o seu papel — por exemplo, " +
-                        "\"Enviar para revisão\" some depois que a ordem já foi enviada, e \"Cobrar e entregar\" " +
-                        "só existe para Administração e Recepção."
+                        "\"Cliente aprovou\" só some depois da aprovação, e \"Cobrar e entregar\" só existe " +
+                        "para Administração e Recepção."
                 },
                 new()
                 {
@@ -276,6 +276,15 @@ public static partial class RegistroDeTours
                 },
                 new()
                 {
+                    Seletor = "os-detalhe-vistoria",
+                    Titulo = "Vistoria de entrada",
+                    Texto = "A recepção vistoria o veículo na chegada, idealmente com o cliente presente, e " +
+                        "monta o contrato da OS a partir de um template: estado do carro na entrada e os " +
+                        "serviços previstos, com fotos anexadas. Ao concluir, a ordem passa para \"Aguardando " +
+                        "cliente\" e o contrato fica somente leitura."
+                },
+                new()
+                {
                     Seletor = "os-detalhe-checklist",
                     Titulo = "Checklist de execução",
                     Texto = "Lista de verificações do serviço, vinda de um preset ou montada manualmente. " +
@@ -287,7 +296,8 @@ public static partial class RegistroDeTours
                     Titulo = "Peças utilizadas",
                     Texto = "Peças já adicionadas à ordem, com origem (estoque, cliente ou encomenda) e valor. " +
                         "Adicionar uma peça vinda do estoque com a ordem já em andamento pausa o serviço até o " +
-                        "cliente reaprovar o novo valor."
+                        "cliente reaprovar o novo valor. Se a peça buscada estiver sem estoque, o sistema sugere " +
+                        "substitutos compatíveis (mesmo código OEM ou cadastrados manualmente em Estoque de peças)."
                 },
                 new()
                 {
@@ -355,7 +365,17 @@ public static partial class RegistroDeTours
                     Seletor = "comp-tabela",
                     Titulo = "Lista de componentes",
                     Texto = "Cada linha mostra nome, part number, sistema e quantidade em estoque. Clique no " +
-                        "nome de uma peça para ver o cadastro completo e buscar peças equivalentes pelo código OEM."
+                        "nome de uma peça para ver o cadastro completo, sugestões de substituição e os " +
+                        "componentes compatíveis cadastrados manualmente."
+                },
+                new()
+                {
+                    Seletor = "comp-equivalencias-curadas",
+                    Titulo = "Componentes compatíveis",
+                    Texto = "Cadastre manualmente quais peças (de outra marca, remanufaturadas, etc.) servem " +
+                        "como substituto físico/funcional desta — o sistema não detecta isso sozinho. Essas " +
+                        "ligações aparecem como sugestão na hora de adicionar uma peça sem estoque numa OS. " +
+                        "Só a Administração cadastra e remove esses vínculos."
                 },
                 new()
                 {
@@ -401,6 +421,63 @@ public static partial class RegistroDeTours
                     Titulo = "Ativar e desativar",
                     Texto = "Um fornecedor desativado deixa de aparecer no autocomplete de cadastro de peças, " +
                         "mas o histórico é preservado."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/oficina/relatorios",
+            Titulo = "Relatórios — Oficina",
+            Descricao = "Ordens de serviço, estoque de peças e fornecedores, em CSV ou XML por período.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Relatórios exportáveis",
+                    Texto = "Cada cartão gera um arquivo para baixar, só com dados da oficina. Visível pra " +
+                        "Admin e Chefe de oficina — Mecânico e Recepcionista não têm acesso a esta tela."
+                },
+                new()
+                {
+                    Seletor = "rel-filtros",
+                    Titulo = "Período e formato",
+                    Texto = "Escolha a janela de tempo e o formato (CSV abre no Excel/LibreOffice; XML para " +
+                        "integração). Valem para todos os relatórios da tela."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/oficina/documentos",
+            Titulo = "Documentos",
+            Descricao = "Busca dos contratos de OS (vistoria de entrada) já produzidos, com exportação em PDF.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Central de Documentos",
+                    Texto = "Reúne os contratos de OS (vistoria de entrada feita pela recepção) — visível só " +
+                        "para Admin e Chefe de oficina. Edição continua na própria OS; aqui é só busca, " +
+                        "visualização e exportação."
+                },
+                new()
+                {
+                    Seletor = "doc-filtros",
+                    Titulo = "Busca",
+                    Texto = "Busque por placa, nome do cliente ou nome do recepcionista responsável — o " +
+                        "filtro já aplica enquanto você digita."
+                },
+                new()
+                {
+                    Seletor = "doc-tabela",
+                    Titulo = "Ver e exportar",
+                    Texto = "Clique numa linha para abrir o texto do contrato e as fotos da vistoria anexadas. " +
+                        "O botão \"Gerar PDF\" abre o diálogo de impressão do navegador (as fotos entram no " +
+                        "PDF); escolha \"Salvar como PDF\"."
                 }
             }
         }

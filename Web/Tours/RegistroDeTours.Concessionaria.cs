@@ -137,9 +137,76 @@ public static partial class RegistroDeTours
                 {
                     Seletor = null,
                     Titulo = "Agenda de test drives",
-                    Texto = "Registre um test drive escolhendo veículo, cliente, vendedor e data. Depois marque o " +
-                        "resultado — realizado, não compareceu ou cancelado. O cliente precisa já estar cadastrado " +
-                        "(Cadastros → Clientes)."
+                    Texto = "\"+ Agendar test drive\" leva a uma tela própria pra escolher veículo, cliente, " +
+                        "vendedor, data e redigir o termo de responsabilidade. Depois de agendado, marque o " +
+                        "resultado aqui — realizado, não compareceu ou cancelado. O cliente precisa já estar " +
+                        "cadastrado (Cadastros → Clientes)."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Termo de responsabilidade",
+                    Texto = "O botão \"Termo\" de cada linha abre a tela de acompanhamento do termo — gerar o " +
+                        "link de assinatura, ver se o cliente já assinou. Um test drive concluído (\"Realizado\") " +
+                        "lança automaticamente R$ 50 de despesa de combustível, bancada pela concessionária."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/concessionaria/test-drives/novo",
+            Titulo = "Agendar test drive",
+            Descricao = "Formulário de agendamento com o termo de responsabilidade do cliente.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Uma tela só pro agendamento e pro termo",
+                    Texto = "Antes era um modal — agora é uma tela própria, porque também é aqui que se " +
+                        "redige o termo de responsabilidade que o cliente vai assinar."
+                },
+                new()
+                {
+                    Seletor = "td-form-agendamento",
+                    Titulo = "Dados do passeio",
+                    Texto = "Escolha veículo, cliente, vendedor e a data/hora do test drive — mesmos campos de " +
+                        "antes, agora numa tela própria em vez de um modal."
+                },
+                new()
+                {
+                    Seletor = "td-form-termo",
+                    Titulo = "Termo de responsabilidade",
+                    Texto = "Redija (ou aplique um template já cadastrado em Configurações → Documentos) o " +
+                        "termo que o cliente assume ao dirigir o veículo no test drive. Obrigatório — nasce como " +
+                        "rascunho junto com o agendamento; a assinatura do cliente acontece depois, por um link."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/concessionaria/test-drives/{id:guid}",
+            Titulo = "Test drive — termo de responsabilidade",
+            Descricao = "Acompanhamento do agendamento e da assinatura do termo.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Dados do passeio e do termo",
+                    Texto = "Resumo do agendamento (veículo, cliente, vendedor, data, status) e o " +
+                        "acompanhamento do termo de responsabilidade do cliente, no mesmo lugar."
+                },
+                new()
+                {
+                    Seletor = "td-detalhe-termo",
+                    Titulo = "Gerar o link de assinatura",
+                    Texto = "Com o termo em rascunho, edite o texto se precisar e clique em \"Gerar link de " +
+                        "assinatura\" — o cliente assina eletronicamente (nome, CPF, aceite), mesma validade " +
+                        "jurídica do termo de entrega de veículo (Lei 14.063/2020). Mostre a tela do link no " +
+                        "celular/tablet do cliente na hora do passeio, ou envie por mensagem."
                 }
             }
         },
@@ -683,6 +750,65 @@ public static partial class RegistroDeTours
                     Texto = "Quando o termo é assinado, a proposta é concluída — e, se o veículo era " +
                         "consignado, a consignação correspondente também é concluída automaticamente. A " +
                         "proposta permanece no histórico da tela de Propostas."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/concessionaria/relatorios",
+            Titulo = "Relatórios — Concessionária",
+            Descricao = "Estoque de veículos, propostas, test drives e consignações, em CSV ou XML por período.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Relatórios exportáveis",
+                    Texto = "Cada cartão gera um arquivo para baixar, só com dados da concessionária. Os " +
+                        "relatórios financeiros e comparativos (margem de venda, comissões) só aparecem para " +
+                        "Admin e Gerente de vendas — um Vendedor vê só os relatórios operacionais."
+                },
+                new()
+                {
+                    Seletor = "rel-filtros",
+                    Titulo = "Período e formato",
+                    Texto = "Escolha a janela de tempo e o formato (CSV abre no Excel/LibreOffice; XML para " +
+                        "integração). Valem para todos os relatórios da tela."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/concessionaria/documentos",
+            Titulo = "Documentos",
+            Descricao = "Busca de termos e contratos já produzidos pelo sistema, com exportação em PDF.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Central de Documentos",
+                    Texto = "Reúne termo de entrega, termo de test drive e contrato de consignação num só " +
+                        "lugar — visível só para Admin e Gerente de vendas, já que envolvem dados pessoais " +
+                        "do cliente. Edição continua na proposta, no test drive ou no veículo consignado; " +
+                        "aqui é só busca, visualização e exportação."
+                },
+                new()
+                {
+                    Seletor = "doc-filtros",
+                    Titulo = "Tipo e busca",
+                    Texto = "Escolha o tipo de documento e busque por placa, nome do cliente ou nome do " +
+                        "vendedor — o filtro já aplica enquanto você digita."
+                },
+                new()
+                {
+                    Seletor = "doc-tabela",
+                    Titulo = "Ver e exportar",
+                    Texto = "Clique numa linha para abrir o texto do documento (e as fotos anexadas, quando " +
+                        "houver — termo de entrega e contrato de consignação podem ter). O botão \"Gerar PDF\" " +
+                        "abre o diálogo de impressão do navegador; escolha \"Salvar como PDF\"."
                 }
             }
         }

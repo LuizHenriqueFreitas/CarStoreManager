@@ -1,5 +1,6 @@
 @page "/concessionaria/veiculo-consignado/novo"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:concessionaria")]
 
 @namespace CarStoreManager.Web.Components.Pages
 

@@ -1,5 +1,5 @@
 @page "/clientes"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,GerenteVendas,Vendedor,Recepcionista")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/clientes")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -22,6 +22,8 @@
             <button type="button" class="btn btn-primario" data-tour="clientes-btn-novo" @onclick="AbrirModalNovo">+ Adicionar cliente</button>
         </Acao>
     </PageHeader>
+
+    <SubNav Itens="SubNavClientes.Itens" />
 
     <div data-tour="clientes-busca">
         <FiltroBar @bind-Busca="termoBusca" BuscaPlaceholder="Buscar por nome, CPF, telefone ou e-mail..." OnBusca="AplicarFiltro" />

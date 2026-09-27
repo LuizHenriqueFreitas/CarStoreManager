@@ -27,12 +27,15 @@ public interface IOrdemServicoService : IService<
     Task<Result> RecalcularValoresAsync(Guid ordemId);
 
     // FLUXO DE APROVAÇÃO
-    Task<Result> EnviarParaRevisaoAsync(Guid ordemId);
-    Task<Result> AprovarPeloMecanicoAsync(Guid ordemId);
-    Task<Result> DevolverParaAjustesAsync(Guid ordemId);
     Task<Result> RegistrarAprovacaoDoClienteAsync(Guid ordemId);
     Task<Result> IniciarAsync(Guid ordemId);
     Task<Result> FinalizarAsync(Guid ordemId);
+
+    // VISTORIA DE ENTRADA (contrato da OS, feito pelo recepcionista)
+    Task<Result<VistoriaOrdemServicoDTO>> IniciarVistoriaAsync(Guid ordemId, Guid recepcionistaId);
+    Task<Result<VistoriaOrdemServicoDTO>> ObterVistoriaAsync(Guid ordemId);
+    Task<Result<VistoriaOrdemServicoDTO>> EditarVistoriaAsync(Guid ordemId, string novoTexto);
+    Task<Result> ConcluirVistoriaAsync(Guid ordemId, string textoFinal);
 
     /// <summary>
     /// Recepção marca a OS como entregue ao cliente (após cobrança).

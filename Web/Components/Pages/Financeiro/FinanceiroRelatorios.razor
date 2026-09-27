@@ -1,105 +1,15 @@
 @page "/financeiro/relatorios"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,ChefeOficina")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/financeiro/relatorios")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
 @rendermode InteractiveServer
-@inject IJSRuntime JS
-@inject IReportService ReportService
-@inject AuthenticationStateProvider AuthState
-@using Microsoft.JSInterop
-@using CarStoreManager.Application.DTOs.Reports
-@using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Web.Components.Shared
-@using Microsoft.AspNetCore.Components.Authorization
 
 <div class="pagina">
-    <PageHeader Titulo="Relatórios" Subtitulo="Catálogo de relatórios do sistema — exportação em CSV ou XML por período" />
+    <PageHeader Titulo="Relatórios — Financeiro" Subtitulo="Relatórios que cruzam oficina e concessionária, em CSV ou XML por período" />
 
-    <div class="card filtros" data-tour="rel-filtros">
-        <div class="campo">
-            <label>Período</label>
-            <SeletorPeriodo @bind-Inicio="inicio" @bind-Fim="fim" />
-        </div>
-        <div class="campo">
-            <label>Formato</label>
-            <select @bind="formato">
-                <option value="csv">CSV (Excel / LibreOffice)</option>
-                <option value="xml">XML</option>
-            </select>
-        </div>
-    </div>
+    <SubNav Itens="SubNavFinanceiro.Itens" />
 
-    @foreach (var grupo in Grupos)
-    {
-        var itensGrupo = catalogo.Where(r => r.Grupo == grupo.Valor).ToList();
-        if (itensGrupo.Count == 0) continue;
-
-        <h2 class="grupo-titulo">@grupo.Rotulo</h2>
-        <div class="rel-grid">
-            @foreach (var r in itensGrupo)
-            {
-                <div class="rel-card">
-                    <div>
-                        <h3>@r.Titulo</h3>
-                        <p class="muted">@r.Descricao</p>
-                    </div>
-                    <button type="button" class="btn btn-primario" @onclick="() => Baixar(r.Id)">Baixar</button>
-                </div>
-            }
-        </div>
-    }
+    <RelatoriosGrid Ids="CatalogoRelatoriosPorArea.Financeiro" />
 </div>
-
-@code {
-    private DateOnly inicio = DateOnly.FromDateTime(DateTime.Today).AddMonths(-1);
-    private DateOnly fim = DateOnly.FromDateTime(DateTime.Today);
-    private string formato = "csv";
-    private IReadOnlyList<RelatorioDefinicao> catalogo = Array.Empty<RelatorioDefinicao>();
-
-    private static readonly (GrupoRelatorio Valor, string Rotulo)[] Grupos =
-    {
-        (GrupoRelatorio.Financeiro, "Financeiro"),
-        (GrupoRelatorio.Operacional, "Operacional"),
-        (GrupoRelatorio.Comparativo, "Comparativos"),
-    };
-
-    protected override async Task OnInitializedAsync()
-    {
-        var u = (await AuthState.GetAuthenticationStateAsync()).User;
-        var podeOficina = u.IsInRole("Admin") || u.IsInRole("ChefeOficina");
-        var podeConcessionaria = u.IsInRole("Admin") || u.IsInRole("GerenteVendas");
-        catalogo = ReportService.ObterCatalogo(podeOficina, podeConcessionaria);
-    }
-
-    private async Task Baixar(string relatorioId)
-    {
-        var qs = $"formato={formato}&dataInicio={inicio:yyyy-MM-dd}&dataFim={fim:yyyy-MM-dd}";
-        await JS.InvokeVoidAsync("open", $"/api/relatorio/export/{relatorioId}?{qs}", "_blank");
-    }
-}
-
-<style>
-    .filtros { display: flex; gap: var(--sp-6); flex-wrap: wrap; margin-bottom: var(--sp-6); }
-    .filtros .campo { display: flex; flex-direction: column; gap: var(--sp-2); }
-    .filtros label { font-size: var(--txt-xs); color: var(--cor-tinta-2); font-weight: var(--peso-medio); }
-    .filtros select { border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 6px 10px; font-size: var(--txt-sm); font-family: inherit; }
-
-    .grupo-titulo {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--cor-tinta-2);
-        text-transform: uppercase;
-        letter-spacing: 0.6px;
-        margin: 24px 0 10px;
-    }
-    .grupo-titulo:first-of-type { margin-top: 0; }
-
-    .rel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-4); }
-    .rel-card {
-        background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg);
-        padding: var(--sp-4); display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3);
-    }
-    .rel-card h3 { font-size: var(--txt-md); margin: 0 0 4px; }
-    .rel-card p { margin: 0; }
-</style>

@@ -8,5 +8,6 @@ public static class SubNavFinanceiro
         new("/financeiro", "Visão geral"),
         new("/financeiro/despesas", "Despesas"),
         new("/financeiro/a-receber", "A receber"),
+        new("/financeiro/relatorios", "Relatórios"),
     };
 }

@@ -1,14 +1,17 @@
 @page "/concessionaria/consignacoes"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/concessionaria/consignacoes")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:concessionaria")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
 @rendermode InteractiveServer
 @inject IVeiculoConsignacaoService ConsignacaoService
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthState
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoConsignacao
 @using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
 
 <div class="pagina">
     <PageHeader Titulo="Consignações" Subtitulo="@($"{consignacoes.Count} consignação(ões) · {ativas} ativa(s)")">
@@ -19,7 +22,7 @@
         </Acao>
     </PageHeader>
 
-    <SubNav Itens="SubNavConcessionaria.Itens" />
+    <SubNav Itens="SubNavConcessionaria.Itens(role)" />
 
     <FiltroBar @bind-Busca="busca" BuscaPlaceholder="Buscar por veículo, placa ou proprietário..." OnBusca="Aplicar">
         <FiltroSelect Rotulo="Situação" @bind-Valor="filtroAtivo" OnMudou="Aplicar" Opcoes="opcoesFiltro" />
@@ -110,7 +113,16 @@
         new("VendidoAguardandoPagamento", "Vendidas"), new("Concluida", "Concluídas"),
         new("Devolvida", "Devolvidas"), new("Cancelada", "Canceladas"),
     };
-    protected override async Task OnInitializedAsync() => await Carregar();
+    private CarStoreManager.Domain.Enums.RoleUsuario role;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var roleClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out role);
+
+        await Carregar();
+    }
 
     private async Task Carregar()
     {

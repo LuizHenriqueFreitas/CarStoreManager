@@ -1,5 +1,6 @@
 @page "/oficina/fornecedores"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/oficina/fornecedores")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:oficina")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -297,10 +298,11 @@
         ehAdmin = state.User.IsInRole("Admin");
 
         var roleClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
-        if (Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out var role))
+        var usuarioIdClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out var role) && Guid.TryParse(usuarioIdClaim, out var usuarioId))
         {
-            subNavItens = await SubNavOficina.ItensAsync(false, role, PermissaoService);
-            podeNovoFornecedor = await PermissaoService.PodeAcessarAsync(role, "acao:oficina.novo-fornecedor");
+            subNavItens = await SubNavOficina.ItensAsync(false, usuarioId, role, PermissaoService);
+            podeNovoFornecedor = await PermissaoService.PodeAcessarAsync(usuarioId, role, "acao:oficina.novo-fornecedor");
         }
 
         await CarregarFornecedores();

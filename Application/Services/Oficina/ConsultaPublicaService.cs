@@ -16,7 +16,7 @@ public class ConsultaPublicaService : IConsultaPublicaService
     // Status "em aberto" — trabalho ainda em curso, não entregue nem cancelado.
     private static readonly StatusOrdemServico[] EmAberto =
     {
-        StatusOrdemServico.Pendente, StatusOrdemServico.EmAnalise,
+        StatusOrdemServico.Pendente, StatusOrdemServico.EmVistoria,
         StatusOrdemServico.BuscandoPecasParaOrcamento, StatusOrdemServico.AguardandoCliente,
         StatusOrdemServico.Aprovada, StatusOrdemServico.EmAndamento,
         StatusOrdemServico.Pausada, StatusOrdemServico.PagamentoPendente,

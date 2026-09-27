@@ -1,28 +1,25 @@
 @page "/concessionaria/test-drives"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/concessionaria/test-drives")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:concessionaria")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
 @rendermode InteractiveServer
 @inject ITestDriveService TestDriveService
-@inject IVeiculoVendaService VeiculoService
-@inject IClienteService ClienteService
-@inject IVendedorService VendedorService
+@inject AuthenticationStateProvider AuthState
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Concessionaria.TestDrive
-@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
-@using CarStoreManager.Application.DTOs.Shared.Cliente
-@using CarStoreManager.Application.DTOs.Concessionaria.Vendedor
 @using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
 
 <div class="pagina">
     <PageHeader Titulo="Test drives" Subtitulo="@($"{lista.Count} registro(s) · {Hoje} hoje")">
         <Acao>
-            <button type="button" class="btn btn-primario" @onclick="() => AbrirModal()">+ Agendar test drive</button>
+            <a href="/concessionaria/test-drives/novo" class="btn btn-primario">+ Agendar test drive</a>
         </Acao>
     </PageHeader>
 
-    <SubNav Itens="SubNavConcessionaria.Itens" />
+    <SubNav Itens="SubNavConcessionaria.Itens(role)" />
 
     <FiltroBar @bind-Busca="busca" BuscaPlaceholder="Buscar por veículo, cliente ou vendedor..." OnBusca="StateHasChanged">
         <FiltroSelect Rotulo="Status" @bind-Valor="filtro" OnMudou="StateHasChanged" Opcoes="opcoesStatus" />
@@ -61,6 +58,7 @@
                             <td>@t.VendedorNome</td>
                             <td><StatusBadge Status="@t.Status" Familia="testdrive" /></td>
                             <td class="acoes">
+                                <a href="@($"/concessionaria/test-drives/{t.Id}")" class="btn-mini">Termo</a>
                                 @if (t.Status == "Agendado")
                                 {
                                     <button type="button" class="btn-mini ok" @onclick='() => MudarStatus(t.Id, "Realizado")'>Realizado</button>
@@ -78,71 +76,8 @@
     @if (!string.IsNullOrEmpty(msg)) { <div class="banner @(msgErro ? "erro" : "ok")">@msg</div> }
 </div>
 
-@if (modalAberto)
-{
-    <div class="modal-fundo" @onclick="() => modalAberto = false">
-        <div class="modal" @onclick:stopPropagation="true">
-            <h2>Agendar test drive</h2>
-            <div class="campo">
-                <label>Veículo</label>
-                <BuscaAutocomplete TItem="VeiculoVendaListaDTO"
-                                   Placeholder="Nome, marca ou placa..."
-                                   @bind-Selecionado="veiculoSelecionado"
-                                   BuscarFunc="BuscarVeiculos"
-                                   TextoSelecionado="@(v => $"{v.Marca} {v.Modelo} {v.Ano} · {v.Placa}")">
-                    <ItemTemplate Context="v">@v.Marca @v.Modelo @v.Ano · @v.Placa</ItemTemplate>
-                </BuscaAutocomplete>
-            </div>
-            <div class="campo">
-                <label>Cliente</label>
-                <BuscaAutocomplete TItem="ClienteListaDTO"
-                                   Placeholder="Nome ou CPF..."
-                                   @bind-Selecionado="clienteSelecionado"
-                                   BuscarFunc="BuscarClientes"
-                                   TextoSelecionado="@(c => $"{c.Nome} — {c.Cpf}")">
-                    <ItemTemplate Context="c">@c.Nome — @c.Cpf</ItemTemplate>
-                </BuscaAutocomplete>
-                <span class="dica">Cliente não cadastrado? Cadastre em Cadastros → Clientes.</span>
-            </div>
-            <div class="campo">
-                <label>Vendedor</label>
-                <BuscaAutocomplete TItem="VendedorListaDTO"
-                                   Placeholder="Nome do vendedor..."
-                                   @bind-Selecionado="vendedorSelecionado"
-                                   BuscarFunc="BuscarVendedores"
-                                   TextoSelecionado="@(vd => vd.Nome)">
-                    <ItemTemplate Context="vd">@vd.Nome</ItemTemplate>
-                </BuscaAutocomplete>
-            </div>
-            <div class="campo">
-                <label>Data e hora</label>
-                <input type="datetime-local" @bind="dataHora" />
-            </div>
-            <div class="campo">
-                <label>Observação</label>
-                <textarea @bind="form.Observacao" rows="2"></textarea>
-            </div>
-            <div class="modal-acoes">
-                <button type="button" class="btn btn-neutro" @onclick="() => modalAberto = false">Cancelar</button>
-                <button type="button" class="btn btn-primario" @onclick="Agendar" disabled="@salvando">
-                    @(salvando ? "Salvando..." : "Agendar")
-                </button>
-            </div>
-            @if (!string.IsNullOrEmpty(modalErro)) { <div class="banner erro">@modalErro</div> }
-        </div>
-    </div>
-}
-
 @code {
-    // Preenchido quando se chega vindo do botão "Agendar test drive" na tela
-    // de detalhe do veículo (?veiculoId=...) — abre o modal com o veículo já selecionado.
-    [SupplyParameterFromQuery(Name = "veiculoId")]
-    [Parameter] public Guid? VeiculoIdQuery { get; set; }
-
     private List<TestDriveListaDTO> lista = new();
-    private ClienteListaDTO? clienteSelecionado;
-    private VendedorListaDTO? vendedorSelecionado;
-    private VeiculoVendaListaDTO? veiculoSelecionado;
 
     private string filtro = "";
     private string filtroQuando = "";
@@ -160,11 +95,6 @@
     }
     private bool carregando = true;
     private string? msg; private bool msgErro;
-
-    private bool modalAberto, salvando;
-    private string? modalErro;
-    private CriarTestDriveDTO form = new();
-    private DateTime dataHora = DateTime.Now.AddHours(1);
 
     private static readonly List<FiltroSelect.Opcao> opcoesStatus = new()
     {
@@ -208,28 +138,15 @@
         }
     }
 
+    private CarStoreManager.Domain.Enums.RoleUsuario role;
+
     protected override async Task OnInitializedAsync()
     {
-        await Carregar();
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var roleClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out role);
 
-        if (VeiculoIdQuery is { } veiculoId && veiculoId != Guid.Empty)
-        {
-            var rv = await VeiculoService.GetByIdAsync(veiculoId);
-            if (rv.IsSuccess && rv.Value is not null)
-            {
-                var v = rv.Value;
-                AbrirModal();
-                veiculoSelecionado = new VeiculoVendaListaDTO
-                {
-                    Id = v.Id,
-                    Marca = v.Marca,
-                    Modelo = v.Modelo,
-                    Ano = v.Ano,
-                    Placa = v.Placa,
-                    Disponibilidade = v.Disponibilidade
-                };
-            }
-        }
+        await Carregar();
     }
 
     private async Task Carregar()
@@ -238,61 +155,6 @@
         var r = await TestDriveService.GetAllAsync();
         lista = r.IsSuccess ? r.Value?.ToList() ?? new() : new();
         carregando = false;
-    }
-
-    private async Task<List<VeiculoVendaListaDTO>> BuscarVeiculos(string termo)
-    {
-        var r = await VeiculoService.PesquisarAsync(termo);
-        var itens = r.IsSuccess ? r.Value ?? new() : new();
-        return itens.Where(v => v.Disponibilidade is "Disponivel" or "Reservado").ToList();
-    }
-
-    private async Task<List<ClienteListaDTO>> BuscarClientes(string termo)
-    {
-        var r = await ClienteService.PesquisarAsync(termo);
-        return r.IsSuccess ? r.Value ?? new() : new();
-    }
-
-    private async Task<List<VendedorListaDTO>> BuscarVendedores(string termo)
-    {
-        var r = await VendedorService.PesquisarAsync(termo);
-        return r.IsSuccess ? r.Value ?? new() : new();
-    }
-
-    private void AbrirModal()
-    {
-        form = new();
-        clienteSelecionado = null;
-        vendedorSelecionado = null;
-        veiculoSelecionado = null;
-        dataHora = DateTime.Now.AddHours(1);
-        modalErro = null;
-        modalAberto = true;
-    }
-
-    private async Task Agendar()
-    {
-        modalErro = null;
-        if (veiculoSelecionado is null || clienteSelecionado is null || vendedorSelecionado is null)
-        {
-            modalErro = "Escolha veículo, cliente e vendedor.";
-            return;
-        }
-        form.VeiculoVendaId = veiculoSelecionado.Id;
-        form.ClienteId = clienteSelecionado.Id;
-        form.VendedorId = vendedorSelecionado.Id;
-        form.DataHora = dataHora;
-
-        salvando = true;
-        var r = await TestDriveService.AgendarAsync(form);
-        salvando = false;
-        if (r.IsSuccess)
-        {
-            modalAberto = false;
-            msg = "Test drive agendado."; msgErro = false;
-            await Carregar();
-        }
-        else { modalErro = r.Error; }
     }
 
     private async Task MudarStatus(Guid id, string status)
@@ -316,18 +178,9 @@
     .tab th { background: var(--cor-fundo); font-size: var(--txt-xs); text-transform: uppercase; color: var(--cor-tinta-3); }
     .tab tbody tr:nth-child(even) { background: var(--cor-zebra); }
     .acoes { display: flex; gap: 4px; }
-    .btn-mini { background: var(--cor-superficie-2); border: 1px solid var(--cor-linha); border-radius: var(--raio-sm); padding: 4px 8px; font-size: var(--txt-xs); cursor: pointer; }
+    .btn-mini { background: var(--cor-superficie-2); border: 1px solid var(--cor-linha); border-radius: var(--raio-sm); padding: 4px 8px; font-size: var(--txt-xs); cursor: pointer; text-decoration: none; color: var(--cor-tinta-2); }
     .btn-mini.ok { background: var(--cor-ok-bg); color: var(--cor-ok-tx); border-color: transparent; }
     .btn-mini.neg { background: var(--cor-erro-bg); color: var(--cor-erro-tx); border-color: transparent; }
-
-    .modal-fundo { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 500; padding: var(--sp-4); }
-    .modal { background: var(--cor-superficie); border-radius: var(--raio-lg); padding: var(--sp-6); width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; }
-    .modal h2 { font-size: var(--txt-lg); margin: 0 0 var(--sp-4); }
-    .modal .campo { display: flex; flex-direction: column; gap: 4px; margin-bottom: var(--sp-3); }
-    .modal label { font-size: var(--txt-xs); color: var(--cor-tinta-2); font-weight: var(--peso-medio); }
-    .modal select, .modal input, .modal textarea { border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 8px 10px; font-size: var(--txt-sm); font-family: inherit; }
-    .modal .dica { font-size: var(--txt-xs); color: var(--cor-tinta-3); }
-    .modal-acoes { display: flex; justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-4); }
 
     .banner { margin-top: var(--sp-4); padding: var(--sp-3); border-radius: var(--raio-md); font-size: var(--txt-sm); }
     .banner.ok { background: var(--cor-ok-bg); color: var(--cor-ok-tx); }

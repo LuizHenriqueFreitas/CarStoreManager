@@ -50,9 +50,10 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "inicio-faturamento",
                     Titulo = "Receitas e despesas",
-                    Texto = "Três linhas separadas — receita da oficina, receita da concessionária e despesa " +
-                        "— mês a mês, dentro do período escolhido no seletor acima. Nunca somadas numa linha só, " +
-                        "pra não misturar dinheiro de setores diferentes. Aparece para administração e gestão."
+                    Texto = "Dois gráficos lado a lado — um só de oficina, outro só de concessionária — cada um " +
+                        "com sua receita e sua despesa mês a mês, dentro do período escolhido no seletor acima. " +
+                        "Nunca somados num gráfico só, pra não misturar dinheiro de setores diferentes (despesa " +
+                        "sem setor específico entra dividida meio a meio). Aparece para administração e gestão."
                 },
                 new()
                 {

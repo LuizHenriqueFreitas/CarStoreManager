@@ -1,5 +1,6 @@
 @page "/concessionaria/veiculo/{Id:guid}"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:concessionaria")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -9,10 +10,12 @@
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IMercadoLivrePublicacaoService MercadoLivreService
+@inject IVendedorService VendedorService
 @using CarStoreManager.Application.Common
 @using CarStoreManager.Application.Interfaces
 @inject NavigationManager Nav
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
+@using CarStoreManager.Application.DTOs.Concessionaria.Vendedor
 @using CarStoreManager.Application.DTOs.Concessionaria.VeiculoConsignacao
 @using CarStoreManager.Domain.Entities.Concessionaria
 @using CarStoreManager.Application.DTOs.Integracoes.MercadoLivre
@@ -164,10 +167,36 @@ else
                     <h2 class="section-titulo">Consignação — proprietário e vendedor</h2>
                     <div class="specs-grid">
                         <div class="spec"><span class="spec-label">Proprietário</span><span class="spec-val">@consignacao.ClienteProprietarioNome</span></div>
-                        <div class="spec"><span class="spec-label">Vendedor responsável</span><span class="spec-val">@consignacao.VendedorResponsavelNome</span></div>
+                        <div class="spec">
+                            <span class="spec-label">Vendedor responsável</span>
+                            <span class="spec-val">
+                                @consignacao.VendedorResponsavelNome
+                                @if (consignacao.Status is "Ativa" or "Expirada")
+                                {
+                                    <AuthorizeView Roles="Admin,GerenteVendas" Context="ctxTrocarVendedorConsig">
+                                        <Authorized>
+                                            <button type="button" class="btn-link" @onclick="() => trocandoVendedorConsignacao = !trocandoVendedorConsignacao">Trocar</button>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                }
+                            </span>
+                        </div>
                         <div class="spec"><span class="spec-label">Início da consignação</span><span class="spec-val">@consignacao.DataInicio.ToString("dd/MM/yyyy")</span></div>
                         <div class="spec"><span class="spec-label">Vencimento</span><span class="spec-val">@consignacao.DataVencimento.ToString("dd/MM/yyyy")</span></div>
                     </div>
+                    @if (trocandoVendedorConsignacao)
+                    {
+                        <div class="trocar-vendedor">
+                            <BuscaAutocomplete TItem="VendedorListaDTO"
+                                               Placeholder="Nome do novo vendedor..."
+                                               @bind-Selecionado="novoVendedorConsignacao"
+                                               BuscarFunc="BuscarVendedores"
+                                               TextoSelecionado="@(vd => vd.Nome)">
+                                <ItemTemplate Context="vd">@vd.Nome</ItemTemplate>
+                            </BuscaAutocomplete>
+                            <button type="button" class="btn-primary" @onclick="() => modalTrocarVendedorConsigVisivel = true" disabled="@(novoVendedorConsignacao is null || processandoConsignacao)">Confirmar</button>
+                        </div>
+                    }
                 </div>
 
                 <div class="detalhe-section" data-tour="consig-detalhe-comissao">
@@ -190,7 +219,8 @@ else
                     <p class="contrato-texto">@(string.IsNullOrWhiteSpace(consignacao.TextoContrato) ? "Nenhum termo cadastrado." : consignacao.TextoContrato)</p>
                     @if (!string.IsNullOrWhiteSpace(consignacao.TextoContrato))
                     {
-                        <BotaoExportarPdf Titulo="@($"Contrato de consignação - {Marca} {Modelo}")" Conteudo="@consignacao.TextoContrato" CssClass="btn-secondary" />
+                        <BotaoExportarPdf Titulo="@($"Contrato de consignação - {Marca} {Modelo}")" Conteudo="@consignacao.TextoContrato" CssClass="btn-secondary"
+                                          EntidadeTipoFotos="VeiculoConsignacao" EntidadeIdFotos="@Id" />
                     }
                     @if (!string.IsNullOrWhiteSpace(consignacao.UrlContratoPdf))
                     {
@@ -305,6 +335,9 @@ else
                                     <button type="button" class="btn-primary" data-tour="consig-detalhe-gerar-proposta-btn" @onclick="GerarPropostaConsignado">Gerar proposta de venda</button>
                                 </Authorized>
                             </AuthorizeView>
+                            <button type="button" class="btn-secondary" @onclick="AgendarTestDriveConsignado">
+                                🔑 Agendar test drive
+                            </button>
                         }
                         else
                         {
@@ -388,6 +421,14 @@ else
         TextoConfirmar="Salvar"
         OnConfirmar="SalvarAlteracoes"
         OnCancelar="() => modalSalvarEdicaoVisivel = false" />
+
+    <ConfirmacaoModal
+        Visivel="modalTrocarVendedorConsigVisivel"
+        Titulo="Trocar vendedor responsável"
+        Mensagem="@($"Trocar o vendedor responsável por {Marca} {Modelo} de \"{consignacao?.VendedorResponsavelNome}\" para \"{novoVendedorConsignacao?.Nome}\"?")"
+        TextoConfirmar="Trocar"
+        OnConfirmar="ConfirmarTrocaVendedorConsignacao"
+        OnCancelar="() => modalTrocarVendedorConsigVisivel = false" />
 
     @if (IsConsignado)
     {
@@ -776,7 +817,10 @@ else
         Nav.NavigateTo($"/concessionaria/proposta/nova/{Id}");
 
     private void AgendarTestDrive() =>
-        Nav.NavigateTo($"/concessionaria/test-drives?veiculoId={Id}");
+        Nav.NavigateTo($"/concessionaria/test-drives/novo?veiculoId={Id}");
+
+    private void AgendarTestDriveConsignado() =>
+        Nav.NavigateTo($"/concessionaria/test-drives/novo?veiculoId={Id}&tipo=VeiculoConsignacao");
 
     private async Task LiberarParaVenda()
     {
@@ -825,6 +869,25 @@ else
 
     private Task ConcluirVenda() => ExecutarAcaoConsignacao(() => ConsignacaoService.ConcluirVendaAsync(Id));
     private Task Devolver() => ExecutarAcaoConsignacao(() => ConsignacaoService.DevolverAsync(Id));
+
+    private bool trocandoVendedorConsignacao;
+    private bool modalTrocarVendedorConsigVisivel;
+    private VendedorListaDTO? novoVendedorConsignacao;
+
+    private async Task<List<VendedorListaDTO>> BuscarVendedores(string termo)
+    {
+        var r = await VendedorService.PesquisarAsync(termo);
+        return r.IsSuccess ? r.Value ?? new() : new();
+    }
+
+    private async Task ConfirmarTrocaVendedorConsignacao()
+    {
+        if (novoVendedorConsignacao is null) return;
+        await ExecutarAcaoConsignacao(() => ConsignacaoService.TrocarVendedorAsync(Id, novoVendedorConsignacao.Id));
+        modalTrocarVendedorConsigVisivel = false;
+        trocandoVendedorConsignacao = false;
+        novoVendedorConsignacao = null;
+    }
 
     private Task Cancelar()
     {
@@ -1209,6 +1272,18 @@ else
     .spec { display: flex; flex-direction: column; gap: 2px; }
     .spec-label { font-size: 11px; color: #888; }
     .spec-val { font-size: 14px; font-weight: 500; }
+    .btn-link { background: none; border: none; color: #0a5cff; font-size: 12px; cursor: pointer; padding: 0; margin-left: 8px; text-decoration: underline; font-weight: 400; }
+    .trocar-vendedor {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 0.5px solid #eee;
+    }
+    .trocar-vendedor > div { width: 100%; }
+    .trocar-vendedor button { align-self: flex-start; }
     .acc-lista { display: flex; flex-wrap: wrap; gap: 8px; }
     .acc-tag {
         background: #f4f4f4;

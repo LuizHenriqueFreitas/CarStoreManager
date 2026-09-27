@@ -1,10 +1,11 @@
 @page "/financeiro/despesas"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,ChefeOficina")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/financeiro/despesas")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
 @rendermode InteractiveServer
 @inject IBalancoMensalDespesaService BalancoService
+@inject CarStoreManager.Application.Interfaces.Sistema.IConfiguracaoSistemaService ConfiguracaoService
 @using CarStoreManager.Application.Interfaces.Sistema
 @using CarStoreManager.Application.DTOs.Sistema
 @using CarStoreManager.Web.Components.Shared
@@ -84,8 +85,8 @@
                             <td>
                                 <select @bind="it.Setor" disabled="@balanco.Fechado">
                                     <option value="Geral">Geral</option>
-                                    <option value="Oficina">Oficina</option>
-                                    <option value="Concessionaria">Concessionária</option>
+                                    @if (moduloOficinaAtivo) { <option value="Oficina">Oficina</option> }
+                                    @if (moduloConcessionariaAtivo) { <option value="Concessionaria">Concessionária</option> }
                                 </select>
                             </td>
                             <td><input @bind="it.Categoria" disabled="@balanco.Fechado" /></td>
@@ -106,8 +107,8 @@
                             <td>
                                 <select @bind="nova.Setor">
                                     <option value="Geral">Geral</option>
-                                    <option value="Oficina">Oficina</option>
-                                    <option value="Concessionaria">Concessionária</option>
+                                    @if (moduloOficinaAtivo) { <option value="Oficina">Oficina</option> }
+                                    @if (moduloConcessionariaAtivo) { <option value="Concessionaria">Concessionária</option> }
                                 </select>
                             </td>
                             <td><input @bind="nova.Categoria" placeholder="categoria" /></td>
@@ -131,11 +132,20 @@
     private string subtitulo = "";
     private string? msg; private bool erro;
     private SalvarItemBalancoDTO nova = new() { Setor = "Geral" };
+    private bool moduloOficinaAtivo = true;
+    private bool moduloConcessionariaAtivo = true;
 
     private List<(string chave, string label)> competencias = new();
 
     protected override async Task OnInitializedAsync()
     {
+        var rModulos = await ConfiguracaoService.ObterModulosAtivosAsync();
+        if (rModulos.IsSuccess)
+        {
+            moduloOficinaAtivo = rModulos.Value.Oficina;
+            moduloConcessionariaAtivo = rModulos.Value.Concessionaria;
+        }
+
         var hoje = DateTime.Today;
         for (var i = 0; i < 15; i++)
         {

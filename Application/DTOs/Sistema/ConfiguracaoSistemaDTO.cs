@@ -4,6 +4,10 @@ public class ConfiguracaoSistemaDTO
 {
     public DateTime? DataUltimaAtualizacao { get; set; }
 
+    // === Módulos ativos ===
+    public bool ModuloConcessionariaAtivo { get; set; } = true;
+    public bool ModuloOficinaAtivo { get; set; } = true;
+
     // === Modo operante — entrada mínima ===
     public bool ExigirEntradaMinima { get; set; } = false;
     public decimal PercentualEntradaMinima { get; set; } = 0m;

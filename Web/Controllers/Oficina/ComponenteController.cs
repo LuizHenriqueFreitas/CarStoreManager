@@ -71,6 +71,33 @@ public class ComponenteController : ControllerBase
         return resultado.IsSuccess ? Ok(resultado.Value) : NotFound(resultado.Error);
     }
 
+    /// <summary>Lista os vínculos de equivalência curados manualmente do componente.</summary>
+    [HttpGet("{id:guid}/equivalencias")]
+    public async Task<IActionResult> GetEquivalencias(Guid id)
+    {
+        var resultado = await _service.ListarLigacoesEquivalenciaAsync(id);
+        return resultado.IsSuccess ? Ok(resultado.Value) : NotFound(resultado.Error);
+    }
+
+    /// <summary>Cria um vínculo de equivalência curado manualmente — mesma curadoria do catálogo.</summary>
+    [HttpPost("equivalencias")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
+    public async Task<IActionResult> CriarEquivalencia([FromBody] CriarComponenteEquivalenteDTO dto)
+    {
+        var resultado = await _service.CriarLigacaoEquivalenciaAsync(dto);
+        return resultado.IsSuccess
+            ? CreatedAtAction(nameof(GetEquivalencias), new { id = dto.ComponenteOriginalId }, null)
+            : BadRequest(resultado.Error);
+    }
+
+    [HttpDelete("equivalencias/{ligacaoId:guid}")]
+    [Authorize(Roles = "Admin,ChefeOficina")]
+    public async Task<IActionResult> RemoverEquivalencia(Guid ligacaoId)
+    {
+        var resultado = await _service.RemoverLigacaoEquivalenciaAsync(ligacaoId);
+        return resultado.IsSuccess ? NoContent() : NotFound(resultado.Error);
+    }
+
     [HttpGet("sistema/{sistema}")]
     public async Task<IActionResult> GetPorSistema(string sistema)
     {

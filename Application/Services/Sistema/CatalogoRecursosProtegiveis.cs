@@ -52,10 +52,13 @@ public static class CatalogoRecursosProtegiveis
         Pagina("/", "Início", "Geral", Todos),
         Pagina("/conta", "Minha conta", "Geral", Todos),
         Pagina("/clientes", "Clientes", "Geral", Admin, Vendedor, Recepcionista, ChefeOficina, GerenteVendas),
+        Pagina("/clientes/relatorios", "Relatórios — Clientes", "Geral", Admin, Vendedor, Recepcionista, ChefeOficina, GerenteVendas),
 
         // ===== ADMINISTRAÇÃO =====
         Pagina("/dashboard", "Análises", "Administração", Admin, ChefeOficina, GerenteVendas),
+        Pagina("/dashboard/relatorios", "Relatórios — Análises", "Administração", Admin, ChefeOficina, GerenteVendas),
         Pagina("/equipe", "Equipe", "Administração", Admin),
+        Pagina("/equipe/relatorios", "Relatórios — Equipe", "Administração", Admin),
         Pagina("/configuracoes", "Configurações do sistema", "Administração", Admin),
         Pagina("/integracoes/mercadolivre", "Integrações Mercado Livre", "Administração", Admin),
 
@@ -65,7 +68,9 @@ public static class CatalogoRecursosProtegiveis
         Pagina("/concessionaria/propostas", "Propostas de venda", "Concessionária", Admin, Vendedor, GerenteVendas),
         Pagina("/concessionaria/consignacoes", "Consignações", "Concessionária", Admin, Vendedor, GerenteVendas),
         Pagina("/concessionaria/test-drives", "Test drives", "Concessionária", Admin, Vendedor, GerenteVendas),
+        Pagina("/concessionaria/test-drives/novo", "Agendar test drive (tela)", "Concessionária", Admin, Vendedor, GerenteVendas),
         Pagina("/concessionaria/veiculo/novo", "Cadastro de veículo (tela)", "Concessionária", Admin, GerenteVendas),
+        Pagina("/concessionaria/relatorios", "Relatórios — Concessionária", "Concessionária", Admin, Vendedor, GerenteVendas),
         Acao("concessionaria.cadastrar-veiculo", "Botão \"Cadastrar veículo\"", "Concessionária", Admin, GerenteVendas),
         Acao("concessionaria.cadastrar-veiculo-consignado", "Botão \"Cadastrar veículo consignado\"", "Concessionária", Admin, GerenteVendas),
 
@@ -73,7 +78,7 @@ public static class CatalogoRecursosProtegiveis
         Pagina("/financeiro", "Financeiro", "Financeiro", Admin, ChefeOficina, GerenteVendas),
         Pagina("/financeiro/despesas", "Despesas", "Financeiro", Admin, ChefeOficina, GerenteVendas),
         Pagina("/financeiro/a-receber", "A receber", "Financeiro", Admin, ChefeOficina, GerenteVendas),
-        Pagina("/financeiro/relatorios", "Relatórios", "Financeiro", Admin, ChefeOficina, GerenteVendas),
+        Pagina("/financeiro/relatorios", "Relatórios — Financeiro", "Financeiro", Admin, ChefeOficina, GerenteVendas),
 
         // ===== OFICINA =====
         Pagina("/oficina", "Oficina — visão geral", "Oficina", Admin, Mecanico, Recepcionista, ChefeOficina),
@@ -81,6 +86,7 @@ public static class CatalogoRecursosProtegiveis
         Pagina("/oficina/ordens", "Ordens de serviço", "Oficina", Admin, Mecanico, Recepcionista, ChefeOficina),
         Pagina("/oficina/componentes", "Estoque de peças", "Oficina", Admin, Mecanico, ChefeOficina),
         Pagina("/oficina/fornecedores", "Fornecedores", "Oficina", Admin, Mecanico, ChefeOficina),
+        Pagina("/oficina/relatorios", "Relatórios — Oficina", "Oficina", Admin, ChefeOficina),
         Acao("oficina.novo-fornecedor", "Botão \"Novo fornecedor\"", "Oficina", Admin),
     };
 

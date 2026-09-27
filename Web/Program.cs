@@ -110,6 +110,12 @@ builder.Services.AddAuthorization(options =>
         .RequireAuthenticatedUser()
         .Build();
 });
+// Policies dinâmicas por recurso do catálogo (doc 37 — acesso individual/alçada):
+// troca o RolesAuthorizationRequirement estático por uma checagem que
+// também consulta exceções pessoais (PermissaoIndividual), sem mudar o UX.
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, CarStoreManager.Web.Authorization.RecursoPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, CarStoreManager.Web.Authorization.RecursoAcessoHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, CarStoreManager.Web.Authorization.ModuloAcessoHandler>();
 builder.Services.AddHttpContextAccessor();
 
 // =========================
@@ -142,6 +148,8 @@ if (!app.Environment.IsEnvironment("Testing"))
     await context.Database.MigrateAsync();
     await SeedAdminAsync(context);
     await SeedChecklistPresetsAsync(context);
+    await SeedTemplateTermoTestDriveAsync(context);
+    await SeedTemplateContratoOSAsync(context);
 }
 
 async Task SeedAdminAsync(AppDbContext context)
@@ -209,6 +217,36 @@ async Task SeedChecklistPresetsAsync(AppDbContext context)
 
     await context.SaveChangesAsync();
     Console.WriteLine($"{presets.Length} preset(s) de checklist iniciais criados.");
+}
+
+// Semeia o template padrão de termo de responsabilidade de test drive — guard
+// por Nome (não "Any()" geral, já que a tabela de templates pode já ter
+// outras linhas cadastradas manualmente pelo admin) — admin pode editar ou
+// excluir depois em Configurações → Documentos.
+async Task SeedTemplateTermoTestDriveAsync(AppDbContext context)
+{
+    const string nome = "Termo de responsabilidade — Test drive (padrão)";
+    if (context.TemplatesDocumento.Any(t => t.Nome == nome)) return;
+
+    var template = new CarStoreManager.Domain.Entities.Sistema.TemplateDocumento(
+        nome, CarStoreManager.Domain.Entities.Sistema.TemplatesDocumentosPadrao.TermoTestDrive);
+    context.TemplatesDocumento.Add(template);
+    await context.SaveChangesAsync();
+    Console.WriteLine("Template de termo de test drive criado.");
+}
+
+// Semeia o template padrão do contrato de OS (vistoria de entrada, feita
+// pelo recepcionista) — mesmo padrão guard-por-Nome acima.
+async Task SeedTemplateContratoOSAsync(AppDbContext context)
+{
+    const string nome = "Contrato de OS — vistoria de entrada (padrão)";
+    if (context.TemplatesDocumento.Any(t => t.Nome == nome)) return;
+
+    var template = new CarStoreManager.Domain.Entities.Sistema.TemplateDocumento(
+        nome, CarStoreManager.Domain.Entities.Sistema.TemplatesDocumentosPadrao.ContratoOS);
+    context.TemplatesDocumento.Add(template);
+    await context.SaveChangesAsync();
+    Console.WriteLine("Template de contrato de OS criado.");
 }
 
 // =========================

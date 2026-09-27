@@ -76,7 +76,7 @@
         _ => s switch // os
         {
             "Pendente"                   => "Pendente",
-            "EmAnalise"                  => "Em análise (mecânico)",
+            "EmVistoria"                 => "Em vistoria (recepção)",
             "AguardandoCliente"          => "Aguardando cliente",
             "BuscandoPecasParaOrcamento" => "Buscando peças",
             "Aprovada"                   => "Aprovada",
@@ -137,7 +137,7 @@
         _ => s switch // os
         {
             "Finalizada" or "Entregue"                     => "ok",
-            "EmAnalise" or "Aprovada" or "EmAndamento"     => "info",
+            "EmVistoria" or "Aprovada" or "EmAndamento"    => "info",
             "AguardandoCliente" or "PagamentoPendente"     => "atencao",
             "Pendente"                                     => "alerta",
             "Pausada" or "BuscandoPecasParaOrcamento"      => "neutro",

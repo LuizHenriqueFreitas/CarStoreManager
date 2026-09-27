@@ -1,0 +1,166 @@
+@page "/equipe/{Id:guid}/acessos"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@inject IAuthService AuthService
+@inject IPermissaoAcessoService PermissaoService
+@inject NavigationManager Nav
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.Interfaces.Sistema
+@using CarStoreManager.Application.DTOs.Sistema
+@using CarStoreManager.Domain.Enums
+
+<div class="acessos-page">
+    @if (carregando)
+    {
+        <p class="muted">Carregando...</p>
+    }
+    else if (usuario is null)
+    {
+        <p class="muted">Usuário não encontrado.</p>
+    }
+    else
+    {
+        <div class="page-header">
+            <div>
+                <button type="button" class="btn-voltar" @onclick="Voltar">← Equipe</button>
+                <h1 class="page-titulo">Acessos de @usuario.Nome</h1>
+                <p class="page-sub">
+                    Papel: <strong>@RoleLabel(usuario.Role)</strong> — exceções pessoais configuradas aqui valem só
+                    pra <strong>este</strong> usuário e podem tanto ampliar quanto restringir o que o papel dele já
+                    permite. Deixe em "Padrão do papel" pra não mudar nada.
+                </p>
+            </div>
+        </div>
+
+        @if (salvando is not null)
+        {
+            <p class="muted">Salvando...</p>
+        }
+        @if (!string.IsNullOrEmpty(erro))
+        {
+            <div class="banner banner-erro">@erro</div>
+        }
+
+        @foreach (var area in matriz.Select(m => m.Area).Distinct())
+        {
+            <h3 class="area-titulo">@area</h3>
+            <div class="table-scroll">
+                <table class="tabela acessos-tabela">
+                    <thead>
+                        <tr>
+                            <th>Recurso</th>
+                            <th style="width:260px">Acesso</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var recurso in matriz.Where(m => m.Area == area))
+                        {
+                            <tr>
+                                <td>
+                                    @recurso.Rotulo
+                                    <span class="tipo-tag">@(recurso.Tipo == "Pagina" ? "página" : "ação")</span>
+                                </td>
+                                <td>
+                                    <select class="campo-input" disabled="@(salvando == recurso.Chave)"
+                                            @onchange="e => AtualizarAsync(recurso, e.Value?.ToString())">
+                                        <option value="padrao" selected="@(recurso.OverrideIndividual is null)">
+                                            Padrão do papel (@(recurso.PadraoDoPapel ? "permite" : "bloqueia"))
+                                        </option>
+                                        <option value="permitir" selected="@(recurso.OverrideIndividual == true)">Permitir sempre</option>
+                                        <option value="bloquear" selected="@(recurso.OverrideIndividual == false)">Bloquear sempre</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private CarStoreManager.Application.DTOs.Auth.UsuarioDTO? usuario;
+    private List<RecursoPermissaoIndividualDTO> matriz = new();
+    private bool carregando = true;
+    private string? salvando;
+    private string? erro;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var r = await AuthService.ObterUsuarioAsync(Id);
+        if (r.IsSuccess) usuario = r.Value;
+
+        if (usuario is not null && Enum.TryParse<RoleUsuario>(usuario.Role, out var role))
+            matriz = await PermissaoService.ObterMatrizIndividualAsync(Id, role);
+
+        carregando = false;
+    }
+
+    private async Task AtualizarAsync(RecursoPermissaoIndividualDTO recurso, string? opcao)
+    {
+        bool? permitido = opcao switch
+        {
+            "permitir" => true,
+            "bloquear" => false,
+            _ => null
+        };
+
+        salvando = recurso.Chave;
+        erro = null;
+        StateHasChanged();
+
+        var r = await PermissaoService.AtualizarIndividualAsync(Id, recurso.Chave, permitido);
+        if (r.IsSuccess)
+            recurso.OverrideIndividual = permitido;
+        else
+            erro = r.Error;
+
+        salvando = null;
+    }
+
+    private void Voltar() => Nav.NavigateTo("/equipe");
+
+    private static string RoleLabel(string role) => role switch
+    {
+        "Vendedor" => "Vendedor",
+        "Mecanico" => "Mecânico",
+        "Recepcionista" => "Recepcionista",
+        "ChefeOficina" => "Chefe de oficina",
+        "GerenteVendas" => "Gerente de vendas",
+        "Admin" => "Administrador",
+        _ => role
+    };
+}
+
+<style>
+    .acessos-page { padding:24px; max-width:900px; margin:0 auto; }
+    .page-titulo { margin:8px 0 0; font-size:1.6rem; }
+    .page-sub { margin:4px 0 24px; color:#666; max-width:640px; }
+    .btn-voltar {
+        background:none; border:0; color:#0a84ff; cursor:pointer; font-size:0.9em; padding:0;
+    }
+    .muted { color:#888; font-size:0.9em; }
+    .banner { padding:12px 16px; border-radius:6px; margin-bottom:16px; }
+    .banner-erro { background:#fdecea; color:#a72020; border:1px solid #f5c2bd; }
+
+    .area-titulo { font-size:1em; margin:20px 0 8px; color:#333; }
+    .area-titulo:first-of-type { margin-top:4px; }
+    .table-scroll { overflow-x:auto; }
+    .tabela { width:100%; border-collapse:collapse; margin-top:8px; }
+    .acessos-tabela th, .acessos-tabela td {
+        text-align:left; padding:8px 10px; border-bottom:1px solid #eee; font-size:0.9em;
+    }
+    .tipo-tag {
+        display:inline-block; margin-left:6px; padding:1px 6px; border-radius:8px;
+        background:#f0f0f0; color:#777; font-size:0.75em;
+    }
+    .campo-input {
+        width:100%; padding:6px 8px; border:1px solid #ccc; border-radius:4px; font-size:0.85em;
+    }
+</style>

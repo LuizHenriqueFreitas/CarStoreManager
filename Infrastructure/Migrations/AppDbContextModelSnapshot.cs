@@ -207,6 +207,59 @@ namespace CarStoreManager.Infrastructure.Migrations
                     b.ToTable("TermosEntrega");
                 });
 
+            modelBuilder.Entity("CarStoreManager.Domain.Entities.Concessionaria.TermoTestDrive", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AssinaturaCpfCliente")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AssinaturaIp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AssinaturaNomeCliente")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataAssinatura")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataRedacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataUltimaEdicao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("TestDriveId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TextoTermo")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TokenAssinatura")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("VendedorRedatorId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TestDriveId")
+                        .IsUnique();
+
+                    b.HasIndex("TokenAssinatura");
+
+                    b.ToTable("TermosTestDrive");
+                });
+
             modelBuilder.Entity("CarStoreManager.Domain.Entities.Concessionaria.TestDrive", b =>
                 {
                     b.Property<Guid>("Id")
@@ -227,6 +280,13 @@ namespace CarStoreManager.Infrastructure.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("VeiculoEntidadeTipo")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("VeiculoVenda");
 
                     b.Property<Guid>("VeiculoVendaId")
                         .HasColumnType("TEXT");
@@ -853,7 +913,7 @@ namespace CarStoreManager.Infrastructure.Migrations
 
                     b.HasIndex("ComponenteOriginalId");
 
-                    b.ToTable("ComponenteEquivalente");
+                    b.ToTable("ComponentesEquivalentes");
                 });
 
             modelBuilder.Entity("CarStoreManager.Domain.Entities.Oficina.EstoqueComponente", b =>
@@ -1113,6 +1173,42 @@ namespace CarStoreManager.Infrastructure.Migrations
                     b.ToTable("VeiculosCliente");
                 });
 
+            modelBuilder.Entity("CarStoreManager.Domain.Entities.Oficina.VistoriaOrdemServico", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Concluida")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("DataConclusao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataInicio")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("OrdemServicoId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RecepcionistaId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TextoContrato")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrdemServicoId")
+                        .IsUnique();
+
+                    b.ToTable("VistoriasOrdemServico");
+                });
+
             modelBuilder.Entity("CarStoreManager.Domain.Entities.Sistema.BalancoMensalDespesa", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1163,6 +1259,16 @@ namespace CarStoreManager.Infrastructure.Migrations
                     b.Property<string>("MargensPorSistemaJson")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("ModuloConcessionariaAtivo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("ModuloOficinaAtivo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
 
                     b.Property<decimal>("PercentualEntradaMinima")
                         .HasPrecision(5, 2)
@@ -1273,6 +1379,36 @@ namespace CarStoreManager.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("PermissoesAcesso");
+                });
+
+            modelBuilder.Entity("CarStoreManager.Domain.Entities.Sistema.PermissaoIndividual", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DataAtualizacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Permitido")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RecursoChave")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId", "RecursoChave")
+                        .IsUnique();
+
+                    b.ToTable("PermissoesIndividuais");
                 });
 
             modelBuilder.Entity("CarStoreManager.Domain.Entities.Sistema.TemplateDocumento", b =>

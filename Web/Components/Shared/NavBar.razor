@@ -8,6 +8,7 @@
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IPermissaoAcessoService PermissaoService
+@inject IConfiguracaoSistemaService ConfiguracaoService
 @inject IJSRuntime JS
 @inject TourEstadoService TourEstado
 @implements IDisposable
@@ -25,15 +26,21 @@
             Início
         </NavLink>
 
-        <AuthorizeView Roles="Admin,GerenteVendas,Vendedor" Context="c1">
-            <NavArea Titulo="Concessionária" RotaBase="/concessionaria"
-                     Itens="@ItensConcessionaria" OnNavegar="FecharMobile" />
-        </AuthorizeView>
+        @if (moduloConcessionariaAtivo)
+        {
+            <AuthorizeView Roles="Admin,GerenteVendas,Vendedor" Context="c1">
+                <NavArea Titulo="Concessionária" RotaBase="/concessionaria"
+                         Itens="@itensConcessionariaAtual" OnNavegar="FecharMobile" />
+            </AuthorizeView>
+        }
 
-        <AuthorizeView Roles="Admin,ChefeOficina,Mecanico,Recepcionista" Context="c2">
-            <NavArea Titulo="Oficina" RotaBase="/oficina"
-                     Itens="@itensOficinaAtual" OnNavegar="FecharMobile" />
-        </AuthorizeView>
+        @if (moduloOficinaAtivo)
+        {
+            <AuthorizeView Roles="Admin,ChefeOficina,Mecanico,Recepcionista" Context="c2">
+                <NavArea Titulo="Oficina" RotaBase="/oficina"
+                         Itens="@itensOficinaAtual" OnNavegar="FecharMobile" />
+            </AuthorizeView>
+        }
 
         <AuthorizeView Roles="Admin,GerenteVendas,Vendedor,ChefeOficina,Recepcionista" Context="cCli">
             <NavLink href="/clientes" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMobile">
@@ -41,25 +48,15 @@
             </NavLink>
         </AuthorizeView>
 
-        @* NavLink comum usaria prefixo — "/financeiro/relatorios" ficaria
-           destacado aqui TAMBÉM, já que Relatórios tem link próprio agora
-           (linha abaixo). Por isso classe calculada na mão, excluindo esse
-           sub-caminho especificamente. *@
         <AuthorizeView Roles="Admin,GerenteVendas,ChefeOficina" Context="c3">
-            <a href="/financeiro" class="@ClasseFinanceiro" @onclick="FecharMobile">
+            <NavLink href="/financeiro" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMobile">
                 Financeiro
-            </a>
+            </NavLink>
         </AuthorizeView>
 
         <AuthorizeView Roles="Admin,GerenteVendas,ChefeOficina" Context="c4">
             <NavLink href="/dashboard" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMobile">
                 Análises
-            </NavLink>
-        </AuthorizeView>
-
-        <AuthorizeView Roles="Admin,GerenteVendas,ChefeOficina" Context="c6">
-            <NavLink href="/financeiro/relatorios" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMobile">
-                Relatórios
             </NavLink>
         </AuthorizeView>
 
@@ -69,9 +66,14 @@
             </NavLink>
         </AuthorizeView>
 
-        <AuthorizeView Roles="Admin,GerenteVendas,ChefeOficina" Context="c5">
-            <NavArea Titulo="Configurações" RotaBase="/configuracoes"
-                     Itens="@itensConfiguracoesAtual" OnNavegar="FecharMobile" />
+        @* /configuracoes é Admin-only ([Authorize(Roles="Admin")] em
+           Configuracoes.razor) — GerenteVendas/ChefeOficina continuam
+           acessando o formulário de despesas por /financeiro/despesas
+           (link "formulário mensal de despesas" na introdução da tela). *@
+        <AuthorizeView Roles="Admin" Context="c5">
+            <NavLink href="/configuracoes" class="nav-link" ActiveClass="nav-link-active" @onclick="FecharMobile">
+                Configurações
+            </NavLink>
         </AuthorizeView>
     </div>
 
@@ -111,29 +113,46 @@
 @code {
     [Parameter] public string NomeUsuario { get; set; } = "Usuário";
     [Parameter] public string Role { get; set; } = string.Empty;
+    [Parameter] public Guid UsuarioId { get; set; }
 
     private bool dropdownAberto;
     private bool menuMobileAberto;
 
-    private static readonly NavArea.Item[] ItensConcessionaria =
+    // "Relatórios" aparece pra todo mundo que acessa a área — ver o
+    // comentário equivalente em SubNavConcessionaria.cs. "Documentos" é
+    // gated (só Admin/GerenteVendas), por isso entra pela mesma lista
+    // calculada por papel que a Oficina já usa, em vez de um array fixo.
+    private NavArea.Item[] ObterItensConcessionaria(CarStoreManager.Domain.Enums.RoleUsuario role)
     {
-        new("/concessionaria", "Visão geral"),
-        new("/concessionaria/salao", "Salão"),
-        new("/concessionaria/propostas", "Propostas"),
-        new("/concessionaria/test-drives", "Test drives"),
-        new("/concessionaria/consignacoes", "Consignações"),
-    };
+        var lista = new List<NavArea.Item>
+        {
+            new("/concessionaria", "Visão geral"),
+            new("/concessionaria/salao", "Salão"),
+            new("/concessionaria/propostas", "Propostas"),
+            new("/concessionaria/test-drives", "Test drives"),
+            new("/concessionaria/consignacoes", "Consignações"),
+            new("/concessionaria/relatorios", "Relatórios"),
+        };
+        if (role is CarStoreManager.Domain.Enums.RoleUsuario.Admin or CarStoreManager.Domain.Enums.RoleUsuario.GerenteVendas)
+            lista.Add(new("/concessionaria/documentos", "Documentos"));
+        return lista.ToArray();
+    }
 
+    private NavArea.Item[] itensConcessionariaAtual = Array.Empty<NavArea.Item>();
     private NavArea.Item[] itensOficinaAtual = Array.Empty<NavArea.Item>();
-    private NavArea.Item[] itensConfiguracoesAtual = Array.Empty<NavArea.Item>();
     private string? roleJaCalculada;
+    private bool moduloConcessionariaAtivo = true;
+    private bool moduloOficinaAtivo = true;
 
     /// <summary>
     /// "Fornecedores" (e qualquer item futuro sujeito à matriz de
     /// permissões) só aparece se `PermissaoService` liberar aquele papel —
     /// antes disso, o item aparecia pra todo não-mecânico (inclusive
     /// Recepcionista, que a própria rota já bloqueia — ver docs/redesign/
-    /// 23-permissoes-dinamicas-por-papel.md).
+    /// 23-permissoes-dinamicas-por-papel.md). "Relatórios" só aparece pra
+    /// Admin/ChefeOficina — Mecânico/Recepcionista não têm acesso a nenhum
+    /// relatório da oficina (mesmo filtro "podeOficina" do RelatoriosGrid),
+    /// então nem mostra o item. Ver docs/redesign/28-relatorios-por-area.md.
     /// </summary>
     private async Task<NavArea.Item[]> ObterItensOficinaAsync(CarStoreManager.Domain.Enums.RoleUsuario role)
     {
@@ -143,17 +162,12 @@
             lista.Add(new("/oficina/recepcao", "Recepção"));
         lista.Add(new("/oficina/ordens", "Ordens de serviço"));
         lista.Add(new("/oficina/componentes", "Estoque de peças"));
-        if (!mecanico && await PermissaoService.PodeAcessarAsync(role, "pagina:/oficina/fornecedores"))
+        if (!mecanico && await PermissaoService.PodeAcessarAsync(UsuarioId, role, "pagina:/oficina/fornecedores"))
             lista.Add(new("/oficina/fornecedores", "Fornecedores"));
-        return lista.ToArray();
-    }
-
-    private async Task<NavArea.Item[]> ObterItensConfiguracoesAsync(CarStoreManager.Domain.Enums.RoleUsuario role)
-    {
-        var lista = new List<NavArea.Item>();
-        if (await PermissaoService.PodeAcessarAsync(role, "pagina:/configuracoes"))
-            lista.Add(new("/configuracoes", "Sistema"));
-        lista.Add(new("/configuracoes/formulario-despesas", "Formulário de despesas"));
+        if (role is CarStoreManager.Domain.Enums.RoleUsuario.Admin or CarStoreManager.Domain.Enums.RoleUsuario.ChefeOficina)
+            lista.Add(new("/oficina/relatorios", "Relatórios"));
+        if (role is CarStoreManager.Domain.Enums.RoleUsuario.Admin or CarStoreManager.Domain.Enums.RoleUsuario.ChefeOficina)
+            lista.Add(new("/oficina/documentos", "Documentos"));
         return lista.ToArray();
     }
 
@@ -162,22 +176,16 @@
         if (Role == roleJaCalculada) return; // evita reconsultar o serviço a cada re-render sem mudança de papel
         if (!Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(Role, out var role)) return;
 
-        itensOficinaAtual = await ObterItensOficinaAsync(role);
-        itensConfiguracoesAtual = await ObterItensConfiguracoesAsync(role);
-        roleJaCalculada = Role;
-    }
-
-    // Ativo em qualquer sub-rota de /financeiro (despesas, a-receber, etc.),
-    // exceto /financeiro/relatorios — essa tem o próprio link na navbar.
-    private string ClasseFinanceiro
-    {
-        get
+        var rModulos = await ConfiguracaoService.ObterModulosAtivosAsync();
+        if (rModulos.IsSuccess)
         {
-            var caminho = "/" + Navigation.ToBaseRelativePath(Navigation.Uri).TrimEnd('/');
-            var ativo = (caminho == "/financeiro" || caminho.StartsWith("/financeiro/"))
-                && !caminho.StartsWith("/financeiro/relatorios");
-            return ativo ? "nav-link nav-link-active" : "nav-link";
+            moduloConcessionariaAtivo = rModulos.Value.Concessionaria;
+            moduloOficinaAtivo = rModulos.Value.Oficina;
         }
+
+        itensConcessionariaAtual = ObterItensConcessionaria(role);
+        itensOficinaAtual = await ObterItensOficinaAsync(role);
+        roleJaCalculada = Role;
     }
 
     protected override void OnInitialized() => Navigation.LocationChanged += OnLoc;

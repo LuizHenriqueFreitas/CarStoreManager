@@ -155,6 +155,47 @@ public static partial class RegistroDeTours
                             "sobre o processo deve ser tratada diretamente com a loja."
                     }
                 }
+            },
+
+            new TourDaPagina
+            {
+                RotaTemplate = "/concessionaria/assinar-test-drive/{token}",
+                Titulo = "Assinatura do Termo de Responsabilidade — Test Drive",
+                Descricao = "Assinatura eletrônica pública do termo de responsabilidade do test drive, sem necessidade de login.",
+                Passos = new List<PassoTour>
+                {
+                    new()
+                    {
+                        Seletor = null,
+                        Titulo = "Termo de responsabilidade",
+                        Texto = "Este link é gerado na hora do agendamento do test drive. Ele não exige login — " +
+                            "o acesso é feito só pelo link, único para cada test drive."
+                    },
+                    new()
+                    {
+                        Seletor = "assinar-td-texto-termo",
+                        Titulo = "Leia o termo",
+                        Texto = "O texto completo do termo de responsabilidade, redigido pelo vendedor no " +
+                            "agendamento. Leia com atenção antes de assinar."
+                    },
+                    new()
+                    {
+                        Seletor = "assinar-td-form",
+                        Titulo = "Assinatura eletrônica",
+                        Texto = "Informe nome completo e CPF exatamente como constam no documento, marque o " +
+                            "aceite e confirme. Pela Lei 14.063/2020, essa assinatura eletrônica simples tem " +
+                            "validade jurídica — a data, hora e endereço IP da assinatura ficam registrados " +
+                            "junto ao termo."
+                    },
+                    new()
+                    {
+                        Seletor = "assinar-td-btn",
+                        Titulo = "Confirmar assinatura",
+                        Texto = "O botão só é liberado depois que nome, CPF e aceite estiverem preenchidos. " +
+                            "Depois de assinado, o termo não pode ser assinado novamente — a tela passa a " +
+                            "mostrar só a confirmação."
+                    }
+                }
             }
         };
     }

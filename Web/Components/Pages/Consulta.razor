@@ -173,7 +173,7 @@
     private static string StatusLabel(string s) => s switch
     {
         "Pendente" or "BuscandoPecasParaOrcamento" => "Em orçamento",
-        "EmAnalise" => "Em revisão",
+        "EmVistoria" => "Em vistoria",
         "AguardandoCliente" or "Pausada" => "Aguardando você",
         "Aprovada" => "Aprovada",
         "EmAndamento" => "Em andamento",
@@ -189,7 +189,7 @@
         int atual = status switch
         {
             "Pendente" or "BuscandoPecasParaOrcamento" => 1,
-            "EmAnalise" => 2,
+            "EmVistoria" => 2,
             "AguardandoCliente" => 3,
             "Aprovada" => 4,
             "EmAndamento" or "Pausada" => 5,

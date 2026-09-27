@@ -1,0 +1,34 @@
+@page "/oficina/relatorios"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/oficina/relatorios")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:oficina")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthState
+@inject IPermissaoAcessoService PermissaoService
+@using CarStoreManager.Application.Interfaces.Sistema
+@using CarStoreManager.Domain.Enums
+@using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="pagina">
+    <PageHeader Titulo="Relatórios — Oficina" Subtitulo="Ordens de serviço, estoque de peças e fornecedores — CSV ou XML por período" />
+
+    <SubNav Itens="subNavItens" />
+
+    <RelatoriosGrid Ids="CatalogoRelatoriosPorArea.Oficina" />
+</div>
+
+@code {
+    private List<SubNav.Item> subNavItens = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthState.GetAuthenticationStateAsync()).User;
+        var roleClaim = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        var usuarioIdClaim = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (Enum.TryParse<RoleUsuario>(roleClaim, out var role) && Guid.TryParse(usuarioIdClaim, out var usuarioId))
+            subNavItens = await SubNavOficina.ItensAsync(role == RoleUsuario.Mecanico, usuarioId, role, PermissaoService);
+    }
+}

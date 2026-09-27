@@ -57,7 +57,9 @@ public static class InfrastructureServiceCollection
         // OFICINA
         // =========================
         services.AddScoped<IOrdemServicoRepository, OrdemServicoRepository>();
+        services.AddScoped<IVistoriaOrdemServicoRepository, VistoriaOrdemServicoRepository>();
         services.AddScoped<IComponenteRepository, ComponenteRepository>();
+        services.AddScoped<IComponenteEquivalenteRepository, ComponenteEquivalenteRepository>();
         services.AddScoped<IFornecedorRepository, FornecedorRepository>();
         services.AddScoped<IEstoqueRepository, EstoqueRepository>();
         services.AddScoped<IEstoqueService, EstoqueService>();
@@ -91,6 +93,7 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IArquivoStorage, ArquivoStorageService>();
         services.AddScoped<IVistoriaRepository, VistoriaRepository>();
         services.AddScoped<ITermoEntregaRepository, TermoEntregaRepository>();
+        services.AddScoped<ITermoTestDriveRepository, CarStoreManager.Infrastructure.Repositories.Concessionaria.TermoTestDriveRepository>();
 
         // Cobrança da proposta (pagamento do veículo)
         services.AddScoped<IPagamentoPropostaRepository, PagamentoPropostaRepository>();
@@ -117,12 +120,14 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IDespesaRepository, DespesaRepository>();
         services.AddScoped<IDespesaService, DespesaService>();
         services.AddScoped<IPermissaoAcessoRepository, PermissaoAcessoRepository>();
+        services.AddScoped<IPermissaoIndividualRepository, PermissaoIndividualRepository>();
         services.AddScoped<IPermissaoAcessoService, PermissaoAcessoService>();
         services.AddScoped<IBalancoMensalDespesaRepository, CarStoreManager.Infrastructure.Repositories.Sistema.BalancoMensalDespesaRepository>();
         services.AddScoped<CarStoreManager.Application.Interfaces.Sistema.IBalancoMensalDespesaService, CarStoreManager.Application.Services.Sistema.BalancoMensalDespesaService>();
         services.AddScoped<IBackdateService, BackdateService>();
         services.AddScoped<IImportacaoDadosService, ImportacaoDadosService>();
         services.AddScoped<IExportacaoDadosService, Services.Sistema.ExportacaoDadosService>();
+        services.AddScoped<CarStoreManager.Application.Interfaces.Sistema.IDocumentosService, CarStoreManager.Application.Services.Sistema.DocumentosService>();
 
         // =========================
         // DASHBOARD (admin)

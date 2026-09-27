@@ -11,7 +11,7 @@ public static class RotulosRelatorio
     public static string StatusOS(string s) => s switch
     {
         "Pendente" => "Pendente",
-        "EmAnalise" => "Em análise",
+        "EmVistoria" => "Em vistoria",
         "BuscandoPecasParaOrcamento" => "Buscando peças para orçamento",
         "AguardandoCliente" => "Aguardando cliente",
         "Aprovada" => "Aprovada",

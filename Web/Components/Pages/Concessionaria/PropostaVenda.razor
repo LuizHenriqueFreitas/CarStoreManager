@@ -1,6 +1,7 @@
 @page "/concessionaria/proposta/nova/{VeiculoId:guid}"
 @page "/concessionaria/proposta/nova-consignado/{VeiculoId:guid}"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:concessionaria")]
 @rendermode InteractiveServer
 @inject IPropostaVendaService PropostaVendaService
 @inject IVeiculoVendaService VeiculoVendaService

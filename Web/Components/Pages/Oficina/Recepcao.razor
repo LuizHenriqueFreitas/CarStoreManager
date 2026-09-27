@@ -1,5 +1,6 @@
 @page "/oficina/recepcao"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/oficina/recepcao")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:oficina")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -183,7 +184,7 @@
     // — mesma lista usada em OrdensServico.razor pra decidir o que conta como
     // "aberta" e o que conta como "atrasada" (prazo já vencido, ainda aberta).
     private static readonly string[] StatusAbertos =
-        { "Pendente", "EmAnalise", "AguardandoCliente", "BuscandoPecasParaOrcamento", "Aprovada", "EmAndamento", "Pausada" };
+        { "Pendente", "EmVistoria", "AguardandoCliente", "BuscandoPecasParaOrcamento", "Aprovada", "EmAndamento", "Pausada" };
 
     private bool EhAtrasada(OrdemServicoListaDTO o) =>
         StatusAbertos.Contains(o.Status) && o.PrazoEstimado.Date < DateTime.Today;
@@ -259,8 +260,9 @@
     {
         var state = await AuthState.GetAuthenticationStateAsync();
         var roleClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
-        if (Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out var role))
-            subNavItens = await SubNavOficina.ItensAsync(false, role, PermissaoService);
+        var usuarioIdClaim = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out var role) && Guid.TryParse(usuarioIdClaim, out var usuarioId))
+            subNavItens = await SubNavOficina.ItensAsync(false, usuarioId, role, PermissaoService);
 
         var tarefaOrdens = OrdemService.GetAllAsync();
         var tarefaClientes = ClienteService.GetAllAsync();

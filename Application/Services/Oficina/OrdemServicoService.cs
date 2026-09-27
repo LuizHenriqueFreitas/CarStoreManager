@@ -23,6 +23,7 @@ public class OrdemServicoService : IOrdemServicoService
     private readonly IOrdemServicoRepository _repository;
     private readonly IComponenteRepository _componenteRepository;
     private readonly IMecanicoService _mecanicoService;
+    private readonly IVistoriaOrdemServicoRepository _vistoriaRepo;
 
     private readonly IPagamentoOrdemServicoRepository? _pagamentoRepo;
     private readonly IAlertaOSRepository? _alertaRepo;
@@ -33,6 +34,7 @@ public class OrdemServicoService : IOrdemServicoService
         IOrdemServicoRepository repository,
         IComponenteRepository componenteRepository,
         IMecanicoService mecanicoService,
+        IVistoriaOrdemServicoRepository vistoriaRepo,
         IPagamentoOrdemServicoRepository? pagamentoRepo = null,
         IAlertaOSRepository? alertaRepo = null,
         IConfiguracaoSistemaRepository? configRepo = null,
@@ -41,6 +43,7 @@ public class OrdemServicoService : IOrdemServicoService
         _repository = repository;
         _componenteRepository = componenteRepository;
         _mecanicoService = mecanicoService;
+        _vistoriaRepo = vistoriaRepo;
         _pagamentoRepo = pagamentoRepo;
         _alertaRepo = alertaRepo;
         _configRepo = configRepo;
@@ -448,15 +451,6 @@ public class OrdemServicoService : IOrdemServicoService
     // FLUXO DE APROVAÇÃO
     // =========================
 
-    public Task<Result> EnviarParaRevisaoAsync(Guid ordemId)
-        => MutarOrdem(ordemId, o => o.EnviarParaRevisaoMecanico());
-
-    public Task<Result> AprovarPeloMecanicoAsync(Guid ordemId)
-        => MutarOrdem(ordemId, o => o.AprovarPeloMecanico());
-
-    public Task<Result> DevolverParaAjustesAsync(Guid ordemId)
-        => MutarOrdem(ordemId, o => o.DevolverParaAjustesDoRecepcionista());
-
     public Task<Result> RegistrarAprovacaoDoClienteAsync(Guid ordemId)
         => MutarOrdem(ordemId, o => o.RegistrarAprovacaoDoCliente());
 
@@ -573,6 +567,109 @@ public class OrdemServicoService : IOrdemServicoService
         }
         catch (Exception ex) { return Result.Fail(ex.Message); }
     }
+
+    // =========================
+    // VISTORIA DE ENTRADA (contrato da OS, feito pelo recepcionista)
+    // =========================
+
+    /// <summary>
+    /// Recepcionista inicia a vistoria do veículo (Pendente → EmVistoria) e
+    /// já cria o registro da vistoria (rascunho) — mesmo padrão de
+    /// TestDriveService.AgendarAsync criando o TermoTestDrive junto.
+    /// </summary>
+    public async Task<Result<VistoriaOrdemServicoDTO>> IniciarVistoriaAsync(Guid ordemId, Guid recepcionistaId)
+    {
+        var ordem = await _repository.GetByIdAsync(ordemId);
+        if (ordem is null) return Result<VistoriaOrdemServicoDTO>.Fail("Ordem de serviço não encontrada");
+
+        var existente = await _vistoriaRepo.ObterPorOrdemServicoAsync(ordemId);
+        if (existente is not null) return Result<VistoriaOrdemServicoDTO>.Fail("Esta OS já tem uma vistoria registrada.");
+
+        try
+        {
+            // Dado histórico: OS gerada antes desta mudança já pode estar em
+            // EmVistoria (ou adiante) sem nenhuma VistoriaOrdemServico — nesse
+            // caso só criamos o registro retroativamente, sem repetir a
+            // transição de status (que já aconteceu).
+            if (ordem.Status == StatusOrdemServico.Pendente)
+            {
+                ordem.IniciarVistoria();
+                _repository.Update(ordem);
+                await _repository.SaveChangesAsync();
+            }
+
+            var vistoria = new VistoriaOrdemServico(ordemId, recepcionistaId);
+            await _vistoriaRepo.AddAsync(vistoria);
+            await _vistoriaRepo.SaveChangesAsync();
+
+            return Result<VistoriaOrdemServicoDTO>.Ok(MapVistoria(vistoria));
+        }
+        catch (InvalidOperationException ex) { return Result<VistoriaOrdemServicoDTO>.Fail(ex.Message); }
+        catch (Exception ex) { return Result<VistoriaOrdemServicoDTO>.Fail($"Erro: {ex.Message}"); }
+    }
+
+    public async Task<Result<VistoriaOrdemServicoDTO>> ObterVistoriaAsync(Guid ordemId)
+    {
+        var vistoria = await _vistoriaRepo.ObterPorOrdemServicoAsync(ordemId);
+        if (vistoria is null) return Result<VistoriaOrdemServicoDTO>.Fail("Vistoria não encontrada para esta OS.");
+        return Result<VistoriaOrdemServicoDTO>.Ok(MapVistoria(vistoria));
+    }
+
+    public async Task<Result<VistoriaOrdemServicoDTO>> EditarVistoriaAsync(Guid ordemId, string novoTexto)
+    {
+        var vistoria = await _vistoriaRepo.ObterPorOrdemServicoAsync(ordemId);
+        if (vistoria is null) return Result<VistoriaOrdemServicoDTO>.Fail("Vistoria não encontrada para esta OS.");
+
+        try
+        {
+            vistoria.EditarTexto(novoTexto);
+            _vistoriaRepo.Update(vistoria);
+            await _vistoriaRepo.SaveChangesAsync();
+            return Result<VistoriaOrdemServicoDTO>.Ok(MapVistoria(vistoria));
+        }
+        catch (Exception ex) { return Result<VistoriaOrdemServicoDTO>.Fail(ex.Message); }
+    }
+
+    /// <summary>
+    /// Conclui a vistoria (contrato + fotos prontos) e avança a OS pra
+    /// AguardandoCliente — a partir daqui o fluxo é o de sempre (Cliente
+    /// aprovou → mecânico inicia o serviço).
+    /// </summary>
+    public async Task<Result> ConcluirVistoriaAsync(Guid ordemId, string textoFinal)
+    {
+        var vistoria = await _vistoriaRepo.ObterPorOrdemServicoAsync(ordemId);
+        if (vistoria is null) return Result.Fail("Vistoria não encontrada para esta OS.");
+
+        var ordem = await _repository.GetByIdAsync(ordemId);
+        if (ordem is null) return Result.Fail("Ordem de serviço não encontrada");
+
+        try
+        {
+            vistoria.Concluir(textoFinal);
+            ordem.ConcluirVistoria();
+
+            _vistoriaRepo.Update(vistoria);
+            await _vistoriaRepo.SaveChangesAsync();
+            _repository.Update(ordem);
+            await _repository.SaveChangesAsync();
+
+            return Result.Ok();
+        }
+        catch (InvalidOperationException ex) { return Result.Fail(ex.Message); }
+        catch (ArgumentException ex) { return Result.Fail(ex.Message); }
+        catch (Exception ex) { return Result.Fail($"Erro: {ex.Message}"); }
+    }
+
+    private static VistoriaOrdemServicoDTO MapVistoria(VistoriaOrdemServico v) => new()
+    {
+        Id = v.Id,
+        OrdemServicoId = v.OrdemServicoId,
+        RecepcionistaId = v.RecepcionistaId,
+        TextoContrato = v.TextoContrato,
+        DataInicio = v.DataInicio,
+        DataConclusao = v.DataConclusao,
+        Concluida = v.Concluida,
+    };
 
     public Task<Result> CancelarAsync(Guid ordemId)
         => MutarOrdem(ordemId, o => o.Cancelar());

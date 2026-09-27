@@ -33,7 +33,7 @@ public class OrdemServico : Entity
 
     /// <summary>
     /// Status anterior preservado para suportar retornos de pausas
-    /// (BuscandoPecasParaOrcamento volta para Pendente/EmAnalise; Pausada volta para EmAndamento).
+    /// (BuscandoPecasParaOrcamento volta para Pendente/EmVistoria; Pausada volta para EmAndamento).
     /// </summary>
     public StatusOrdemServico? StatusAnterior { get; private set; }
 
@@ -271,8 +271,10 @@ public class OrdemServico : Entity
         FLUXO DE APROVAÇÃO
 
         1) Pendente               — recepcionista cria o orçamento (rascunho).
-        2) EmAnalise              — recepcionista envia pra mecânico revisar.
-        3) AguardandoCliente      — mecânico revisou; recepcionista vai mostrar pro cliente.
+        2) EmVistoria             — recepcionista vistoria o veículo e monta o
+                                     contrato da OS (com o cliente presente).
+        3) AguardandoCliente      — vistoria concluída; recepcionista apresenta o
+                                     contrato pro cliente aprovar.
         4) Aprovada               — cliente aprovou; OS pronta pra começar.
         5) EmAndamento            — mecânico iniciou o serviço.
         6) Finalizada             — serviço concluído.
@@ -280,23 +282,20 @@ public class OrdemServico : Entity
         A OS pode ser cancelada a qualquer momento (exceto se já finalizada).
     */
 
-    public void EnviarParaRevisaoMecanico()
+    public void IniciarVistoria()
     {
         ValidarStatus(StatusOrdemServico.Pendente);
-        Status = StatusOrdemServico.EmAnalise;
+        Status = StatusOrdemServico.EmVistoria;
     }
 
-    public void DevolverParaAjustesDoRecepcionista()
+    /// <summary>
+    /// Vistoria concluída (contrato redigido, fotos anexadas) — agora aguarda
+    /// o cliente aprovar. Quem garante que o contrato tem texto/está
+    /// realmente concluído é o service, junto com VistoriaOrdemServico.Concluir.
+    /// </summary>
+    public void ConcluirVistoria()
     {
-        // mecânico achou que o orçamento precisa de ajustes (volta pra Pendente)
-        ValidarStatus(StatusOrdemServico.EmAnalise);
-        Status = StatusOrdemServico.Pendente;
-    }
-
-    public void AprovarPeloMecanico()
-    {
-        // mecânico revisou e está OK; agora aguarda o cliente
-        ValidarStatus(StatusOrdemServico.EmAnalise);
+        ValidarStatus(StatusOrdemServico.EmVistoria);
         Status = StatusOrdemServico.AguardandoCliente;
     }
 
@@ -386,16 +385,16 @@ public class OrdemServico : Entity
     }
 
     /// <summary>
-    /// Mecânico abriu requisição de peça inexistente — pausa o orçamento até
-    /// admin atender. Permitido apenas em Pendente ou EmAnalise (o orçamento
-    /// ainda está sendo montado).
+    /// Peça necessária pro orçamento/vistoria não existe em estoque — pausa
+    /// até admin atender. Permitido apenas em Pendente ou EmVistoria (o
+    /// orçamento/contrato ainda está sendo montado).
     /// </summary>
     public void MarcarComoBuscandoPecas()
     {
         if (Status is StatusOrdemServico.Finalizada or StatusOrdemServico.Cancelada
             or StatusOrdemServico.BuscandoPecasParaOrcamento)
             return;
-        if (Status is not (StatusOrdemServico.Pendente or StatusOrdemServico.EmAnalise))
+        if (Status is not (StatusOrdemServico.Pendente or StatusOrdemServico.EmVistoria))
             throw new InvalidOperationException(
                 $"Só é possível requisitar peças durante a montagem do orçamento (atual: {Status}).");
 
@@ -405,7 +404,7 @@ public class OrdemServico : Entity
 
     /// <summary>
     /// Admin atendeu todas as requisições — devolve a OS ao status anterior
-    /// (Pendente ou EmAnalise) para o orçamento prosseguir.
+    /// (Pendente ou EmVistoria) para o orçamento prosseguir.
     /// </summary>
     public void RetomarAposBuscaDePecas()
     {

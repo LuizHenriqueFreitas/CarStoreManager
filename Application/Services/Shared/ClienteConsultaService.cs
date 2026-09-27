@@ -15,7 +15,7 @@ public class ClienteConsultaService : IClienteConsultaService
 
     private static readonly string[] OsAbertas =
     {
-        "Pendente", "EmAnalise", "AguardandoCliente", "BuscandoPecasParaOrcamento",
+        "Pendente", "EmVistoria", "AguardandoCliente", "BuscandoPecasParaOrcamento",
         "Aprovada", "EmAndamento", "Pausada", "PagamentoPendente", "Finalizada"
     };
 

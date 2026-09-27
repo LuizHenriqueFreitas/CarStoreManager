@@ -10,4 +10,8 @@ public interface IConfiguracaoSistemaService
 
     Task<Result<MargensDTO>> ObterMargensAsync();
     Task<Result> AtualizarMargensAsync(MargensDTO dto);
+
+    /// <summary>Ponto único de consulta pra todo o resto do sistema saber quais módulos estão ligados.</summary>
+    Task<Result<(bool Concessionaria, bool Oficina)>> ObterModulosAtivosAsync();
+    Task<Result> AtualizarModulosAsync(bool concessionariaAtivo, bool oficinaAtivo);
 }

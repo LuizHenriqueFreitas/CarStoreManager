@@ -14,7 +14,9 @@
     <PageHeader Titulo="Formulário mensal de despesas"
                 Subtitulo="Modelo das despesas do mês e dia de fechamento do balanço" />
 
-    <SubNav Itens="SubNavConfiguracoes.Itens" />
+    @* Sem <SubNav> aqui — "Sistema" (a única entrada de SubNavConfiguracoes)
+       aponta pra /configuracoes, que é Admin-only, e esta página também é
+       aberta por GerenteVendas/ChefeOficina (ver /financeiro/despesas). *@
 
     @if (!string.IsNullOrEmpty(msg)) { <div class="banner @(erro ? "erro" : "ok")">@msg</div> }
 
@@ -58,8 +60,8 @@
                             <td>
                                 <select @bind="d.Setor">
                                     <option value="Geral">Geral</option>
-                                    <option value="Oficina">Oficina</option>
-                                    <option value="Concessionaria">Concessionária</option>
+                                    @if (moduloOficinaAtivo) { <option value="Oficina">Oficina</option> }
+                                    @if (moduloConcessionariaAtivo) { <option value="Concessionaria">Concessionária</option> }
                                 </select>
                             </td>
                             <td><input @bind="d.Categoria" placeholder="energia, aluguel..." /></td>
@@ -76,8 +78,8 @@
                         <td>
                             <select @bind="nova.Setor">
                                 <option value="Geral">Geral</option>
-                                <option value="Oficina">Oficina</option>
-                                <option value="Concessionaria">Concessionária</option>
+                                @if (moduloOficinaAtivo) { <option value="Oficina">Oficina</option> }
+                                @if (moduloConcessionariaAtivo) { <option value="Concessionaria">Concessionária</option> }
                             </select>
                         </td>
                         <td><input @bind="nova.Categoria" placeholder="energia, aluguel..." /></td>
@@ -103,11 +105,18 @@
     private int diaFechamento = 5;
     private bool carregando = true, salvandoDia;
     private string? msg; private bool erro;
+    private bool moduloOficinaAtivo = true;
+    private bool moduloConcessionariaAtivo = true;
 
     protected override async Task OnInitializedAsync()
     {
         var cfg = await ConfigService.ObterAsync();
-        if (cfg.IsSuccess && cfg.Value is not null) diaFechamento = cfg.Value.DiaFechamentoDespesas;
+        if (cfg.IsSuccess && cfg.Value is not null)
+        {
+            diaFechamento = cfg.Value.DiaFechamentoDespesas;
+            moduloOficinaAtivo = cfg.Value.ModuloOficinaAtivo;
+            moduloConcessionariaAtivo = cfg.Value.ModuloConcessionariaAtivo;
+        }
         await Recarregar();
     }
 

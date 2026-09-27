@@ -2,6 +2,7 @@ using System.Globalization;
 using CarStoreManager.Application.Common;
 using CarStoreManager.Application.DTOs.Admin;
 using CarStoreManager.Application.Interfaces;
+using CarStoreManager.Application.Interfaces.Sistema;
 using CarStoreManager.Domain.Entities.Oficina;
 using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Interfaces.Repositories.Sistema;
@@ -55,6 +56,7 @@ public class DashboardService : IDashboardService
     private readonly IComponenteRepository _componentes;
     private readonly IEstoqueRepository _estoque;
     private readonly IVendaMercadoLivreRepository _vendasMercadoLivre;
+    private readonly IConfiguracaoSistemaService _configuracaoService;
     private readonly ILogger<DashboardService> _logger;
 
     public DashboardService(
@@ -71,6 +73,7 @@ public class DashboardService : IDashboardService
         IComponenteRepository componentes,
         IEstoqueRepository estoque,
         IVendaMercadoLivreRepository vendasMercadoLivre,
+        IConfiguracaoSistemaService configuracaoService,
         ILogger<DashboardService> logger)
     {
         _despesas = despesas;
@@ -86,7 +89,33 @@ public class DashboardService : IDashboardService
         _componentes = componentes;
         _estoque = estoque;
         _vendasMercadoLivre = vendasMercadoLivre;
+        _configuracaoService = configuracaoService;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Zera a contribuição de um setor com módulo desativado — só nos
+    /// agregados COMBINADOS (a fonte de verdade no banco nunca é tocada,
+    /// isso é só o DTO de leitura). Chamado antes de qualquer estrutura
+    /// derivada (gráficos, cards) ser montada a partir do dto.
+    /// </summary>
+    private async Task AplicarModulosAtivosAsync(DashboardMetricasDTO dto)
+    {
+        var r = await _configuracaoService.ObterModulosAtivosAsync();
+        if (!r.IsSuccess) return;
+
+        if (!r.Value.Oficina)
+        {
+            dto.TotalDespesasFixasMensal -= dto.TotalDespesasOficinaMensal;
+            dto.ReceitaServicosMesAtual = 0;
+            dto.TotalDespesasOficinaMensal = 0;
+        }
+        if (!r.Value.Concessionaria)
+        {
+            dto.TotalDespesasFixasMensal -= dto.TotalDespesasConcessionariaMensal;
+            dto.ReceitaVendasMesAtual = 0;
+            dto.TotalDespesasConcessionariaMensal = 0;
+        }
     }
 
     /// <summary>
@@ -206,6 +235,8 @@ public class DashboardService : IDashboardService
                 .Where(p => p.DataAprovacao!.Value >= janelaInicio)
                 .Select(p => (Data: p.DataAprovacao!.Value, Valor: p.GetValorFinal())),
             janelaInicio, janelaMeses);
+
+        await AplicarModulosAtivosAsync(dto);
 
         // === Propostas aprovadas vs rejeitadas (janela selecionada) ===
         // "Aprovadas" conta qualquer proposta que já passou pelo status Aprovada
@@ -407,6 +438,8 @@ public class DashboardService : IDashboardService
         dto.SerieReceitaVendas = AgruparPorPeriodo(
             propostasFechadasPeriodo.Select(p => (Data: p.DataAprovacao!.Value, Valor: p.GetValorFinal())),
             inicioPeriodo, fimPeriodo);
+
+        await AplicarModulosAtivosAsync(dto);
 
         // === Propostas aprovadas vs rejeitadas dentro do período — por dia se
         // o período for curto (ver LIMITE_DIAS_GRANULARIDADE_DIARIA / doc 14),

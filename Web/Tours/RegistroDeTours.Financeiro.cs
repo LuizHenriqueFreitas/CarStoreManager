@@ -52,7 +52,9 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "fin-grafico",
                     Titulo = "Evolução mensal",
-                    Texto = "Barras de receita e despesa com a linha de lucro por cima, mês a mês."
+                    Texto = "Dois gráficos lado a lado — oficina e concessionária — cada um com barras de " +
+                        "receita e despesa e a linha de lucro por cima, mês a mês. Despesa sem setor específico " +
+                        "entra dividida meio a meio entre os dois."
                 },
                 new()
                 {
@@ -170,8 +172,8 @@ public static partial class RegistroDeTours
         new TourDaPagina
         {
             RotaTemplate = "/financeiro/relatorios",
-            Titulo = "Relatórios",
-            Descricao = "Exportação de relatórios em CSV ou XML por período.",
+            Titulo = "Relatórios — Financeiro",
+            Descricao = "Relatórios que cruzam oficina e concessionária, em CSV ou XML por período.",
             Passos = new List<PassoTour>
             {
                 new()
@@ -179,7 +181,10 @@ public static partial class RegistroDeTours
                     Seletor = null,
                     Titulo = "Relatórios exportáveis",
                     Texto = "Cada cartão gera um arquivo para baixar. Os relatórios \"consolidados\" recalculam " +
-                        "as métricas inteiras para o período escolhido — não exportam o que está na tela."
+                        "as métricas inteiras para o período escolhido — não exportam o que está na tela. " +
+                        "Cada área do sistema (Concessionária, Oficina, Clientes, Análises, Equipe) tem sua " +
+                        "própria tela de Relatórios, com só os relatórios que dizem respeito a ela — esta aqui " +
+                        "traz só os que cruzam os dois setores."
                 },
                 new()
                 {

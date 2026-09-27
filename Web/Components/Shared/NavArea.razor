@@ -8,10 +8,10 @@
 <div class="nav-area @(aberto ? "aberto" : "")"
      @onmouseenter="() => aberto = true"
      @onmouseleave="() => aberto = false">
-    <button type="button" class="nav-link nav-area-trigger @(NaArea ? "nav-link-active" : "")"
-            @onclick="Toggle" aria-haspopup="true" aria-expanded="@aberto.ToString().ToLower()">
+    <a href="@RotaBase" class="nav-link nav-area-trigger @(NaArea ? "nav-link-active" : "")"
+       @onclick="OnItemClick" aria-haspopup="true" aria-expanded="@aberto.ToString().ToLower()">
         @Titulo <span class="nav-area-seta">▾</span>
-    </button>
+    </a>
 
     <div class="nav-area-menu">
         @foreach (var item in Itens)
@@ -41,8 +41,6 @@
             return CaminhoAtual == baseR || CaminhoAtual.StartsWith(baseR + "/");
         }
     }
-
-    private void Toggle() => aberto = !aberto;
 
     private async Task OnItemClick()
     {

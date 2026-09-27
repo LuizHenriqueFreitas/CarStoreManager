@@ -11,6 +11,13 @@ namespace CarStoreManager.Domain.Entities.Concessionaria;
 public class TestDrive : Entity
 {
     public Guid VeiculoVendaId { get; private set; }
+
+    /// <summary>"VeiculoVenda" (padrão) ou "VeiculoConsignacao" — mesmo
+    /// padrão de PropostaVenda.VeiculoEntidadeTipo, já que "VeiculoVendaId"
+    /// é só o id do veículo, independente de que tabela ele vem.</summary>
+    public string VeiculoEntidadeTipo { get; private set; } = "VeiculoVenda";
+    public bool IsConsignado => VeiculoEntidadeTipo == "VeiculoConsignacao";
+
     public Guid ClienteId { get; private set; }
     public Guid VendedorId { get; private set; }
     public DateTime DataHora { get; private set; }
@@ -19,13 +26,16 @@ public class TestDrive : Entity
 
     protected TestDrive() { }
 
-    public TestDrive(Guid veiculoVendaId, Guid clienteId, Guid vendedorId, DateTime dataHora, string? observacao = null)
+    public TestDrive(
+        Guid veiculoVendaId, Guid clienteId, Guid vendedorId, DateTime dataHora,
+        string? observacao = null, string veiculoEntidadeTipo = "VeiculoVenda")
     {
         if (veiculoVendaId == Guid.Empty) throw new ArgumentException("Veículo inválido");
         if (clienteId == Guid.Empty) throw new ArgumentException("Cliente inválido");
         if (vendedorId == Guid.Empty) throw new ArgumentException("Vendedor inválido");
 
         VeiculoVendaId = veiculoVendaId;
+        VeiculoEntidadeTipo = string.IsNullOrWhiteSpace(veiculoEntidadeTipo) ? "VeiculoVenda" : veiculoEntidadeTipo;
         ClienteId = clienteId;
         VendedorId = vendedorId;
         DataHora = dataHora;

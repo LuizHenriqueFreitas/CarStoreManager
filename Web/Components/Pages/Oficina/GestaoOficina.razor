@@ -1,5 +1,6 @@
 @page "/oficina"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/oficina")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:oficina")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -200,7 +201,7 @@
         if (!ehMecanico)
         {
             lista.Add(new("Recepção", "📋", "/oficina/recepcao", "Abrir OS e busca rápida."));
-            if (await PermissaoService.PodeAcessarAsync(role, "pagina:/oficina/fornecedores"))
+            if (await PermissaoService.PodeAcessarAsync(mecanicoId, role, "pagina:/oficina/fornecedores"))
                 lista.Add(new("Fornecedores", "🏭", "/oficina/fornecedores", "Cadastro de fornecedores de peças."));
             lista.Add(new("Clientes", "👤", "/clientes", "Cadastro e histórico de clientes."));
         }
@@ -208,7 +209,7 @@
         {
             lista.Add(new("Financeiro da oficina", "💰", "/financeiro?area=oficina", "Receita de serviços, despesas e lucro."));
             lista.Add(new("Despesas da oficina", "💸", "/financeiro/despesas", "Balanço mensal de despesas."));
-            lista.Add(new("Relatórios", "📄", "/financeiro/relatorios", "Exportar dados por período."));
+            lista.Add(new("Relatórios", "📄", "/oficina/relatorios", "Exportar dados por período."));
             lista.Add(new("Análises", "📊", "/dashboard", "Gráficos e comparativos da oficina."));
         }
         return lista;
@@ -226,7 +227,7 @@
         var roleClaim = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
         if (Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out var role))
         {
-            subNavItens = await SubNavOficina.ItensAsync(ehMecanico, role, PermissaoService);
+            subNavItens = await SubNavOficina.ItensAsync(ehMecanico, mecanicoId, role, PermissaoService);
             atalhos = await ObterAtalhosAsync(role);
         }
 
@@ -314,7 +315,7 @@
 
     private static string LabelStatus(string s) => s switch
     {
-        "Pendente" => "Pendente", "EmAnalise" => "Em análise", "AguardandoCliente" => "Aguard. cliente",
+        "Pendente" => "Pendente", "EmVistoria" => "Em vistoria", "AguardandoCliente" => "Aguard. cliente",
         "BuscandoPecasParaOrcamento" => "Buscando peças", "Aprovada" => "Aprovada",
         "EmAndamento" => "Em andamento", "Pausada" => "Pausada",
         "PagamentoPendente" => "Aguard. cobrança", "Finalizada" => "Pronta p/ entrega",
@@ -332,7 +333,7 @@
     }
 
     private static readonly string[] StatusAbertos =
-        { "Pendente", "EmAnalise", "AguardandoCliente", "BuscandoPecasParaOrcamento", "Aprovada", "EmAndamento", "Pausada" };
+        { "Pendente", "EmVistoria", "AguardandoCliente", "BuscandoPecasParaOrcamento", "Aprovada", "EmAndamento", "Pausada" };
 
     private int Contar(string status) => ordens.Count(o => o.Status == status);
 }

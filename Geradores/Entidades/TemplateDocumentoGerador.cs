@@ -18,6 +18,8 @@ public static class TemplateDocumentoGerador
         ("Termo de entrega (padrão)", TemplatesDocumentosPadrao.TermoEntrega),
         ("Contrato de consignação (padrão)", TemplatesDocumentosPadrao.ContratoConsignacao),
         ("Resposta da financiadora (roteiro)", TemplatesDocumentosPadrao.RespostaFinanciadora),
+        ("Termo de responsabilidade — Test drive (padrão)", TemplatesDocumentosPadrao.TermoTestDrive),
+        ("Contrato de OS — vistoria de entrada (padrão)", TemplatesDocumentosPadrao.ContratoOS),
     };
 
     public static Task<List<Guid>> GerarAsync(IServiceProvider provider)

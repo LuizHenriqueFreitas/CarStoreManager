@@ -105,6 +105,34 @@ public class PropostaVendaServiceTests
         _propostaRepoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
     }
 
+    // ==================== AplicarDescontoAsync ====================
+
+    [Fact]
+    public async Task AplicarDescontoAsync_PropostaInexistente_RetornaFalha()
+    {
+        _propostaRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((PropostaVenda?)null);
+
+        var result = await _service.AplicarDescontoAsync(
+            new AplicarDescontoDTO { PropostaId = Guid.NewGuid(), Percentual = 5 });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("não encontrada");
+    }
+
+    [Fact]
+    public async Task AplicarDescontoAsync_Sucesso_AplicaDesconto()
+    {
+        var proposta = new PropostaVenda(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 50000, 0);
+        _propostaRepoMock.Setup(r => r.GetByIdAsync(proposta.Id)).ReturnsAsync(proposta);
+        _propostaRepoMock.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+
+        var result = await _service.AplicarDescontoAsync(
+            new AplicarDescontoDTO { PropostaId = proposta.Id, Percentual = 15 });
+
+        result.IsSuccess.Should().BeTrue();
+        _propostaRepoMock.Verify(r => r.Update(proposta), Times.Once);
+    }
+
     [Fact]
     public async Task AddAsync_ConsignacaoNaoEncontrada_RetornaFalha()
     {

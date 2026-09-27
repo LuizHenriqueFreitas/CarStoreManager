@@ -105,6 +105,83 @@ public static class TemplatesDocumentosPadrao
         [NOME DO PROPRIETÁRIO]                     [NOME DO REPRESENTANTE DA LOJA]
         """;
 
+    public const string TermoTestDrive = """
+        TERMO DE RESPONSABILIDADE — TEST DRIVE
+
+        Pelo presente termo, o(a) Sr(a). [NOME DO CLIENTE], portador(a) do
+        CPF nº [CPF DO CLIENTE], habilitado(a) na categoria [CATEGORIA DA
+        CNH], declara estar ciente e de acordo com as condições abaixo para
+        a realização de um test drive no veículo:
+
+        Marca/Modelo: [MARCA E MODELO]
+        Ano: [ANO]
+        Placa: [PLACA]
+        Data e horário do passeio: [DATA E HORA]
+        Acompanhamento: [COM/SEM ACOMPANHAMENTO DE UM VENDEDOR]
+
+        1. O(A) condutor(a) declara possuir Carteira Nacional de Habilitação
+           (CNH) válida e compatível com a categoria do veículo, e assume
+           total responsabilidade pela condução durante todo o trajeto do
+           test drive.
+        2. O(A) condutor(a) se compromete a trafegar respeitando a
+           legislação de trânsito vigente e as instruções do acompanhante da
+           concessionária, quando houver.
+        3. Eventuais multas de trânsito, danos ao veículo, a terceiros ou ao
+           próprio condutor decorrentes de imprudência, negligência ou
+           infração cometida durante o test drive são de responsabilidade
+           do(a) condutor(a).
+        4. A concessionária é responsável pela manutenção e pelas condições
+           gerais de circulação do veículo até o início do test drive
+           (pneus, freios, itens de segurança).
+        5. O trajeto do test drive fica restrito às vias públicas da região,
+           não sendo permitido o uso do veículo fora dessa finalidade.
+
+        Local e data: [CIDADE], [DATA]
+
+
+        _______________________________
+        Assinatura do(a) Condutor(a)
+        [NOME DO CLIENTE]
+        """;
+
+    /// <summary>
+    /// Contrato de OS — redigido pelo(a) recepcionista durante a vistoria de
+    /// entrada do veículo na oficina, idealmente na presença do cliente. Sem
+    /// linha de assinatura: o aceite do cliente é registrado no sistema
+    /// (botão "Cliente aprovou"), não por assinatura em papel.
+    /// </summary>
+    public const string ContratoOS = """
+        CONTRATO DE ORDEM DE SERVIÇO — VISTORIA DE ENTRADA
+
+        OS nº [NÚMERO DA OS]
+        Cliente: [NOME DO CLIENTE]
+        Veículo: [MARCA E MODELO] — Placa [PLACA]
+        Data e hora da vistoria: [DATA E HORA]
+        Recepcionista responsável: [NOME DO RECEPCIONISTA]
+
+        1. ESTADO DO VEÍCULO NA ENTRADA
+        Itens visíveis e condição geral: [DESCREVER — LATARIA, PNEUS, VIDROS,
+        BANCOS, PAINEL]
+        Avarias identificadas (riscos, amassados, trincas): [DESCREVER OU
+        "NENHUMA AVARIA VISÍVEL"]
+        Nível de combustível: [NÍVEL]
+        Itens/pertences pessoais deixados no veículo: [DESCREVER OU "NENHUM"]
+
+        2. SERVIÇOS E PEÇAS A SEREM EXECUTADOS
+        Descrição do serviço solicitado: [DESCRIÇÃO DO SERVIÇO]
+        Peças previstas: [LISTAR PEÇAS, SE JÁ IDENTIFICADAS]
+        Observações técnicas da vistoria: [OBSERVAÇÕES]
+
+        3. PRAZO ESTIMADO
+        Previsão de conclusão: [DATA PREVISTA]
+
+        4. CIÊNCIA DO CLIENTE
+        O(A) cliente declara estar ciente do estado do veículo registrado
+        nesta vistoria e dos serviços previstos acima, descritos na sua
+        presença. A aprovação deste contrato é registrada no sistema pela
+        recepção, sem necessidade de assinatura em papel.
+        """;
+
     /// <summary>
     /// Roteiro de campos pra o vendedor preencher com o que a financiadora
     /// informou por fora do sistema (ligação, e-mail, portal do parceiro) —

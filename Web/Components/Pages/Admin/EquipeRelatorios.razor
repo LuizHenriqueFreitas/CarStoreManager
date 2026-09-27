@@ -1,0 +1,15 @@
+@page "/equipe/relatorios"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/equipe/relatorios")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@using CarStoreManager.Web.Components.Shared
+
+<div class="pagina">
+    <PageHeader Titulo="Relatórios — Equipe" Subtitulo="Mecânicos e vendedores cadastrados — CSV ou XML por período" />
+
+    <SubNav Itens="SubNavEquipe.Itens" />
+
+    <RelatoriosGrid Ids="CatalogoRelatoriosPorArea.Equipe" />
+</div>

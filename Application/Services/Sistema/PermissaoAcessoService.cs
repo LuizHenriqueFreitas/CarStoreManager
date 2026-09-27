@@ -10,8 +10,13 @@ namespace CarStoreManager.Application.Services.Sistema;
 public class PermissaoAcessoService : IPermissaoAcessoService
 {
     private readonly IPermissaoAcessoRepository _repository;
+    private readonly IPermissaoIndividualRepository _repositorioIndividual;
 
-    public PermissaoAcessoService(IPermissaoAcessoRepository repository) => _repository = repository;
+    public PermissaoAcessoService(IPermissaoAcessoRepository repository, IPermissaoIndividualRepository repositorioIndividual)
+    {
+        _repository = repository;
+        _repositorioIndividual = repositorioIndividual;
+    }
 
     public async Task<bool> PodeAcessarAsync(RoleUsuario role, string recursoChave)
     {
@@ -69,6 +74,72 @@ public class PermissaoAcessoService : IPermissaoAcessoService
         catch (Exception ex)
         {
             return Result.Fail($"Erro ao salvar permissão: {ex.Message}");
+        }
+    }
+
+    public async Task<bool> PodeAcessarAsync(Guid usuarioId, RoleUsuario role, string recursoChave)
+    {
+        var individual = await _repositorioIndividual.GetAsync(usuarioId, recursoChave);
+        if (individual is not null) return individual.Permitido;
+
+        return await PodeAcessarAsync(role, recursoChave);
+    }
+
+    public async Task<List<RecursoPermissaoIndividualDTO>> ObterMatrizIndividualAsync(Guid usuarioId, RoleUsuario roleDoUsuario)
+    {
+        var overrides = (await _repositorioIndividual.GetAllPorUsuarioAsync(usuarioId))
+            .ToDictionary(p => p.RecursoChave, p => p.Permitido);
+
+        var lista = new List<RecursoPermissaoIndividualDTO>();
+        foreach (var recurso in CatalogoRecursosProtegiveis.Itens)
+        {
+            lista.Add(new RecursoPermissaoIndividualDTO
+            {
+                Chave = recurso.Chave,
+                Tipo = recurso.Tipo.ToString(),
+                Area = recurso.Area,
+                Rotulo = recurso.Rotulo,
+                PadraoDoPapel = await PodeAcessarAsync(roleDoUsuario, recurso.Chave),
+                OverrideIndividual = overrides.TryGetValue(recurso.Chave, out var permitido) ? permitido : (bool?)null
+            });
+        }
+        return lista;
+    }
+
+    public async Task<Result> AtualizarIndividualAsync(Guid usuarioId, string recursoChave, bool? permitido)
+    {
+        var recurso = CatalogoRecursosProtegiveis.ObterPorChave(recursoChave);
+        if (recurso is null)
+            return Result.Fail("Recurso não encontrado no catálogo.");
+
+        try
+        {
+            var existente = await _repositorioIndividual.GetAsync(usuarioId, recursoChave);
+
+            if (permitido is null)
+            {
+                if (existente is not null)
+                {
+                    _repositorioIndividual.Remove(existente);
+                    await _repositorioIndividual.SaveChangesAsync();
+                }
+                return Result.Ok();
+            }
+
+            if (existente is null)
+                await _repositorioIndividual.AddAsync(new PermissaoIndividual(usuarioId, recursoChave, permitido.Value));
+            else
+            {
+                existente.Atualizar(permitido.Value);
+                _repositorioIndividual.Update(existente);
+            }
+
+            await _repositorioIndividual.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail($"Erro ao salvar exceção individual: {ex.Message}");
         }
     }
 }

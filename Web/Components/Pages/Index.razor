@@ -18,6 +18,7 @@
 @inject IDashboardService DashboardService
 @inject IJSRuntime JS
 @inject CarStoreManager.Application.Interfaces.Sistema.IBalancoMensalDespesaService BalancoService
+@inject CarStoreManager.Application.Interfaces.Sistema.IConfiguracaoSistemaService ConfiguracaoService
 
 <div class="pagina">
     <PageHeader Titulo="@saudacao" Subtitulo="@DateTime.Now.ToString("dddd, dd 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("pt-BR"))">
@@ -55,7 +56,22 @@
         @if (podeVerFinanceiro && serieFaturamento.Count >= 1)
         {
             <Secao Titulo="@($"Receitas e despesas — {inicio:dd/MM} a {fim:dd/MM}")" data-tour="inicio-faturamento">
-                <div class="grafico-inicio"><canvas id="inicioFaturamento"></canvas></div>
+                <div class="grafico-inicio-grid">
+                    @if (temOficina)
+                    {
+                        <div class="grafico-inicio-item">
+                            <h3>Oficina</h3>
+                            <div class="grafico-inicio"><canvas id="inicioFaturamentoOficina"></canvas></div>
+                        </div>
+                    }
+                    @if (temConcessionaria)
+                    {
+                        <div class="grafico-inicio-item">
+                            <h3>Concessionária</h3>
+                            <div class="grafico-inicio"><canvas id="inicioFaturamentoConcessionaria"></canvas></div>
+                        </div>
+                    }
+                </div>
             </Secao>
         }
 
@@ -96,7 +112,20 @@
             {
                 <div class="area-card">
                     <div class="area-head"><h2>Análises</h2><a href="/dashboard">Abrir →</a></div>
-                    <p class="muted">Gráficos e comparativos de oficina e concessionária.</p>
+                    <p class="muted">
+                        @if (temOficina && temConcessionaria)
+                        {
+                            <text>Gráficos e comparativos de oficina e concessionária.</text>
+                        }
+                        else if (temOficina)
+                        {
+                            <text>Gráficos e comparativos da oficina.</text>
+                        }
+                        else
+                        {
+                            <text>Gráficos e comparativos da concessionária.</text>
+                        }
+                    </p>
                 </div>
             }
         </div>
@@ -120,11 +149,12 @@
     private bool temConcessionaria, temOficina, podeVerFinanceiro, podeVerAnalises, ehAdmin;
 
     // metricas = recortado pelo período do SeletorPeriodo — alimenta tanto os
-    // KPIs quanto o gráfico de faturamento (oficina e concessionária como
-    // linhas separadas, nunca somadas).
+    // KPIs quanto os gráficos de faturamento (oficina e concessionária em
+    // gráficos separados, lado a lado — nunca somados numa linha só, ver
+    // docs/redesign/27-graficos-receita-por-setor.md).
     private DashboardMetricasDTO? metricas;
     private DateOnly inicio, fim;
-    private List<(string Label, decimal Oficina, decimal Concessionaria, decimal Despesa)> serieFaturamento = new();
+    private List<(string Label, decimal ReceitaOficina, decimal DespesaOficina, decimal ReceitaConcessionaria, decimal DespesaConcessionaria)> serieFaturamento = new();
     private bool graficoPendente;
     private List<FaixaAlertas.Alerta> alertas = new();
     private int veiculosDisponiveis, propostasAbertas, consignacoesVencendo;
@@ -143,7 +173,6 @@
             {
                 yield return new("Financeiro", "💰", "/financeiro", "Receita, despesas, lucro.");
                 yield return new("Análises", "📊", "/dashboard", "Gráficos e comparativos.");
-                yield return new("Relatórios", "📑", "/financeiro/relatorios", "Exportar dados por período.");
             }
             if (ehAdmin)
             {
@@ -155,7 +184,7 @@
     }
 
     private static readonly string[] StatusOsAbertas =
-        { "Pendente", "EmAnalise", "AguardandoCliente", "BuscandoPecasParaOrcamento", "Aprovada", "EmAndamento", "Pausada" };
+        { "Pendente", "EmVistoria", "AguardandoCliente", "BuscandoPecasParaOrcamento", "Aprovada", "EmAndamento", "Pausada" };
     private static readonly string[] PropTerminal = { "Concluida", "Rejeitada", "Cancelada", "Expirada" };
 
     protected override async Task OnInitializedAsync()
@@ -176,8 +205,12 @@
         var parte = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
         saudacao = string.IsNullOrWhiteSpace(nome) ? parte : $"{parte}, {nome.Split(' ')[0]}";
 
-        temConcessionaria = user.IsInRole("Admin") || user.IsInRole("GerenteVendas") || user.IsInRole("Vendedor");
-        temOficina = user.IsInRole("Admin") || user.IsInRole("ChefeOficina") || user.IsInRole("Mecanico") || user.IsInRole("Recepcionista");
+        var rModulos = await ConfiguracaoService.ObterModulosAtivosAsync();
+        var moduloConcessionaria = !rModulos.IsSuccess || rModulos.Value.Concessionaria;
+        var moduloOficina = !rModulos.IsSuccess || rModulos.Value.Oficina;
+
+        temConcessionaria = moduloConcessionaria && (user.IsInRole("Admin") || user.IsInRole("GerenteVendas") || user.IsInRole("Vendedor"));
+        temOficina = moduloOficina && (user.IsInRole("Admin") || user.IsInRole("ChefeOficina") || user.IsInRole("Mecanico") || user.IsInRole("Recepcionista"));
         podeVerFinanceiro = user.IsInRole("Admin") || user.IsInRole("GerenteVendas") || user.IsInRole("ChefeOficina");
         podeVerAnalises = podeVerFinanceiro;
         ehAdmin = user.IsInRole("Admin");
@@ -257,25 +290,36 @@
         StateHasChanged();
     }
 
-    /// <summary>Receita de serviços (oficina), de vendas (concessionária) e
-    /// despesa mês a mês, mantidas separadas — o gráfico "Faturamento" mostra
-    /// as três como linhas distintas, nunca somadas numa só (dinheiro de
-    /// setores diferentes não deve virar um número só, confunde o usuário).</summary>
+    /// <summary>Receita de serviços (oficina) e de vendas (concessionária),
+    /// cada uma com sua própria despesa — nunca somadas num número só
+    /// (dinheiro de setores diferentes confunde o usuário). Despesa "Geral"
+    /// (sem setor específico, ex. despesas administrativas) não tem série
+    /// própria — divide-se meio a meio entre os dois setores.</summary>
     private void AtualizarSerieFaturamento(DashboardMetricasDTO dto)
     {
         var servicos = dto.SerieReceitaServicos ?? new();
         var vendas = dto.SerieReceitaVendas ?? new();
-        var despesas = dto.SerieDespesas ?? new();
+        var despesaTotal = dto.SerieDespesas ?? new();
+        var despesaOficina = dto.SerieDespesasOficina ?? new();
+        var despesaConcessionaria = dto.SerieDespesasConcessionaria ?? new();
         var meses = servicos.Select(s => s.Label)
             .Union(vendas.Select(v => v.Label))
-            .Union(despesas.Select(d => d.Label))
+            .Union(despesaTotal.Select(d => d.Label))
             .ToList();
-        serieFaturamento = meses.Select(m => (
-            Label: m,
-            Oficina: servicos.FirstOrDefault(s => s.Label == m)?.Valor ?? 0m,
-            Concessionaria: vendas.FirstOrDefault(v => v.Label == m)?.Valor ?? 0m,
-            Despesa: despesas.FirstOrDefault(d => d.Label == m)?.Valor ?? 0m
-        )).ToList();
+        serieFaturamento = meses.Select(m =>
+        {
+            var total = despesaTotal.FirstOrDefault(d => d.Label == m)?.Valor ?? 0m;
+            var ofi = despesaOficina.FirstOrDefault(d => d.Label == m)?.Valor ?? 0m;
+            var conc = despesaConcessionaria.FirstOrDefault(d => d.Label == m)?.Valor ?? 0m;
+            var geralMetade = (total - ofi - conc) / 2m;
+            return (
+                Label: m,
+                ReceitaOficina: servicos.FirstOrDefault(s => s.Label == m)?.Valor ?? 0m,
+                DespesaOficina: ofi + geralMetade,
+                ReceitaConcessionaria: vendas.FirstOrDefault(v => v.Label == m)?.Valor ?? 0m,
+                DespesaConcessionaria: conc + geralMetade
+            );
+        }).ToList();
         graficoPendente = true;
     }
 
@@ -285,13 +329,19 @@
         graficoPendente = false;
         try
         {
-            await JS.InvokeVoidAsync("carstoreChart.linhaTempo", "inicioFaturamento",
-                serieFaturamento.Select(p => p.Label).ToArray(),
+            var labels = serieFaturamento.Select(p => p.Label).ToArray();
+            await JS.InvokeVoidAsync("carstoreChart.linhaTempo", "inicioFaturamentoOficina", labels,
                 new[]
                 {
-                    new { nome = "Receita Oficina", dados = serieFaturamento.Select(p => p.Oficina).ToArray(), cor = "#16a34a" },
-                    new { nome = "Receita Concessionária", dados = serieFaturamento.Select(p => p.Concessionaria).ToArray(), cor = "#2563eb" },
-                    new { nome = "Despesa", dados = serieFaturamento.Select(p => p.Despesa).ToArray(), cor = "#ea580c" },
+                    new { nome = "Receita", dados = serieFaturamento.Select(p => p.ReceitaOficina).ToArray(), cor = "#16a34a" },
+                    new { nome = "Despesa", dados = serieFaturamento.Select(p => p.DespesaOficina).ToArray(), cor = "#ea580c" },
+                },
+                "R$");
+            await JS.InvokeVoidAsync("carstoreChart.linhaTempo", "inicioFaturamentoConcessionaria", labels,
+                new[]
+                {
+                    new { nome = "Receita", dados = serieFaturamento.Select(p => p.ReceitaConcessionaria).ToArray(), cor = "#2563eb" },
+                    new { nome = "Despesa", dados = serieFaturamento.Select(p => p.DespesaConcessionaria).ToArray(), cor = "#ea580c" },
                 },
                 "R$");
         }
@@ -300,7 +350,11 @@
 
     public async ValueTask DisposeAsync()
     {
-        try { await JS.InvokeVoidAsync("carstoreChart.destroy", "inicioFaturamento"); }
+        try
+        {
+            await JS.InvokeVoidAsync("carstoreChart.destroy", "inicioFaturamentoOficina");
+            await JS.InvokeVoidAsync("carstoreChart.destroy", "inicioFaturamentoConcessionaria");
+        }
         catch { }
     }
 }
@@ -314,8 +368,11 @@
 
     .areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--sp-4); margin-bottom: var(--sp-6); }
     .atalhos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
+    .grafico-inicio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); }
+    .grafico-inicio-item h3 { font-size: var(--txt-sm); font-weight: var(--peso-medio); color: var(--cor-tinta-2); margin: 0 0 var(--sp-2); }
     .grafico-inicio { position: relative; height: 240px; }
     .grafico-inicio canvas { max-height: 240px; }
+    @@media (max-width: 900px) { .grafico-inicio-grid { grid-template-columns: 1fr; } }
     .area-card { background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); padding: var(--sp-5); }
     .area-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--sp-4); }
     .area-head h2 { font-size: var(--txt-lg); margin: 0; }

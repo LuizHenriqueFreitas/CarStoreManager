@@ -1,11 +1,13 @@
 @page "/equipe"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/equipe")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
 @rendermode Microsoft.AspNetCore.Components.Web.RenderMode.InteractiveServer
 @inject IAuthService AuthService
 @inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject CarStoreManager.Application.Interfaces.Sistema.IConfiguracaoSistemaService ConfiguracaoService
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Auth
 @using CarStoreManager.Domain.Enums
@@ -23,16 +25,18 @@
         <button type="button" class="btn-novo" data-tour="usuarios-btn-novo" @onclick="AbrirModalNovoUsuario">+ Novo usuário</button>
     </div>
 
+    <SubNav Itens="SubNavEquipe.Itens" />
+
     <div class="toolbar">
         <input class="campo-input busca-input" data-tour="usuarios-busca" placeholder="Buscar por nome ou telefone..."
                @bind="termoBusca" @bind:event="oninput" @bind:after="AplicarFiltro" />
         <select class="campo-input filtro-select" data-tour="usuarios-filtro-tipo" @bind="filtroTipo" @bind:after="AplicarFiltro">
             <option value="Todos">Todos os tipos</option>
-            <option value="Vendedor">Vendedor</option>
-            <option value="Mecanico">Mecânico</option>
-            <option value="Recepcionista">Recepcionista</option>
-            <option value="ChefeOficina">Chefe de oficina</option>
-            <option value="GerenteVendas">Gerente de vendas</option>
+            @if (moduloConcessionariaAtivo) { <option value="Vendedor">Vendedor</option> }
+            @if (moduloOficinaAtivo) { <option value="Mecanico">Mecânico</option> }
+            @if (moduloOficinaAtivo) { <option value="Recepcionista">Recepcionista</option> }
+            @if (moduloOficinaAtivo) { <option value="ChefeOficina">Chefe de oficina</option> }
+            @if (moduloConcessionariaAtivo) { <option value="GerenteVendas">Gerente de vendas</option> }
             <option value="Admin">Administrador</option>
         </select>
     </div>
@@ -65,6 +69,10 @@
                             <td>@u.Telefone · @u.Email</td>
                             <td><span class="usuario-role @(RoleSlug(u.Role))-badge">@RoleLabel(u.Role)</span></td>
                             <td class="acoes">
+                                <button type="button" class="btn-acessos" data-tour="usuarios-btn-acessos"
+                                        @onclick="() => AbrirAcessos(u.Id)">
+                                    Acessos
+                                </button>
                                 @if (u.Id != usuarioAtualId)
                                 {
                                     <button type="button" class="btn-desativar" data-tour="usuarios-btn-desativar"
@@ -100,11 +108,11 @@
                     <label class="campo-label">Tipo *</label>
                     <select class="campo-input" @bind="novoUsuario.Role">
                         <option value="" disabled>Selecione o tipo...</option>
-                        <option value="Vendedor">Vendedor</option>
-                        <option value="Mecanico">Mecânico</option>
-                        <option value="Recepcionista">Recepcionista</option>
-                        <option value="ChefeOficina">Chefe de oficina</option>
-                        <option value="GerenteVendas">Gerente de vendas</option>
+                        @if (moduloConcessionariaAtivo) { <option value="Vendedor">Vendedor</option> }
+                        @if (moduloOficinaAtivo) { <option value="Mecanico">Mecânico</option> }
+                        @if (moduloOficinaAtivo) { <option value="Recepcionista">Recepcionista</option> }
+                        @if (moduloOficinaAtivo) { <option value="ChefeOficina">Chefe de oficina</option> }
+                        @if (moduloConcessionariaAtivo) { <option value="GerenteVendas">Gerente de vendas</option> }
                         <option value="Admin">Administrador</option>
                     </select>
                 </div>
@@ -198,6 +206,8 @@
     private Guid idParaDesativar;
     private Guid usuarioAtualId;
     private ConfirmacaoSenhaModal? modalDesativarRef;
+    private bool moduloConcessionariaAtivo = true;
+    private bool moduloOficinaAtivo = true;
 
     private CriarUsuarioDTO novoUsuario = NovoFormPadrao();
 
@@ -207,6 +217,13 @@
         var claim = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
         if (claim is not null)
             usuarioAtualId = Guid.Parse(claim.Value);
+
+        var rModulos = await ConfiguracaoService.ObterModulosAtivosAsync();
+        if (rModulos.IsSuccess)
+        {
+            moduloConcessionariaAtivo = rModulos.Value.Concessionaria;
+            moduloOficinaAtivo = rModulos.Value.Oficina;
+        }
 
         await CarregarUsuarios();
     }
@@ -313,6 +330,8 @@
         nomeParaDesativar = nome;
         modalDesativarVisivel = true;
     }
+
+    private void AbrirAcessos(Guid id) => Nav.NavigateTo($"/equipe/{id}/acessos");
 
     private async Task ConfirmarDesativacao(string senha)
     {
@@ -456,7 +475,7 @@
         padding: 5px 12px;
     }
 
-    .btn-desativar {
+    .btn-desativar, .btn-acessos {
         background: none;
         border: 0.5px solid #e0e0e0;
         border-radius: 6px;
@@ -464,9 +483,11 @@
         font-size: 12px;
         color: #888;
         cursor: pointer;
+        margin-right: 6px;
     }
 
     .btn-desativar:hover { border-color: #e02020; color: #e02020; }
+    .btn-acessos:hover { border-color: #0a84ff; color: #0a84ff; }
 
     .modal-overlay {
         position: fixed;

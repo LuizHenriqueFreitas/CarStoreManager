@@ -1,0 +1,460 @@
+@page "/concessionaria/test-drives/novo"
+@page "/concessionaria/test-drives/{Id:guid}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/concessionaria/test-drives/novo")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:concessionaria")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@inject ITestDriveService TestDriveService
+@inject IVeiculoVendaService VeiculoService
+@inject IVeiculoConsignacaoService ConsignacaoService
+@inject IClienteService ClienteService
+@inject IVendedorService VendedorService
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthState
+@using CarStoreManager.Application.Interfaces
+@using CarStoreManager.Application.DTOs.Concessionaria.TestDrive
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoVenda
+@using CarStoreManager.Application.DTOs.Concessionaria.VeiculoConsignacao
+@using CarStoreManager.Application.DTOs.Shared.Cliente
+@using CarStoreManager.Application.DTOs.Concessionaria.Vendedor
+@using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="pagina" style="max-width: 820px;">
+    <PageHeader Titulo="@(EhNovo ? "Agendar test drive" : "Test drive")" Subtitulo="@Subtitulo">
+        <Acao>
+            <a href="/concessionaria/test-drives" class="btn btn-neutro">← Voltar</a>
+        </Acao>
+    </PageHeader>
+
+    @if (carregando)
+    {
+        <div class="estado-carregando">Carregando...</div>
+    }
+    else if (!EhNovo && testDrive is null)
+    {
+        <EstadoVazio Mensagem="Test drive não encontrado." Icone="🚗" />
+    }
+    else
+    {
+        @if (EhNovo)
+        {
+            <section class="card" data-tour="td-form-agendamento">
+                <h2>Dados do passeio</h2>
+                <div class="campo">
+                    <label>Tipo de veículo</label>
+                    <div class="tipo-toggle">
+                        <label><input type="radio" name="tipoVeiculo" checked="@(tipoVeiculo == "VeiculoVenda")" @onchange="@(() => tipoVeiculo = "VeiculoVenda")" /> Veículo próprio</label>
+                        <label><input type="radio" name="tipoVeiculo" checked="@(tipoVeiculo == "VeiculoConsignacao")" @onchange="@(() => tipoVeiculo = "VeiculoConsignacao")" /> Consignado</label>
+                    </div>
+                </div>
+                @if (tipoVeiculo == "VeiculoConsignacao")
+                {
+                    <div class="campo">
+                        <label>Veículo consignado</label>
+                        <BuscaAutocomplete TItem="VeiculoConsignacaoListaDTO"
+                                           Placeholder="Nome, marca ou placa..."
+                                           @bind-Selecionado="consignadoSelecionado"
+                                           BuscarFunc="BuscarConsignados"
+                                           TextoSelecionado="@(v => $"{v.Marca} {v.Modelo} {v.Ano} · {v.Placa}")">
+                            <ItemTemplate Context="v">@v.Marca @v.Modelo @v.Ano · @v.Placa (@v.ClienteProprietarioNome)</ItemTemplate>
+                        </BuscaAutocomplete>
+                        <span class="dica">Só consignações ativas podem agendar test drive.</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="campo">
+                        <label>Veículo</label>
+                        <BuscaAutocomplete TItem="VeiculoVendaListaDTO"
+                                           Placeholder="Nome, marca ou placa..."
+                                           @bind-Selecionado="veiculoSelecionado"
+                                           BuscarFunc="BuscarVeiculos"
+                                           TextoSelecionado="@(v => $"{v.Marca} {v.Modelo} {v.Ano} · {v.Placa}")">
+                            <ItemTemplate Context="v">@v.Marca @v.Modelo @v.Ano · @v.Placa</ItemTemplate>
+                        </BuscaAutocomplete>
+                    </div>
+                }
+                <div class="campo">
+                    <label>Cliente</label>
+                    <BuscaAutocomplete TItem="ClienteListaDTO"
+                                       Placeholder="Nome ou CPF..."
+                                       @bind-Selecionado="clienteSelecionado"
+                                       BuscarFunc="BuscarClientes"
+                                       TextoSelecionado="@(c => $"{c.Nome} — {c.Cpf}")">
+                        <ItemTemplate Context="c">@c.Nome — @c.Cpf</ItemTemplate>
+                    </BuscaAutocomplete>
+                </div>
+                <div class="campo">
+                    <label>Vendedor</label>
+                    <BuscaAutocomplete TItem="VendedorListaDTO"
+                                       Placeholder="Nome do vendedor..."
+                                       @bind-Selecionado="vendedorSelecionado"
+                                       BuscarFunc="BuscarVendedores"
+                                       TextoSelecionado="@(vd => vd.Nome)">
+                        <ItemTemplate Context="vd">@vd.Nome</ItemTemplate>
+                    </BuscaAutocomplete>
+                </div>
+                <div class="campo">
+                    <label>Data e hora</label>
+                    <input type="datetime-local" @bind="dataHora" />
+                </div>
+                <div class="campo">
+                    <label>Observação</label>
+                    <textarea @bind="observacao" rows="2"></textarea>
+                </div>
+            </section>
+
+            <section class="card" data-tour="td-form-termo">
+                <h2>Termo de responsabilidade</h2>
+                <p class="muted">
+                    Documento que o cliente assina assumindo a responsabilidade pelo veículo durante
+                    o test drive — mesmo padrão de assinatura eletrônica do termo de entrega.
+                </p>
+                <SeletorTemplateDocumento Label="Começar a partir de um template" OnTemplateAplicado="AplicarTemplateTermo" />
+                <textarea @bind="textoTermo" rows="14"
+                          placeholder="Ex: O(A) condutor(a) declara possuir CNH válida e assume responsabilidade pela condução durante o test drive..."></textarea>
+            </section>
+
+            <div class="acoes-form">
+                <button type="button" class="btn btn-primario" @onclick="Agendar" disabled="@salvando">
+                    @(salvando ? "Agendando..." : "Agendar test drive")
+                </button>
+            </div>
+        }
+        else
+        {
+            <section class="card">
+                <h2>Dados do passeio</h2>
+                <div class="resumo-grid">
+                    <div><span>Veículo</span><strong>@testDrive!.VeiculoDescricao</strong></div>
+                    <div><span>Cliente</span><strong>@testDrive.ClienteNome</strong></div>
+                    <div>
+                        <span>Vendedor</span>
+                        <strong>@testDrive.VendedorNome</strong>
+                        @if (podeTrocarVendedor && testDrive.Status == "Agendado")
+                        {
+                            <button type="button" class="btn-link" @onclick="() => trocandoVendedor = !trocandoVendedor">Trocar</button>
+                        }
+                    </div>
+                    <div><span>Data e hora</span><strong>@testDrive.DataHora.ToString("dd/MM/yyyy HH:mm")</strong></div>
+                    <div><span>Status</span><strong><StatusBadge Status="@testDrive.Status" Familia="testdrive" /></strong></div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(testDrive.Observacao))
+                {
+                    <p class="muted">@testDrive.Observacao</p>
+                }
+                @if (trocandoVendedor)
+                {
+                    <div class="trocar-vendedor">
+                        <BuscaAutocomplete TItem="VendedorListaDTO"
+                                           Placeholder="Nome do novo vendedor..."
+                                           @bind-Selecionado="novoVendedorSelecionado"
+                                           BuscarFunc="BuscarVendedores"
+                                           TextoSelecionado="@(vd => vd.Nome)">
+                            <ItemTemplate Context="vd">@vd.Nome</ItemTemplate>
+                        </BuscaAutocomplete>
+                        <button type="button" class="btn btn-primario" @onclick="() => modalTrocarVendedorVisivel = true" disabled="@(novoVendedorSelecionado is null || processando)">Confirmar</button>
+                    </div>
+                }
+            </section>
+
+            <section class="card" data-tour="td-detalhe-termo">
+                <h2>Termo de responsabilidade</h2>
+
+                @if (termo is null)
+                {
+                    <p class="muted">Este test drive não tem termo cadastrado.</p>
+                }
+                else
+                {
+                    <p>Status: <b>@StatusTermoLabel(termo.Status)</b>
+                        @if (termo.DataUltimaEdicao.HasValue)
+                        {
+                            <span class="muted">— editado em @termo.DataUltimaEdicao.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                        }
+                    </p>
+
+                    @if (termo.Status == "Rascunho")
+                    {
+                        <SeletorTemplateDocumento Label="Substituir por um template" OnTemplateAplicado="AplicarTemplateTermo" />
+                        <textarea @bind="textoTermo" rows="14"></textarea>
+                        <div class="acoes-form">
+                            <button type="button" class="btn btn-neutro" @onclick="SalvarTermo" disabled="@processando">Salvar alterações</button>
+                            <button type="button" class="btn btn-primario" @onclick="EnviarTermo" disabled="@processando">
+                                📨 Gerar link de assinatura
+                            </button>
+                        </div>
+                    }
+                    else if (termo.Status == "AguardandoAssinatura")
+                    {
+                        <p class="muted">Compartilhe este link com o cliente para que ele assine (ex.: mostre a tela no tablet/celular na hora do passeio):</p>
+                        <input type="text" readonly value="@LinkAssinatura" class="link-share" onclick="this.select()" />
+                        <h3>Conteúdo</h3>
+                        <pre class="termo-preview">@termo.TextoTermo</pre>
+                        <BotaoExportarPdf Titulo="@($"Termo de test drive - {testDrive?.VeiculoDescricao}")" Conteudo="@termo.TextoTermo" CssClass="btn-neutro" />
+                    }
+                    else if (termo.Status == "Assinado")
+                    {
+                        <div class="banner ok">
+                            ✓ Assinado em @termo.DataAssinatura?.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            por <b>@termo.AssinaturaNomeCliente</b> (CPF @termo.AssinaturaCpfCliente)
+                            do IP @termo.AssinaturaIp.
+                        </div>
+                        <h3>Conteúdo do termo</h3>
+                        <pre class="termo-preview">@termo.TextoTermo</pre>
+                        <BotaoExportarPdf Titulo="@($"Termo de test drive - {testDrive?.VeiculoDescricao}")" Conteudo="@termo.TextoTermo" CssClass="btn-neutro" />
+                    }
+                }
+            </section>
+        }
+
+        @if (!string.IsNullOrEmpty(msg)) { <div class="banner @(msgErro ? "erro" : "ok")">@msg</div> }
+    }
+</div>
+
+<ConfirmacaoModal
+    Visivel="modalTrocarVendedorVisivel"
+    Titulo="Trocar vendedor"
+    Mensagem="@($"Trocar o vendedor deste test drive de \"{testDrive?.VendedorNome}\" para \"{novoVendedorSelecionado?.Nome}\"?")"
+    TextoConfirmar="Trocar"
+    OnConfirmar="ConfirmarTrocaVendedor"
+    OnCancelar="() => modalTrocarVendedorVisivel = false" />
+
+<style>
+    .card { background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); padding: var(--sp-5); margin-bottom: var(--sp-5); }
+    .card h2 { font-size: var(--txt-md); margin: 0 0 var(--sp-3); }
+    .card h3 { font-size: var(--txt-sm); margin: var(--sp-4) 0 var(--sp-2); color: var(--cor-tinta-2); }
+    .campo { display: flex; flex-direction: column; gap: 4px; margin-bottom: var(--sp-3); }
+    .campo label { font-size: var(--txt-xs); color: var(--cor-tinta-2); font-weight: var(--peso-medio); }
+    .campo input, .campo textarea { border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 8px 10px; font-size: var(--txt-sm); font-family: inherit; }
+    textarea { width: 100%; border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 10px; font-size: var(--txt-sm); font-family: inherit; box-sizing: border-box; margin-top: var(--sp-3); }
+    .muted { font-size: var(--txt-sm); color: var(--cor-tinta-3); }
+    .acoes-form { display: flex; justify-content: flex-end; gap: var(--sp-2); margin-bottom: var(--sp-5); }
+    .resumo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--sp-3); margin-bottom: var(--sp-3); }
+    .resumo-grid span { display: block; font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+    .resumo-grid strong { font-size: var(--txt-sm); font-weight: var(--peso-medio); }
+    .tipo-toggle { display: flex; gap: var(--sp-4); font-size: var(--txt-sm); }
+    .tipo-toggle label { display: flex; align-items: center; gap: 6px; font-weight: normal; color: var(--cor-tinta); }
+    .dica { font-size: var(--txt-xs); color: var(--cor-tinta-3); }
+    .btn-link { background: none; border: none; color: var(--cor-acao); font-size: var(--txt-xs); cursor: pointer; padding: 0; margin-left: 8px; text-decoration: underline; }
+    .trocar-vendedor { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2); margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--cor-linha-suave); }
+    .trocar-vendedor > div { width: 100%; }
+    .trocar-vendedor button { align-self: flex-start; }
+    .link-share { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--cor-linha); border-radius: var(--raio-md); font-size: var(--txt-sm); background: var(--cor-superficie-2); }
+    .termo-preview { background: var(--cor-superficie-2); border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: var(--sp-4); white-space: pre-wrap; font-family: Georgia, serif; font-size: var(--txt-sm); line-height: 1.6; max-height: 400px; overflow: auto; }
+    .banner { margin-top: var(--sp-4); padding: var(--sp-3); border-radius: var(--raio-md); font-size: var(--txt-sm); }
+    .banner.ok { background: var(--cor-ok-bg); color: var(--cor-ok-tx); }
+    .banner.erro { background: var(--cor-erro-bg); color: var(--cor-erro-tx); }
+</style>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "veiculoId")]
+    [Parameter] public Guid? VeiculoIdQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "tipo")]
+    [Parameter] public string? TipoQuery { get; set; }
+
+    private bool EhNovo => Id == Guid.Empty;
+    private string Subtitulo => EhNovo
+        ? "Agende o passeio e redija o termo de responsabilidade do cliente"
+        : "Detalhes do agendamento e do termo de responsabilidade";
+
+    private bool carregando = true;
+    private bool salvando, processando;
+    private string? msg; private bool msgErro;
+
+    private TestDriveListaDTO? testDrive;
+    private TermoTestDriveDTO? termo;
+
+    private ClienteListaDTO? clienteSelecionado;
+    private VendedorListaDTO? vendedorSelecionado;
+    private VeiculoVendaListaDTO? veiculoSelecionado;
+    private VeiculoConsignacaoListaDTO? consignadoSelecionado;
+    private string tipoVeiculo = "VeiculoVenda";
+    private DateTime dataHora = DateTime.Now.AddHours(1);
+    private string observacao = "";
+    private string textoTermo = "";
+
+    private bool podeTrocarVendedor;
+    private bool trocandoVendedor;
+    private bool modalTrocarVendedorVisivel;
+    private VendedorListaDTO? novoVendedorSelecionado;
+
+    private string LinkAssinatura =>
+        termo?.TokenAssinatura is null ? "" :
+        $"{Nav.BaseUri.TrimEnd('/')}/concessionaria/assinar-test-drive/{termo.TokenAssinatura}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthState.GetAuthenticationStateAsync()).User;
+        podeTrocarVendedor = user.IsInRole("Admin") || user.IsInRole("GerenteVendas");
+
+        if (EhNovo)
+        {
+            carregando = false;
+
+            if (TipoQuery == "VeiculoConsignacao") tipoVeiculo = "VeiculoConsignacao";
+
+            if (VeiculoIdQuery is { } veiculoId && veiculoId != Guid.Empty)
+            {
+                if (tipoVeiculo == "VeiculoConsignacao")
+                {
+                    var rc = await ConsignacaoService.GetByIdAsync(veiculoId);
+                    if (rc.IsSuccess && rc.Value is not null)
+                    {
+                        var c = rc.Value;
+                        consignadoSelecionado = new VeiculoConsignacaoListaDTO
+                        {
+                            Id = c.Id, Marca = c.Marca, Modelo = c.Modelo, Ano = c.Ano,
+                            Placa = c.Placa, Status = c.Status, ClienteProprietarioNome = c.ClienteProprietarioNome
+                        };
+                    }
+                }
+                else
+                {
+                    var rv = await VeiculoService.GetByIdAsync(veiculoId);
+                    if (rv.IsSuccess && rv.Value is not null)
+                    {
+                        var v = rv.Value;
+                        veiculoSelecionado = new VeiculoVendaListaDTO
+                        {
+                            Id = v.Id, Marca = v.Marca, Modelo = v.Modelo, Ano = v.Ano,
+                            Placa = v.Placa, Disponibilidade = v.Disponibilidade
+                        };
+                    }
+                }
+            }
+            return;
+        }
+
+        await CarregarExistente();
+    }
+
+    private async Task CarregarExistente()
+    {
+        carregando = true;
+        var r = await TestDriveService.GetByIdAsync(Id);
+        testDrive = r.IsSuccess ? r.Value : null;
+
+        var rt = await TestDriveService.ObterTermoAsync(Id);
+        if (rt.IsSuccess)
+        {
+            termo = rt.Value;
+            textoTermo = termo!.TextoTermo;
+        }
+        carregando = false;
+    }
+
+    private void AplicarTemplateTermo(string texto) => textoTermo = texto;
+
+    private async Task<List<VeiculoVendaListaDTO>> BuscarVeiculos(string termo)
+    {
+        var r = await VeiculoService.PesquisarAsync(termo);
+        var itens = r.IsSuccess ? r.Value ?? new() : new();
+        return itens.Where(v => v.Disponibilidade is "Disponivel" or "Reservado").ToList();
+    }
+
+    private async Task<List<ClienteListaDTO>> BuscarClientes(string termo)
+    {
+        var r = await ClienteService.PesquisarAsync(termo);
+        return r.IsSuccess ? r.Value ?? new() : new();
+    }
+
+    private async Task<List<VendedorListaDTO>> BuscarVendedores(string termo)
+    {
+        var r = await VendedorService.PesquisarAsync(termo);
+        return r.IsSuccess ? r.Value ?? new() : new();
+    }
+
+    private async Task<List<VeiculoConsignacaoListaDTO>> BuscarConsignados(string termo)
+    {
+        var r = await ConsignacaoService.PesquisarAsync(termo);
+        var itens = r.IsSuccess ? r.Value ?? new() : new();
+        return itens.Where(v => v.Status == "Ativa").ToList();
+    }
+
+    private async Task Agendar()
+    {
+        msg = null;
+        var veiculoId = tipoVeiculo == "VeiculoConsignacao" ? consignadoSelecionado?.Id : veiculoSelecionado?.Id;
+        if (veiculoId is null || clienteSelecionado is null || vendedorSelecionado is null)
+        {
+            msg = "Escolha veículo, cliente e vendedor."; msgErro = true;
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(textoTermo))
+        {
+            msg = "O texto do termo de responsabilidade é obrigatório."; msgErro = true;
+            return;
+        }
+
+        salvando = true;
+        var r = await TestDriveService.AgendarAsync(new CriarTestDriveDTO
+        {
+            VeiculoVendaId = veiculoId.Value,
+            VeiculoEntidadeTipo = tipoVeiculo,
+            ClienteId = clienteSelecionado.Id,
+            VendedorId = vendedorSelecionado.Id,
+            DataHora = dataHora,
+            Observacao = observacao,
+            TextoTermo = textoTermo
+        });
+        salvando = false;
+
+        if (r.IsSuccess) Nav.NavigateTo($"/concessionaria/test-drives/{r.Value}");
+        else { msg = r.Error; msgErro = true; }
+    }
+
+    private async Task ConfirmarTrocaVendedor()
+    {
+        if (novoVendedorSelecionado is null) return;
+
+        processando = true;
+        var r = await TestDriveService.TrocarVendedorAsync(Id, novoVendedorSelecionado.Id);
+        processando = false;
+
+        modalTrocarVendedorVisivel = false;
+        if (r.IsSuccess)
+        {
+            msg = "Vendedor atualizado."; msgErro = false;
+            trocandoVendedor = false;
+            novoVendedorSelecionado = null;
+            await CarregarExistente();
+        }
+        else { msg = r.Error; msgErro = true; }
+    }
+
+    private async Task SalvarTermo()
+    {
+        if (string.IsNullOrWhiteSpace(textoTermo))
+        { msg = "O texto do termo é obrigatório."; msgErro = true; return; }
+
+        processando = true;
+        var r = await TestDriveService.EditarTermoAsync(Id, new EditarTermoTestDriveDTO { TextoTermo = textoTermo });
+        processando = false;
+        if (r.IsSuccess) { msg = "Termo salvo."; msgErro = false; await CarregarExistente(); }
+        else { msg = r.Error; msgErro = true; }
+    }
+
+    private async Task EnviarTermo()
+    {
+        processando = true;
+        var r = await TestDriveService.EnviarTermoParaAssinaturaAsync(Id);
+        processando = false;
+        if (r.IsSuccess) { msg = "Termo liberado para assinatura. Compartilhe o link com o cliente."; msgErro = false; await CarregarExistente(); }
+        else { msg = r.Error; msgErro = true; }
+    }
+
+    private static string StatusTermoLabel(string s) => s switch
+    {
+        "Rascunho" => "Rascunho (pode editar)",
+        "AguardandoAssinatura" => "Aguardando assinatura do cliente",
+        "Assinado" => "Assinado",
+        _ => s
+    };
+}

@@ -14,15 +14,24 @@ namespace CarStoreManager.Web.Components.Shared;
 /// </summary>
 public static class SubNavOficina
 {
-    public static async Task<List<SubNav.Item>> ItensAsync(bool ehMecanico, RoleUsuario role, IPermissaoAcessoService permissaoService)
+    public static async Task<List<SubNav.Item>> ItensAsync(bool ehMecanico, Guid usuarioId, RoleUsuario role, IPermissaoAcessoService permissaoService)
     {
         var lista = new List<SubNav.Item> { new("/oficina", "Visão geral") };
         if (!ehMecanico)
             lista.Add(new("/oficina/recepcao", "Recepção"));
         lista.Add(new("/oficina/ordens", "Ordens de serviço"));
         lista.Add(new("/oficina/componentes", "Estoque de peças"));
-        if (!ehMecanico && await permissaoService.PodeAcessarAsync(role, "pagina:/oficina/fornecedores"))
+        if (!ehMecanico && await permissaoService.PodeAcessarAsync(usuarioId, role, "pagina:/oficina/fornecedores"))
             lista.Add(new("/oficina/fornecedores", "Fornecedores"));
+        // Relatórios da oficina cruzam dados financeiros (mesmo filtro
+        // "podeOficina" do RelatoriosGrid) — Mecânico/Recepcionista não têm
+        // acesso a nenhum relatório, então nem mostra o item (evita levar a
+        // uma tela vazia).
+        if (role is RoleUsuario.Admin or RoleUsuario.ChefeOficina)
+            lista.Add(new("/oficina/relatorios", "Relatórios"));
+        // Central de Documentos (doc 33) — mesmo grupo de acesso de Relatórios.
+        if (role is RoleUsuario.Admin or RoleUsuario.ChefeOficina)
+            lista.Add(new("/oficina/documentos", "Documentos"));
         return lista;
     }
 }

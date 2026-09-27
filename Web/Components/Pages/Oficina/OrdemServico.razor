@@ -1,5 +1,6 @@
 @page "/oficina/os/nova"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:oficina")]
 @rendermode InteractiveServer
 @namespace CarStoreManager.Web.Components.Pages
 

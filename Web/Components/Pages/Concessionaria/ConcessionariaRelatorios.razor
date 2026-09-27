@@ -1,0 +1,29 @@
+@page "/concessionaria/relatorios"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/concessionaria/relatorios")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:concessionaria")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthState
+@using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="pagina">
+    <PageHeader Titulo="Relatórios — Concessionária" Subtitulo="Estoque, propostas, test drives e consignações — CSV ou XML por período" />
+
+    <SubNav Itens="SubNavConcessionaria.Itens(role)" />
+
+    <RelatoriosGrid Ids="CatalogoRelatoriosPorArea.Concessionaria" />
+</div>
+
+@code {
+    private CarStoreManager.Domain.Enums.RoleUsuario role;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var roleClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out role);
+    }
+}

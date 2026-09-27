@@ -1,0 +1,228 @@
+@page "/concessionaria/documentos"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:concessionaria")]
+
+@namespace CarStoreManager.Web.Components.Pages
+
+@rendermode InteractiveServer
+@inject CarStoreManager.Application.Interfaces.Sistema.IDocumentosService DocumentosService
+@inject AuthenticationStateProvider AuthState
+@using CarStoreManager.Application.DTOs.Sistema.Documentos
+@using CarStoreManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="pagina">
+    <PageHeader Titulo="Documentos" Subtitulo="@($"{documentos.Count} documento(s) · {documentosFiltrados.Count} no filtro atual")" />
+
+    <SubNav Itens="SubNavConcessionaria.Itens(role)" />
+
+    <div data-tour="doc-filtros">
+        <FiltroBar @bind-Busca="busca" BuscaPlaceholder="Buscar por placa, cliente ou vendedor..." OnBusca="AplicarFiltro">
+            <FiltroSelect Rotulo="Tipo de documento" @bind-Valor="tipoAtivo" OnMudou="TrocarTipo" Opcoes="opcoesTipo" />
+        </FiltroBar>
+    </div>
+
+    @if (carregando)
+    {
+        <div class="estado-carregando">Carregando documentos...</div>
+    }
+    else if (!documentosFiltrados.Any())
+    {
+        <EstadoVazio Mensagem="Nenhum documento encontrado com esses filtros." Icone="📄" />
+    }
+    else
+    {
+        <div class="table-scroll" data-tour="doc-tabela">
+            <table class="tab">
+                <thead>
+                    <tr>
+                        <ColunaOrdenavel Coluna="cliente" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Cliente</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="placa" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Placa</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="vendedor" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Vendedor</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="status" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Status</ColunaOrdenavel>
+                        <ColunaOrdenavel Coluna="data" ColunaAtiva="@sortColuna" Ascendente="@sortAscendente" OnOrdenar="Ordenar">Data</ColunaOrdenavel>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var doc in documentosFiltrados)
+                    {
+                        <tr class="linha" @onclick="() => AbrirDocumento(doc)">
+                            <td>@(doc.ClienteNome ?? "—")</td>
+                            <td>@(doc.Placa ?? "—")</td>
+                            <td>@(doc.ResponsavelNome ?? "—")</td>
+                            <td>@doc.Status</td>
+                            <td>@doc.Data.ToString("dd/MM/yyyy")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (documentoSelecionado is not null)
+{
+    <div class="modal-overlay" @onclick="FecharDocumento">
+        <div class="modal-doc" @onclick:stopPropagation>
+            <div class="modal-header">
+                <span class="modal-titulo">@documentoSelecionado.TipoDocumento — @(documentoSelecionado.ClienteNome ?? documentoSelecionado.Placa ?? "")</span>
+                <button type="button" class="modal-fechar" @onclick="FecharDocumento">×</button>
+            </div>
+            <p class="doc-meta">
+                Status: <b>@documentoSelecionado.Status</b>
+                @if (!string.IsNullOrWhiteSpace(documentoSelecionado.ResponsavelNome))
+                {
+                    <span> · @documentoSelecionado.ResponsavelPapel: @documentoSelecionado.ResponsavelNome</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(documentoSelecionado.Placa))
+                {
+                    <span> · Placa: @documentoSelecionado.Placa</span>
+                }
+            </p>
+            <pre class="doc-texto">@documentoSelecionado.TextoDocumento</pre>
+            @if (!string.IsNullOrWhiteSpace(documentoSelecionado.EntidadeTipoFotos) && documentoSelecionado.EntidadeIdFotos is not null)
+            {
+                <UploadFotosEntidade EntidadeTipo="@documentoSelecionado.EntidadeTipoFotos" EntidadeId="documentoSelecionado.EntidadeIdFotos.Value"
+                                      Titulo="Fotos" PodeEditar="false" />
+            }
+            <BotaoExportarPdf Titulo="@($"{documentoSelecionado.TipoDocumento} - {documentoSelecionado.ClienteNome}")"
+                               Conteudo="@documentoSelecionado.TextoDocumento"
+                               EntidadeTipoFotos="@documentoSelecionado.EntidadeTipoFotos"
+                               EntidadeIdFotos="@documentoSelecionado.EntidadeIdFotos" />
+        </div>
+    </div>
+}
+
+@code {
+    private CarStoreManager.Domain.Enums.RoleUsuario role;
+    private bool carregando = true;
+    private string tipoAtivo = "termos-entrega";
+    private string busca = "";
+    private List<DocumentoDTO> documentos = new();
+    private List<DocumentoDTO> documentosFiltrados = new();
+    private DocumentoDTO? documentoSelecionado;
+
+    // Ordenação da tabela — clique na coluna ordena crescente; clique de
+    // novo na mesma coluna inverte pra decrescente (ver ColunaOrdenavel).
+    private string sortColuna = "data";
+    private bool sortAscendente = false;
+
+    private static readonly List<FiltroSelect.Opcao> opcoesTipo = new()
+    {
+        new("termos-entrega", "Termo de entrega"),
+        new("termos-test-drive", "Termo de test drive"),
+        new("contratos-consignacao", "Contrato de consignação"),
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        var roleClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out role);
+
+        await CarregarDocumentos();
+    }
+
+    private async Task TrocarTipo()
+    {
+        busca = "";
+        await CarregarDocumentos();
+    }
+
+    private async Task CarregarDocumentos()
+    {
+        carregando = true;
+        var r = tipoAtivo switch
+        {
+            "termos-test-drive" => await DocumentosService.ListarTermosTestDriveAsync(),
+            "contratos-consignacao" => await DocumentosService.ListarContratosConsignacaoAsync(),
+            _ => await DocumentosService.ListarTermosEntregaAsync(),
+        };
+        documentos = r.IsSuccess && r.Value is not null ? r.Value : new();
+        carregando = false;
+        AplicarFiltro();
+    }
+
+    private void AplicarFiltro()
+    {
+        if (string.IsNullOrWhiteSpace(busca))
+        {
+            documentosFiltrados = documentos;
+        }
+        else
+        {
+            var t = busca.Trim();
+            documentosFiltrados = documentos.Where(d =>
+                (d.ClienteNome ?? "").Contains(t, StringComparison.OrdinalIgnoreCase)
+                || (d.Placa ?? "").Contains(t, StringComparison.OrdinalIgnoreCase)
+                || (d.ResponsavelNome ?? "").Contains(t, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+        }
+
+        OrdenarFiltrados();
+    }
+
+    private void Ordenar(string coluna)
+    {
+        if (sortColuna == coluna) sortAscendente = !sortAscendente;
+        else { sortColuna = coluna; sortAscendente = true; }
+        OrdenarFiltrados();
+    }
+
+    private void OrdenarFiltrados()
+    {
+        documentosFiltrados = sortColuna switch
+        {
+            "placa" => Ordenacao.Por(documentosFiltrados, d => d.Placa ?? "", sortAscendente),
+            "vendedor" => Ordenacao.Por(documentosFiltrados, d => d.ResponsavelNome ?? "", sortAscendente),
+            "status" => Ordenacao.Por(documentosFiltrados, d => d.Status, sortAscendente),
+            "data" => Ordenacao.Por(documentosFiltrados, d => d.Data, sortAscendente),
+            _ => Ordenacao.Por(documentosFiltrados, d => d.ClienteNome ?? "", sortAscendente),
+        };
+    }
+
+    private void AbrirDocumento(DocumentoDTO doc) => documentoSelecionado = doc;
+    private void FecharDocumento() => documentoSelecionado = null;
+}
+
+<style>
+    .table-scroll { overflow-x: auto; }
+    .tab { width: 100%; border-collapse: collapse; background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); overflow: hidden; }
+    .tab th, .tab td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--cor-linha-suave); font-size: var(--txt-sm); }
+    .tab th { background: var(--cor-fundo); font-size: var(--txt-xs); text-transform: uppercase; letter-spacing: .3px; color: var(--cor-tinta-3); }
+    .tab tbody tr:nth-child(even) { background: var(--cor-zebra); }
+    .linha { cursor: pointer; transition: background .1s; }
+    .linha:hover { background: var(--cor-info-bg); }
+
+    .modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000; padding: 24px;
+    }
+    .modal-doc {
+        background: var(--cor-superficie);
+        border-radius: var(--raio-lg);
+        padding: 24px;
+        width: 100%;
+        max-width: 640px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; }
+    .modal-titulo { font-size: var(--txt-lg); font-weight: var(--peso-forte); }
+    .modal-fechar { background: none; border: none; font-size: 20px; color: var(--cor-tinta-3); cursor: pointer; flex-shrink: 0; }
+    .doc-meta { font-size: var(--txt-sm); color: var(--cor-tinta-3); margin-bottom: 12px; }
+    .doc-texto {
+        white-space: pre-wrap;
+        font-family: inherit;
+        font-size: var(--txt-sm);
+        background: var(--cor-fundo);
+        border: 1px solid var(--cor-linha-suave);
+        border-radius: var(--raio-md);
+        padding: 14px;
+        margin-bottom: 14px;
+    }
+
+    @@media (max-width: 900px) { .tab { min-width: 640px; } }
+</style>

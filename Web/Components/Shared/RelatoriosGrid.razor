@@ -1,0 +1,123 @@
+@namespace CarStoreManager.Web.Components.Shared
+@inject IJSRuntime JS
+@inject IReportService ReportService
+@inject AuthenticationStateProvider AuthState
+@inject CarStoreManager.Application.Interfaces.Sistema.IConfiguracaoSistemaService ConfiguracaoService
+@using Microsoft.JSInterop
+@using CarStoreManager.Application.DTOs.Reports
+@using CarStoreManager.Application.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
+
+@* Grade de relatórios reutilizada por cada área (Concessionária, Oficina,
+   Clientes, Financeiro, Análises, Equipe) — cada página passa só os "Ids" do
+   catálogo que dizem respeito a ela (ver docs/redesign/28-relatorios-por-
+   area.md). O catálogo continua vindo de ReportService.ObterCatalogo, com o
+   mesmo filtro por papel de sempre — um perfil sem acesso a nenhum relatório
+   daquela área simplesmente vê o estado vazio, não um erro. *@
+
+<div class="card filtros" data-tour="rel-filtros">
+    <div class="campo">
+        <label>Período</label>
+        <SeletorPeriodo @bind-Inicio="inicio" @bind-Fim="fim" />
+    </div>
+    <div class="campo">
+        <label>Formato</label>
+        <select @bind="formato">
+            <option value="csv">CSV (Excel / LibreOffice)</option>
+            <option value="xml">XML</option>
+        </select>
+    </div>
+</div>
+
+@if (catalogo.Count == 0)
+{
+    <EstadoVazio Mensagem="Nenhum relatório disponível para o seu perfil." Icone="📑" />
+}
+else
+{
+    @foreach (var grupo in Grupos)
+    {
+        var itensGrupo = catalogo.Where(r => r.Grupo == grupo.Valor).ToList();
+        if (itensGrupo.Count == 0) continue;
+
+        <h2 class="grupo-titulo">@grupo.Rotulo</h2>
+        <div class="rel-grid">
+            @foreach (var r in itensGrupo)
+            {
+                <div class="rel-card">
+                    <div>
+                        <h3>@r.Titulo</h3>
+                        <p class="muted">@r.Descricao</p>
+                    </div>
+                    <button type="button" class="btn btn-primario" @onclick="() => Baixar(r.Id)">Baixar</button>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public HashSet<string> Ids { get; set; } = new();
+
+    private DateOnly inicio = DateOnly.FromDateTime(DateTime.Today).AddMonths(-1);
+    private DateOnly fim = DateOnly.FromDateTime(DateTime.Today);
+    private string formato = "csv";
+    private List<RelatorioDefinicao> catalogo = new();
+
+    private static readonly (GrupoRelatorio Valor, string Rotulo)[] Grupos =
+    {
+        (GrupoRelatorio.Financeiro, "Financeiro"),
+        (GrupoRelatorio.Operacional, "Operacional"),
+        (GrupoRelatorio.Comparativo, "Comparativos"),
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var u = (await AuthState.GetAuthenticationStateAsync()).User;
+        var podeOficina = u.IsInRole("Admin") || u.IsInRole("ChefeOficina");
+        var podeConcessionaria = u.IsInRole("Admin") || u.IsInRole("GerenteVendas");
+
+        var rModulos = await ConfiguracaoService.ObterModulosAtivosAsync();
+        if (rModulos.IsSuccess)
+        {
+            podeOficina &= rModulos.Value.Oficina;
+            podeConcessionaria &= rModulos.Value.Concessionaria;
+        }
+
+        catalogo = ReportService.ObterCatalogo(podeOficina, podeConcessionaria)
+            .Where(r => Ids.Contains(r.Id))
+            .ToList();
+    }
+
+    private async Task Baixar(string relatorioId)
+    {
+        var qs = $"formato={formato}&dataInicio={inicio:yyyy-MM-dd}&dataFim={fim:yyyy-MM-dd}";
+        await JS.InvokeVoidAsync("open", $"/api/relatorio/export/{relatorioId}?{qs}", "_blank");
+    }
+}
+
+<style>
+    .filtros { display: flex; gap: var(--sp-6); flex-wrap: wrap; margin-bottom: var(--sp-6); }
+    .filtros .campo { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .filtros label { font-size: var(--txt-xs); color: var(--cor-tinta-2); font-weight: var(--peso-medio); }
+    .filtros select { border: 1px solid var(--cor-linha); border-radius: var(--raio-md); padding: 6px 10px; font-size: var(--txt-sm); font-family: inherit; }
+
+    .grupo-titulo {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--cor-tinta-2);
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        margin: 24px 0 10px;
+    }
+    .grupo-titulo:first-of-type { margin-top: 0; }
+
+    .rel-grid { display: grid; grid-template-columns: repeat(auto-fill, 405px); gap: var(--sp-4); }
+    .rel-card {
+        width: 405px;
+        background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg);
+        padding: var(--sp-4); display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3);
+    }
+    .rel-card h3 { font-size: var(--txt-md); margin: 0 0 4px; }
+    .rel-card p { margin: 0; }
+</style>

@@ -22,17 +22,27 @@ public class ComponenteService : IComponenteService
     private readonly Domain.Interfaces.Repositories.Sistema.IConfiguracaoSistemaRepository _configRepo;
     private readonly IEstoqueRepository? _estoqueRepo;
     private readonly IFornecedorRepository _fornecedorRepo;
+    private readonly IComponenteEquivalenteRepository _equivalenteRepo;
 
     public ComponenteService(
         IComponenteRepository repository,
         Domain.Interfaces.Repositories.Sistema.IConfiguracaoSistemaRepository configRepo,
         IFornecedorRepository fornecedorRepo,
+        IComponenteEquivalenteRepository equivalenteRepo,
         IEstoqueRepository? estoqueRepo = null)
     {
         _repository = repository;
         _configRepo = configRepo;
         _fornecedorRepo = fornecedorRepo;
+        _equivalenteRepo = equivalenteRepo;
         _estoqueRepo = estoqueRepo;
+    }
+
+    private async Task<int> ObterQuantidadeEmEstoqueAsync(Guid componenteId)
+    {
+        if (_estoqueRepo is null) return 0;
+        var est = await _estoqueRepo.ObterPorComponenteAsync(componenteId);
+        return est?.QuantidadeAtual ?? 0;
     }
 
     /* ======================
@@ -222,31 +232,163 @@ public class ComponenteService : IComponenteService
         => Task.FromResult(Result.Fail("SaidaEstoqueAsync ainda não implementado — depende de IEstoqueRepository."));
 
     /// <summary>
-    /// Encontra peças que servem como substituto pelo mesmo CodigoOEM
-    /// (cross-brand). Ex.: pastilha Bosch e pastilha Fras-le com o mesmo
-    /// OEM da montadora — qualquer marca com aquele OEM serve.
-    /// O próprio componente é excluído da lista.
+    /// Encontra peças que servem como substituto — união de duas trilhas:
+    /// (1) mesmo CodigoOEM (cross-brand, automático — ex.: pastilha Bosch e
+    /// pastilha Fras-le com o mesmo OEM da montadora), e (2) vínculos
+    /// curados manualmente em ComponenteEquivalente (peças de marca/tipo
+    /// diferente sem OEM em comum, mas que um usuário confirmou que servem).
+    /// O componente-alvo NÃO precisa estar ativo (peça descontinuada
+    /// continua sendo um ponto de partida válido pra busca de substituto) —
+    /// só os candidatos sugeridos precisam estar ativos.
     /// </summary>
-    public async Task<Result<List<ComponenteListaDTO>>> ObterEquivalentesAsync(Guid componenteId)
+    public async Task<Result<List<ComponenteSugestaoDTO>>> ObterEquivalentesAsync(Guid componenteId)
     {
         var alvo = await _repository.GetByIdAsync(componenteId);
         if (alvo is null)
-            return Result<List<ComponenteListaDTO>>.Fail("Componente não encontrado");
+            return Result<List<ComponenteSugestaoDTO>>.Fail("Componente não encontrado");
 
-        if (string.IsNullOrWhiteSpace(alvo.CodigoOEM))
-            return Result<List<ComponenteListaDTO>>.Ok(new List<ComponenteListaDTO>());
+        var candidatos = new Dictionary<Guid, ComponenteSugestaoDTO>();
 
-        var todos = await _repository.GetAllAsync();
-        var equivalentes = todos
-            .Where(c =>
-                c.Id != alvo.Id
-                && c.Ativo
-                && !string.IsNullOrWhiteSpace(c.CodigoOEM)
-                && string.Equals(c.CodigoOEM, alvo.CodigoOEM, StringComparison.OrdinalIgnoreCase))
-            .Select(ComponenteMapping.ToListaDto)
+        // Trilha 1 — mesmo CodigoOEM.
+        if (!string.IsNullOrWhiteSpace(alvo.CodigoOEM))
+        {
+            var todos = await _repository.GetAllAsync();
+            foreach (var c in todos)
+            {
+                if (c.Id == alvo.Id || !c.Ativo) continue;
+                if (string.IsNullOrWhiteSpace(c.CodigoOEM)) continue;
+                if (!string.Equals(c.CodigoOEM, alvo.CodigoOEM, StringComparison.OrdinalIgnoreCase)) continue;
+
+                candidatos[c.Id] = MapSugestao(c, origemOEM: true, origemCurada: false, tipo: null);
+            }
+        }
+
+        // Trilha 2 — vínculos curados (nas duas direções da FK).
+        var ligacoes = await _equivalenteRepo.ObterPorComponenteAsync(componenteId);
+        foreach (var l in ligacoes)
+        {
+            var outro = l.ComponenteOriginalId == componenteId
+                ? l.ComponenteEquivalenteRelacionado
+                : l.ComponenteOriginal;
+            if (outro is null || outro.Id == alvo.Id || !outro.Ativo) continue;
+
+            if (candidatos.TryGetValue(outro.Id, out var existente))
+            {
+                existente.OrigemCurada = true;
+                existente.TipoEquivalencia = l.TipoEquivalencia;
+            }
+            else
+            {
+                candidatos[outro.Id] = MapSugestao(outro, origemOEM: false, origemCurada: true, tipo: l.TipoEquivalencia);
+            }
+        }
+
+        foreach (var dto in candidatos.Values)
+            dto.QuantidadeEmEstoque = await ObterQuantidadeEmEstoqueAsync(dto.Id);
+
+        var resultado = candidatos.Values
+            .OrderByDescending(d => d.QuantidadeEmEstoque > 0)
+            .ThenBy(d => d.Nome)
             .ToList();
 
-        return Result<List<ComponenteListaDTO>>.Ok(equivalentes);
+        return Result<List<ComponenteSugestaoDTO>>.Ok(resultado);
+    }
+
+    private static ComponenteSugestaoDTO MapSugestao(Componente c, bool origemOEM, bool origemCurada, TipoEquivalencia? tipo) => new()
+    {
+        Id = c.Id,
+        Nome = c.Nome,
+        MarcaFabricante = c.MarcaFabricante,
+        PartNumber = c.PartNumber,
+        CodigoOEM = c.CodigoOEM,
+        Categoria = c.Categoria,
+        ValorVenda = c.ValorVenda,
+        OrigemOEM = origemOEM,
+        OrigemCurada = origemCurada,
+        TipoEquivalencia = tipo,
+    };
+
+    /// <summary>
+    /// Vínculos curados manualmente do componente (as duas direções da FK)
+    /// — pra tela de curadoria. Não filtra por Ativo do relacionado: um
+    /// vínculo pra uma peça já descontinuada continua aparecendo, com
+    /// Ativo=false pra a tela sinalizar "descontinuado".
+    /// </summary>
+    public async Task<Result<List<ComponenteEquivalenteDTO>>> ListarLigacoesEquivalenciaAsync(Guid componenteId)
+    {
+        var alvo = await _repository.GetByIdAsync(componenteId);
+        if (alvo is null)
+            return Result<List<ComponenteEquivalenteDTO>>.Fail("Componente não encontrado");
+
+        var ligacoes = await _equivalenteRepo.ObterPorComponenteAsync(componenteId);
+        var resultado = new List<ComponenteEquivalenteDTO>();
+
+        foreach (var l in ligacoes)
+        {
+            var outro = l.ComponenteOriginalId == componenteId
+                ? l.ComponenteEquivalenteRelacionado
+                : l.ComponenteOriginal;
+            if (outro is null) continue;
+
+            resultado.Add(new ComponenteEquivalenteDTO
+            {
+                Id = l.Id,
+                ComponenteRelacionadoId = outro.Id,
+                Nome = outro.Nome,
+                MarcaFabricante = outro.MarcaFabricante,
+                PartNumber = outro.PartNumber,
+                TipoEquivalencia = l.TipoEquivalencia,
+                Ativo = outro.Ativo,
+                QuantidadeEmEstoque = await ObterQuantidadeEmEstoqueAsync(outro.Id),
+            });
+        }
+
+        return Result<List<ComponenteEquivalenteDTO>>.Ok(resultado.OrderBy(r => r.Nome).ToList());
+    }
+
+    /// <summary>
+    /// Cria um vínculo de equivalência curado manualmente. Checa duplicidade
+    /// nas duas direções via repositório (não confia só na checagem em
+    /// memória de Componente.AdicionarEquivalencia, que só olha uma direção).
+    /// </summary>
+    public async Task<Result<Guid>> CriarLigacaoEquivalenciaAsync(CriarComponenteEquivalenteDTO dto)
+    {
+        if (dto.ComponenteOriginalId == dto.ComponenteEquivalenteId)
+            return Result<Guid>.Fail("Um componente não pode ser equivalente a si mesmo.");
+
+        var original = await _repository.GetByIdAsync(dto.ComponenteOriginalId);
+        if (original is null) return Result<Guid>.Fail("Componente original não encontrado");
+
+        var equivalente = await _repository.GetByIdAsync(dto.ComponenteEquivalenteId);
+        if (equivalente is null) return Result<Guid>.Fail("Componente equivalente não encontrado");
+
+        var existente = await _equivalenteRepo.ObterLigacaoEntreAsync(dto.ComponenteOriginalId, dto.ComponenteEquivalenteId);
+        if (existente is not null)
+            return Result<Guid>.Fail("Essa equivalência já está registrada.");
+
+        try
+        {
+            var ligacao = original.AdicionarEquivalencia(equivalente, dto.TipoEquivalencia);
+            await _equivalenteRepo.AddAsync(ligacao);
+            await _equivalenteRepo.SaveChangesAsync();
+            return Result<Guid>.Ok(ligacao.Id);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Result<Guid>.Fail(ex.Message);
+        }
+    }
+
+    /// <summary>Remove um vínculo pelo próprio Id — sem ambiguidade de direção.</summary>
+    public async Task<Result> RemoverLigacaoEquivalenciaAsync(Guid ligacaoId)
+    {
+        var ligacao = await _equivalenteRepo.GetByIdAsync(ligacaoId);
+        if (ligacao is null)
+            return Result.Fail("Vínculo de equivalência não encontrado");
+
+        _equivalenteRepo.Remove(ligacao);
+        await _equivalenteRepo.SaveChangesAsync();
+        return Result.Ok();
     }
 
     /*

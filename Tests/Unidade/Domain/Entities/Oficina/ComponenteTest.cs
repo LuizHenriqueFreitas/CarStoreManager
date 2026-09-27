@@ -141,6 +141,56 @@ public class ComponenteTest
         act.Should().Throw<InvalidOperationException>();
     }
 
+    [Fact]
+    public void AdicionarEquivalencia_Valido_RetornaLigacaoComTipoCorretoERegistraNaLista()
+    {
+        var original = CriarComponente(sku: "A");
+        var equivalente = CriarComponente(sku: "B");
+
+        var ligacao = original.AdicionarEquivalencia(equivalente, TipoEquivalencia.Paralela);
+
+        ligacao.Should().NotBeNull();
+        ligacao.ComponenteOriginalId.Should().Be(original.Id);
+        ligacao.ComponenteEquivalenteId.Should().Be(equivalente.Id);
+        ligacao.TipoEquivalencia.Should().Be(TipoEquivalencia.Paralela);
+        original.EquivalenciasOriginais.Should().ContainSingle(e => e.ComponenteEquivalenteId == equivalente.Id);
+    }
+
+    [Fact]
+    public void AdicionarEquivalencia_Duplicada_LancaInvalidOperationException()
+    {
+        var original = CriarComponente(sku: "A");
+        var equivalente = CriarComponente(sku: "B");
+        original.AdicionarEquivalencia(equivalente, TipoEquivalencia.Similar);
+
+        Action act = () => original.AdicionarEquivalencia(equivalente, TipoEquivalencia.Paralela);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void RemoverEquivalencia_Existente_RemoveDaLista()
+    {
+        var original = CriarComponente(sku: "A");
+        var equivalente = CriarComponente(sku: "B");
+        original.AdicionarEquivalencia(equivalente, TipoEquivalencia.Similar);
+
+        original.RemoverEquivalencia(equivalente);
+
+        original.EquivalenciasOriginais.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RemoverEquivalencia_Inexistente_LancaInvalidOperationException()
+    {
+        var original = CriarComponente(sku: "A");
+        var outro = CriarComponente(sku: "B");
+
+        Action act = () => original.RemoverEquivalencia(outro);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
     private static Componente CriarComponenteValido() => CriarComponente();
 
     private static Componente CriarComponente(

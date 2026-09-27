@@ -139,4 +139,43 @@ public class ConfiguracaoSistemaServiceTests
         cfg.MargemPadraoGlobalPct.Should().Be(40m);
         _repoMock.Verify(repo => repo.SaveChangesAsync(), Times.Once);
     }
+
+    // ==================== MÓDULOS ATIVOS ====================
+
+    [Fact]
+    public async Task ObterModulosAtivosAsync_PadraoDeFabrica_AmbosAtivos()
+    {
+        _repoMock.Setup(r => r.ObterAsync()).ReturnsAsync(NovaCfg());
+
+        var r = await _service.ObterModulosAtivosAsync();
+
+        r.IsSuccess.Should().BeTrue();
+        r.Value.Concessionaria.Should().BeTrue();
+        r.Value.Oficina.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AtualizarModulosAsync_DesativaUm_Persiste()
+    {
+        var cfg = NovaCfg();
+        _repoMock.Setup(r => r.ObterAsync()).ReturnsAsync(cfg);
+
+        var r = await _service.AtualizarModulosAsync(concessionariaAtivo: false, oficinaAtivo: true);
+
+        r.IsSuccess.Should().BeTrue();
+        cfg.ModuloConcessionariaAtivo.Should().BeFalse();
+        cfg.ModuloOficinaAtivo.Should().BeTrue();
+        _repoMock.Verify(repo => repo.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task AtualizarModulosAsync_OsDoisDesativados_RetornaFailSemSalvar()
+    {
+        _repoMock.Setup(r => r.ObterAsync()).ReturnsAsync(NovaCfg());
+
+        var r = await _service.AtualizarModulosAsync(concessionariaAtivo: false, oficinaAtivo: false);
+
+        r.IsSuccess.Should().BeFalse();
+        _repoMock.Verify(repo => repo.SaveChangesAsync(), Times.Never);
+    }
 }

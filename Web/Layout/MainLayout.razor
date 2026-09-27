@@ -3,7 +3,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject AuthenticationStateProvider AuthStateProvider
 
-<NavBar NomeUsuario="@nomeUsuario" Role="@role" />
+<NavBar NomeUsuario="@nomeUsuario" Role="@role" UsuarioId="@usuarioId" />
 
 <BotaoVoltarGlobal />
 
@@ -16,6 +16,7 @@
 @code {
     private string nomeUsuario = "Usuário";
     private string role = string.Empty;
+    private Guid usuarioId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -32,6 +33,7 @@
                            ?? "Usuário";
 
                 role = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
+                Guid.TryParse(user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out usuarioId);
             }
         }
         catch

@@ -91,30 +91,41 @@ public class OrdemServicoController : ControllerBase
     // FLUXO DE APROVAÇÃO
     // =========================
 
-    // recepcionista termina o orçamento e envia para o mecânico revisar
-    [HttpPatch("{id:guid}/enviar-revisao")]
+    // recepcionista inicia a vistoria do veículo (contrato da OS) — Pendente → EmVistoria
+    [HttpPatch("{id:guid}/vistoria/iniciar")]
     [Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
-    public async Task<IActionResult> EnviarRevisao(Guid id)
+    public async Task<IActionResult> IniciarVistoria(Guid id)
     {
-        var r = await _service.EnviarParaRevisaoAsync(id);
-        return r.IsSuccess ? NoContent() : BadRequest(r.Error);
+        var recepcionistaId = ObterUsuarioIdAtual();
+        if (recepcionistaId is null) return Unauthorized();
+
+        var r = await _service.IniciarVistoriaAsync(id, recepcionistaId.Value);
+        return r.IsSuccess ? Ok(r.Value) : BadRequest(r.Error);
     }
 
-    // mecânico aprova o orçamento → vai para AguardandoCliente
-    [HttpPatch("{id:guid}/aprovar-mecanico")]
-    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
-    public async Task<IActionResult> AprovarMecanico(Guid id)
+    [HttpGet("{id:guid}/vistoria")]
+    [Authorize(Roles = "Admin,ChefeOficina,Recepcionista,Mecanico")]
+    public async Task<IActionResult> ObterVistoria(Guid id)
     {
-        var r = await _service.AprovarPeloMecanicoAsync(id);
-        return r.IsSuccess ? NoContent() : BadRequest(r.Error);
+        var r = await _service.ObterVistoriaAsync(id);
+        return r.IsSuccess ? Ok(r.Value) : NotFound(r.Error);
     }
 
-    // mecânico devolve o orçamento pra recepcionista ajustar (volta a Pendente)
-    [HttpPatch("{id:guid}/devolver")]
-    [Authorize(Roles = "Admin,ChefeOficina,Mecanico")]
-    public async Task<IActionResult> Devolver(Guid id)
+    // recepcionista edita o texto do contrato enquanto a vistoria não é concluída
+    [HttpPut("{id:guid}/vistoria")]
+    [Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
+    public async Task<IActionResult> EditarVistoria(Guid id, [FromBody] EditarVistoriaOSDTO dto)
     {
-        var r = await _service.DevolverParaAjustesAsync(id);
+        var r = await _service.EditarVistoriaAsync(id, dto.TextoContrato);
+        return r.IsSuccess ? Ok(r.Value) : BadRequest(r.Error);
+    }
+
+    // recepcionista conclui a vistoria (contrato + fotos prontos) → AguardandoCliente
+    [HttpPatch("{id:guid}/vistoria/concluir")]
+    [Authorize(Roles = "Admin,ChefeOficina,Recepcionista")]
+    public async Task<IActionResult> ConcluirVistoria(Guid id, [FromBody] EditarVistoriaOSDTO dto)
+    {
+        var r = await _service.ConcluirVistoriaAsync(id, dto.TextoContrato);
         return r.IsSuccess ? NoContent() : BadRequest(r.Error);
     }
 
@@ -213,5 +224,11 @@ public class OrdemServicoController : ControllerBase
     {
         var resultado = await _service.RecalcularValoresAsync(id);
         return resultado.IsSuccess ? NoContent() : BadRequest(resultado.Error);
+    }
+
+    private Guid? ObterUsuarioIdAtual()
+    {
+        var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(sub, out var id) ? id : null;
     }
 }

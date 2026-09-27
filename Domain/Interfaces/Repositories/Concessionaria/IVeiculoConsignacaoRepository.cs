@@ -8,4 +8,5 @@ public interface IVeiculoConsignacaoRepository : IRepository<VeiculoConsignacao>
     Task<IEnumerable<VeiculoConsignacao>> ObterPorStatusAsync(StatusConsignacao status);
     Task<IEnumerable<VeiculoConsignacao>> ObterPorClienteAsync(Guid clienteProprietarioId);
     Task<IEnumerable<VeiculoConsignacao>> ObterPorVendedorAsync(Guid vendedorResponsavelId);
+    Task<IEnumerable<VeiculoConsignacao>> PesquisarAsync(string termo);
 }

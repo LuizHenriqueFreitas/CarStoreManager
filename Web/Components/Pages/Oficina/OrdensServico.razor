@@ -1,5 +1,6 @@
 @page "/oficina/ordens"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/oficina/ordens")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:oficina")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -137,7 +138,7 @@
 
         var roleClaim = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
         if (Enum.TryParse<CarStoreManager.Domain.Enums.RoleUsuario>(roleClaim, out var role))
-            subNavItens = await SubNavOficina.ItensAsync(ehMecanico, role, PermissaoService);
+            subNavItens = await SubNavOficina.ItensAsync(ehMecanico, mecanicoId, role, PermissaoService);
 
         var tOrdens = OrdemService.GetAllAsync();
         var tClientes = ClienteService.GetAllAsync();
@@ -209,7 +210,7 @@
     }
 
     private static readonly string[] StatusAbertos =
-        { "Pendente", "EmAnalise", "AguardandoCliente", "BuscandoPecasParaOrcamento", "Aprovada", "EmAndamento", "Pausada" };
+        { "Pendente", "EmVistoria", "AguardandoCliente", "BuscandoPecasParaOrcamento", "Aprovada", "EmAndamento", "Pausada" };
 
     private bool EhAtrasada(OrdemServicoListaDTO o) =>
         StatusAbertos.Contains(o.Status) && o.PrazoEstimado.Date < DateTime.Today;

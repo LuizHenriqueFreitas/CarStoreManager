@@ -44,6 +44,12 @@ public static class OrdemServicoGerador
     private static readonly string[] ModosPagamento =
         { "Dinheiro", "Pix", "CartaoDebito", "CartaoCredito", "Transferencia" };
 
+    private const string TextoVistoriaPadrao =
+        "Veículo recebido em condição geral compatível com o uso e a quilometragem. " +
+        "Sem avarias visíveis além do desgaste esperado. Nível de combustível conforme " +
+        "registrado na entrada. Nenhum pertence pessoal relevante deixado no veículo. " +
+        "Serviço a ser executado conforme descrição da OS.";
+
     public static async Task<List<Guid>> GerarAsync(
         IServiceProvider provider,
         int quantidade,
@@ -131,20 +137,20 @@ public static class OrdemServicoGerador
 
         if (cenario < 0.09)
         {
-            await Os(provider, s => s.EnviarParaRevisaoAsync(osId));
-            return "em análise do mecânico";
+            await Os(provider, s => s.IniciarVistoriaAsync(osId, adminId));
+            return "em vistoria (recepção)";
         }
 
         if (cenario < 0.12)
         {
-            await Os(provider, s => s.EnviarParaRevisaoAsync(osId));
-            await Os(provider, s => s.AprovarPeloMecanicoAsync(osId));
+            await Os(provider, s => s.IniciarVistoriaAsync(osId, adminId));
+            await Os(provider, s => s.ConcluirVistoriaAsync(osId, TextoVistoriaPadrao));
             return "aguardando decisão do cliente";
         }
 
         if (cenario < 0.15)
         {
-            await AprovarPeloFluxoAsync(provider, osId);
+            await AprovarPeloFluxoAsync(provider, osId, adminId);
             return "aprovada, aguardando início";
         }
 
@@ -175,8 +181,8 @@ public static class OrdemServicoGerador
         {
             // cancelada de um ponto qualquer do fluxo
             var ponto = rng.Next(4);
-            if (ponto >= 1) await Os(provider, s => s.EnviarParaRevisaoAsync(osId));
-            if (ponto >= 2) await Os(provider, s => s.AprovarPeloMecanicoAsync(osId));
+            if (ponto >= 1) await Os(provider, s => s.IniciarVistoriaAsync(osId, adminId));
+            if (ponto >= 2) await Os(provider, s => s.ConcluirVistoriaAsync(osId, TextoVistoriaPadrao));
             if (ponto >= 3)
             {
                 await Os(provider, s => s.RegistrarAprovacaoDoClienteAsync(osId));
@@ -222,7 +228,7 @@ public static class OrdemServicoGerador
         if (cenario < 0.58)
         {
             // serviço técnico pronto, cliente pagou só uma parte — saldo em aberto
-            await PrepararEIniciarAsync(provider, rng, osId, componenteIds);
+            await PrepararEIniciarAsync(provider, rng, osId, componenteIds, adminId);
             await ConcluirParteDoChecklistAsync(provider, rng, osId, parcial: false);
             await FinalizarAsync(provider, osId);
             await RegistrarPagamentoParcialAsync(provider, rng, osId, adminId);
@@ -232,7 +238,7 @@ public static class OrdemServicoGerador
         if (cenario < 0.66)
         {
             // serviço técnico pronto, aguardando a recepção cobrar (nada pago)
-            await PrepararEIniciarAsync(provider, rng, osId, componenteIds);
+            await PrepararEIniciarAsync(provider, rng, osId, componenteIds, adminId);
             await ConcluirParteDoChecklistAsync(provider, rng, osId, parcial: false);
             await FinalizarAsync(provider, osId);
             return "pagamento pendente — aguardando cobrança";
@@ -241,7 +247,7 @@ public static class OrdemServicoGerador
         // ---------- CONCLUÍDAS COM SUCESSO ----------
         if (cenario < 0.80)
         {
-            await PrepararEIniciarAsync(provider, rng, osId, componenteIds);
+            await PrepararEIniciarAsync(provider, rng, osId, componenteIds, adminId);
             await ConcluirParteDoChecklistAsync(provider, rng, osId, parcial: false);
             await FinalizarAsync(provider, osId);
             await ConcluirComPagamentoAsync(provider, rng, osId, adminId, entregar: true);
@@ -250,15 +256,15 @@ public static class OrdemServicoGerador
 
         if (cenario < 0.90)
         {
-            await PrepararEIniciarAsync(provider, rng, osId, componenteIds);
+            await PrepararEIniciarAsync(provider, rng, osId, componenteIds, adminId);
             await ConcluirParteDoChecklistAsync(provider, rng, osId, parcial: false);
             await FinalizarAsync(provider, osId);
             await ConcluirComPagamentoAsync(provider, rng, osId, adminId, entregar: false);
             return "concluída e paga, aguardando retirada";
         }
 
-        // fluxo de aprovação completo (recepção → mecânico → cliente) e entrega
-        await AprovarPeloFluxoAsync(provider, osId);
+        // fluxo de aprovação completo (recepção vistoria → cliente aprova) e entrega
+        await AprovarPeloFluxoAsync(provider, osId, adminId);
         await AdicionarItensEstoqueAsync(provider, rng, osId, componenteIds, 1, 3);
         await Os(provider, s => s.IniciarAsync(osId));
         await ConcluirParteDoChecklistAsync(provider, rng, osId, parcial: false);
@@ -270,21 +276,21 @@ public static class OrdemServicoGerador
     // ======================= helpers de fluxo =======================
 
     private static async Task PrepararEIniciarAsync(
-        IServiceProvider provider, Random rng, Guid osId, IReadOnlyList<Guid> componenteIds)
+        IServiceProvider provider, Random rng, Guid osId, IReadOnlyList<Guid> componenteIds, Guid recepcionistaId)
     {
         await AdicionarItensEstoqueAsync(provider, rng, osId, componenteIds, 1, 3);
 
-        // ~40% passam pelo fluxo de aprovação; o resto é atalho recepção→início.
+        // ~40% passam pelo fluxo de vistoria completo; o resto é atalho recepção→início.
         if (rng.NextDouble() < 0.4)
-            await AprovarPeloFluxoAsync(provider, osId);
+            await AprovarPeloFluxoAsync(provider, osId, recepcionistaId);
 
         await Os(provider, s => s.IniciarAsync(osId));
     }
 
-    private static async Task AprovarPeloFluxoAsync(IServiceProvider provider, Guid osId)
+    private static async Task AprovarPeloFluxoAsync(IServiceProvider provider, Guid osId, Guid recepcionistaId)
     {
-        await Os(provider, s => s.EnviarParaRevisaoAsync(osId));
-        await Os(provider, s => s.AprovarPeloMecanicoAsync(osId));
+        await Os(provider, s => s.IniciarVistoriaAsync(osId, recepcionistaId));
+        await Os(provider, s => s.ConcluirVistoriaAsync(osId, TextoVistoriaPadrao));
         await Os(provider, s => s.RegistrarAprovacaoDoClienteAsync(osId));
     }
 

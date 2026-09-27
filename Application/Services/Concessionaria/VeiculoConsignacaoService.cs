@@ -70,6 +70,20 @@ public class VeiculoConsignacaoService : IVeiculoConsignacaoService
         return Result<IEnumerable<VeiculoConsignacaoListaDTO>>.Ok(await MapListaAsync(veiculos));
     }
 
+    public async Task<Result<List<VeiculoConsignacaoListaDTO>>> PesquisarAsync(string termo)
+    {
+        var veiculos = await _repository.PesquisarAsync(termo);
+        return Result<List<VeiculoConsignacaoListaDTO>>.Ok(await MapListaAsync(veiculos));
+    }
+
+    public async Task<Result> TrocarVendedorAsync(Guid id, Guid novoVendedorId)
+    {
+        var vendedor = await _vendedorRepository.GetByIdAsync(novoVendedorId);
+        if (vendedor is null) return Result.Fail("Vendedor não encontrado.");
+
+        return await ExecutarTransicaoAsync(id, v => v.AlterarVendedorResponsavel(novoVendedorId));
+    }
+
     public async Task<Result<Guid>> AddAsync(CriarVeiculoConsignacaoDTO dto)
     {
         try

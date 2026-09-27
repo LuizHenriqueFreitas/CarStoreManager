@@ -124,6 +124,9 @@
                                             </div>
                                         }
                                     </div>
+                                    <SugestoesSubstituto ComponenteId="@(componenteSelecionado?.Id ?? Guid.Empty)"
+                                                         QuantidadeEmEstoqueSelecionado="@(componenteSelecionado?.QuantidadeEmEstoque ?? 1)"
+                                                         OnEscolher="UsarSugestao" />
                                     @if (componenteSelecionado is not null)
                                     {
                                         <input type="number" min="1" class="rq-sel-mini"
@@ -294,7 +297,7 @@
     /// Mecânico só pode requisitar enquanto a OS está em fase de orçamento.
     /// Em estados pós-aprovação ele usa o sistema de Alerta.
     /// </summary>
-    private bool PodeRequisitar => StatusOrdem is "Pendente" or "EmAnalise" or "BuscandoPecasParaOrcamento";
+    private bool PodeRequisitar => StatusOrdem is "Pendente" or "EmVistoria" or "BuscandoPecasParaOrcamento";
 
     protected override async Task OnInitializedAsync()
     {
@@ -326,6 +329,18 @@
         resultadosBusca.Clear();
         termoBusca = "";
     }
+
+    private void UsarSugestao(ComponenteSugestaoDTO s) => Selecionar(new ComponenteBuscaDTO
+    {
+        Id = s.Id,
+        Nome = s.Nome,
+        PartNumber = s.PartNumber,
+        CodigoOEM = s.CodigoOEM,
+        MarcaFabricante = s.MarcaFabricante,
+        Categoria = s.Categoria,
+        ValorVenda = s.ValorVenda,
+        QuantidadeEmEstoque = s.QuantidadeEmEstoque,
+    });
 
     private async Task Carregar()
     {

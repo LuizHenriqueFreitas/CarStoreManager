@@ -74,9 +74,30 @@ public class ConfiguracaoSistemaService : IConfiguracaoSistemaService
         catch (Exception) { return Result.Fail("Não foi possível salvar as margens. Tente novamente em instantes."); }
     }
 
+    public async Task<Result<(bool Concessionaria, bool Oficina)>> ObterModulosAtivosAsync()
+    {
+        var cfg = await _repo.ObterAsync();
+        return Result<(bool, bool)>.Ok((cfg.ModuloConcessionariaAtivo, cfg.ModuloOficinaAtivo));
+    }
+
+    public async Task<Result> AtualizarModulosAsync(bool concessionariaAtivo, bool oficinaAtivo)
+    {
+        var cfg = await _repo.ObterAsync();
+        try
+        {
+            cfg.ConfigurarModulos(concessionariaAtivo, oficinaAtivo);
+            await _repo.SaveChangesAsync();
+            return Result.Ok();
+        }
+        catch (ArgumentException ex) { return Result.Fail(ex.Message); }
+        catch (Exception) { return Result.Fail("Não foi possível salvar os módulos. Tente novamente em instantes."); }
+    }
+
     private static ConfiguracaoSistemaDTO MapToDto(ConfiguracaoSistema cfg) => new()
     {
         DataUltimaAtualizacao = cfg.DataUltimaAtualizacao,
+        ModuloConcessionariaAtivo = cfg.ModuloConcessionariaAtivo,
+        ModuloOficinaAtivo = cfg.ModuloOficinaAtivo,
         ExigirEntradaMinima = cfg.ExigirEntradaMinima,
         PercentualEntradaMinima = cfg.PercentualEntradaMinima,
         DiaFechamentoDespesas = cfg.DiaFechamentoDespesas

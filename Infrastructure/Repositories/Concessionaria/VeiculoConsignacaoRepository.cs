@@ -40,6 +40,22 @@ public class VeiculoConsignacaoRepository : IVeiculoConsignacaoRepository
             .Where(v => v.VendedorResponsavelId == vendedorResponsavelId)
             .ToListAsync();
 
+    public async Task<IEnumerable<VeiculoConsignacao>> PesquisarAsync(string termo)
+    {
+        if (string.IsNullOrWhiteSpace(termo))
+            return new List<VeiculoConsignacao>();
+
+        var termoLower = termo.Trim().ToLower();
+        var termoPlaca = termo.Replace("-", "").Replace(" ", "").Trim().ToUpper();
+
+        return await _context.VeiculosConsignacao
+            .Where(v => v.Marca.ToLower().Contains(termoLower)
+                     || v.Modelo.ToLower().Contains(termoLower)
+                     || (termoPlaca.Length > 0 && v.Placa.Valor.Contains(termoPlaca)))
+            .Take(20)
+            .ToListAsync();
+    }
+
     public async Task AddAsync(VeiculoConsignacao veiculo)
         => await _context.VeiculosConsignacao.AddAsync(veiculo);
 

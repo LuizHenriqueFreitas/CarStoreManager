@@ -24,8 +24,15 @@ public interface IComponenteService : IService<
     Task<Result> SaidaEstoqueAsync(Guid componenteId, int quantidade);
 
     // EQUIVALÊNCIA — busca componentes que servem como substituto.
-    // Critérios: mesmo CodigoOEM (cross-brand) OU registrados como ComponenteEquivalente.
-    Task<Result<List<ComponenteListaDTO>>> ObterEquivalentesAsync(Guid componenteId);
+    // Critérios: mesmo CodigoOEM (cross-brand, automático) UNIÃO vínculos
+    // curados manualmente em ComponenteEquivalente.
+    Task<Result<List<ComponenteSugestaoDTO>>> ObterEquivalentesAsync(Guid componenteId);
+
+    // CURADORIA DE EQUIVALÊNCIAS — gerenciamento manual dos vínculos
+    // (Admin/ChefeOficina), ver docs/redesign.
+    Task<Result<List<ComponenteEquivalenteDTO>>> ListarLigacoesEquivalenciaAsync(Guid componenteId);
+    Task<Result<Guid>> CriarLigacaoEquivalenciaAsync(CriarComponenteEquivalenteDTO dto);
+    Task<Result> RemoverLigacaoEquivalenciaAsync(Guid ligacaoId);
 
     // PRECIFICAÇÃO — sobrescreve margem individual e recalcula valor de venda.
     Task<Result> AjustarMargemAsync(Guid id, decimal novaMargemPct);

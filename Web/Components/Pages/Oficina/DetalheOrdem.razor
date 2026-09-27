@@ -1,5 +1,6 @@
 @page "/oficina/os/{Id:guid}"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,Mecanico,Recepcionista")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:oficina")]
 @implements IDisposable
 
 @namespace CarStoreManager.Web.Components.Pages
@@ -31,15 +32,6 @@ else
                 <span class="os-status @StatusClass(os.Status)">@StatusLabel(os.Status)</span>
             </div>
             <div class="header-acoes" data-tour="os-detalhe-acoes">
-                @if (PodeEnviarRevisao)
-                {
-                    <button type="button" class="btn-acao azul" @onclick='() => PedirConfirmacao("Enviar para revisão", "Deseja enviar esta OS para revisão do mecânico?", EnviarRevisao)'>Enviar para revisão</button>
-                }
-                @if (PodeAprovarMecanico)
-                {
-                    <button type="button" class="btn-acao azul" @onclick='() => PedirConfirmacao("Aprovar orçamento", "Deseja aprovar este orçamento?", AprovarMecanico)'>Aprovar orçamento</button>
-                    <button type="button" class="btn-acao laranja" @onclick='() => PedirConfirmacao("Pedir ajustes", "Deseja devolver esta OS para ajustes no orçamento?", Devolver)'>Pedir ajustes</button>
-                }
                 @if (PodeMarcarClienteAprovou)
                 {
                     <button type="button" class="btn-acao verde" @onclick='() => PedirConfirmacao("Cliente aprovou", "Confirma que o cliente aprovou o orçamento?", ClienteAprovou)'>Cliente aprovou</button>
@@ -116,6 +108,57 @@ else
                             </span>
                         </div>
                     </div>
+                </div>
+
+                <div class="info-card" data-tour="os-detalhe-vistoria">
+                    <h2 class="card-titulo">Vistoria de entrada</h2>
+
+                    @if (carregandoVistoria)
+                    {
+                        <p class="vazio">Carregando vistoria...</p>
+                    }
+                    else if (vistoria is null)
+                    {
+                        <p class="vazio">Vistoria ainda não iniciada para esta OS.</p>
+                        @if (PodeIniciarVistoria)
+                        {
+                            <button type="button" class="btn-acao azul" @onclick='() => PedirConfirmacao("Iniciar vistoria", "Deseja iniciar a vistoria de entrada do veículo? Faça isso na presença do cliente.", IniciarVistoriaAcao)'>
+                                Iniciar vistoria
+                            </button>
+                        }
+                    }
+                    else if (!vistoria.Concluida)
+                    {
+                        @if (PodeEditarVistoria)
+                        {
+                            <SeletorTemplateDocumento Label="Começar a partir de um template" OnTemplateAplicado="AplicarTemplateVistoria" />
+                            <textarea class="campo-textarea" rows="10" @bind="textoVistoria"
+                                      placeholder="Descreva o estado do veículo na entrada (avarias, nível de combustível, pertences deixados) e os serviços/peças a serem executados..."></textarea>
+                            <UploadFotosEntidade EntidadeTipo="VistoriaOrdemServico" EntidadeId="vistoria.Id"
+                                                  Titulo="Fotos da vistoria"
+                                                  Descricao="Anexe fotos do veículo na chegada (avarias, painel, hodômetro, itens deixados no carro)." />
+                            <div class="vistoria-acoes">
+                                <button type="button" class="btn-mini" disabled="@salvandoVistoria" @onclick="SalvarRascunhoVistoria">Salvar rascunho</button>
+                                <button type="button" class="btn-acao verde"
+                                        disabled="@(string.IsNullOrWhiteSpace(textoVistoria) || salvandoVistoria)"
+                                        @onclick='() => PedirConfirmacao("Concluir vistoria", "Deseja concluir a vistoria? O contrato será apresentado ao cliente para aprovação.", ConcluirVistoriaAcao)'>
+                                    Concluir vistoria
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="vazio">Vistoria em andamento pelo recepcionista.</p>
+                        }
+                    }
+                    else
+                    {
+                        <p class="vistoria-texto">@vistoria.TextoContrato</p>
+                        <UploadFotosEntidade EntidadeTipo="VistoriaOrdemServico" EntidadeId="vistoria.Id"
+                                              Titulo="Fotos da vistoria" PodeEditar="false" />
+                        <BotaoExportarPdf Titulo="@($"Contrato de OS {os?.NumeroPublico}")" Conteudo="@vistoria.TextoContrato" CssClass="btn-mini"
+                                          EntidadeTipoFotos="VistoriaOrdemServico" EntidadeIdFotos="@vistoria.Id" />
+                    }
                 </div>
 
                 <div class="info-card" data-tour="os-detalhe-checklist">
@@ -340,6 +383,9 @@ else
                             }
                         }
                     </div>
+                    <SugestoesSubstituto ComponenteId="@(componenteSelecionadoBusca?.Id ?? Guid.Empty)"
+                                         QuantidadeEmEstoqueSelecionado="@(componenteSelecionadoBusca?.QuantidadeEmEstoque ?? 1)"
+                                         OnEscolher="UsarSugestao" />
                 </div>
             }
 
@@ -411,6 +457,12 @@ else
     private string? mensagem;
     private bool erroToast = false;
 
+    // Vistoria de entrada
+    private VistoriaOrdemServicoDTO? vistoria;
+    private bool carregandoVistoria = false;
+    private string textoVistoria = "";
+    private bool salvandoVistoria = false;
+
     // Adicionar peça
     private bool modalPecaVisivel = false;
     private List<ComponenteListaDTO> componentesDisponiveis = new(); // só pra exibir nome das peças já na OS
@@ -472,6 +524,8 @@ else
         os = resultado.IsSuccess ? resultado.Value : null;
         AtualizarTrilha();
         carregando = false;
+
+        if (os is not null && os.Status != "Pendente") await CarregarVistoria();
     }
 
     private void AtualizarTrilha()
@@ -481,7 +535,7 @@ else
         int atual = s switch
         {
             "Pendente"           => 1,
-            "EmAnalise"          => 2,
+            "EmVistoria"         => 2,
             "AguardandoCliente"  => 3,
             "Aprovada"           => 4,
             "EmAndamento"        => 5,
@@ -495,7 +549,7 @@ else
         var etapas = new[]
         {
             (1, "Orçamento", ""),
-            (2, "Revisão mecânico", ""),
+            (2, "Vistoria", ""),
             (3, "Aguardando cliente", ""),
             (4, "Aprovado", ""),
             (5, "Em andamento", ""),
@@ -517,11 +571,18 @@ else
 
     // ========== Permissões ==========
 
-    private bool PodeEnviarRevisao =>
-        os?.Status == "Pendente" && (ehAdmin || ehRecepcionista);
+    // Vistoria de entrada é responsabilidade do recepcionista (não mais do
+    // mecânico) — pode iniciar enquanto não houver vistoria registrada pra
+    // esta OS (cobre também o caso de OS histórica já em EmVistoria sem
+    // vistoria, criada antes desta mudança).
+    private bool PodeIniciarVistoria =>
+        os is not null && vistoria is null
+        && (os.Status == "Pendente" || os.Status == "EmVistoria")
+        && (ehAdmin || ehChefeOficina || ehRecepcionista);
 
-    private bool PodeAprovarMecanico =>
-        os?.Status == "EmAnalise" && (ehAdmin || ehMecanico);
+    private bool PodeEditarVistoria =>
+        os?.Status == "EmVistoria" && vistoria is not null && !vistoria.Concluida
+        && (ehAdmin || ehChefeOficina || ehRecepcionista);
 
     private bool PodeMarcarClienteAprovou =>
         os?.Status == "AguardandoCliente" && (ehAdmin || ehRecepcionista);
@@ -568,15 +629,6 @@ else
 
     // ========== Transições ==========
 
-    private async Task EnviarRevisao()
-        => await TratarResultado(await OrdemService.EnviarParaRevisaoAsync(Id), "Enviado para revisão.");
-
-    private async Task AprovarMecanico()
-        => await TratarResultado(await OrdemService.AprovarPeloMecanicoAsync(Id), "Orçamento aprovado pelo mecânico.");
-
-    private async Task Devolver()
-        => await TratarResultado(await OrdemService.DevolverParaAjustesAsync(Id), "Devolvido pra ajustes.");
-
     private async Task ClienteAprovou()
         => await TratarResultado(await OrdemService.RegistrarAprovacaoDoClienteAsync(Id), "Aprovação do cliente registrada.");
 
@@ -591,6 +643,60 @@ else
 
     private async Task CancelarOS()
         => await TratarResultado(await OrdemService.CancelarAsync(Id), "OS cancelada.");
+
+    // ========== Vistoria de entrada ==========
+
+    private async Task CarregarVistoria()
+    {
+        carregandoVistoria = true;
+        var r = await OrdemService.ObterVistoriaAsync(Id);
+        vistoria = r.IsSuccess ? r.Value : null;
+        textoVistoria = vistoria?.TextoContrato ?? "";
+        carregandoVistoria = false;
+    }
+
+    private void AplicarTemplateVistoria(string texto) => textoVistoria = texto;
+
+    private async Task IniciarVistoriaAcao()
+    {
+        var r = await OrdemService.IniciarVistoriaAsync(Id, meuUsuarioId);
+        if (r.IsSuccess)
+        {
+            await MostrarMensagem("Vistoria iniciada.", erro: false);
+            await CarregarOS();
+        }
+        else
+        {
+            await MostrarMensagem(r.Error ?? "Erro.", erro: true);
+        }
+    }
+
+    private async Task SalvarRascunhoVistoria()
+    {
+        salvandoVistoria = true;
+        var r = await OrdemService.EditarVistoriaAsync(Id, textoVistoria);
+        salvandoVistoria = false;
+
+        if (r.IsSuccess) await MostrarMensagem("Rascunho salvo.", erro: false);
+        else await MostrarMensagem(r.Error ?? "Erro ao salvar.", erro: true);
+    }
+
+    private async Task ConcluirVistoriaAcao()
+    {
+        salvandoVistoria = true;
+        var r = await OrdemService.ConcluirVistoriaAsync(Id, textoVistoria);
+        salvandoVistoria = false;
+
+        if (r.IsSuccess)
+        {
+            await MostrarMensagem("Vistoria concluída. Aguardando aprovação do cliente.", erro: false);
+            await CarregarOS();
+        }
+        else
+        {
+            await MostrarMensagem(r.Error ?? "Erro.", erro: true);
+        }
+    }
 
     // ========== Itens da OS (peças) ==========
 
@@ -696,6 +802,18 @@ else
         mostrarResultadosComponente = false;
         resultadosBuscaComponente.Clear();
     }
+
+    private void UsarSugestao(ComponenteSugestaoDTO s) => SelecionarComponenteBusca(new ComponenteBuscaDTO
+    {
+        Id = s.Id,
+        Nome = s.Nome,
+        PartNumber = s.PartNumber,
+        CodigoOEM = s.CodigoOEM,
+        MarcaFabricante = s.MarcaFabricante,
+        Categoria = s.Categoria,
+        ValorVenda = s.ValorVenda,
+        QuantidadeEmEstoque = s.QuantidadeEmEstoque,
+    });
 
     private void LimparComponenteSelecionado()
     {
@@ -853,7 +971,7 @@ else
     private string StatusLabel(string s) => s switch
     {
         "Pendente"          => "Pendente",
-        "EmAnalise"         => "Em revisão (mecânico)",
+        "EmVistoria"        => "Em vistoria (recepção)",
         "AguardandoCliente" => "Aguardando cliente",
         "Aprovada"          => "Aprovada",
         "EmAndamento"       => "Em andamento",
@@ -867,7 +985,7 @@ else
     private string StatusClass(string status) => status switch
     {
         "Pendente"          => "status-pendente",
-        "EmAnalise"         => "status-analise",
+        "EmVistoria"        => "status-analise",
         "AguardandoCliente" => "status-aguardando",
         "Aprovada"          => "status-aprovada",
         "EmAndamento"       => "status-andamento",
@@ -1056,6 +1174,28 @@ else
         outline: none;
     }
     .campo-input-inline:focus { border-color: #3b82f6; }
+
+    .campo-textarea {
+        width: 100%;
+        border: 0.5px solid #ccc;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 13px;
+        font-family: inherit;
+        outline: none;
+        resize: vertical;
+        margin: 12px 0;
+    }
+    .campo-textarea:focus { border-color: #3b82f6; }
+
+    .vistoria-acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+
+    .vistoria-texto {
+        font-size: 13px;
+        white-space: pre-wrap;
+        line-height: 1.5;
+        margin-bottom: 12px;
+    }
 
     .btn-mini {
         background: #f4f4f4;

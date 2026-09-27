@@ -1,5 +1,6 @@
 using CarStoreManager.Application.DTOs.Reports;
 using CarStoreManager.Application.Interfaces;
+using CarStoreManager.Application.Interfaces.Sistema;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,17 +18,19 @@ namespace CarStoreManager.Web.Controllers;
 public class RelatorioController : ControllerBase
 {
     private readonly IReportService _reportService;
+    private readonly IConfiguracaoSistemaService _configuracaoService;
 
-    public RelatorioController(IReportService reportService)
+    public RelatorioController(IReportService reportService, IConfiguracaoSistemaService configuracaoService)
     {
         _reportService = reportService;
+        _configuracaoService = configuracaoService;
     }
 
     /// <summary>Catálogo de relatórios visíveis pro usuário logado, agrupado por tipo.</summary>
     [HttpGet("catalogo")]
-    public IActionResult Catalogo()
+    public async Task<IActionResult> Catalogo()
     {
-        var (podeOficina, podeConcessionaria) = ObterPermissoes();
+        var (podeOficina, podeConcessionaria) = await ObterPermissoesAsync();
         return Ok(_reportService.ObterCatalogo(podeOficina, podeConcessionaria));
     }
 
@@ -39,7 +42,7 @@ public class RelatorioController : ControllerBase
         [FromQuery] DateTime dataInicio,
         [FromQuery] DateTime dataFim)
     {
-        var (podeOficina, podeConcessionaria) = ObterPermissoes();
+        var (podeOficina, podeConcessionaria) = await ObterPermissoesAsync();
 
         var r = await _reportService.ExportAsync(id, formato, dataInicio, dataFim, podeOficina, podeConcessionaria);
         if (!r.IsSuccess) return BadRequest(r.Error);
@@ -49,10 +52,18 @@ public class RelatorioController : ControllerBase
         return File(r.Value!, contentType, fileName);
     }
 
-    private (bool PodeOficina, bool PodeConcessionaria) ObterPermissoes()
+    private async Task<(bool PodeOficina, bool PodeConcessionaria)> ObterPermissoesAsync()
     {
         var podeOficina = User.IsInRole("Admin") || User.IsInRole("ChefeOficina");
         var podeConcessionaria = User.IsInRole("Admin") || User.IsInRole("GerenteVendas");
+
+        var rModulos = await _configuracaoService.ObterModulosAtivosAsync();
+        if (rModulos.IsSuccess)
+        {
+            podeOficina &= rModulos.Value.Oficina;
+            podeConcessionaria &= rModulos.Value.Concessionaria;
+        }
+
         return (podeOficina, podeConcessionaria);
     }
 }

@@ -1,5 +1,5 @@
 @page "/dashboard"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,ChefeOficina,GerenteVendas")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/dashboard")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -16,6 +16,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthStateProvider
+@inject CarStoreManager.Application.Interfaces.Sistema.IConfiguracaoSistemaService ConfiguracaoService
 @implements IAsyncDisposable
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Admin
@@ -37,12 +38,14 @@
             <div data-tour="dashboard-periodo">
                 <SeletorPeriodo @bind-Inicio="inicio" @bind-Fim="fim" OnAlterado="OnPeriodoAlterado" />
             </div>
-            <button type="button" class="btn-relatorio" data-tour="dashboard-relatorio" @onclick='() => Nav.NavigateTo("/financeiro/relatorios")'>
+            <button type="button" class="btn-relatorio" data-tour="dashboard-relatorio" @onclick='() => Nav.NavigateTo("/dashboard/relatorios")'>
                 📄 Relatório
             </button>
             <a class="btn-usuarios" href="/financeiro">Financeiro →</a>
         </div>
     </div>
+
+    <SubNav Itens="SubNavAnalises.Itens" />
 
     <div class="dash-abas" data-tour="dashboard-abas">
         @if (PodeVerOficina && PodeVerConcessionaria)
@@ -73,9 +76,13 @@
         @if (metricas is not null)
         {
             <div class="grafico-row">
-                <div class="grafico-card grafico-largo">
-                    <h3 class="grafico-titulo">Receitas e despesas — @PeriodoLabel</h3>
-                    <div class="grafico-area"><canvas id="chartFaturamento6m"></canvas></div>
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Oficina — @PeriodoLabel</h3>
+                    <div class="grafico-area"><canvas id="chartFaturamentoOficina6m"></canvas></div>
+                </div>
+                <div class="grafico-card">
+                    <h3 class="grafico-titulo">Concessionária — @PeriodoLabel</h3>
+                    <div class="grafico-area"><canvas id="chartFaturamentoConcessionaria6m"></canvas></div>
                 </div>
             </div>
 
@@ -414,9 +421,11 @@
     private string roleUsuario = string.Empty;
 
     // ChefeOficina e GerenteVendas veem apenas a aba/relatórios do seu setor.
-    // Admin enxerga tudo.
-    private bool PodeVerOficina         => roleUsuario is "Admin" or "ChefeOficina";
-    private bool PodeVerConcessionaria  => roleUsuario is "Admin" or "GerenteVendas";
+    // Admin enxerga tudo. Módulo desativado sempre vence, mesmo pro Admin.
+    private bool moduloOficinaAtivo = true;
+    private bool moduloConcessionariaAtivo = true;
+    private bool PodeVerOficina         => roleUsuario is "Admin" or "ChefeOficina" && moduloOficinaAtivo;
+    private bool PodeVerConcessionaria  => roleUsuario is "Admin" or "GerenteVendas" && moduloConcessionariaAtivo;
     private bool PodeGerenciarUsuarios  => roleUsuario is "Admin";
 
     private int veiculosDisponiveis;
@@ -468,7 +477,7 @@
             yield return new("Financeiro", "💰", "/financeiro", "Receita, despesas, lucro.");
             yield return new("Oficina", "🔧", "/oficina", "Ordens de serviço, recepção, estoque.");
             yield return new("Concessionária", "🚗", "/concessionaria", "Salão, propostas, consignações.");
-            yield return new("Relatórios", "📑", "/financeiro/relatorios", "Exportar dados por período.");
+            yield return new("Relatórios", "📑", "/dashboard/relatorios", "Exportar dados por período.");
             yield return new("Início", "🏠", "/", "Painel geral do sistema.");
         }
     }
@@ -521,6 +530,13 @@
         // Detecta a role do usuário para decidir quais abas/relatórios mostrar.
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         roleUsuario = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
+
+        var rModulos = await ConfiguracaoService.ObterModulosAtivosAsync();
+        if (rModulos.IsSuccess)
+        {
+            moduloOficinaAtivo = rModulos.Value.Oficina;
+            moduloConcessionariaAtivo = rModulos.Value.Concessionaria;
+        }
 
         // Aba padrão por perfil: ChefeOficina cai na aba Oficina,
         // GerenteVendas cai na aba Concessionária. Admin segue em "geral".
@@ -594,6 +610,24 @@
         if (firstRender) await RenderizarGraficos();
     }
 
+    /// <summary>Despesa "Geral" (sem setor específico) não tem série própria
+    /// — sobra como resíduo (Total - Oficina - Concessionaria) em cada ponto
+    /// e é dividida meio a meio entre os dois setores. Mesmo cálculo de
+    /// Financeiro.razor (docs/redesign/27-graficos-receita-por-setor.md).</summary>
+    private static decimal[] DespesaComMetadeDoGeral(
+        IReadOnlyList<MesValorDTO> setor, IReadOnlyList<MesValorDTO> total, IReadOnlyList<MesValorDTO> outroSetor)
+    {
+        var resultado = new decimal[setor.Count];
+        for (var i = 0; i < setor.Count; i++)
+        {
+            var totalPonto = i < total.Count ? total[i].Valor : 0m;
+            var outroPonto = i < outroSetor.Count ? outroSetor[i].Valor : 0m;
+            var geralMetade = (totalPonto - setor[i].Valor - outroPonto) / 2m;
+            resultado[i] = setor[i].Valor + geralMetade;
+        }
+        return resultado;
+    }
+
     private async Task RenderizarGraficos()
     {
         if (metricas is null) return;
@@ -616,25 +650,24 @@
         // ========== ABA GERAL ==========
         if (abaAtiva == "geral")
         {
-            var datasets6m = new object[]
+            // Oficina e concessionária em gráficos separados — escalas muito
+            // diferentes ficam ilegíveis no mesmo canvas (ver docs/redesign/
+            // 27-graficos-receita-por-setor.md, mesmo padrão do Financeiro).
+            // Despesa "Geral" (sem setor específico) não tem série própria —
+            // divide-se meio a meio entre os dois setores.
+            var despesaOficina6m = DespesaComMetadeDoGeral(metricas.SerieDespesasOficina, metricas.SerieDespesas, metricas.SerieDespesasConcessionaria);
+            var datasetsOficina6m = new object[]
             {
                 new {
-                    label = "Serviços",
+                    label = "Receita",
                     data = metricas.SerieReceitaServicos.Select(s => s.Valor).ToArray(),
                     borderColor = "#16a34a",
                     backgroundColor = "rgba(22, 163, 74, 0.1)",
                     tension = 0.3, fill = true
                 },
                 new {
-                    label = "Vendas",
-                    data = metricas.SerieReceitaVendas.Select(s => s.Valor).ToArray(),
-                    borderColor = "#2563eb",
-                    backgroundColor = "rgba(37, 99, 235, 0.1)",
-                    tension = 0.3, fill = true
-                },
-                new {
                     label = rotuloDespesa,
-                    data = metricas.SerieDespesas.Select(s => s.Valor).ToArray(),
+                    data = despesaOficina6m,
                     borderColor = "#ea580c",
                     backgroundColor = "rgba(234, 88, 12, 0.05)",
                     borderDash = new[] { 6, 4 },
@@ -642,7 +675,29 @@
                 }
             };
             await JS.InvokeVoidAsync("carstoreChart.render",
-                "chartFaturamento6m", "line", labels6m, datasets6m, commonOpts);
+                "chartFaturamentoOficina6m", "line", labels6m, datasetsOficina6m, commonOpts);
+
+            var despesaConcessionaria6m = DespesaComMetadeDoGeral(metricas.SerieDespesasConcessionaria, metricas.SerieDespesas, metricas.SerieDespesasOficina);
+            var datasetsConcessionaria6m = new object[]
+            {
+                new {
+                    label = "Receita",
+                    data = metricas.SerieReceitaVendas.Select(s => s.Valor).ToArray(),
+                    borderColor = "#2563eb",
+                    backgroundColor = "rgba(37, 99, 235, 0.1)",
+                    tension = 0.3, fill = true
+                },
+                new {
+                    label = rotuloDespesa,
+                    data = despesaConcessionaria6m,
+                    borderColor = "#ea580c",
+                    backgroundColor = "rgba(234, 88, 12, 0.05)",
+                    borderDash = new[] { 6, 4 },
+                    tension = 0, fill = false
+                }
+            };
+            await JS.InvokeVoidAsync("carstoreChart.render",
+                "chartFaturamentoConcessionaria6m", "line", labels6m, datasetsConcessionaria6m, commonOpts);
 
             await RenderizarGraficoSelecionado();
 
@@ -802,7 +857,7 @@
         var corStatus = new Dictionary<string, string>
         {
             ["Pendente"]                    = "#eab308",
-            ["EmAnalise"]                   = "#f97316",
+            ["EmVistoria"]                  = "#f97316",
             ["AguardandoCliente"]           = "#fbbf24",
             ["Aprovada"]                    = "#0ea5e9",
             ["EmAndamento"]                 = "#2563eb",
@@ -841,7 +896,7 @@
         try
         {
             foreach (var id in new[] {
-                "chartFaturamento6m", "chartAnaliseSelecionada", "chartComparacaoReceita",
+                "chartFaturamentoOficina6m", "chartFaturamentoConcessionaria6m", "chartAnaliseSelecionada", "chartComparacaoReceita",
                 "chartOficina6m", "chartOSStatusOf", "chartReceitaMecanico",
                 "chartMecanicosEspecializacao", "chartServicosTipo", "chartMarcasVisitamOficina",
                 "chartEstoquePorSistema", "chartPrazoMedioServico", "chartAnaliseSelecionadaOficina",

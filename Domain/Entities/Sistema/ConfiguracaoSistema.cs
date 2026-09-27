@@ -28,6 +28,11 @@ public class ConfiguracaoSistema : Entity
     /// <summary>Percentual mínimo de entrada exigido (0–100). Ignorado se <see cref="ExigirEntradaMinima"/> for false.</summary>
     public decimal PercentualEntradaMinima { get; private set; } = 0m;
 
+    // === Módulos ativos — modularidade DELORE (doc 38) ===
+    /// <summary>Ambos true por padrão — preserva o comportamento de hoje sem configuração nenhuma.</summary>
+    public bool ModuloConcessionariaAtivo { get; private set; } = true;
+    public bool ModuloOficinaAtivo { get; private set; } = true;
+
     // === Fechamento mensal de despesas ===
     /// <summary>
     /// Dia do mês (1–28) em que o gerente faz o balanço/fechamento das despesas.
@@ -96,6 +101,21 @@ public class ConfiguracaoSistema : Entity
         }
 
         ExigirEntradaMinima = exigir;
+        DataUltimaAtualizacao = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Liga/desliga os módulos de negócio do sistema. Pelo menos um precisa
+    /// ficar ativo — sem isso, telas compartilhadas (Financeiro, Análises,
+    /// Equipe) ficariam sem nada pra mostrar.
+    /// </summary>
+    public void ConfigurarModulos(bool concessionariaAtivo, bool oficinaAtivo)
+    {
+        if (!concessionariaAtivo && !oficinaAtivo)
+            throw new ArgumentException("Pelo menos um módulo precisa ficar ativo.");
+
+        ModuloConcessionariaAtivo = concessionariaAtivo;
+        ModuloOficinaAtivo = oficinaAtivo;
         DataUltimaAtualizacao = DateTime.UtcNow;
     }
 

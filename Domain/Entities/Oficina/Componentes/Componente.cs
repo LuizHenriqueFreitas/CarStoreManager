@@ -282,7 +282,7 @@ public class Componente : Entity
     public void Desativar() => Ativo = false;
 
     // Métodos auxiliares para relacionamentos
-    public void AdicionarEquivalencia(Componente componenteEquivalente, TipoEquivalencia tipo)
+    public ComponenteEquivalente AdicionarEquivalencia(Componente componenteEquivalente, TipoEquivalencia tipo)
     {
         if (componenteEquivalente == null) throw new ArgumentNullException(nameof(componenteEquivalente));
         if (componenteEquivalente.Id == Id)
@@ -292,6 +292,7 @@ public class Componente : Entity
 
         var equivalencia = new ComponenteEquivalente(this.Id, componenteEquivalente.Id, tipo);
         EquivalenciasOriginais.Add(equivalencia);
+        return equivalencia;
     }
 
     public void RemoverEquivalencia(Componente componenteEquivalente)

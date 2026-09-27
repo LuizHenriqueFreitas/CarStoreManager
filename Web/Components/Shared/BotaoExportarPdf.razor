@@ -5,10 +5,12 @@
    diálogo de impressão nativo do navegador — o usuário escolhe "Salvar como
    PDF" e o diretório de destino no próprio diálogo do SO, exatamente como um
    Ctrl+P normal. Ver wwwroot/js/pdfExport.js. *@
+@using CarStoreManager.Application.Interfaces
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
+@inject IFotoService FotoService
 
-<button type="button" class="btn-exportar-pdf @CssClass" @onclick="Exportar" disabled="@string.IsNullOrWhiteSpace(Conteudo)">
+<button type="button" class="btn-exportar-pdf @CssClass" @onclick="Exportar" disabled="@(string.IsNullOrWhiteSpace(Conteudo) || exportando)">
     @(Texto ?? "🖨️ Gerar PDF")
 </button>
 
@@ -18,6 +20,26 @@
     [Parameter] public string? Texto { get; set; }
     [Parameter] public string? CssClass { get; set; }
 
+    // Quando preenchidos, as fotos anexadas a essa entidade (mesma chave
+    // usada por UploadFotosEntidade) entram no PDF junto com o texto.
+    [Parameter] public string? EntidadeTipoFotos { get; set; }
+    [Parameter] public Guid? EntidadeIdFotos { get; set; }
+
+    private bool exportando;
+
     private async Task Exportar()
-        => await JS.InvokeVoidAsync("carstorePdf.exportar", Titulo, Conteudo);
+    {
+        exportando = true;
+        var fotoUrls = Array.Empty<string>();
+
+        if (!string.IsNullOrWhiteSpace(EntidadeTipoFotos) && EntidadeIdFotos is { } entidadeId)
+        {
+            var r = await FotoService.GetFotosByEntidadeAsync(EntidadeTipoFotos, entidadeId);
+            if (r.IsSuccess && r.Value is not null)
+                fotoUrls = r.Value.OrderBy(f => f.Ordem).Select(f => f.Url).ToArray();
+        }
+
+        exportando = false;
+        await JS.InvokeVoidAsync("carstorePdf.exportar", Titulo, Conteudo, fotoUrls);
+    }
 }

@@ -8,6 +8,7 @@
 @inject JwtAuthStateProvider AuthProvider
 @inject IJSRuntime JS
 @inject CarStoreManager.Web.Tours.TourEstadoService TourEstado
+@inject CarStoreManager.Application.Interfaces.Sistema.IConfiguracaoSistemaService ConfiguracaoService
 @using CarStoreManager.Application.DTOs.Auth
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Domain.Enums
@@ -131,6 +132,20 @@
                 "GerenteVendas" => "/concessionaria",
                 _ => "/"
             };
+
+            // Se o módulo "dono" do papel estiver desativado, a rota acima
+            // ficaria bloqueada — cai no Início em vez de logar direto num
+            // "Acesso negado".
+            var rModulos = await ConfiguracaoService.ObterModulosAtivosAsync();
+            if (rModulos.IsSuccess)
+            {
+                var moduloConcessionaria = destino.StartsWith("/concessionaria");
+                var moduloOficina = destino.StartsWith("/oficina");
+                if ((moduloConcessionaria && !rModulos.Value.Concessionaria) ||
+                    (moduloOficina && !rModulos.Value.Oficina))
+                    destino = "/";
+            }
+
             Nav.NavigateTo(destino, forceLoad: true);
         }
         catch (Exception ex)

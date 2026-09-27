@@ -3,10 +3,11 @@ using CarStoreManager.Application.Common;
 namespace CarStoreManager.Application.Interfaces.Sistema;
 
 /// <summary>
-/// Exporta todo o banco de dados da aplicação para um único documento JSON
-/// (Configurações → Exportar dados). É um retrato bruto das tabelas — pensado
-/// para backup e inspeção, não para reimportação direta pelo importador de
-/// demonstração.
+/// Exporta os dados do sistema (Configurações → Exportar dados) no MESMO
+/// formato aceito por <see cref="IImportacaoDadosService"/> — "chave" de
+/// texto em vez de Guid, "cenario" reconstruindo o estágio de cada fluxo de
+/// negócio — para que o arquivo baixado possa ser editado e reimportado
+/// (Configurações → Importar dados) sem transformação manual.
 /// </summary>
 public interface IExportacaoDadosService
 {

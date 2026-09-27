@@ -1,5 +1,6 @@
 @page "/concessionaria/proposta/{Id:guid}"
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,Vendedor")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "modulo:concessionaria")]
 @rendermode InteractiveServer
 @inject IPropostaVendaService PropostaService
 @inject IClienteService ClienteService
@@ -277,7 +278,8 @@
                         <input type="text" readonly value="@LinkAssinatura" class="link-share" @onclick="SelecionarLink" />
                         <h3>Conteúdo</h3>
                         <pre class="termo-preview">@termo.TextoTermo</pre>
-                        <BotaoExportarPdf Titulo="@($"Termo de entrega - {veiculo?.Marca} {veiculo?.Modelo}")" Conteudo="@termo.TextoTermo" CssClass="btn-sec" />
+                        <BotaoExportarPdf Titulo="@($"Termo de entrega - {veiculo?.Marca} {veiculo?.Modelo}")" Conteudo="@termo.TextoTermo" CssClass="btn-sec"
+                                          EntidadeTipoFotos="Vistoria" EntidadeIdFotos="@VistoriaConcluidaId" />
                     }
                     else if (termo.Status == "Assinado")
                     {
@@ -288,7 +290,8 @@
                         </div>
                         <h3>Conteúdo do termo</h3>
                         <pre class="termo-preview">@termo.TextoTermo</pre>
-                        <BotaoExportarPdf Titulo="@($"Termo de entrega - {veiculo?.Marca} {veiculo?.Modelo}")" Conteudo="@termo.TextoTermo" CssClass="btn-sec" />
+                        <BotaoExportarPdf Titulo="@($"Termo de entrega - {veiculo?.Marca} {veiculo?.Modelo}")" Conteudo="@termo.TextoTermo" CssClass="btn-sec"
+                                          EntidadeTipoFotos="Vistoria" EntidadeIdFotos="@VistoriaConcluidaId" />
                     }
                 }
             </section>
@@ -405,6 +408,7 @@
     private string motivoNegativaFinanciamento = "";
 
     private List<VistoriaDTO> vistorias = new();
+    private Guid? VistoriaConcluidaId => vistorias.Where(v => v.Concluida).OrderByDescending(v => v.DataConclusao).FirstOrDefault()?.Id;
     private TermoEntregaDTO? termo;
     private string vistoriaObs = "";
     private string termoTexto = "";

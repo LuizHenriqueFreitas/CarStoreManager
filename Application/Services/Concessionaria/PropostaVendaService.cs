@@ -3,7 +3,6 @@ using CarStoreManager.Application.DTOs.Concessionaria.PropostaVenda;
 using CarStoreManager.Application.Interfaces;
 using CarStoreManager.Application.Mappings.Concessionaria;
 using CarStoreManager.Domain.Entities.Concessionaria;
-using CarStoreManager.Domain.Enums;
 using CarStoreManager.Domain.Interfaces.Repositories.Concessionaria;
 using CarStoreManager.Domain.Repositories;
 

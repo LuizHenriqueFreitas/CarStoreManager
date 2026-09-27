@@ -1,5 +1,5 @@
 @page "/financeiro/a-receber"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,ChefeOficina")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/financeiro/a-receber")]
 
 @namespace CarStoreManager.Web.Components.Pages
 

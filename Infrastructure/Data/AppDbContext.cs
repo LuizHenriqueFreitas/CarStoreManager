@@ -31,10 +31,12 @@ public class AppDbContext : DbContext
     public DbSet<OrdemServico> OrdensServico { get; set; }
     public DbSet<ItemOrdemServico> ItensOrdemServico { get; set; }
     public DbSet<ChecklistOrdemServico> ChecklistItens { get; set; }
+    public DbSet<VistoriaOrdemServico> VistoriasOrdemServico { get; set; }
     public DbSet<ChecklistPreset> ChecklistPresets { get; set; }
     public DbSet<ChecklistPresetItem> ChecklistPresetItens { get; set; }
     public DbSet<Componente> Componentes { get; set; }
     public DbSet<EstoqueComponente> EstoqueComponentes { get; set; }
+    public DbSet<ComponenteEquivalente> ComponentesEquivalentes { get; set; }
     public DbSet<PagamentoOrdemServico> PagamentosOrdemServico { get; set; }
     public DbSet<RequisicaoPecaOS> RequisicoesPeca { get; set; }
     public DbSet<AlertaOS> AlertasOS { get; set; }
@@ -51,6 +53,7 @@ public class AppDbContext : DbContext
     public DbSet<PropostaVenda> PropostasVenda { get; set; }
     public DbSet<Vistoria> Vistorias { get; set; }
     public DbSet<TermoEntrega> TermosEntrega { get; set; }
+    public DbSet<TermoTestDrive> TermosTestDrive { get; set; }
     public DbSet<PagamentoProposta> PagamentosProposta { get; set; }
 
     // =========================
@@ -61,6 +64,7 @@ public class AppDbContext : DbContext
     public DbSet<Despesa> Despesas { get; set; }
     public DbSet<BalancoMensalDespesa> BalancosMensaisDespesa { get; set; }
     public DbSet<PermissaoAcesso> PermissoesAcesso { get; set; }
+    public DbSet<PermissaoIndividual> PermissoesIndividuais { get; set; }
 
     // =========================
     // INTEGRAÇÕES — MERCADO LIVRE
@@ -262,6 +266,13 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ChecklistOrdemServico>().Property(c => c.Titulo).IsRequired(false);
 
         // =========================
+        // VISTORIA DE ORDEM DE SERVIÇO (contrato de entrada, feito pelo recepcionista)
+        // =========================
+        modelBuilder.Entity<VistoriaOrdemServico>().HasKey(v => v.Id);
+        modelBuilder.Entity<VistoriaOrdemServico>()
+            .HasIndex(v => v.OrdemServicoId).IsUnique();
+
+        // =========================
         // CHECKLIST PRESET (editável pelo admin)
         // =========================
         modelBuilder.Entity<ChecklistPreset>().HasKey(p => p.Id);
@@ -456,6 +467,7 @@ public class AppDbContext : DbContext
             entity.Property(t => t.Id).ValueGeneratedNever();
             entity.Property(t => t.Status).HasConversion<int>();
             entity.Property(t => t.Observacao).HasMaxLength(1000);
+            entity.Property(t => t.VeiculoEntidadeTipo).HasMaxLength(30).HasDefaultValue("VeiculoVenda");
             entity.HasIndex(t => t.VeiculoVendaId);
             entity.HasIndex(t => t.ClienteId);
         });
@@ -514,6 +526,15 @@ public class AppDbContext : DbContext
             .HasIndex(t => t.TokenAssinatura);
 
         // =========================
+        // TERMO TEST DRIVE
+        // =========================
+        modelBuilder.Entity<TermoTestDrive>().HasKey(t => t.Id);
+        modelBuilder.Entity<TermoTestDrive>()
+            .HasIndex(t => t.TestDriveId).IsUnique();
+        modelBuilder.Entity<TermoTestDrive>()
+            .HasIndex(t => t.TokenAssinatura);
+
+        // =========================
         // PAGAMENTO PROPOSTA (cobrança do veículo)
         // =========================
         modelBuilder.Entity<PagamentoProposta>().HasKey(p => p.Id);
@@ -531,6 +552,13 @@ public class AppDbContext : DbContext
             .Property(c => c.MargemPadraoGlobalPct).HasPrecision(7, 4);
         modelBuilder.Entity<ConfiguracaoSistema>()
             .Property(c => c.PercentualEntradaMinima).HasPrecision(5, 2);
+        // Default TRUE no banco — sem isso, o EF geraria a coluna com o
+        // default do CLR (false), o que desativaria os 2 módulos pra
+        // qualquer instalação já existente ao rodar a migração.
+        modelBuilder.Entity<ConfiguracaoSistema>()
+            .Property(c => c.ModuloConcessionariaAtivo).HasDefaultValue(true);
+        modelBuilder.Entity<ConfiguracaoSistema>()
+            .Property(c => c.ModuloOficinaAtivo).HasDefaultValue(true);
 
         // =========================
         // DESPESA (planilha mensal do admin)
@@ -556,6 +584,14 @@ public class AppDbContext : DbContext
             e.Property(p => p.Role).HasConversion<string>();
             e.Property(p => p.RecursoChave).IsRequired();
             e.HasIndex(p => new { p.Role, p.RecursoChave }).IsUnique();
+        });
+
+        // === Permissões individuais por usuário — "alçada" (doc 37) ===
+        modelBuilder.Entity<PermissaoIndividual>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.Property(p => p.RecursoChave).IsRequired();
+            e.HasIndex(p => new { p.UsuarioId, p.RecursoChave }).IsUnique();
         });
 
         // === Balanço mensal de despesas ===

@@ -40,14 +40,16 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "dashboard-relatorio",
                     Titulo = "Relatórios",
-                    Texto = "Leva para a central de relatórios, com todos os relatórios disponíveis agrupados " +
-                        "por tipo — escolha o período e o formato (CSV ou XML) lá."
+                    Texto = "Leva para os relatórios de Análises — comparativos da operação completa, em CSV " +
+                        "ou XML por período. Relatórios de um só setor ficam nas telas de Concessionária e " +
+                        "Oficina."
                 },
                 new()
                 {
                     Seletor = "dashboard-abas",
                     Titulo = "Abas Geral, Oficina e Concessionária",
-                    Texto = "\"Geral\" traz o gráfico de faturamento e o catálogo de comparativos. " +
+                    Texto = "\"Geral\" traz os gráficos de faturamento (oficina e concessionária lado a lado, " +
+                        "nunca somados — escalas muito diferentes) e o catálogo de comparativos. " +
                         "\"Oficina\" e \"Concessionária\" detalham cada área — só aparecem para quem tem acesso."
                 },
                 new()
@@ -74,8 +76,34 @@ public static partial class RegistroDeTours
                 {
                     Seletor = null,
                     Titulo = "Onde ver os números de dinheiro",
-                    Texto = "Receita, despesa, lucro, contas a receber e relatórios exportáveis ficam agora " +
-                        "na tela Financeiro, no menu principal."
+                    Texto = "Receita, despesa, lucro e contas a receber ficam na tela Financeiro, no menu " +
+                        "principal — os relatórios exportáveis desta tela (comparativos da operação completa) " +
+                        "ficam no submenu \"Relatórios\" aqui mesmo em Análises."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/dashboard/relatorios",
+            Titulo = "Relatórios — Análises",
+            Descricao = "Comparativos da operação completa (oficina + concessionária), em CSV ou XML por período.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Relatórios exportáveis",
+                    Texto = "Cada cartão gera um arquivo para baixar — os comparativos aqui espelham os " +
+                        "gráficos da aba Análises, mas exportados em tabela. Relatórios específicos de um só " +
+                        "setor ficam nas telas de Concessionária e Oficina."
+                },
+                new()
+                {
+                    Seletor = "rel-filtros",
+                    Titulo = "Período e formato",
+                    Texto = "Escolha a janela de tempo e o formato (CSV abre no Excel/LibreOffice; XML para " +
+                        "integração). Valem para todos os relatórios da tela."
                 }
             }
         },
@@ -121,6 +149,31 @@ public static partial class RegistroDeTours
                     Texto = "Clique no título de uma coluna pra reordenar a lista por ela. Clique na linha do " +
                         "cliente para abrir a ficha completa (histórico, veículos, valores) — o botão " +
                         "\"Editar\" abre só o formulário de dados cadastrais."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/clientes/relatorios",
+            Titulo = "Relatórios — Clientes",
+            Descricao = "Cadastro de clientes, em CSV ou XML por período.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Relatórios exportáveis",
+                    Texto = "Cada cartão gera um arquivo para baixar. Aqui só tem o relatório de clientes " +
+                        "cadastrados — os demais relatórios ficam na tela da área a que dizem respeito " +
+                        "(Concessionária, Oficina, Financeiro, Análises, Equipe)."
+                },
+                new()
+                {
+                    Seletor = "rel-filtros",
+                    Titulo = "Período e formato",
+                    Texto = "Escolha a janela de tempo e o formato (CSV abre no Excel/LibreOffice; XML para " +
+                        "integração)."
                 }
             }
         },
@@ -214,6 +267,57 @@ public static partial class RegistroDeTours
                     Titulo = "Desativar um usuário",
                     Texto = "Revoga o acesso do funcionário. A confirmação pede a sua própria senha de " +
                         "administrador — não a senha do usuário sendo desativado."
+                },
+                new()
+                {
+                    Seletor = "usuarios-btn-acessos",
+                    Titulo = "Acessos individuais",
+                    Texto = "Dá ou tira acesso de UMA pessoa específica, sem mudar o papel dela nem afetar mais " +
+                        "ninguém — útil pra evitar criar um perfil novo só pra alguém que precisa de um pouco " +
+                        "mais (ou menos) do que os outros do mesmo cargo."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/equipe/{id:guid}/acessos",
+            Titulo = "Acessos individuais",
+            Descricao = "Exceções pessoais de acesso pra um funcionário específico.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Exceção pessoal, não uma regra nova",
+                    Texto = "Cada linha é uma tela ou ação do sistema. \"Padrão do papel\" é o comportamento de " +
+                        "hoje — sem nenhuma mudança. \"Permitir sempre\" dá acesso a essa pessoa mesmo que o " +
+                        "papel dela normalmente não desse. \"Bloquear sempre\" tira o acesso só dela, mesmo que " +
+                        "o papel permita."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/equipe/relatorios",
+            Titulo = "Relatórios — Equipe",
+            Descricao = "Mecânicos e vendedores cadastrados, em CSV ou XML por período.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Relatórios exportáveis",
+                    Texto = "Cada cartão gera um arquivo para baixar — o roster de mecânicos da oficina e o de " +
+                        "vendedores da concessionária."
+                },
+                new()
+                {
+                    Seletor = "rel-filtros",
+                    Titulo = "Período e formato",
+                    Texto = "Escolha a janela de tempo e o formato (CSV abre no Excel/LibreOffice; XML para " +
+                        "integração)."
                 }
             }
         },
@@ -260,7 +364,10 @@ public static partial class RegistroDeTours
                 {
                     Seletor = null,
                     Titulo = "Modo operante",
-                    Texto = "Ajustes globais de operação, como exigir entrada mínima para iniciar um serviço."
+                    Texto = "Ativa/desativa os módulos Concessionária e Oficina (pelo menos um precisa ficar " +
+                        "ligado — desativar um módulo não apaga nada, só some das telas combinadas e do " +
+                        "cadastro de novos funcionários) e ajustes globais de operação, como exigir entrada " +
+                        "mínima para iniciar um serviço."
                 },
                 new()
                 {
@@ -334,7 +441,10 @@ public static partial class RegistroDeTours
                 {
                     Seletor = null,
                     Titulo = "Modo operante",
-                    Texto = "Ajustes globais de operação, como exigir entrada mínima para iniciar um serviço."
+                    Texto = "Ativa/desativa os módulos Concessionária e Oficina (pelo menos um precisa ficar " +
+                        "ligado — desativar um módulo não apaga nada, só some das telas combinadas e do " +
+                        "cadastro de novos funcionários) e ajustes globais de operação, como exigir entrada " +
+                        "mínima para iniciar um serviço."
                 },
                 new()
                 {

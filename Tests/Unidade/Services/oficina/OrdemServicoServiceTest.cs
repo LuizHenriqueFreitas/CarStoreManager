@@ -21,6 +21,7 @@ namespace CarStoreManager.Tests.Unidade.Services
         private readonly Mock<IOrdemServicoRepository> _ordemRepoMock;
         private readonly Mock<IComponenteRepository> _componenteRepoMock;
         private readonly Mock<IMecanicoService> _mecanicoServiceMock;
+        private readonly Mock<IVistoriaOrdemServicoRepository> _vistoriaRepoMock;
         private readonly OrdemServicoService _service;
 
         public OrdemServicoServiceTests()
@@ -28,10 +29,12 @@ namespace CarStoreManager.Tests.Unidade.Services
             _ordemRepoMock = new Mock<IOrdemServicoRepository>();
             _componenteRepoMock = new Mock<IComponenteRepository>();
             _mecanicoServiceMock = new Mock<IMecanicoService>();
+            _vistoriaRepoMock = new Mock<IVistoriaOrdemServicoRepository>();
             _service = new OrdemServicoService(
                 _ordemRepoMock.Object,
                 _componenteRepoMock.Object,
-                _mecanicoServiceMock.Object);
+                _mecanicoServiceMock.Object,
+                _vistoriaRepoMock.Object);
         }
 
         // ==================== GetByIdAsync ====================
@@ -507,6 +510,127 @@ namespace CarStoreManager.Tests.Unidade.Services
 
             result.IsSuccess.Should().BeFalse();
             result.Error.Should().Contain("Ordem de serviço não encontrada");
+        }
+
+        // ==================== VISTORIA DE ENTRADA ====================
+
+        [Fact]
+        public async Task IniciarVistoriaAsync_OrdemInexistente_RetornaFalha()
+        {
+            _ordemRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>())).ReturnsAsync((OrdemServico?)null);
+
+            var result = await _service.IniciarVistoriaAsync(Guid.NewGuid(), Guid.NewGuid());
+
+            result.IsSuccess.Should().BeFalse();
+            result.Error.Should().Contain("não encontrada");
+        }
+
+        [Fact]
+        public async Task IniciarVistoriaAsync_JaTemVistoriaRegistrada_RetornaFalha()
+        {
+            var ordem = CriarOrdemValida();
+            var vistoriaExistente = new VistoriaOrdemServico(ordem.Id, Guid.NewGuid());
+            _ordemRepoMock.Setup(r => r.GetByIdAsync(ordem.Id)).ReturnsAsync(ordem);
+            _vistoriaRepoMock.Setup(r => r.ObterPorOrdemServicoAsync(ordem.Id)).ReturnsAsync(vistoriaExistente);
+
+            var result = await _service.IniciarVistoriaAsync(ordem.Id, Guid.NewGuid());
+
+            result.IsSuccess.Should().BeFalse();
+            result.Error.Should().Contain("já tem uma vistoria");
+        }
+
+        [Fact]
+        public async Task IniciarVistoriaAsync_OrdemPendente_TransicionaStatusECriaVistoria()
+        {
+            var ordem = CriarOrdemValida();
+            var recepcionistaId = Guid.NewGuid();
+            _ordemRepoMock.Setup(r => r.GetByIdAsync(ordem.Id)).ReturnsAsync(ordem);
+            _ordemRepoMock.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+            _vistoriaRepoMock.Setup(r => r.ObterPorOrdemServicoAsync(ordem.Id)).ReturnsAsync((VistoriaOrdemServico?)null);
+            _vistoriaRepoMock.Setup(r => r.AddAsync(It.IsAny<VistoriaOrdemServico>())).Returns(Task.CompletedTask);
+            _vistoriaRepoMock.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+
+            var result = await _service.IniciarVistoriaAsync(ordem.Id, recepcionistaId);
+
+            result.IsSuccess.Should().BeTrue();
+            result.Value!.RecepcionistaId.Should().Be(recepcionistaId);
+            ordem.Status.Should().Be(StatusOrdemServico.EmVistoria);
+            _vistoriaRepoMock.Verify(r => r.AddAsync(It.IsAny<VistoriaOrdemServico>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task IniciarVistoriaAsync_OrdemHistoricaJaEmVistoriaSemRegistro_CriaVistoriaSemRepetirTransicao()
+        {
+            // Dado histórico: OS gerada antes desta mudança, já em EmVistoria mas
+            // sem VistoriaOrdemServico — deve criar retroativamente sem tentar
+            // repetir a transição Pendente → EmVistoria (que já aconteceu).
+            var ordem = CriarOrdemValida();
+            ordem.IniciarVistoria();
+            _ordemRepoMock.Setup(r => r.GetByIdAsync(ordem.Id)).ReturnsAsync(ordem);
+            _vistoriaRepoMock.Setup(r => r.ObterPorOrdemServicoAsync(ordem.Id)).ReturnsAsync((VistoriaOrdemServico?)null);
+            _vistoriaRepoMock.Setup(r => r.AddAsync(It.IsAny<VistoriaOrdemServico>())).Returns(Task.CompletedTask);
+            _vistoriaRepoMock.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+
+            var result = await _service.IniciarVistoriaAsync(ordem.Id, Guid.NewGuid());
+
+            result.IsSuccess.Should().BeTrue();
+            ordem.Status.Should().Be(StatusOrdemServico.EmVistoria);
+            _ordemRepoMock.Verify(r => r.SaveChangesAsync(), Times.Never);
+        }
+
+        [Fact]
+        public async Task ObterVistoriaAsync_Inexistente_RetornaFalha()
+        {
+            _vistoriaRepoMock.Setup(r => r.ObterPorOrdemServicoAsync(It.IsAny<Guid>())).ReturnsAsync((VistoriaOrdemServico?)null);
+
+            var result = await _service.ObterVistoriaAsync(Guid.NewGuid());
+
+            result.IsSuccess.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task EditarVistoriaAsync_VistoriaConcluida_RetornaFalha()
+        {
+            var ordemId = Guid.NewGuid();
+            var vistoria = new VistoriaOrdemServico(ordemId, Guid.NewGuid());
+            vistoria.Concluir("Texto final.");
+            _vistoriaRepoMock.Setup(r => r.ObterPorOrdemServicoAsync(ordemId)).ReturnsAsync(vistoria);
+
+            var result = await _service.EditarVistoriaAsync(ordemId, "Nova tentativa.");
+
+            result.IsSuccess.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task ConcluirVistoriaAsync_TextoVazio_RetornaFalha()
+        {
+            var ordem = CriarOrdemValida();
+            ordem.IniciarVistoria();
+            var vistoria = new VistoriaOrdemServico(ordem.Id, Guid.NewGuid());
+            _ordemRepoMock.Setup(r => r.GetByIdAsync(ordem.Id)).ReturnsAsync(ordem);
+            _vistoriaRepoMock.Setup(r => r.ObterPorOrdemServicoAsync(ordem.Id)).ReturnsAsync(vistoria);
+
+            var result = await _service.ConcluirVistoriaAsync(ordem.Id, "");
+
+            result.IsSuccess.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task ConcluirVistoriaAsync_Sucesso_ConcluiVistoriaEAvancaOrdemParaAguardandoCliente()
+        {
+            var ordem = CriarOrdemValida();
+            ordem.IniciarVistoria();
+            var vistoria = new VistoriaOrdemServico(ordem.Id, Guid.NewGuid());
+            _ordemRepoMock.Setup(r => r.GetByIdAsync(ordem.Id)).ReturnsAsync(ordem);
+            _ordemRepoMock.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+            _vistoriaRepoMock.Setup(r => r.ObterPorOrdemServicoAsync(ordem.Id)).ReturnsAsync(vistoria);
+            _vistoriaRepoMock.Setup(r => r.SaveChangesAsync()).Returns(Task.CompletedTask);
+
+            var result = await _service.ConcluirVistoriaAsync(ordem.Id, "Veículo sem avarias, combustível 1/2.");
+
+            result.IsSuccess.Should().BeTrue();
+            vistoria.Concluida.Should().BeTrue();
+            ordem.Status.Should().Be(StatusOrdemServico.AguardandoCliente);
         }
 
         // ==================== MÉTODOS AUXILIARES ====================

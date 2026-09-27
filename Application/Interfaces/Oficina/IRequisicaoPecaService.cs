@@ -13,7 +13,7 @@ public interface IRequisicaoPecaService
 
     /// <summary>
     /// Admin chama quando todas as requisições da OS foram resolvidas — devolve
-    /// a OS ao status anterior (Pendente/EmAnalise) para o orçamento prosseguir.
+    /// a OS ao status anterior (Pendente/EmVistoria) para o orçamento prosseguir.
     /// </summary>
     Task<Result> LiberarOrdemAsync(Guid ordemId);
 }

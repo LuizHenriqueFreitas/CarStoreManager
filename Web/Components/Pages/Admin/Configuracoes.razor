@@ -1,6 +1,6 @@
 @page "/configuracoes"
 @page "/configuracoes/sistema"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/configuracoes")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -244,6 +244,33 @@
         @if (abaAtiva == "operacao")
         {
             <section class="cfg-card-full">
+                <h2>Módulos ativos</h2>
+                <p class="muted">
+                    Desative um módulo pra tirar da tela tudo que é exclusivo dele — telas próprias,
+                    cadastro de funcionário com papel daquele módulo, e a fatia dele nas telas
+                    compartilhadas (Início, Financeiro, Análises). Desativar um módulo não apaga
+                    nenhum dado já cadastrado — só some das telas combinadas e do cadastro de novos
+                    funcionários daquele módulo.
+                </p>
+
+                @if (!string.IsNullOrEmpty(erroModulos))
+                {
+                    <div class="banner banner-erro">@erroModulos</div>
+                }
+
+                <label class="check-line big" data-tour="cfg-modulo-concessionaria">
+                    <input type="checkbox" checked="@config.ModuloConcessionariaAtivo" disabled="@salvandoModulos"
+                           @onchange="e => AtualizarModulosAsync((bool)e.Value!, config.ModuloOficinaAtivo)" />
+                    Concessionária
+                </label>
+                <label class="check-line big" data-tour="cfg-modulo-oficina">
+                    <input type="checkbox" checked="@config.ModuloOficinaAtivo" disabled="@salvandoModulos"
+                           @onchange="e => AtualizarModulosAsync(config.ModuloConcessionariaAtivo, (bool)e.Value!)" />
+                    Oficina
+                </label>
+            </section>
+
+            <section class="cfg-card-full">
                 <h2>Modo operante da oficina</h2>
                 <p class="muted">
                     Define se a oficina exige um pagamento mínimo do cliente antes de iniciar o serviço
@@ -408,10 +435,11 @@
             <section class="cfg-card-full" data-tour="cfg-exportar-dados">
                 <h2>Exportar dados</h2>
                 <p class="muted">
-                    Gera um único arquivo <strong>JSON</strong> com o conteúdo de todas as tabelas
-                    do banco — clientes, veículos, propostas, ordens de serviço, despesas,
-                    configurações e integrações. Serve como backup e para inspeção externa dos
-                    dados. O arquivo pode ser grande; a geração leva alguns segundos.
+                    Gera um único arquivo <strong>JSON</strong> com os dados do sistema —
+                    usuários, clientes, veículos, propostas, ordens de serviço, despesas e mais.
+                    O formato é o mesmo aceito em <strong>Importar dados</strong>: dá pra editar o
+                    arquivo baixado e reimportá-lo depois, para atualizar ou restaurar os dados. O
+                    arquivo pode ser grande; a geração leva alguns segundos.
                 </p>
 
                 <div class="acoes">
@@ -630,6 +658,8 @@
     private ConfiguracaoSistemaDTO? config;
     private bool carregando = true;
     private bool salvando;
+    private bool salvandoModulos;
+    private string? erroModulos;
     private string mensagem = "";
     private bool mensagemErro;
     private string abaAtiva = "menu";
@@ -718,6 +748,26 @@
     }
 
     private string AbaClass(string aba) => aba == abaAtiva ? "aba aba-ativa" : "aba";
+
+    private async Task AtualizarModulosAsync(bool concessionariaAtivo, bool oficinaAtivo)
+    {
+        if (config is null) return;
+
+        salvandoModulos = true;
+        erroModulos = null;
+        StateHasChanged();
+
+        var r = await ConfigService.AtualizarModulosAsync(concessionariaAtivo, oficinaAtivo);
+        if (r.IsSuccess)
+        {
+            config.ModuloConcessionariaAtivo = concessionariaAtivo;
+            config.ModuloOficinaAtivo = oficinaAtivo;
+        }
+        else
+            erroModulos = r.Error;
+
+        salvandoModulos = false;
+    }
 
     // ===================== GERAL / MODO OPERANTE =====================
     private async Task Salvar()

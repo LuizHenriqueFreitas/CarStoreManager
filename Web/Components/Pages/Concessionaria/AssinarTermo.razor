@@ -11,7 +11,7 @@
 <PageTitle>Termo de entrega — assinatura</PageTitle>
 
 <div class="assinar-page">
-    <div class="logo">CARSTORE</div>
+    <div class="logo">DELORE</div>
     <h1>Termo de entrega do veículo</h1>
 
     @if (carregando)
@@ -33,6 +33,7 @@
         @RenderResumoPagamento(termo)
         <h2>Conteúdo do termo</h2>
         <pre class="termo-texto">@termo.TextoTermo</pre>
+        <BotaoExportarPdf Titulo="Termo de entrega do veículo" Conteudo="@termo.TextoTermo" />
     }
     else
     {

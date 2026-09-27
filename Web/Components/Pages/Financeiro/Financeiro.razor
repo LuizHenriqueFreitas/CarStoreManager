@@ -1,5 +1,5 @@
 @page "/financeiro"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,GerenteVendas,ChefeOficina")]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Policy = "pagina:/financeiro")]
 
 @namespace CarStoreManager.Web.Components.Pages
 
@@ -8,6 +8,7 @@
 @inject IDashboardService DashboardService
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject CarStoreManager.Application.Interfaces.Sistema.IConfiguracaoSistemaService ConfiguracaoService
 @using Microsoft.JSInterop
 @using CarStoreManager.Application.Interfaces
 @using CarStoreManager.Application.DTOs.Admin
@@ -31,7 +32,7 @@
 
     <div class="area-filtro" data-tour="fin-area">
         <span>Área:</span>
-        @foreach (var a in new[] { ("", "Tudo"), ("oficina", "Oficina"), ("concessionaria", "Concessionária") })
+        @foreach (var a in OpcoesArea)
         {
             <button type="button" class="@(area == a.Item1 ? "af-btn ativo" : "af-btn")" @onclick="() => TrocarArea(a.Item1)">@a.Item2</button>
         }
@@ -65,7 +66,22 @@
 
         <div data-tour="fin-grafico">
         <Secao Titulo="Receitas e despesas — evolução mensal">
-            <div class="grafico-card"><div class="grafico-area"><canvas id="finPrincipal"></canvas></div></div>
+            <div class="@(MostrarDoisGraficos ? "fin-grid-2" : "fin-grid-1")">
+                @if (area != "concessionaria" && moduloOficinaAtivo)
+                {
+                    <div class="grafico-card">
+                        <h3 class="grafico-subtitulo">Oficina</h3>
+                        <div class="grafico-area"><canvas id="finPrincipalOficina"></canvas></div>
+                    </div>
+                }
+                @if (area != "oficina" && moduloConcessionariaAtivo)
+                {
+                    <div class="grafico-card">
+                        <h3 class="grafico-subtitulo">Concessionária</h3>
+                        <div class="grafico-area"><canvas id="finPrincipalConcessionaria"></canvas></div>
+                    </div>
+                }
+            </div>
         </Secao>
         </div>
 
@@ -83,27 +99,33 @@
 
         <Secao Titulo="Capital imobilizado (não é fluxo de caixa)" data-tour="fin-capital">
             <div class="capital-grid">
-                <div class="cap"><span>Veículos em estoque (valor de venda)</span><strong>@FBRL(m.CapitalEstoqueVeiculos)</strong></div>
                 <div class="cap"><span>Peças em estoque</span><strong>@FBRL(m.CapitalEstoqueComponentes)</strong></div>
+                <div class="cap"><span>Veículos em estoque (valor de venda)</span><strong>@FBRL(m.CapitalEstoqueVeiculos)</strong></div>
             </div>
         </Secao>
 
         <Secao Titulo="@($"Resultado por área ({subtitulo})")" data-tour="fin-areas">
             <div class="areas-grid">
-                <div class="area-card">
-                    <h3>Oficina</h3>
-                    <div class="al"><span>Receita de serviços</span><strong>@FBRL(m.ReceitaServicosMesAtual)</strong></div>
-                    <div class="al"><span>Despesas da oficina</span><strong>@FBRL(m.TotalDespesasOficinaMensal)</strong></div>
-                    <div class="al total"><span>Lucro operacional</span><strong class="@(m.LucroOficinaMes >= 0 ? "pos" : "neg")">@FBRL(m.LucroOficinaMes)</strong></div>
-                    <a href="/financeiro?area=oficina">Abrir recorte →</a>
-                </div>
-                <div class="area-card">
-                    <h3>Concessionária</h3>
-                    <div class="al"><span>Receita de vendas</span><strong>@FBRL(m.ReceitaVendasMesAtual)</strong></div>
-                    <div class="al"><span>Despesas da concessionária</span><strong>@FBRL(m.TotalDespesasConcessionariaMensal)</strong></div>
-                    <div class="al total"><span>Lucro operacional</span><strong class="@(m.LucroConcessionariaMes >= 0 ? "pos" : "neg")">@FBRL(m.LucroConcessionariaMes)</strong></div>
-                    <a href="/financeiro?area=concessionaria">Abrir recorte →</a>
-                </div>
+                @if (moduloOficinaAtivo)
+                {
+                    <div class="area-card">
+                        <h3>Oficina</h3>
+                        <div class="al"><span>Receita de serviços</span><strong>@FBRL(m.ReceitaServicosMesAtual)</strong></div>
+                        <div class="al"><span>Despesas da oficina</span><strong>@FBRL(m.TotalDespesasOficinaMensal)</strong></div>
+                        <div class="al total"><span>Lucro operacional</span><strong class="@(m.LucroOficinaMes >= 0 ? "pos" : "neg")">@FBRL(m.LucroOficinaMes)</strong></div>
+                        <a href="/financeiro?area=oficina">Abrir recorte →</a>
+                    </div>
+                }
+                @if (moduloConcessionariaAtivo)
+                {
+                    <div class="area-card">
+                        <h3>Concessionária</h3>
+                        <div class="al"><span>Receita de vendas</span><strong>@FBRL(m.ReceitaVendasMesAtual)</strong></div>
+                        <div class="al"><span>Despesas da concessionária</span><strong>@FBRL(m.TotalDespesasConcessionariaMensal)</strong></div>
+                        <div class="al total"><span>Lucro operacional</span><strong class="@(m.LucroConcessionariaMes >= 0 ? "pos" : "neg")">@FBRL(m.LucroConcessionariaMes)</strong></div>
+                        <a href="/financeiro?area=concessionaria">Abrir recorte →</a>
+                    </div>
+                }
             </div>
         </Secao>
     }
@@ -123,6 +145,20 @@
     private string subtitulo = "";
     private decimal receitaAnterior, despesaAnterior, lucroAnterior;
     private bool graficosPendentes;
+    private bool moduloOficinaAtivo = true;
+    private bool moduloConcessionariaAtivo = true;
+
+    private bool MostrarDoisGraficos => area == "" && moduloOficinaAtivo && moduloConcessionariaAtivo;
+
+    private IEnumerable<(string, string)> OpcoesArea
+    {
+        get
+        {
+            yield return ("", "Tudo");
+            if (moduloOficinaAtivo) yield return ("oficina", "Oficina");
+            if (moduloConcessionariaAtivo) yield return ("concessionaria", "Concessionária");
+        }
+    }
 
     private decimal Receita => area switch
     {
@@ -174,6 +210,15 @@
     {
         carregando = true;
         StateHasChanged();
+
+        var rModulos = await ConfiguracaoService.ObterModulosAtivosAsync();
+        if (rModulos.IsSuccess)
+        {
+            moduloOficinaAtivo = rModulos.Value.Oficina;
+            moduloConcessionariaAtivo = rModulos.Value.Concessionaria;
+        }
+        if (area == "oficina" && !moduloOficinaAtivo) area = "";
+        if (area == "concessionaria" && !moduloConcessionariaAtivo) area = "";
 
         var dias = fim.DayNumber - inicio.DayNumber + 1;
         var antInicio = inicio.AddDays(-dias);
@@ -228,6 +273,24 @@
         ? "Despesa (rateada por dia)"
         : "Despesa";
 
+    /// <summary>Despesa "Geral" (sem setor específico) não tem série própria
+    /// — sobra como resíduo (Total - Oficina - Concessionaria) em cada ponto
+    /// e é dividida meio a meio entre os dois setores, pra cada gráfico
+    /// refletir sua parte do custo compartilhado.</summary>
+    private static decimal[] DespesaComMetadeDoGeral(
+        IReadOnlyList<MesValorDTO> setor, IReadOnlyList<MesValorDTO> total, IReadOnlyList<MesValorDTO> outroSetor)
+    {
+        var resultado = new decimal[setor.Count];
+        for (var i = 0; i < setor.Count; i++)
+        {
+            var totalPonto = i < total.Count ? total[i].Valor : 0m;
+            var outroPonto = i < outroSetor.Count ? outroSetor[i].Valor : 0m;
+            var geralMetade = (totalPonto - setor[i].Valor - outroPonto) / 2m;
+            resultado[i] = setor[i].Valor + geralMetade;
+        }
+        return resultado;
+    }
+
     private async Task RenderGraficos()
     {
         var s = m!;
@@ -235,50 +298,48 @@
         var rotuloDespesa = RotuloDespesa;
 
         // Receita de oficina e de concessionária NUNCA viram um número só —
-        // sempre barras/linhas separadas, e quando um recorte de área está
-        // ativo (botões "Oficina"/"Concessionária" no topo), o gráfico só
-        // traz o dinheiro daquele recorte, igual aos KPIs acima. Despesa vem
-        // de SerieDespesas* (uma por ponto, já rateada quando o período é
-        // diário) — nunca mais um total do período repetido em cada barra
-        // (ver docs/redesign/16-granularidade-despesas.md).
-        object[] datasetsPrincipal;
-        if (area == "oficina")
+        // gráficos separados (ver docs/redesign/27-graficos-receita-por-
+        // setor.md). Com o recorte de área "Tudo", os dois ficam lado a
+        // lado; com um recorte ativo, só o gráfico daquele setor aparece (o
+        // outro é destruído, mesmo padrão já usado abaixo pra "finReceita").
+        // Despesa vem de SerieDespesas* (uma por ponto, já rateada quando o
+        // período é diário — docs/redesign/16-granularidade-despesas.md)
+        // com a metade da despesa "Geral" somada em cada setor.
+        if (area != "concessionaria")
         {
-            var despesa = s.SerieDespesasOficina.Select(x => x.Valor).ToArray();
-            var receita = s.SerieReceitaServicos.Select(x => x.Valor).ToArray();
-            datasetsPrincipal = new object[]
-            {
-                new { label = "Receita (oficina)", data = receita, backgroundColor = "#16a34a" },
-                new { label = rotuloDespesa, data = despesa, backgroundColor = "#ea580c" },
-                new { label = "Lucro", type = "line", data = receita.Zip(despesa, (r, d) => r - d).ToArray(), borderColor = "#7c3aed", tension = 0.3 },
-            };
-        }
-        else if (area == "concessionaria")
-        {
-            var despesa = s.SerieDespesasConcessionaria.Select(x => x.Valor).ToArray();
-            var receita = s.SerieReceitaVendas.Select(x => x.Valor).ToArray();
-            datasetsPrincipal = new object[]
-            {
-                new { label = "Receita (concessionária)", data = receita, backgroundColor = "#2563eb" },
-                new { label = rotuloDespesa, data = despesa, backgroundColor = "#ea580c" },
-                new { label = "Lucro", type = "line", data = receita.Zip(despesa, (r, d) => r - d).ToArray(), borderColor = "#7c3aed", tension = 0.3 },
-            };
+            var despesaOficina = DespesaComMetadeDoGeral(s.SerieDespesasOficina, s.SerieDespesas, s.SerieDespesasConcessionaria);
+            var receitaOficina = s.SerieReceitaServicos.Select(x => x.Valor).ToArray();
+            await JS.InvokeVoidAsync("carstoreChart.render", "finPrincipalOficina", "bar", labels,
+                new object[]
+                {
+                    new { label = "Receita", data = receitaOficina, backgroundColor = "#16a34a" },
+                    new { label = rotuloDespesa, data = despesaOficina, backgroundColor = "#ea580c" },
+                    new { label = "Lucro", type = "line", data = receitaOficina.Zip(despesaOficina, (r, d) => r - d).ToArray(), borderColor = "#7c3aed", tension = 0.3 },
+                },
+                new { responsive = true, maintainAspectRatio = false });
         }
         else
         {
-            var despesa = s.SerieDespesas.Select(x => x.Valor).ToArray();
-            var lucro = s.SerieReceitaServicos.Zip(s.SerieReceitaVendas, (a, b) => a.Valor + b.Valor)
-                .Zip(despesa, (receitaTotal, d) => receitaTotal - d).ToArray();
-            datasetsPrincipal = new object[]
-            {
-                new { label = "Receita Oficina", data = s.SerieReceitaServicos.Select(x => x.Valor).ToArray(), backgroundColor = "#16a34a" },
-                new { label = "Receita Concessionária", data = s.SerieReceitaVendas.Select(x => x.Valor).ToArray(), backgroundColor = "#2563eb" },
-                new { label = rotuloDespesa, data = despesa, backgroundColor = "#ea580c" },
-                new { label = "Lucro", type = "line", data = lucro, borderColor = "#7c3aed", tension = 0.3 },
-            };
+            await JS.InvokeVoidAsync("carstoreChart.destroy", "finPrincipalOficina");
         }
-        await JS.InvokeVoidAsync("carstoreChart.render", "finPrincipal", "bar", labels, datasetsPrincipal,
-            new { responsive = true, maintainAspectRatio = false });
+
+        if (area != "oficina")
+        {
+            var despesaConcessionaria = DespesaComMetadeDoGeral(s.SerieDespesasConcessionaria, s.SerieDespesas, s.SerieDespesasOficina);
+            var receitaConcessionaria = s.SerieReceitaVendas.Select(x => x.Valor).ToArray();
+            await JS.InvokeVoidAsync("carstoreChart.render", "finPrincipalConcessionaria", "bar", labels,
+                new object[]
+                {
+                    new { label = "Receita", data = receitaConcessionaria, backgroundColor = "#2563eb" },
+                    new { label = rotuloDespesa, data = despesaConcessionaria, backgroundColor = "#ea580c" },
+                    new { label = "Lucro", type = "line", data = receitaConcessionaria.Zip(despesaConcessionaria, (r, d) => r - d).ToArray(), borderColor = "#7c3aed", tension = 0.3 },
+                },
+                new { responsive = true, maintainAspectRatio = false });
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("carstoreChart.destroy", "finPrincipalConcessionaria");
+        }
 
         // "Composição da receita" (Serviços vs. Vendas) só faz sentido com as
         // duas áreas juntas — com um recorte ativo só haveria 1 categoria,
@@ -301,12 +362,14 @@
             await JS.InvokeVoidAsync("carstoreChart.destroy", "finReceita");
         }
 
+        // Despesa "Geral" (sem setor específico) não vira categoria própria
+        // aqui também — mesma regra do gráfico principal, metade pra cada setor.
+        var geralMetadeMensal = s.TotalDespesasGeralMensal / 2m;
         await JS.InvokeVoidAsync("carstoreChart.comparativo", "finDespesa",
             new object[]
             {
-                new { rotulo = "Geral", valor = s.TotalDespesasGeralMensal },
-                new { rotulo = "Oficina", valor = s.TotalDespesasOficinaMensal },
-                new { rotulo = "Concessionária", valor = s.TotalDespesasConcessionariaMensal },
+                new { rotulo = "Oficina", valor = s.TotalDespesasOficinaMensal + geralMetadeMensal },
+                new { rotulo = "Concessionária", valor = s.TotalDespesasConcessionariaMensal + geralMetadeMensal },
             }, "R$");
     }
 
@@ -314,7 +377,7 @@
     {
         try
         {
-            foreach (var id in new[] { "finPrincipal", "finReceita", "finDespesa" })
+            foreach (var id in new[] { "finPrincipalOficina", "finPrincipalConcessionaria", "finReceita", "finDespesa" })
                 await JS.InvokeVoidAsync("carstoreChart.destroy", id);
         }
         catch { }
@@ -334,6 +397,7 @@
     .regime-nota { font-size: var(--txt-xs); color: var(--cor-tinta-3); margin: calc(-1 * var(--sp-3)) 0 var(--sp-6); }
 
     .grafico-card { background: var(--cor-superficie); border: 1px solid var(--cor-linha); border-radius: var(--raio-lg); padding: var(--sp-4); }
+    .grafico-subtitulo { font-size: var(--txt-sm); font-weight: var(--peso-medio); color: var(--cor-tinta-2); margin: 0 0 var(--sp-2); }
     .grafico-area { position: relative; height: 280px; }
     .fin-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); }
     .fin-grid-2 .grafico-area { height: 220px; }

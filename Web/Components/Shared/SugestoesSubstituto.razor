@@ -1,0 +1,104 @@
+@namespace CarStoreManager.Web.Components.Shared
+
+@* Sugestões de componente compatível pra substituir um que está sem
+   estoque — usado no "Adicionar peça" da OS (DetalheOrdem.razor) e na
+   resolução de requisição de peça (PainelRequisicoesOS.razor). Fonte:
+   ComponenteService.ObterEquivalentesAsync (mesmo código OEM + vínculos
+   curados manualmente em ComponenteEquivalente). *@
+
+@inject IComponenteService ComponenteService
+@using CarStoreManager.Application.DTOs.Oficina.Componente
+
+@if (ComponenteId != Guid.Empty && QuantidadeEmEstoqueSelecionado <= 0)
+{
+    <div class="sugestoes-substituto">
+        @if (carregando)
+        {
+            <p class="sugestoes-info">Buscando compatíveis em estoque...</p>
+        }
+        else if (sugestoesDisponiveis.Count == 0)
+        {
+            <p class="sugestoes-info">
+                ⚠ Sem estoque e nenhum compatível cadastrado em estoque no momento.
+            </p>
+        }
+        else
+        {
+            <p class="sugestoes-titulo">⚠ Sem estoque — compatíveis disponíveis:</p>
+            <ul class="sugestoes-lista">
+                @foreach (var s in sugestoesDisponiveis)
+                {
+                    <li class="sugestao-item" @onclick="() => Escolher(s)">
+                        <span class="sugestao-nome">@s.Nome</span>
+                        <span class="sugestao-meta">
+                            @s.MarcaFabricante
+                            @if (!string.IsNullOrWhiteSpace(s.PartNumber)) { <text> · P/N @s.PartNumber</text> }
+                            @if (s.OrigemCurada && s.TipoEquivalencia is not null) { <text> · @s.TipoEquivalencia</text> }
+                        </span>
+                        <span class="sugestao-estoque">@s.QuantidadeEmEstoque em estoque</span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public Guid ComponenteId { get; set; }
+    [Parameter] public int QuantidadeEmEstoqueSelecionado { get; set; }
+    [Parameter] public EventCallback<ComponenteSugestaoDTO> OnEscolher { get; set; }
+
+    private Guid carregadoParaId = Guid.Empty;
+    private bool carregando;
+    private List<ComponenteSugestaoDTO> sugestoesDisponiveis = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ComponenteId == Guid.Empty || QuantidadeEmEstoqueSelecionado > 0)
+        {
+            carregadoParaId = Guid.Empty;
+            sugestoesDisponiveis.Clear();
+            return;
+        }
+
+        if (ComponenteId == carregadoParaId) return;
+        carregadoParaId = ComponenteId;
+
+        carregando = true;
+        var r = await ComponenteService.ObterEquivalentesAsync(ComponenteId);
+        sugestoesDisponiveis = r.IsSuccess && r.Value is not null
+            ? r.Value.Where(s => s.QuantidadeEmEstoque > 0).ToList()
+            : new();
+        carregando = false;
+    }
+
+    private async Task Escolher(ComponenteSugestaoDTO s) => await OnEscolher.InvokeAsync(s);
+}
+
+<style>
+    .sugestoes-substituto {
+        margin-top: 8px;
+        padding: 10px 12px;
+        background: #fff7ed;
+        border: 0.5px solid #fed7aa;
+        border-radius: 8px;
+    }
+    .sugestoes-info { font-size: 12px; color: #9a3412; margin: 0; }
+    .sugestoes-titulo { font-size: 12px; font-weight: 600; color: #9a3412; margin: 0 0 6px; }
+    .sugestoes-lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+    .sugestao-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        background: #fff;
+        border: 0.5px solid #fed7aa;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    .sugestao-item:hover { background: #fffbeb; }
+    .sugestao-nome { font-weight: 500; }
+    .sugestao-meta { color: #888; flex: 1; }
+    .sugestao-estoque { color: #166534; font-weight: 600; white-space: nowrap; }
+</style>
