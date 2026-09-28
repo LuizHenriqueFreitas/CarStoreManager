@@ -64,13 +64,30 @@ public static partial class RegistroDeTours
                     Seletor = "dashboard-oficina-metricas",
                     Titulo = "Operação da oficina",
                     Texto = "Contagem rápida de ordens de serviço por situação e de peças com estoque baixo. " +
-                        "Visível na aba Oficina."
+                        "Visível na aba Oficina, junto com o card de capital investido em peças paradas no " +
+                        "estoque — dinheiro que só vira receita quando a peça é usada numa OS."
+                },
+                new()
+                {
+                    Seletor = "dashboard-analises-oficina",
+                    Titulo = "Mais análises da oficina",
+                    Texto = "Segundo seletor de gráfico, igual ao da aba Geral, mas só com as categorias " +
+                        "Oficina e Estoque — mecânicos, tipos de serviço, marcas atendidas, peças em estoque."
                 },
                 new()
                 {
                     Seletor = "dashboard-concessionaria-metricas",
                     Titulo = "Operação da concessionária",
-                    Texto = "Veículos disponíveis, vendidos e propostas em aberto. Visível na aba Concessionária."
+                    Texto = "Veículos disponíveis, vendidos e propostas em aberto. Visível na aba " +
+                        "Concessionária, junto com o card de capital imobilizado em veículos parados no pátio " +
+                        "e a margem potencial se todos fossem vendidos pelo preço anunciado."
+                },
+                new()
+                {
+                    Seletor = "dashboard-analises-concessionaria",
+                    Titulo = "Mais análises da concessionária",
+                    Texto = "Mesmo seletor de gráfico das outras abas, restrito à categoria Concessionária — " +
+                        "marca, modelo, cor, forma de pagamento, consignação vs. loja própria."
                 },
                 new()
                 {
@@ -294,6 +311,15 @@ public static partial class RegistroDeTours
                         "hoje — sem nenhuma mudança. \"Permitir sempre\" dá acesso a essa pessoa mesmo que o " +
                         "papel dela normalmente não desse. \"Bloquear sempre\" tira o acesso só dela, mesmo que " +
                         "o papel permita."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Salva na hora, linha por linha",
+                    Texto = "Não tem botão \"Salvar\": trocar a opção de uma linha já grava a exceção " +
+                        "imediatamente. As linhas vêm agrupadas por área do sistema, e a etiqueta \"página\" ou " +
+                        "\"ação\" ao lado do nome diz se o recurso é uma tela inteira ou um botão específico " +
+                        "dentro dela."
                 }
             }
         },
@@ -373,7 +399,10 @@ public static partial class RegistroDeTours
                 {
                     Seletor = null,
                     Titulo = "Documentos",
-                    Texto = "Templates dos documentos gerados pelo sistema (termos, propostas)."
+                    Texto = "Templates dos contratos e termos gerados pelo sistema (termo de entrega, " +
+                        "contrato de consignação, termo de test-drive etc.). Toda tela que redige um " +
+                        "documento oferece um seletor pra escolher um destes templates como ponto de partida " +
+                        "— o texto vem copiado como rascunho editável, não travado."
                 },
                 new()
                 {
@@ -389,7 +418,10 @@ public static partial class RegistroDeTours
                     Titulo = "Permissões de acesso",
                     Texto = "Escolha quais papéis acessam cada página e ação do sistema — desmarque uma célula " +
                         "pra tirar o acesso daquele papel. Só é possível restringir dentro do que o sistema já " +
-                        "permite; não dá pra liberar acesso além disso por aqui."
+                        "permite; não dá pra liberar acesso além disso por aqui. Nem toda linha tem efeito real " +
+                        "ainda: por enquanto só \"Fornecedores\" e os botões de cadastrar veículo escondem de " +
+                        "verdade quando desmarcados — as demais linhas salvam a escolha, mas a tela " +
+                        "correspondente ainda não consulta essa configuração."
                 }
             }
         },
@@ -450,7 +482,10 @@ public static partial class RegistroDeTours
                 {
                     Seletor = null,
                     Titulo = "Documentos",
-                    Texto = "Templates dos documentos gerados pelo sistema (termos, propostas)."
+                    Texto = "Templates dos contratos e termos gerados pelo sistema (termo de entrega, " +
+                        "contrato de consignação, termo de test-drive etc.). Toda tela que redige um " +
+                        "documento oferece um seletor pra escolher um destes templates como ponto de partida " +
+                        "— o texto vem copiado como rascunho editável, não travado."
                 },
                 new()
                 {
@@ -466,7 +501,10 @@ public static partial class RegistroDeTours
                     Titulo = "Permissões de acesso",
                     Texto = "Escolha quais papéis acessam cada página e ação do sistema — desmarque uma célula " +
                         "pra tirar o acesso daquele papel. Só é possível restringir dentro do que o sistema já " +
-                        "permite; não dá pra liberar acesso além disso por aqui."
+                        "permite; não dá pra liberar acesso além disso por aqui. Nem toda linha tem efeito real " +
+                        "ainda: por enquanto só \"Fornecedores\" e os botões de cadastrar veículo escondem de " +
+                        "verdade quando desmarcados — as demais linhas salvam a escolha, mas a tela " +
+                        "correspondente ainda não consulta essa configuração."
                 }
             }
         },

@@ -71,7 +71,9 @@ public static partial class RegistroDeTours
                         Titulo = "E-mail e senha",
                         Texto = "Informe o e-mail e a senha cadastrados pela Administração. Após autenticar, " +
                             "você é levado direto para a tela inicial do seu papel — por exemplo, a Oficina " +
-                            "abre para mecânicos e a Concessionária abre para vendedores."
+                            "abre para mecânicos e a Concessionária abre para vendedores. Se a área do seu " +
+                            "papel estiver desativada pela administração (módulo desligado), você cai na tela " +
+                            "Início em vez de um erro de acesso negado."
                     },
                     new()
                     {
@@ -122,6 +124,14 @@ public static partial class RegistroDeTours
                         Texto = "Este link é enviado ao cliente quando o veículo está pronto para entrega. Ele " +
                             "não exige login — o acesso é feito só pelo link, que é único para cada proposta " +
                             "de venda."
+                    },
+                    new()
+                    {
+                        Seletor = null,
+                        Titulo = "Confirmação de pagamento",
+                        Texto = "Se o veículo já foi pago antes da entrega, um resumo com o valor recebido " +
+                            "aparece no topo da tela, antes do texto do termo — é só uma confirmação visual, " +
+                            "não interfere na assinatura."
                     },
                     new()
                     {

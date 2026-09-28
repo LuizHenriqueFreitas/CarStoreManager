@@ -15,15 +15,9 @@ public static partial class RegistroDeTours
                 {
                     Seletor = null,
                     Titulo = "O dinheiro do negócio, num lugar só",
-                    Texto = "Receita, despesa, lucro, capital investido e contas a receber. Um administrador " +
-                        "vê tudo; o gerente de vendas vê o recorte da concessionária e o chefe de oficina o da oficina."
-                },
-                new()
-                {
-                    Seletor = "fin-hub-atalhos",
-                    Titulo = "Atalhos rápidos",
-                    Texto = "Mesma barra lateral dos painéis de Oficina e Concessionária — acesso direto às " +
-                        "outras telas do Financeiro e às Análises."
+                    Texto = "Receita, despesa, lucro, capital investido e contas a receber, tudo num só painel. " +
+                        "Por padrão mostra os dois setores somados — use o filtro de área ali embaixo pra focar " +
+                        "só na oficina ou só na concessionária."
                 },
                 new()
                 {
@@ -34,9 +28,18 @@ public static partial class RegistroDeTours
                 },
                 new()
                 {
+                    Seletor = "fin-hub-atalhos",
+                    Titulo = "Atalhos rápidos",
+                    Texto = "Mesma barra lateral dos painéis de Oficina e Concessionária — acesso direto às " +
+                        "outras telas do Financeiro e às Análises."
+                },
+                new()
+                {
                     Seletor = "fin-area",
                     Titulo = "Recorte por área",
-                    Texto = "Filtra a tela inteira para Tudo, só a Oficina ou só a Concessionária."
+                    Texto = "Filtra a tela inteira para Tudo, só a Oficina ou só a Concessionária. As opções de " +
+                        "Oficina e Concessionária só aparecem aqui se o módulo correspondente estiver ativo em " +
+                        "Configurações — com um módulo desligado, a tela nem oferece o filtro dele."
                 },
                 new()
                 {
@@ -54,22 +57,33 @@ public static partial class RegistroDeTours
                     Titulo = "Evolução mensal",
                     Texto = "Dois gráficos lado a lado — oficina e concessionária — cada um com barras de " +
                         "receita e despesa e a linha de lucro por cima, mês a mês. Despesa sem setor específico " +
-                        "entra dividida meio a meio entre os dois."
+                        "entra dividida meio a meio entre os dois. Se um módulo estiver desligado ou você tiver " +
+                        "filtrado por área, só o gráfico daquele setor aparece."
                 },
                 new()
                 {
-                    Seletor = "fin-areas",
-                    Titulo = "Resultado por área",
-                    Texto = "O lucro operacional da oficina e o da concessionária, separados. Clique em " +
-                        "\"Abrir recorte\" para filtrar a tela toda naquele setor."
+                    Seletor = null,
+                    Titulo = "Composição do mês",
+                    Texto = "Logo abaixo, dois gráficos de composição do mês atual — não da janela de período " +
+                        "escolhida lá em cima: receita por origem (serviços vs. vendas, some se você filtrar " +
+                        "por uma área só) e despesa por setor. São um instantâneo do mês corrente."
                 },
                 new()
                 {
                     Seletor = "fin-capital",
                     Titulo = "Capital imobilizado",
-                    Texto = "Quanto está parado em estoque de veículos e de peças. Não é despesa do mês — o " +
-                        "investimento já saiu do caixa quando o item foi comprado; aqui é só o retrato do que " +
-                        "ainda não foi vendido."
+                    Texto = "Abre o capital em duas linhas: quanto está parado em peças de estoque e quanto em " +
+                        "veículos (pelo valor de venda). Ajuda a ver se o capital pesa mais pro lado da oficina " +
+                        "ou da concessionária — o total das duas já apareceu lá no card de indicadores."
+                },
+                new()
+                {
+                    Seletor = "fin-areas",
+                    Titulo = "Resultado por área",
+                    Texto = "O lucro operacional da oficina e o da concessionária, separados — cada card só " +
+                        "soma as despesas com Setor daquele setor; despesas com Setor \"Geral\" ficam de fora " +
+                        "dos dois aqui (diferente do gráfico de evolução, onde entram divididas meio a meio). " +
+                        "Clique em \"Abrir recorte\" para filtrar a tela toda naquele setor."
                 }
             }
         },
@@ -88,6 +102,15 @@ public static partial class RegistroDeTours
                     Texto = "Escolha a competência (mês/ano) no seletor do topo. Se ainda não houver balanço, " +
                         "clique em \"Gerar a partir do formulário\" — as linhas vêm do formulário mensal de " +
                         "despesas configurado pela gestão."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Os totais e o campo Setor",
+                    Texto = "Os quatro cartões mostram o total do mês e a quebra por setor. O Setor de cada " +
+                        "linha decide pra onde a despesa conta: \"Oficina\" ou \"Concessionária\" entra cheia " +
+                        "no lucro daquele setor lá no Financeiro; \"Geral\" fica de fora dos dois nesse cálculo " +
+                        "(só é dividida meio a meio no gráfico de evolução mensal)."
                 },
                 new()
                 {

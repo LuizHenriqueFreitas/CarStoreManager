@@ -124,6 +124,14 @@ public static partial class RegistroDeTours
                 },
                 new()
                 {
+                    Seletor = null,
+                    Titulo = "Busca rápida",
+                    Texto = "O campo centralizado no topo busca uma OS já aberta por número, cliente ou placa — " +
+                        "os resultados aparecem num menu solto assim que você digita, sem precisar abrir a lista " +
+                        "completa."
+                },
+                new()
+                {
                     Seletor = "recepcao-btn-nova",
                     Titulo = "Abrir nova ordem",
                     Texto = "Atalho direto para o formulário de abertura de OS."
@@ -132,8 +140,8 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "recepcao-metricas",
                     Titulo = "Métricas do dia",
-                    Texto = "Contagem rápida — quantas ordens aguardam cobrança, quantas estão atrasadas e quantos " +
-                        "mecânicos estão livres agora pra receber um carro novo."
+                    Texto = "Seis indicadores: pendentes, em andamento, aguardando cobrança, atrasadas, mecânicos " +
+                        "disponíveis e entregues no mês."
                 },
                 new()
                 {
@@ -176,6 +184,15 @@ public static partial class RegistroDeTours
                 },
                 new()
                 {
+                    Seletor = "oficina-hub-alertas",
+                    Titulo = "Faixa de alertas",
+                    Texto = "Resumo em forma de chip, no topo: quantas OS aguardam cobrança, peças abaixo do " +
+                        "mínimo, prazos estourados, ordens paradas (esperando peça ou pausadas) e, pra quem vê " +
+                        "financeiro, quantos dias faltam pro fechamento de despesas do mês. Cada chip leva direto " +
+                        "pra tela onde o problema se resolve."
+                },
+                new()
+                {
                     Seletor = "oficina-hub-kpis",
                     Titulo = "Indicadores",
                     Texto = "OS pendentes, em andamento, aguardando cobrança, entregues no mês e prazo médio " +
@@ -197,6 +214,14 @@ public static partial class RegistroDeTours
                 },
                 new()
                 {
+                    Seletor = null,
+                    Titulo = "Resumo financeiro e capital em peças",
+                    Texto = "Para Administração e Chefia, o mesmo grid mostra mais dois cartões: receita, " +
+                        "despesas e lucro operacional do mês, e o capital parado em peças no estoque — cada um " +
+                        "já leva direto pro Financeiro ou pro Estoque de peças."
+                },
+                new()
+                {
                     Seletor = "oficina-hub-graficos",
                     Titulo = "Gráficos",
                     Texto = "Receita de serviços nos últimos meses (linha) e ordens por situação (barra). " +
@@ -206,8 +231,10 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "oficina-hub-atalhos",
                     Titulo = "Ir para",
-                    Texto = "Atalhos para estoque, fornecedores, equipe, financeiro da oficina, despesas, " +
-                        "relatórios e análises."
+                    Texto = "Atalhos pro resto da oficina: ordens de serviço, estoque de peças, recepção, " +
+                        "fornecedores, clientes e, pra quem vê financeiro, também financeiro da oficina, " +
+                        "despesas, relatórios e análises. A lista muda com o seu papel — um mecânico não vê " +
+                        "recepção nem financeiro, por exemplo."
                 }
             }
         },
@@ -350,8 +377,9 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "comp-alerta-estoque",
                     Titulo = "Estoque abaixo do mínimo",
-                    Texto = "Mostra quantas peças estão com quantidade abaixo do mínimo configurado para elas. " +
-                        "Use o filtro \"Situação\" logo abaixo, opção \"Abaixo do mínimo\", pra ver só essas peças."
+                    Texto = "Mostra quantas peças estão com quantidade abaixo do mínimo configurado para elas — " +
+                        "diferente do cartão \"Sem estoque\" ao lado, que conta só as peças totalmente zeradas. " +
+                        "Use o filtro \"Situação\" logo abaixo pra ver só um grupo ou o outro."
                 },
                 new()
                 {
@@ -388,9 +416,10 @@ public static partial class RegistroDeTours
                 new()
                 {
                     Seletor = null,
-                    Titulo = "De volta às ordens",
-                    Texto = "As peças cadastradas aqui ficam disponíveis para adicionar em qualquer ordem de " +
-                        "serviço, tanto na abertura quanto no detalhe."
+                    Titulo = "Cadastro depende de fornecedor",
+                    Texto = "Um componente novo só é criado se já existir um fornecedor ativo cadastrado — se a " +
+                        "busca não achar nenhum, cadastre primeiro em Fornecedores (menu da Oficina) antes de " +
+                        "voltar aqui."
                 }
             }
         },
@@ -418,9 +447,11 @@ public static partial class RegistroDeTours
                 new()
                 {
                     Seletor = null,
-                    Titulo = "Ativar e desativar",
-                    Texto = "Um fornecedor desativado deixa de aparecer no autocomplete de cadastro de peças, " +
-                        "mas o histórico é preservado."
+                    Titulo = "Editar, ativar/desativar e excluir",
+                    Texto = "Essas ações na tabela (Editar contato, Ativar/Desativar, Excluir) só aparecem pra " +
+                        "quem tem o papel Administração — mesmo que outro usuário tenha ganhado acesso à tela ou " +
+                        "ao botão \"Novo fornecedor\" por permissão individual. Um fornecedor desativado some do " +
+                        "autocomplete de cadastro de peças mas mantém o histórico; excluir é definitivo."
                 }
             }
         },

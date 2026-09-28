@@ -18,7 +18,8 @@ public static partial class RegistroDeTours
                     Texto = "Esta tela conecta a loja a uma conta do Mercado Livre. Com a conexão ativa, " +
                         "veículos, consignações e componentes podem ser publicados como anúncios a partir " +
                         "das próprias telas de detalhe, e o sistema sincroniza preço e status com o anúncio. " +
-                        "Só o administrador acessa esta tela."
+                        "Por padrão só o administrador acessa esta tela — dá pra liberar pra outra pessoa " +
+                        "individualmente em Equipe → Acessos, sem mudar o papel dela."
                 },
                 new()
                 {
@@ -81,8 +82,17 @@ public static partial class RegistroDeTours
                     Seletor = null,
                     Titulo = "Anúncios publicados",
                     Texto = "Esta tela lista tudo o que já foi publicado no Mercado Livre — veículos, " +
-                        "consignações e componentes. Ela não cria anúncios novos: a publicação parte da tela " +
-                        "de detalhe de cada item."
+                        "consignações e componentes. O botão \"Publicar no Mercado Livre\" fica na tela de " +
+                        "detalhe de cada item, mas o passo de confirmar a categoria do anúncio acontece aqui."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Confirmar categoria antes de publicar",
+                    Texto = "Ao publicar um item pela tela de detalhe, você é trazido pra cá com a categoria " +
+                        "(category_id) já sugerida automaticamente pelo Mercado Livre a partir do título do " +
+                        "anúncio — mas essa sugestão erra com frequência em autopeças, então revise ou troque " +
+                        "antes de confirmar. O anúncio só é criado de fato depois dessa confirmação."
                 },
                 new()
                 {
@@ -103,7 +113,8 @@ public static partial class RegistroDeTours
                     Titulo = "Card de um anúncio",
                     Texto = "Mostra o identificador do item no Mercado Livre, o último preço sincronizado e a " +
                         "data da última sincronização. Se a última tentativa de sincronizar falhou, o motivo " +
-                        "do erro aparece destacado no próprio card."
+                        "do erro aparece destacado no próprio card, com um link pra abrir a resposta técnica " +
+                        "original do Mercado Livre, útil pra investigar o problema."
                 },
                 new()
                 {
@@ -123,10 +134,9 @@ public static partial class RegistroDeTours
                 new()
                 {
                     Seletor = null,
-                    Titulo = "Fluxo completo",
-                    Texto = "Publicar, pausar e encerrar sempre partem da tela de detalhe do veículo, " +
-                        "consignação ou componente — esta tela é só o painel de acompanhamento de tudo o que " +
-                        "já foi publicado."
+                    Titulo = "Depois de publicado",
+                    Texto = "Pausar e encerrar acontecem inteiramente por aqui, sem voltar à tela de detalhe " +
+                        "do item. Só uma nova publicação passa de novo pelo botão na tela de detalhe."
                 }
             }
         }

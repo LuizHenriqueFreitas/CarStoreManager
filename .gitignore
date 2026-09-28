@@ -50,7 +50,7 @@ node_modules/
 Web/keys/
 
 # Uploads de usuário — conteúdo de runtime, não código
-Web/wwwroot/uploads/*
+# Web/wwwroot/uploads/*
 
 # Outros
 /Web/teste.http

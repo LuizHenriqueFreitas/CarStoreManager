@@ -15,23 +15,50 @@ public static partial class RegistroDeTours
                 {
                     Seletor = null,
                     Titulo = "Visão geral da concessionária",
-                    Texto = "Ponto de partida da área comercial: veículos disponíveis, propostas que precisam de " +
-                        "ação, consignações vencendo e o resumo financeiro do mês. Para navegar o estoque em si, " +
-                        "abra \"Salão\" na sub-navegação."
-                },
-                new()
-                {
-                    Seletor = "conc-hub-graficos",
-                    Titulo = "Gráficos",
-                    Texto = "Vendas nos últimos meses (linha) e veículos por situação (barra). Visível para " +
-                        "administração e gerência."
+                    Texto = "Ponto de partida da área comercial — reúne num só painel o estado do salão, das " +
+                        "propostas em andamento e das consignações. Para navegar o estoque em si, abra \"Salão\" " +
+                        "na sub-navegação; o menu fixo à esquerda leva ao resto do módulo."
                 },
                 new()
                 {
                     Seletor = "conc-hub-atalhos",
                     Titulo = "Ir para",
-                    Texto = "Atalhos para salão, propostas, test drives, consignações, clientes, financeiro, " +
-                        "equipe, relatórios e análises."
+                    Texto = "Atalhos para salão, propostas, test drives, consignações e clientes. Financeiro, " +
+                        "relatórios e análises só aparecem aqui para quem pode ver o financeiro da concessionária " +
+                        "(Admin e Gerente de Vendas) — os demais perfis veem só os atalhos operacionais."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Indicadores do topo",
+                    Texto = "\"Em preparação\" não entra na contagem de \"Disponíveis\" — é um veículo que ainda " +
+                        "não pode ser oferecido a cliente. \"Vendas no mês\" e \"Ticket médio\" somam só propostas " +
+                        "concluídas dentro do mês corrente, e zeram de novo na virada do mês."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Três avisos que pedem ação",
+                    Texto = "\"Propostas que precisam de atenção\" lista quem já teve resposta da financiadora, " +
+                        "foi aprovada, teve vistoria concluída ou está aguardando assinatura do termo. \"Veículos " +
+                        "parados\" aponta quem está há mais de 60 dias disponível no estoque — um sinal pra rever " +
+                        "o preço. \"Consignações vencendo\" usa a mesma janela de 7 dias do Salão. Cada lista " +
+                        "mostra só 2 itens; o link \"Ver todas\" abre a tela cheia."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Resumo financeiro do mês",
+                    Texto = "Card visível só para Admin e Gerente de Vendas: receita de vendas, despesas da " +
+                        "concessionária, lucro operacional e quanto está imobilizado em aquisição de veículos " +
+                        "ainda disponíveis. \"Ver no Financeiro\" abre o detalhe completo dessas contas."
+                },
+                new()
+                {
+                    Seletor = "conc-hub-graficos",
+                    Titulo = "Gráficos",
+                    Texto = "Vendas nos últimos meses (linha) e veículos por situação (barra) — mesma regra de " +
+                        "acesso do card financeiro logo acima."
                 }
             }
         },
@@ -118,10 +145,19 @@ public static partial class RegistroDeTours
                 new()
                 {
                     Seletor = null,
-                    Titulo = "Acompanhamento de consignações",
-                    Texto = "Filtre por status — ative \"Vencendo / vencidas\" para ver o que precisa de renovação. " +
-                        "O botão \"Renovar +90d\" aparece quando faltam 10 dias ou menos para o vencimento. Clique " +
-                        "numa linha para abrir o detalhe e trocar o vendedor responsável, devolver ao proprietário, etc."
+                    Titulo = "Lista de consignações",
+                    Texto = "Mostra vendedor responsável, valor esperado e quanto falta pro prazo vencer. Por " +
+                        "padrão só aparecem as Ativas — troque o filtro de Situação pra ver vencendo, vendidas, " +
+                        "concluídas, devolvidas ou canceladas. As colunas da tabela são clicáveis e ordenam a lista."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Renovação e detalhe",
+                    Texto = "O botão \"Renovar +90d\" aparece direto na lista quando faltam 10 dias ou menos pro " +
+                        "vencimento (ou já venceu) — evita abrir o detalhe só pra isso. Clique em qualquer linha " +
+                        "para ver o histórico completo e trocar o vendedor, devolver ao proprietário ou cancelar " +
+                        "o contrato."
                 }
             }
         },
@@ -140,7 +176,14 @@ public static partial class RegistroDeTours
                     Texto = "\"+ Agendar test drive\" leva a uma tela própria pra escolher veículo, cliente, " +
                         "vendedor, data e redigir o termo de responsabilidade. Depois de agendado, marque o " +
                         "resultado aqui — realizado, não compareceu ou cancelado. O cliente precisa já estar " +
-                        "cadastrado (Cadastros → Clientes)."
+                        "cadastrado (Clientes)."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Filtrar por período",
+                    Texto = "O filtro \"Quando\" isola os agendamentos de hoje, dos próximos 7 dias ou os que já " +
+                        "passaram — útil pra achar rápido quem precisa de uma resposta sem rolar a lista inteira."
                 },
                 new()
                 {
@@ -171,8 +214,9 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "td-form-agendamento",
                     Titulo = "Dados do passeio",
-                    Texto = "Escolha veículo, cliente, vendedor e a data/hora do test drive — mesmos campos de " +
-                        "antes, agora numa tela própria em vez de um modal."
+                    Texto = "Escolha primeiro se o veículo é próprio ou consignado — a busca abaixo muda de " +
+                        "acordo (só consignações Ativas aparecem). Depois é cliente, vendedor e data/hora do " +
+                        "test drive."
                 },
                 new()
                 {
@@ -197,7 +241,9 @@ public static partial class RegistroDeTours
                     Seletor = null,
                     Titulo = "Dados do passeio e do termo",
                     Texto = "Resumo do agendamento (veículo, cliente, vendedor, data, status) e o " +
-                        "acompanhamento do termo de responsabilidade do cliente, no mesmo lugar."
+                        "acompanhamento do termo de responsabilidade do cliente, no mesmo lugar. Enquanto o " +
+                        "status for Agendado, Admin e Gerente de Vendas podem trocar o vendedor responsável " +
+                        "pelo link \"Trocar\" ao lado do nome."
                 },
                 new()
                 {
@@ -207,6 +253,38 @@ public static partial class RegistroDeTours
                         "assinatura\" — o cliente assina eletronicamente (nome, CPF, aceite), mesma validade " +
                         "jurídica do termo de entrega de veículo (Lei 14.063/2020). Mostre a tela do link no " +
                         "celular/tablet do cliente na hora do passeio, ou envie por mensagem."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/concessionaria/assinar-test-drive/{token}",
+            Titulo = "Assinatura do termo de test drive",
+            Descricao = "Página pública de assinatura eletrônica do termo de responsabilidade do test drive.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Página do cliente, sem login",
+                    Texto = "Mesmo modelo da assinatura do termo de entrega: acessada pelo link gerado na tela " +
+                        "do test drive (\"Gerar link de assinatura\"), sem menu e sem autenticação. Se o link já " +
+                        "foi usado, a página mostra o termo como assinado em vez do formulário."
+                },
+                new()
+                {
+                    Seletor = "assinar-td-texto-termo",
+                    Titulo = "Conteúdo do termo",
+                    Texto = "Texto de responsabilidade que o cliente assume ao dirigir o veículo durante o " +
+                        "passeio — redigido no agendamento do test drive."
+                },
+                new()
+                {
+                    Seletor = "assinar-td-form",
+                    Titulo = "Assinatura eletrônica",
+                    Texto = "Nome, CPF e o aceite explícito registram a assinatura eletrônica simples (Lei " +
+                        "14.063/2020), com data/hora e IP capturados automaticamente na confirmação."
                 }
             }
         },
@@ -252,7 +330,7 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "veiculo-novo-termo",
                     Titulo = "Termo de entrega preliminar",
-                    Texto = "Este texto vem pré-preenchido com o modelo definido em Configurações > Documentos. " +
+                    Texto = "Este texto vem pré-preenchido com o modelo definido em Configurações → Documentos. " +
                         "Ele serve de rascunho — quando uma proposta for gerada e a venda avançar, esse texto é " +
                         "a base do termo de entrega final, redigido e assinado pelo cliente naquele fluxo."
                 },
@@ -331,7 +409,7 @@ public static partial class RegistroDeTours
                 {
                     Seletor = "consig-novo-contrato",
                     Titulo = "Contrato de consignação",
-                    Texto = "O texto vem pré-preenchido com o modelo definido em Configurações > Documentos. Você " +
+                    Texto = "O texto vem pré-preenchido com o modelo definido em Configurações → Documentos. Você " +
                         "também pode anexar o link de um PDF já assinado fora do sistema, se for o caso."
                 },
                 new()
@@ -405,11 +483,20 @@ public static partial class RegistroDeTours
                 },
                 new()
                 {
+                    Seletor = null,
+                    Titulo = "Outras ações (veículo próprio)",
+                    Texto = "Logo abaixo da ação principal: agendar test drive, editar dados/fotos, e — só pra " +
+                        "Admin e Gerente de Vendas — voltar um veículo Disponível pra preparação ou publicá-lo no " +
+                        "Mercado Livre. \"Excluir veículo\" é destrutivo e não pode ser desfeito."
+                },
+                new()
+                {
                     Seletor = "consig-detalhe-info",
                     Titulo = "Consignação — proprietário e prazo",
-                    Texto = "Mostra o proprietário do veículo, o vendedor responsável e as datas de início e " +
-                        "vencimento da consignação. Um aviso no topo da página avisa quando faltam poucos dias " +
-                        "ou o prazo já venceu."
+                    Texto = "Mostra o proprietário do veículo e o vendedor responsável — trocável a qualquer " +
+                        "momento enquanto a consignação está Ativa ou Expirada, pelo link \"Trocar\" ao lado do " +
+                        "nome — além das datas de início e vencimento. Um aviso no topo da página avisa quando " +
+                        "faltam poucos dias ou o prazo já venceu."
                 },
                 new()
                 {
@@ -440,6 +527,15 @@ public static partial class RegistroDeTours
                     Titulo = "Devolver ao proprietário",
                     Texto = "Encerra a consignação sem venda e devolve o veículo ao proprietário. Use quando o " +
                         "prazo se esgotou e não há mais interesse em manter o veículo na loja."
+                },
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Depois da venda, e cancelamento",
+                    Texto = "Quando a proposta gerada aqui é aprovada, a consignação vira \"Vendido (aguard. " +
+                        "pagamento)\" — \"Confirmar pagamento e concluir\" fecha o ciclo só depois que o valor " +
+                        "entrou. \"Cancelar consignação\" (Admin/Gerência) pede um motivo obrigatório e fica " +
+                        "disponível enquanto o contrato está Ativo ou Expirado."
                 },
                 new()
                 {
@@ -750,6 +846,39 @@ public static partial class RegistroDeTours
                     Texto = "Quando o termo é assinado, a proposta é concluída — e, se o veículo era " +
                         "consignado, a consignação correspondente também é concluída automaticamente. A " +
                         "proposta permanece no histórico da tela de Propostas."
+                }
+            }
+        },
+
+        new TourDaPagina
+        {
+            RotaTemplate = "/concessionaria/assinar/{token}",
+            Titulo = "Assinatura do termo de entrega",
+            Descricao = "Página pública de assinatura eletrônica do termo de entrega do veículo.",
+            Passos = new List<PassoTour>
+            {
+                new()
+                {
+                    Seletor = null,
+                    Titulo = "Página do cliente, sem login",
+                    Texto = "Acessada pelo link gerado na aba \"Termo de entrega\" da proposta — sem menu, sem " +
+                        "autenticação, feita só pra este formulário. Se o link já foi usado, a página mostra o " +
+                        "termo como assinado em vez do formulário."
+                },
+                new()
+                {
+                    Seletor = "assinar-texto-termo",
+                    Titulo = "Conteúdo do termo",
+                    Texto = "Texto redigido pelo vendedor na proposta, descrevendo as condições de entrega do " +
+                        "veículo. Peça pro cliente ler com atenção — o conteúdo não pode ser editado por aqui."
+                },
+                new()
+                {
+                    Seletor = "assinar-form",
+                    Titulo = "Assinatura eletrônica",
+                    Texto = "Nome, CPF e o aceite explícito registram a assinatura eletrônica simples (Lei " +
+                        "14.063/2020) — data/hora e IP são capturados automaticamente no momento da confirmação, " +
+                        "sem precisar digitar nada além disso."
                 }
             }
         },
