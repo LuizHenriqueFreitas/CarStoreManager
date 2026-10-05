@@ -20,7 +20,11 @@ namespace CarStoreManager.Geradores.Nucleo;
 /// </summary>
 public static class ComposicaoServicos
 {
-    public static IServiceProvider Construir()
+    /// <param name="caminhoBanco">
+    /// Opcional — outro arquivo SQLite no lugar do Web/carstore.db (ex.: banco
+    /// descartável pra testar uma importação sem tocar no banco do site).
+    /// </param>
+    public static IServiceProvider Construir(string? caminhoBanco = null)
     {
         // Carrega appsettings.json + appsettings.Development.json do Web na
         // mesma ordem de precedência que o ASP.NET Core usaria — é de lá que
@@ -38,7 +42,12 @@ public static class ComposicaoServicos
         // em Web/ para escrever EXATAMENTE no mesmo banco que a aplicação lê.
         var connStr = configuracaoFinal.GetConnectionString("DefaultConnection") ?? "Data Source=carstore.db";
         var connBuilder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(connStr);
-        if (!Path.IsPathRooted(connBuilder.DataSource))
+        if (!string.IsNullOrWhiteSpace(caminhoBanco))
+        {
+            connBuilder.DataSource = Path.GetFullPath(caminhoBanco);
+            configuracaoFinal["ConnectionStrings:DefaultConnection"] = connBuilder.ToString();
+        }
+        else if (!Path.IsPathRooted(connBuilder.DataSource))
         {
             connBuilder.DataSource = Path.Combine(CaminhosProjeto.RaizSolucao(), "Web", connBuilder.DataSource);
             configuracaoFinal["ConnectionStrings:DefaultConnection"] = connBuilder.ToString();
@@ -46,6 +55,9 @@ public static class ComposicaoServicos
         Console.WriteLine($"Arquivo do banco: {connBuilder.DataSource}");
 
         var services = new ServiceCollection();
+        // ImportacaoDadosService/ExportacaoDadosService pedem ILogger<T> — sem
+        // provider de saída, os logs são descartados (avisos vão pro resultado).
+        services.AddLogging();
         services.AddInfrastructure(configuracaoFinal);
 
         // Mesmos registros extras que Web/Extensions/ApplicationServiceCollection

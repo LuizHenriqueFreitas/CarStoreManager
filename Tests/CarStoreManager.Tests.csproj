@@ -33,4 +33,9 @@
     <ProjectReference Include="..\Web\CarStoreManager.Web.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Fixture do teste de round-trip importar→exportar→importar (contrato v2). -->
+    <None Include="..\Geradores\dataset\contrato_v2_exemplo.json" Link="Fixtures\contrato_v2_exemplo.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

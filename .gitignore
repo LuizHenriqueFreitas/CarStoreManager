@@ -54,6 +54,10 @@ Web/keys/
 
 # Outros
 /Web/teste.http
+/Web/backups
 coverage.info
 
 need_to_do.txt
+# Backups automáticos / cópias de segurança do banco (Configurações → Backup completo)
+backups/
+*.db

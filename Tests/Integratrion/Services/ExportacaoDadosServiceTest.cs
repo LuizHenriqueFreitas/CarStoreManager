@@ -98,12 +98,14 @@ public class ExportacaoDadosServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task ExportarJsonAsync_DespesaAutoGeradaPorCompraDeVeiculo_NaoEntraEmDespesasExtras()
+    public async Task ExportarJsonAsync_DespesaAutoGerada_EntraEmDespesasExtrasComFlagDeDescarte()
     {
-        // Reproduz a duplicação encontrada num round-trip real: reimportar
-        // VeiculosVenda já relança essa mesma despesa sozinho (ver
-        // VeiculoVendaService.AddAsync) — reexportá-la como DespesaExtra
-        // duplicaria o gasto no próximo import.
+        // Contrato v2 (PLANO_BASE_DEMO §8.2): o arquivo traz TODAS as despesas
+        // de cada competência, inclusive as automáticas, e marca
+        // despesasAutomaticasNoArquivo=true — o importador descarta o que as
+        // regras de negócio relançam (VeiculoVendaService.AddAsync,
+        // EstoqueService.EntradaAsync), então nada duplica e nada cai no mês
+        // corrente (antes a compra de componente reaparecia "hoje").
         var balanco = new BalancoMensalDespesa(new DateOnly(2026, 3, 1));
         balanco.AdicionarItem(
             "Compra de veículo para concessionária: Fiat Uno — AAA1234",
@@ -121,16 +123,23 @@ public class ExportacaoDadosServiceTests : IDisposable
         r.IsSuccess.Should().BeTrue();
 
         using var doc = JsonDocument.Parse(Encoding.UTF8.GetString(r.Value!.Conteudo));
+        doc.RootElement.GetProperty("despesasAutomaticasNoArquivo").GetBoolean().Should().BeTrue();
         var extras = doc.RootElement.GetProperty("despesasExtras");
-        extras.GetArrayLength().Should().Be(1, "só a despesa genuinamente avulsa deve sobrar — as 2 auto-geradas por compra são recriadas pelas próprias seções VeiculosVenda/Componentes");
-        extras[0].GetProperty("nome").GetString().Should().Be("Troca do elevador hidráulico principal da oficina");
+        extras.GetArrayLength().Should().Be(3);
+        var fechamentos = doc.RootElement.GetProperty("fechamentosMensais");
+        fechamentos.GetArrayLength().Should().Be(1);
+        fechamentos[0].GetProperty("mes").GetInt32().Should().Be(3);
     }
 
     [Fact]
-    public async Task ExportarJsonAsync_ItemDoModelo_NaoEntraEmDespesasExtras()
+    public async Task ExportarJsonAsync_ItemDoModelo_NaoEntraEmDespesasExtras_VariacaoVaiProFechamento()
     {
+        _context.Despesas.Add(new Despesa("Aluguel do prédio principal", 2430m, SetorDespesa.Geral, TipoDespesa.Aluguel));
+        _context.Despesas.Add(new Despesa("Conta de luz", 500m, SetorDespesa.Geral, TipoDespesa.Utilidades));
         var balanco = new BalancoMensalDespesa(new DateOnly(2026, 3, 1));
         balanco.AdicionarItem("Aluguel do prédio principal", SetorDespesa.Geral, null, 2430m, doModelo: true);
+        balanco.AdicionarItem("Conta de luz", SetorDespesa.Geral, null, 640m, doModelo: true);
+        balanco.Fechar();
         _context.Set<BalancoMensalDespesa>().Add(balanco);
         await _context.SaveChangesAsync();
 
@@ -139,5 +148,11 @@ public class ExportacaoDadosServiceTests : IDisposable
 
         using var doc = JsonDocument.Parse(Encoding.UTF8.GetString(r.Value!.Conteudo));
         doc.RootElement.GetProperty("despesasExtras").GetArrayLength().Should().Be(0);
+        var fechamento = doc.RootElement.GetProperty("fechamentosMensais")[0];
+        fechamento.GetProperty("fechar").GetBoolean().Should().BeTrue();
+        var variacoes = fechamento.GetProperty("variacoes");
+        variacoes.GetArrayLength().Should().Be(1);
+        variacoes[0].GetProperty("nome").GetString().Should().Be("Conta de luz");
+        variacoes[0].GetProperty("valor").GetDecimal().Should().Be(640m);
     }
 }

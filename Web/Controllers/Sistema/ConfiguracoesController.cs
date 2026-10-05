@@ -28,6 +28,19 @@ public class ConfiguracoesController : ControllerBase
         return File(r.Value!.Conteudo, "application/json", r.Value.NomeArquivo);
     }
 
+    /// <summary>
+    /// Baixa o backup completo (cópia exata do banco SQLite em uso) — ver
+    /// Configurações → Backup completo. Serviço injetado na action pra não
+    /// mudar o construtor (testes de controller o instanciam).
+    /// </summary>
+    [HttpGet("backup")]
+    public async Task<IActionResult> BaixarBackup([FromServices] IBackupBancoService backup, CancellationToken ct)
+    {
+        var r = await backup.GerarBackupAsync(ct);
+        if (!r.IsSuccess) return BadRequest(r.Error);
+        return File(r.Value!.Conteudo, "application/vnd.sqlite3", r.Value.NomeArquivo);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Obter()
     {

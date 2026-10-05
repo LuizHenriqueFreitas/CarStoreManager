@@ -15,6 +15,18 @@ using Microsoft.Extensions.Logging;
 namespace CarStoreManager.Infrastructure.Services.Sistema;
 
 /// <summary>
+/// (Contrato v2 — PLANO_BASE_DEMO §8/§8.2.) Exporta status exatos de OS,
+/// proposta, consignação e test drive; pagamentos com modo/percentual/data;
+/// alerta com decisão e requisição rejeitada; vistoria/termos com texto e
+/// assinatura; checklist explícito e preço histórico dos itens da OS;
+/// componentes compatíveis; balanços (fechamento, variação e ausência dos
+/// itens do modelo) e TODAS as despesas lançadas — com
+/// <c>despesasAutomaticasNoArquivo=true</c>, pro importador descartar as
+/// despesas que as regras lançariam de novo (round-trip sem duplicar nem
+/// empilhar no mês corrente). Perdas que restam: senha (hash), fotos,
+/// permissões/configuração, reagendamento de test drive, preset de checklist
+/// e descrição das requisições atendidas/pendentes.
+///
 /// Monta um <see cref="ImportacaoDadosDTO"/> a partir do estado atual do
 /// banco — mesmo formato que <c>ImportacaoDadosService.ImportarAsync</c>
 /// consome — e serializa em JSON. Cada registro usa o próprio Guid (como
@@ -57,6 +69,7 @@ public sealed class ExportacaoDadosService : IExportacaoDadosService
                 Clientes = await ExportarClientesAsync(ct),
                 Fornecedores = await ExportarFornecedoresAsync(ct),
                 Componentes = await ExportarComponentesAsync(ct),
+                ComponentesEquivalentes = await ExportarComponentesEquivalentesAsync(ct),
                 ChecklistPresets = await ExportarChecklistPresetsAsync(ct),
                 TemplatesDocumento = await ExportarTemplatesDocumentoAsync(ct),
                 Despesas = await ExportarDespesasAsync(ct),
@@ -66,8 +79,20 @@ public sealed class ExportacaoDadosService : IExportacaoDadosService
                 PropostasVenda = await ExportarPropostasVendaAsync(ct),
                 OrdensServico = await ExportarOrdensServicoAsync(ct),
                 TestDrives = await ExportarTestDrivesAsync(ct),
-                DespesasExtras = await ExportarDespesasExtrasAsync(ct),
+                DespesasExtras = new(),
+                DespesasAutomaticasNoArquivo = true,
             };
+            (dados.DespesasExtras, dados.FechamentosMensais) = await ExportarBalancosAsync(ct);
+
+            // Consignado vendido por proposta: quem leva a consignação a
+            // Vendida/Concluída na reimportação é o funil da própria proposta.
+            var consignadosViaProposta = dados.PropostasVenda
+                .Where(p => !string.IsNullOrEmpty(p.VeiculoConsignadoChave)
+                    && p.Cenario is not ("criada" or "rejeitada" or "financiamentoNegado" or "cancelada" or "aguardandoFinanciadora" or "respostaFinanciadora"))
+                .Select(p => p.VeiculoConsignadoChave!)
+                .ToHashSet();
+            foreach (var c in dados.VeiculosConsignados.Where(c => consignadosViaProposta.Contains(c.Chave)))
+                c.Cenario = "ativa";
 
             var json = JsonSerializer.SerializeToUtf8Bytes(dados, Opcoes);
             var nome = $"delore-backup-{DateTime.Now:yyyy-MM-dd-HHmm}.json";
@@ -218,6 +243,17 @@ public sealed class ExportacaoDadosService : IExportacaoDadosService
         }).ToList();
     }
 
+    private async Task<List<ComponenteEquivalenteImportDTO>> ExportarComponentesEquivalentesAsync(CancellationToken ct)
+    {
+        var ligacoes = await _db.ComponentesEquivalentes.AsNoTracking().ToListAsync(ct);
+        return ligacoes.Select(l => new ComponenteEquivalenteImportDTO
+        {
+            ComponenteChave = l.ComponenteOriginalId.ToString(),
+            EquivalenteChave = l.ComponenteEquivalenteId.ToString(),
+            TipoEquivalencia = l.TipoEquivalencia.ToString(),
+        }).ToList();
+    }
+
     // ============================================================
     // CHECKLIST PRESETS / TEMPLATES DE DOCUMENTO
     // ============================================================
@@ -249,51 +285,74 @@ public sealed class ExportacaoDadosService : IExportacaoDadosService
     // ============================================================
     private async Task<List<DespesaImportDTO>> ExportarDespesasAsync(CancellationToken ct)
     {
-        var despesas = await _db.Despesas.AsNoTracking().Where(d => d.Ativa).ToListAsync(ct);
+        // Inclui as inativas (Ativa=false) — o importador cria e desativa.
+        var despesas = await _db.Despesas.AsNoTracking().ToListAsync(ct);
         return despesas.Select(d => new DespesaImportDTO
         {
             Nome = d.Nome,
             Valor = d.Valor.GetValorDinheiro(),
+            Ativa = d.Ativa,
             Setor = d.Setor.ToString(),
             Tipo = d.Tipo.ToString(),
+            Categoria = d.Categoria,
         }).ToList();
     }
 
-    // Categorias lançadas automaticamente por VeiculoVendaService.AddAsync e
-    // EstoqueService.EntradaAsync a cada veículo/entrada de estoque — reimportar
-    // as seções VeiculosVenda/Componentes já as recria sozinho; reexportá-las
-    // aqui também duplicaria a despesa (era a causa de despesasExtras quase
-    // dobrar num segundo round-trip).
-    private static readonly HashSet<string> CategoriasAutoGeradas = new()
+    /// <summary>
+    /// Balanços → (despesasExtras, fechamentosMensais). Cada competência com
+    /// balanço vira um fechamento (regera do modelo na reimportação, com
+    /// variação dos valores, remoção dos itens do modelo que não existiam e
+    /// fechamento/data). Todo item fora do modelo ATIVO — inclusive as
+    /// despesas automáticas (compra de veículo/componente, combustível de
+    /// test drive) — vai como despesa extra na própria competência.
+    /// </summary>
+    private async Task<(List<DespesaExtraImportDTO>, List<FechamentoMensalImportDTO>)> ExportarBalancosAsync(CancellationToken ct)
     {
-        "Compra de veículo",
-        "Compra de componentes",
-    };
+        var modelo = (await _db.Despesas.AsNoTracking().Where(d => d.Ativa).ToListAsync(ct))
+            .GroupBy(d => d.Nome).ToDictionary(g => g.Key, g => g.First().Valor.GetValorDinheiro());
+        var balancos = (await _db.BalancosMensaisDespesa.AsNoTracking().Include(b => b.Itens).ToListAsync(ct))
+            .OrderBy(b => b.Competencia).ToList();
 
-    private async Task<List<DespesaExtraImportDTO>> ExportarDespesasExtrasAsync(CancellationToken ct)
-    {
-        var balancos = await _db.BalancosMensaisDespesa.AsNoTracking().Include(b => b.Itens).ToListAsync(ct);
-        var lista = new List<DespesaExtraImportDTO>();
-
+        var extras = new List<DespesaExtraImportDTO>();
+        var fechamentos = new List<FechamentoMensalImportDTO>();
         foreach (var balanco in balancos)
         {
-            var data = balanco.Competencia.ToDateTime(TimeOnly.MinValue);
-            // Itens com DoModelo=true nascem de novo quando a seção "Despesas" é
-            // reimportada (GerarDoModeloAsync) — reexportá-los duplicaria o gasto.
-            foreach (var item in balanco.Itens.Where(i => !i.DoModelo && !CategoriasAutoGeradas.Contains(i.Categoria ?? "")))
+            var data = balanco.Competencia.ToDateTime(new TimeOnly(12, 0));
+            var fechamento = new FechamentoMensalImportDTO
             {
-                lista.Add(new DespesaExtraImportDTO
+                Ano = balanco.Competencia.Year,
+                Mes = balanco.Competencia.Month,
+                Fechar = balanco.Fechado,
+                DataFechamento = balanco.DataFechamento,
+                RemoverItensModelo = new(),
+            };
+
+            var doModeloPresentes = new HashSet<string>();
+            foreach (var item in balanco.Itens)
+            {
+                var valor = item.Valor.GetValorDinheiro();
+                if (item.DoModelo && modelo.TryGetValue(item.Nome, out var valorModelo) && doModeloPresentes.Add(item.Nome))
+                {
+                    if (valor != valorModelo)
+                        fechamento.Variacoes.Add(new VariacaoDespesaImportDTO { Nome = item.Nome, Valor = valor });
+                    continue;
+                }
+
+                extras.Add(new DespesaExtraImportDTO
                 {
                     Data = data,
                     Nome = item.Nome,
-                    Valor = item.Valor.GetValorDinheiro(),
+                    Valor = valor,
                     Setor = item.Setor.ToString(),
                     Categoria = item.Categoria,
                 });
             }
+
+            fechamento.RemoverItensModelo.AddRange(modelo.Keys.Where(n => !doModeloPresentes.Contains(n)));
+            fechamentos.Add(fechamento);
         }
 
-        return lista;
+        return (extras, fechamentos);
     }
 
     // ============================================================
@@ -332,6 +391,14 @@ public sealed class ExportacaoDadosService : IExportacaoDadosService
     private async Task<List<VeiculoConsignacaoImportDTO>> ExportarVeiculosConsignadosAsync(CancellationToken ct)
     {
         var veiculos = await _db.VeiculosConsignacao.AsNoTracking().ToListAsync(ct);
+        var historico = (await _db.HistoricosConsignacao.AsNoTracking().ToListAsync(ct))
+            .GroupBy(h => h.VeiculoConsignacaoId).ToDictionary(g => g.Key, g => g.OrderBy(h => h.DataCriacao).ToList());
+        DateTime? Evento(Guid id, TipoEventoConsignacao tipo, bool ultimo = false)
+        {
+            if (!historico.TryGetValue(id, out var eventos)) return null;
+            var doTipo = eventos.Where(e => e.TipoEvento == tipo).ToList();
+            return doTipo.Count == 0 ? null : (ultimo ? doTipo[^1] : doTipo[0]).DataCriacao;
+        }
         return veiculos.Select(v => new VeiculoConsignacaoImportDTO
         {
             Chave = v.Id.ToString(),
@@ -356,6 +423,12 @@ public sealed class ExportacaoDadosService : IExportacaoDadosService
             PrazoDias = Math.Max(1, (v.DataVencimento - v.DataInicio).Days),
             DataCriacao = v.DataCriacao,
             Cenario = CenarioConsignacao(v.Status),
+            DataVenda = Evento(v.Id, TipoEventoConsignacao.Venda),
+            DataConclusao = v.Status == StatusConsignacao.Concluida ? Evento(v.Id, TipoEventoConsignacao.MudancaStatus, ultimo: true) : null,
+            DataDevolucao = Evento(v.Id, TipoEventoConsignacao.Devolucao),
+            DataCancelamento = Evento(v.Id, TipoEventoConsignacao.Cancelamento),
+            MotivoCancelamento = historico.TryGetValue(v.Id, out var hs)
+                ? hs.LastOrDefault(e => e.TipoEvento == TipoEventoConsignacao.Cancelamento)?.Descricao : null,
         }).ToList();
     }
 
@@ -390,46 +463,78 @@ public sealed class ExportacaoDadosService : IExportacaoDadosService
     // ============================================================
     // PROPOSTAS DE VENDA
     // ============================================================
+    private const string PrefixoNegativaFinanciadora = "Financiadora não aprovou o financiamento: ";
+
     private async Task<List<PropostaVendaImportDTO>> ExportarPropostasVendaAsync(CancellationToken ct)
     {
-        var propostas = await _db.PropostasVenda.AsNoTracking().ToListAsync(ct);
-        var termosPorProposta = await _db.TermosEntrega.AsNoTracking()
-            .ToDictionaryAsync(t => t.PropostaVendaId, ct);
+        // Ordem de criação: um veículo com proposta cancelada e depois vendida
+        // precisa ser reencenado na mesma ordem.
+        var propostas = await _db.PropostasVenda.AsNoTracking().OrderBy(p => p.DataCriacao).ToListAsync(ct);
+        var termos = await _db.TermosEntrega.AsNoTracking().ToDictionaryAsync(t => t.PropostaVendaId, ct);
+        var vistorias = (await _db.Vistorias.AsNoTracking().ToListAsync(ct))
+            .GroupBy(v => v.PropostaVendaId).ToDictionary(g => g.Key, g => g.OrderBy(v => v.DataRealizada).Last());
+        var pagamentos = (await _db.PagamentosProposta.AsNoTracking().ToListAsync(ct))
+            .GroupBy(p => p.PropostaVendaId).ToDictionary(g => g.Key, g => g.OrderBy(p => p.DataPagamento).ToList());
 
         return propostas.Select(p =>
         {
-            termosPorProposta.TryGetValue(p.Id, out var termo);
+            termos.TryGetValue(p.Id, out var termo);
+            vistorias.TryGetValue(p.Id, out var vistoria);
+            var pags = pagamentos.GetValueOrDefault(p.Id) ?? new();
+            var valorFinal = p.ValorFinal.GetValorDinheiro();
+            var cenario = CenarioProposta(p, termo, pags.Count);
+            var negado = p.Status == StatusPropostaVenda.Rejeitada && (p.MotivoRejeicao?.StartsWith(PrefixoNegativaFinanciadora) ?? false);
+
             return new PropostaVendaImportDTO
             {
                 Chave = p.Id.ToString(),
-                VeiculoVendaChave = p.VeiculoVendaId.ToString(),
+                VeiculoVendaChave = p.IsConsignado ? "" : p.VeiculoVendaId.ToString(),
+                VeiculoConsignadoChave = p.IsConsignado ? p.VeiculoVendaId.ToString() : null,
                 ClienteChave = p.ClienteId.ToString(),
                 VendedorChave = p.VendedorId.ToString(),
                 ValorBase = p.ValorBase.GetValorDinheiro(),
                 DescontoPercentual = p.Desconto.GetDescontoValor(),
                 ModoPagamento = p.ModoPagamento == ModoPagamento.NaoDefinido ? null : p.ModoPagamento.ToString(),
+                ValorEntrada = p.Entrada.GetValorDinheiro() > 0 ? p.Entrada.GetValorDinheiro() : null,
                 TextoPropostaFinanciadora = p.PropostaFinanciadoraTexto,
-                MotivoRejeicao = p.MotivoRejeicao,
+                MotivoRejeicao = negado ? p.MotivoRejeicao![PrefixoNegativaFinanciadora.Length..] : p.MotivoRejeicao,
+                MotivoCancelamento = p.MotivoCancelamento,
                 DataCriacao = p.DataCriacao,
                 DataAprovacao = p.DataAprovacao,
-                Cenario = CenarioProposta(p, termo),
+                Cenario = cenario,
+                Pagamentos = pags.Select(x => new PagamentoImportDTO
+                {
+                    Modo = x.ModoPagamento.ToString(),
+                    Percentual = valorFinal > 0 ? x.Valor.GetValorDinheiro() / valorFinal * 100m : 0m,
+                    Data = x.DataPagamento,
+                }).ToList(),
+                DataVistoria = vistoria?.DataRealizada,
+                ObservacoesVistoria = string.IsNullOrWhiteSpace(vistoria?.Observacoes) ? null : vistoria!.Observacoes,
+                TextoTermo = termo?.TextoTermo,
+                DataTermo = termo?.DataRedacao,
+                DataAssinatura = termo?.DataAssinatura,
+                AssinaturaNome = termo?.AssinaturaNomeCliente,
+                AssinaturaCpf = termo?.AssinaturaCpfCliente,
             };
         }).ToList();
     }
 
-    private static string CenarioProposta(PropostaVenda p, TermoEntrega? termo) => p.Status switch
+    private static string CenarioProposta(PropostaVenda p, TermoEntrega? termo, int qtdPagamentos) => p.Status switch
     {
-        StatusPropostaVenda.Rejeitada => "rejeitada",
+        StatusPropostaVenda.Rejeitada =>
+            p.MotivoRejeicao?.StartsWith(PrefixoNegativaFinanciadora) == true ? "financiamentoNegado" : "rejeitada",
+        StatusPropostaVenda.Cancelada => "cancelada",
+        StatusPropostaVenda.AguardandoFinanciadora => "aguardandoFinanciadora",
+        StatusPropostaVenda.PropostaFinanciadoraRecebida => "respostaFinanciadora",
         StatusPropostaVenda.Aprovada => "aprovada",
-        StatusPropostaVenda.VistoriaConcluida => "vistoriada",
-        StatusPropostaVenda.AguardandoAssinaturaTermo =>
-            termo?.Status == StatusTermoEntrega.AguardandoAssinatura ? "termoEnviado" : "termoRedigido",
+        StatusPropostaVenda.AguardandoVistoria => "aguardandoVistoria",
+        StatusPropostaVenda.VistoriaConcluida =>
+            termo is not null ? "termoRedigido" : qtdPagamentos > 0 ? "pagamentoParcial" : "vistoriada",
+        StatusPropostaVenda.AguardandoAssinaturaTermo => "termoEnviado",
         StatusPropostaVenda.Concluida =>
             p.ModoPagamento == ModoPagamento.Financiamento ? "concluidaFinanciada" : "concluidaAVista",
-        // Rascunho, Criada, Enviada (legado), Cancelada, Expirada, e os estágios
-        // intermediários de financiamento (AguardandoFinanciadora,
-        // PropostaFinanciadoraRecebida) não têm um cenário resumível seguro —
-        // fica em "criada", ponto de partida que nunca tenta uma transição inválida.
+        // Criada / Rascunho / Enviada (legado) / Expirada — Expirada volta a
+        // expirar sozinha na 1ª leitura (DataCriacao antiga).
         _ => "criada",
     };
 
@@ -438,59 +543,107 @@ public sealed class ExportacaoDadosService : IExportacaoDadosService
     // ============================================================
     private async Task<List<OrdemServicoImportDTO>> ExportarOrdensServicoAsync(CancellationToken ct)
     {
-        var ordens = await _db.OrdensServico.AsNoTracking().Include(o => o.Itens).ToListAsync(ct);
-        var pagamentoPorOrdem = await _db.PagamentosOrdemServico.AsNoTracking()
-            .GroupBy(p => p.OrdemServicoId)
-            .ToDictionaryAsync(g => g.Key, g => g.First(), ct);
-        var ordensComAlerta = (await _db.AlertasOS.AsNoTracking().Select(a => a.OrdemServicoId).ToListAsync(ct))
-            .ToHashSet();
+        var ordens = await _db.OrdensServico.AsNoTracking().Include(o => o.Itens).Include(o => o.Checklist)
+            .OrderBy(o => o.DataCriacao).ToListAsync(ct);
+        var pagamentos = (await _db.PagamentosOrdemServico.AsNoTracking().ToListAsync(ct))
+            .GroupBy(p => p.OrdemServicoId).ToDictionary(g => g.Key, g => g.OrderBy(p => p.DataPagamento).ToList());
+        var alertas = (await _db.AlertasOS.AsNoTracking().ToListAsync(ct))
+            .GroupBy(a => a.OrdemServicoId).ToDictionary(g => g.Key, g => g.OrderBy(a => a.DataCriacao).Last());
+        var rejeitadas = (await _db.RequisicoesPeca.AsNoTracking().Where(r => r.Status == StatusRequisicaoPeca.Rejeitada).ToListAsync(ct))
+            .GroupBy(r => r.OrdemServicoId).ToDictionary(g => g.Key, g => g.OrderBy(r => r.DataCriacao).First());
+        var vistorias = await _db.VistoriasOrdemServico.AsNoTracking().ToDictionaryAsync(v => v.OrdemServicoId, ct);
 
         return ordens.Select(os =>
         {
-            pagamentoPorOrdem.TryGetValue(os.Id, out var pagamento);
+            var pags = pagamentos.GetValueOrDefault(os.Id) ?? new();
+            alertas.TryGetValue(os.Id, out var alerta);
+            rejeitadas.TryGetValue(os.Id, out var rejeitada);
+            vistorias.TryGetValue(os.Id, out var vistoria);
+            var total = os.ValorTotal.GetValorDinheiro();
+            var checklistIniciado = os.Checklist.Any(c => c.Status != StatusChecklistItem.Pendente);
+
             return new OrdemServicoImportDTO
             {
                 Chave = os.Id.ToString(),
                 VeiculoClienteChave = os.VeiculoClienteId.ToString(),
                 ClienteChave = os.ClienteId.ToString(),
                 MecanicoChave = os.MecanicoId.ToString(),
+                RecepcionistaChave = vistoria?.RecepcionistaId.ToString(),
+                TextoVistoria = string.IsNullOrWhiteSpace(vistoria?.TextoContrato) ? null : vistoria!.TextoContrato,
+                DataVistoria = vistoria?.DataInicio,
+                DataAprovacaoCliente = vistoria?.DataConclusao,
                 Tipo = os.Tipo.ToString(),
                 Descricao = os.Descricao,
                 PrazoDiasAPartirDaCriacao = Math.Max(1, (os.PrazoEstimado - os.DataCriacao).Days),
                 CustoServico = os.CustoServico.GetValorDinheiro(),
-                ModoPagamento = pagamento?.ModoPagamento.ToString(),
+                ModoPagamento = pags.FirstOrDefault()?.ModoPagamento.ToString(),
                 DataCriacao = os.DataCriacao,
-                Cenario = CenarioOrdemServico(os.Status),
-                // Item com ComponenteId nulo (peça do cliente sem cadastro na
-                // oficina) não tem "chave" pra referenciar — não dá pra reexportar.
-                Itens = os.Itens
-                    .Where(i => i.ComponenteId.HasValue)
-                    .Select(i => new ItemOrdemServicoImportDTO
-                    {
-                        ComponenteChave = i.ComponenteId!.Value.ToString(),
-                        Quantidade = i.Quantidade,
-                        Origem = i.Origem.ToString(),
-                    })
-                    .ToList(),
-                ComAlerta = ordensComAlerta.Contains(os.Id),
-                // O preset de checklist usado na criação não fica registrado na OS
-                // (só no momento da criação) — não há como recuperá-lo depois.
+                Cenario = CenarioOrdemServico(os.Status, vistoria, alerta is not null || checklistIniciado),
+                Itens = os.Itens.Select(i => new ItemOrdemServicoImportDTO
+                {
+                    ComponenteChave = i.ComponenteId?.ToString() ?? "",
+                    Quantidade = i.Quantidade,
+                    Origem = i.Origem.ToString(),
+                    DescricaoLivre = i.DescricaoLivre,
+                    ValorUnitario = i.ValorUnitario.GetValorDinheiro(),
+                }).ToList(),
+                // Checklist explícito (o preset usado na abertura não fica na OS).
+                Checklist = os.Checklist.OrderBy(c => c.OrdemExibicao).Select(c => new ChecklistItemImportDTO
+                {
+                    Descricao = c.Descricao,
+                    Concluido = c.Status == StatusChecklistItem.Concluido,
+                }).ToList(),
                 ChecklistPresetChave = null,
+                Alerta = alerta is null ? null : new AlertaImportDTO
+                {
+                    Descricao = alerta.Descricao,
+                    Decisao = alerta.Status switch
+                    {
+                        StatusAlertaOS.ClienteAprovou => "aprovado",
+                        StatusAlertaOS.ClienteRecusou => "recusado",
+                        _ => "pendente",
+                    },
+                    ObservacaoCliente = alerta.ObservacaoCliente,
+                    Data = alerta.DataCriacao,
+                    DataDecisao = alerta.DataResolucao,
+                },
+                RequisicaoRejeitada = rejeitada is null ? null : new RequisicaoRejeitadaImportDTO
+                {
+                    DescricaoPeca = rejeitada.DescricaoPeca,
+                    Motivo = rejeitada.ObservacaoAdmin ?? "",
+                    Data = rejeitada.DataCriacao,
+                },
+                Pagamentos = pags.Select(x => new PagamentoImportDTO
+                {
+                    Modo = x.ModoPagamento.ToString(),
+                    Percentual = total > 0 ? x.Valor.GetValorDinheiro() / total * 100m : 0m,
+                    Data = x.DataPagamento,
+                }).ToList(),
             };
         }).ToList();
     }
 
-    private static string CenarioOrdemServico(StatusOrdemServico status) => status switch
+    private static string CenarioOrdemServico(StatusOrdemServico status, VistoriaOrdemServico? vistoria, bool trabalhoIniciado) => status switch
     {
         StatusOrdemServico.Pendente => "pendente",
-        StatusOrdemServico.Cancelada => "cancelada",
+        // Estágios do fluxo com vistoria (doc 32) — sem registro de vistoria
+        // (dado legado), o mais próximo reencenável é "pendente".
+        StatusOrdemServico.EmVistoria => vistoria is not null ? "emVistoria" : "pendente",
+        StatusOrdemServico.AguardandoCliente => vistoria is not null ? "aguardandoCliente" : "pendente",
+        StatusOrdemServico.Aprovada => vistoria is not null ? "aprovada" : "pendente",
+        StatusOrdemServico.BuscandoPecasParaOrcamento => "aguardandoPeca",
+        StatusOrdemServico.EmAndamento => "emAndamento",
+        StatusOrdemServico.Pausada => "pausada",
+        // PagamentoPendente é legado (FinalizarAsync hoje exige pagamento) —
+        // o mais próximo é checklist pronta, ainda EmAndamento.
         StatusOrdemServico.PagamentoPendente => "finalizadaPendente",
         StatusOrdemServico.Finalizada => "finalizadaPaga",
         StatusOrdemServico.Entregue => "entregue",
-        // EmVistoria, BuscandoPecasParaOrcamento, AguardandoCliente, Aprovada,
-        // EmAndamento, Pausada — todos são sub-estágios de "em andamento" no
-        // funil do importador, que não os distingue.
-        _ => "emAndamento",
+        StatusOrdemServico.Cancelada =>
+            trabalhoIniciado ? "canceladaEmAndamento"
+            : vistoria is { Concluida: true } ? "orcamentoRecusado"
+            : "cancelada",
+        _ => "pendente",
     };
 
     // ============================================================
@@ -498,22 +651,36 @@ public sealed class ExportacaoDadosService : IExportacaoDadosService
     // ============================================================
     private async Task<List<TestDriveImportDTO>> ExportarTestDrivesAsync(CancellationToken ct)
     {
-        var testDrives = await _db.TestDrives.AsNoTracking().ToListAsync(ct);
-        return testDrives.Select(t => new TestDriveImportDTO
+        var testDrives = await _db.TestDrives.AsNoTracking().OrderBy(t => t.DataHora).ToListAsync(ct);
+        var termos = await _db.TermosTestDrive.AsNoTracking().ToDictionaryAsync(t => t.TestDriveId, ct);
+        return testDrives.Select(t =>
         {
-            Chave = t.Id.ToString(),
-            VeiculoVendaChave = t.VeiculoVendaId.ToString(),
-            ClienteChave = t.ClienteId.ToString(),
-            VendedorChave = t.VendedorId.ToString(),
-            DataHora = t.DataHora,
-            Observacao = t.Observacao,
-            Cenario = t.Status switch
+            termos.TryGetValue(t.Id, out var termo);
+            return new TestDriveImportDTO
             {
-                StatusTestDrive.Realizado => "realizado",
-                StatusTestDrive.Cancelado => "cancelado",
-                StatusTestDrive.NaoCompareceu => "naoCompareceu",
-                _ => "agendado",
-            },
+                Chave = t.Id.ToString(),
+                // Consignado (doc 31) vai na chave própria — antes ia como
+                // veiculoVendaChave e o registro era descartado na reimportação.
+                VeiculoVendaChave = t.IsConsignado ? "" : t.VeiculoVendaId.ToString(),
+                VeiculoConsignadoChave = t.IsConsignado ? t.VeiculoVendaId.ToString() : null,
+                ClienteChave = t.ClienteId.ToString(),
+                VendedorChave = t.VendedorId.ToString(),
+                DataHora = t.DataHora,
+                Observacao = t.Observacao,
+                Cenario = t.Status switch
+                {
+                    StatusTestDrive.Realizado => "realizado",
+                    StatusTestDrive.Cancelado => "cancelado",
+                    StatusTestDrive.NaoCompareceu => "naoCompareceu",
+                    _ => "agendado",
+                },
+                Termo = termo?.Status switch
+                {
+                    StatusTermoTestDrive.Assinado => "assinado",
+                    StatusTermoTestDrive.AguardandoAssinatura => "enviado",
+                    _ => "rascunho",
+                },
+            };
         }).ToList();
     }
 }

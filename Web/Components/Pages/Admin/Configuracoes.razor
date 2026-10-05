@@ -11,6 +11,7 @@
 @inject IChecklistPresetService PresetService
 @inject ITemplateDocumentoService TemplateDocService
 @inject IImportacaoDadosService ImportacaoService
+@inject IBackupBancoService BackupService
 @inject IPermissaoAcessoService PermissaoService
 @inject NavigationManager Nav
 
@@ -56,10 +57,14 @@
                        Descricao="Templates dos documentos gerados pelo sistema (termos, propostas)." />
             <SecaoCard Titulo="Permissões de acesso" Icone="🔐" Href="/configuracoes?aba=permissoes"
                        Descricao="Escolha quais papéis acessam cada página e ação do sistema." />
+            <AuthorizeView Roles="Admin">
+                <SecaoCard Titulo="Backup completo" Icone="💾" Href="/configuracoes?aba=backup"
+                           Descricao="Cópia exata do sistema (recomendado para não perder dados). Baixar e restaurar." />
+            </AuthorizeView>
             <SecaoCard Titulo="Importar dados" Icone="📥" Href="/configuracoes?aba=importar"
-                       Descricao="Carrega uma base de dados a partir de um arquivo." />
+                       Descricao="Carrega dados editáveis a partir de um arquivo JSON." />
             <SecaoCard Titulo="Exportar dados" Icone="📤" Href="/configuracoes?aba=exportar"
-                       Descricao="Baixa todo o banco de dados da aplicação em um arquivo JSON." />
+                       Descricao="Dados editáveis em JSON — perde senhas e históricos, não use como backup." />
         </div>
     }
     else if (carregando)
@@ -376,6 +381,10 @@
                     redatando pro histórico, se uma data for informada. Pensado para popular o
                     sistema com uma base de demonstração pronta, sem precisar cadastrar tudo na mão.
                 </p>
+                <div class="aviso-backup">
+                    Para voltar o sistema a um estado salvo, use <a href="/configuracoes?aba=backup">Backup completo</a>
+                    — importar JSON cria registros novos e não é uma restauração.
+                </div>
 
                 <div class="importar-upload">
                     <InputFile OnChange="OnArquivoSelecionado" accept=".json" disabled="@importando" />
@@ -430,6 +439,106 @@
             </section>
         }
 
+        @if (abaAtiva == "backup")
+        {
+            <AuthorizeView Roles="Admin">
+                <Authorized>
+                    <section class="cfg-card-full" data-tour="cfg-backup-completo">
+                        <h2>Backup completo</h2>
+                        <p class="muted">
+                            <strong>Backup = cópia exata do sistema (recomendado para não perder dados).</strong>
+                            O arquivo <code>.db</code> guarda tudo como está agora — usuários e senhas, valores,
+                            status, históricos, pagamentos, documentos assinados e configurações. Restaurá-lo
+                            volta o sistema exatamente a este ponto.
+                        </p>
+                        <p class="muted">
+                            <strong>Exportar JSON = dados editáveis, perde senhas/históricos — não use como backup.</strong>
+                        </p>
+
+                        <div class="backup-bloco" data-tour="cfg-backup-baixar">
+                            <h3>Baixar backup</h3>
+                            <p class="muted">
+                                Gera um arquivo <code>delore-backup-AAAA-MM-DD-HHmm.db</code> com o sistema em uso
+                                (pode ser feito com o sistema funcionando). Guarde-o fora deste computador.
+                            </p>
+                            <div class="acoes">
+                                <a class="btn-salvar" href="/api/configuracoes/backup" target="_blank" rel="noopener">
+                                    Baixar backup
+                                </a>
+                            </div>
+                            <p class="muted backup-pasta">
+                                Além disso, a cada vez que o sistema é iniciado uma cópia automática é gravada em
+                                <code>@BackupService.PastaBackups</code> (ficam as 7 mais recentes).
+                            </p>
+                        </div>
+
+                        <div class="backup-bloco backup-restaurar" data-tour="cfg-backup-restaurar">
+                            <h3>Restaurar backup</h3>
+                            <p class="muted">
+                                Envie um arquivo <code>.db</code> gerado em "Baixar backup". Antes de restaurar, o
+                                sistema salva automaticamente uma cópia de segurança do banco atual.
+                            </p>
+
+                            <div class="importar-upload">
+                                <InputFile OnChange="OnBackupSelecionado" accept=".db" disabled="@restaurando" />
+                                @if (arquivoBackup is not null)
+                                {
+                                    <span class="importar-arquivo-nome">@arquivoBackup.Name (@FormatarTamanho(arquivoBackup.Size))</span>
+                                }
+                            </div>
+
+                            @if (arquivoBackup is not null && resultadoRestauracao is null)
+                            {
+                                <label class="check-line backup-confirmacao">
+                                    <input type="checkbox" checked="@confirmouRestauracao" disabled="@restaurando"
+                                           @onchange="e => confirmouRestauracao = (bool)(e.Value ?? false)" />
+                                    Entendo que a restauração <strong>substitui TODOS os dados atuais</strong> do sistema
+                                    pelo conteúdo deste arquivo.
+                                </label>
+                            }
+
+                            @if (erroRestauracao is not null)
+                            {
+                                <div class="erro-banner">@erroRestauracao</div>
+                            }
+
+                            <div class="acoes">
+                                <button type="button" class="btn-perigo" @onclick="RestaurarBackup"
+                                        disabled="@(restaurando || arquivoBackup is null || !confirmouRestauracao)">
+                                    @(restaurando ? "Restaurando..." : "Restaurar backup")
+                                </button>
+                            </div>
+
+                            @if (resultadoRestauracao is not null)
+                            {
+                                <div class="importar-resultado">
+                                    <h3>Backup restaurado.</h3>
+                                    <p>
+                                        Cópia de segurança dos dados anteriores:
+                                        <code>@resultadoRestauracao.CaminhoCopiaSeguranca</code>
+                                    </p>
+                                    @if (resultadoRestauracao.MigrationsAplicadas > 0)
+                                    {
+                                        <p>@resultadoRestauracao.MigrationsAplicadas atualização(ões) de versão aplicada(s) ao backup.</p>
+                                    }
+                                    <p>Recarregue as outras abas abertas do sistema para ver os dados restaurados.</p>
+                                    <div class="acoes">
+                                        <button type="button" class="btn-salvar" @onclick="RecarregarAposRestaurar">Recarregar agora</button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </section>
+                </Authorized>
+                <NotAuthorized>
+                    <section class="cfg-card-full">
+                        <h2>Backup completo</h2>
+                        <p class="muted">Somente o administrador pode baixar ou restaurar o backup completo.</p>
+                    </section>
+                </NotAuthorized>
+            </AuthorizeView>
+        }
+
         @if (abaAtiva == "exportar")
         {
             <section class="cfg-card-full" data-tour="cfg-exportar-dados">
@@ -441,6 +550,10 @@
                     arquivo baixado e reimportá-lo depois, para atualizar ou restaurar os dados. O
                     arquivo pode ser grande; a geração leva alguns segundos.
                 </p>
+                <div class="aviso-backup">
+                    <strong>Exportar JSON = dados editáveis, perde senhas/históricos — não use como backup.</strong>
+                    Para guardar uma cópia exata do sistema, use <a href="/configuracoes?aba=backup">Backup completo</a>.
+                </div>
 
                 <div class="acoes">
                     <a class="btn-salvar" href="/api/configuracoes/exportar-dados" target="_blank" rel="noopener">
@@ -650,6 +763,20 @@
     .importar-resumo { list-style:disc; padding-left:20px; margin:0 0 12px; color:#166534; }
     .importar-avisos { list-style:disc; padding-left:20px; margin:0; color:#9a3412; font-size:0.9em; max-height:260px; overflow-y:auto; }
     .importar-avisos li { margin-bottom:4px; }
+
+    /* Backup completo */
+    .aviso-backup { margin:12px 0; padding:10px 14px; border-radius:var(--raio-sm, 6px);
+        background:var(--cor-atencao-bg, #fff7ed); color:var(--cor-atencao-tx, #c2410c); font-size:0.9em; }
+    .aviso-backup a { color:inherit; text-decoration:underline; }
+    .backup-bloco { margin-top:20px; padding-top:16px; border-top:1px solid var(--cor-linha, #e0e0e0); }
+    .backup-bloco h3 { margin:0 0 6px; font-size:1em; }
+    .backup-pasta { font-size:0.85em; margin-top:10px; word-break:break-all; }
+    .backup-confirmacao { display:flex; align-items:flex-start; gap:8px; margin:4px 0 12px; font-size:0.92em; }
+    .importar-resultado code { word-break:break-all; }
+    .btn-perigo { background:var(--cor-marca, #e02020); color:#fff; border:none; border-radius:var(--raio-sm, 6px);
+        padding:8px 16px; font-weight:500; cursor:pointer; }
+    .btn-perigo:hover:not(:disabled) { background:var(--cor-marca-hover, #c01818); }
+    .btn-perigo:disabled { opacity:0.5; cursor:not-allowed; }
 
     @@media (max-width: 800px) { .cfg-grid { grid-template-columns:1fr; } }
 </style>
@@ -1004,6 +1131,68 @@
             importando = false;
         }
     }
+
+    // ===================== BACKUP COMPLETO =====================
+    private IBrowserFile? arquivoBackup;
+    private bool confirmouRestauracao;
+    private bool restaurando;
+    private string? erroRestauracao;
+    private RestauracaoBackupResultado? resultadoRestauracao;
+    private const long TamanhoMaximoBackup = 200L * 1024 * 1024; // 200 MB — o .db da demo tem dezenas de MB
+
+    private void OnBackupSelecionado(InputFileChangeEventArgs e)
+    {
+        arquivoBackup = e.File;
+        confirmouRestauracao = false;
+        erroRestauracao = null;
+        resultadoRestauracao = null;
+        if (arquivoBackup is not null && arquivoBackup.Size > TamanhoMaximoBackup)
+        {
+            erroRestauracao = "O arquivo passa de 200 MB — confira se é um backup do DELORE.";
+            arquivoBackup = null;
+        }
+    }
+
+    private async Task RestaurarBackup()
+    {
+        if (arquivoBackup is null || !confirmouRestauracao) return;
+
+        restaurando = true;
+        erroRestauracao = null;
+        resultadoRestauracao = null;
+        StateHasChanged();
+
+        try
+        {
+            await using var stream = arquivoBackup.OpenReadStream(TamanhoMaximoBackup);
+            var r = await BackupService.RestaurarAsync(stream);
+            if (r.IsSuccess)
+            {
+                resultadoRestauracao = r.Value;
+                MostrarOk("Backup restaurado com sucesso.");
+            }
+            else
+            {
+                erroRestauracao = r.Error;
+            }
+        }
+        catch (IOException)
+        {
+            erroRestauracao = "Não foi possível ler o arquivo enviado (conexão interrompida ou arquivo grande demais).";
+        }
+        finally
+        {
+            restaurando = false;
+            confirmouRestauracao = false;
+        }
+    }
+
+    private void RecarregarAposRestaurar() => Nav.NavigateTo("/configuracoes?aba=backup", forceLoad: true);
+
+    private static string FormatarTamanho(long bytes) =>
+        bytes >= 1024 * 1024
+            ? $"{bytes / 1024d / 1024d:0.0} MB"
+            : $"{bytes / 1024d:0} KB";
 
     private void MostrarOk(string? msg) { mensagem = msg ?? ""; mensagemErro = false; }
     private void MostrarErro(string? msg) { mensagem = msg ?? "Erro"; mensagemErro = true; }

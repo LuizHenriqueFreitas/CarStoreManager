@@ -9,6 +9,15 @@ using CarStoreManager.Geradores.Nucleo;
 // e reaproveitamento.
 // =====================================================================
 
+// Modo arquivo: --importar <arquivo.json> / --exportar <arquivo.json>
+// (formato chave/cenario de Configurações → Importar dados) — ver
+// Nucleo/ImportacaoCli.cs. Não roda os geradores aleatórios abaixo.
+if (ImportacaoCli.EhComando(args))
+{
+    Environment.ExitCode = await ImportacaoCli.ExecutarAsync(args);
+    return;
+}
+
 var opcoes = OpcoesCli.Analisar(args);
 
 if (opcoes.MostrarAjuda)

@@ -355,7 +355,7 @@ public static partial class RegistroDeTours
         {
             RotaTemplate = "/configuracoes",
             Titulo = "Configurações do sistema",
-            Descricao = "Integrações, checklists, modo operante, documentos e importação.",
+            Descricao = "Integrações, checklists, modo operante, documentos, backup e importação.",
             Passos = new List<PassoTour>
             {
                 new()
@@ -407,10 +407,19 @@ public static partial class RegistroDeTours
                 new()
                 {
                     Seletor = null,
+                    Titulo = "Backup completo",
+                    Texto = "Backup = cópia exata do sistema (recomendado para não perder dados). \"Baixar backup\" " +
+                        "gera um arquivo .db com tudo — senhas, valores, históricos; \"Restaurar backup\" volta o " +
+                        "sistema àquele ponto, substituindo todos os dados atuais (antes, uma cópia de segurança do " +
+                        "banco atual é salva). Ao iniciar, o sistema também grava uma cópia automática (as 7 últimas)."
+                },
+                new()
+                {
+                    Seletor = null,
                     Titulo = "Importar e Exportar dados",
-                    Texto = "Importar carrega uma base a partir de um arquivo JSON. Exportar baixa todo o banco " +
-                        "de dados da aplicação num único arquivo JSON — use para backup. A planilha de despesas " +
-                        "mudou de lugar: agora fica no Financeiro."
+                    Texto = "Exportar JSON = dados editáveis, perde senhas/históricos — não use como backup. " +
+                        "Importar carrega dados a partir desse mesmo formato JSON, criando os registros pelas regras " +
+                        "do sistema. A planilha de despesas mudou de lugar: agora fica no Financeiro."
                 },
                 new()
                 {
@@ -438,7 +447,7 @@ public static partial class RegistroDeTours
         {
             RotaTemplate = "/configuracoes/sistema",
             Titulo = "Configurações do sistema",
-            Descricao = "Integrações, checklists, modo operante, documentos e importação.",
+            Descricao = "Integrações, checklists, modo operante, documentos, backup e importação.",
             Passos = new List<PassoTour>
             {
                 new()
@@ -490,10 +499,19 @@ public static partial class RegistroDeTours
                 new()
                 {
                     Seletor = null,
+                    Titulo = "Backup completo",
+                    Texto = "Backup = cópia exata do sistema (recomendado para não perder dados). \"Baixar backup\" " +
+                        "gera um arquivo .db com tudo — senhas, valores, históricos; \"Restaurar backup\" volta o " +
+                        "sistema àquele ponto, substituindo todos os dados atuais (antes, uma cópia de segurança do " +
+                        "banco atual é salva). Ao iniciar, o sistema também grava uma cópia automática (as 7 últimas)."
+                },
+                new()
+                {
+                    Seletor = null,
                     Titulo = "Importar e Exportar dados",
-                    Texto = "Importar carrega uma base a partir de um arquivo JSON. Exportar baixa todo o banco " +
-                        "de dados da aplicação num único arquivo JSON — use para backup. A planilha de despesas " +
-                        "mudou de lugar: agora fica no Financeiro."
+                    Texto = "Exportar JSON = dados editáveis, perde senhas/históricos — não use como backup. " +
+                        "Importar carrega dados a partir desse mesmo formato JSON, criando os registros pelas regras " +
+                        "do sistema. A planilha de despesas mudou de lugar: agora fica no Financeiro."
                 },
                 new()
                 {

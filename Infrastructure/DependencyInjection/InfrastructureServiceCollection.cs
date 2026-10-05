@@ -127,6 +127,7 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IBackdateService, BackdateService>();
         services.AddScoped<IImportacaoDadosService, ImportacaoDadosService>();
         services.AddScoped<IExportacaoDadosService, Services.Sistema.ExportacaoDadosService>();
+        services.AddScoped<CarStoreManager.Application.Interfaces.Sistema.IBackupBancoService, Services.Sistema.BackupBancoService>();
         services.AddScoped<CarStoreManager.Application.Interfaces.Sistema.IDocumentosService, CarStoreManager.Application.Services.Sistema.DocumentosService>();
 
         // =========================

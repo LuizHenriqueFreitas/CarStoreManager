@@ -1,0 +1,1876 @@
+{
+ "usuarios": [
+  {
+   "chave": "usr-1",
+   "tipo": "Vendedor",
+   "nome": "Ana Silva (Vendedor)",
+   "email": "usr-1@carstore.com.br",
+   "telefone": "21913356886",
+   "senha": "Teste@123",
+   "nivel": "Junior",
+   "dataContratacao": "2024-12-08T11:00:00"
+  },
+  {
+   "chave": "usr-2",
+   "tipo": "Vendedor",
+   "nome": "Bruno Costa (Vendedor)",
+   "email": "usr-2@carstore.com.br",
+   "telefone": "31923756669",
+   "senha": "Teste@123",
+   "nivel": "Pleno",
+   "dataContratacao": "2025-12-19T15:00:00"
+  },
+  {
+   "chave": "usr-6",
+   "tipo": "Mecanico",
+   "nome": "Fábio Lima (Mecanico)",
+   "email": "usr-6@carstore.com.br",
+   "telefone": "11931429110",
+   "senha": "Teste@123",
+   "nivel": "Junior",
+   "dataContratacao": "2024-02-11T13:00:00",
+   "especialidade": "Motor"
+  },
+  {
+   "chave": "usr-7",
+   "tipo": "Mecanico",
+   "nome": "Gabriela Rocha (Mecanico)",
+   "email": "usr-7@carstore.com.br",
+   "telefone": "31938898923",
+   "senha": "Teste@123",
+   "nivel": "Pleno",
+   "dataContratacao": "2024-08-04T09:00:00",
+   "especialidade": "Freios"
+  },
+  {
+   "chave": "usr-14",
+   "tipo": "Recepcionista",
+   "nome": "Nelson Cardoso (Recepcionista)",
+   "email": "usr-14@carstore.com.br",
+   "telefone": "31959684848",
+   "senha": "Teste@123",
+   "nivel": "Junior",
+   "dataContratacao": "2024-07-07T13:00:00"
+  },
+  {
+   "chave": "usr-17",
+   "tipo": "ChefeOficina",
+   "nome": "Queila Araujo (ChefeOficina)",
+   "email": "usr-17@carstore.com.br",
+   "telefone": "41953524491",
+   "senha": "Teste@123",
+   "nivel": "Junior",
+   "dataContratacao": "2026-02-08T08:00:00"
+  },
+  {
+   "chave": "usr-21",
+   "tipo": "Admin",
+   "nome": "Ursula Farias (Admin)",
+   "email": "usr-21@carstore.com.br",
+   "telefone": "51988461803",
+   "senha": "Teste@123"
+  }
+ ],
+ "clientes": [
+  {
+   "chave": "cli-1",
+   "nome": "Ana Silva",
+   "cpf": "11122247001",
+   "telefone": "71958586340",
+   "email": "cli-1@emaildemo.com.br",
+   "endereco": {
+    "logradouro": "Rua Ana Santos",
+    "numero": "293",
+    "complemento": "Apto 532",
+    "bairro": "Boa Vista",
+    "cidade": "Uberlândia",
+    "uf": "MG",
+    "cep": "12000000"
+   },
+   "dataCriacao": "2026-09-28T09:00:00"
+  },
+  {
+   "chave": "cli-2",
+   "nome": "Bruno Costa",
+   "cpf": "11122260792",
+   "telefone": "31966661351",
+   "email": "cli-2@emaildemo.com.br",
+   "endereco": {
+    "logradouro": "Rua Bruno Silva",
+    "numero": "798",
+    "complemento": "",
+    "bairro": "Boa Vista",
+    "cidade": "Santos",
+    "uf": "SP",
+    "cep": "77700000"
+   },
+   "dataCriacao": "2026-08-17T13:00:00"
+  },
+  {
+   "chave": "cli-3",
+   "nome": "Carla Souza",
+   "cpf": "11122274408",
+   "telefone": "11925374874",
+   "email": "cli-3@emaildemo.com.br",
+   "endereco": {
+    "logradouro": "Rua Carla Lima",
+    "numero": "1584",
+    "complemento": "",
+    "bairro": "Vila Nova",
+    "cidade": "Londrina",
+    "uf": "PR",
+    "cep": "15400000"
+   },
+   "dataCriacao": "2026-07-14T10:00:00"
+  },
+  {
+   "chave": "cli-4",
+   "nome": "Diego Alves",
+   "cpf": "11122288107",
+   "telefone": "11945351479",
+   "email": "cli-4@emaildemo.com.br",
+   "endereco": {
+    "logradouro": "Rua Diego Santos",
+    "numero": "1049",
+    "complemento": "Apto 119",
+    "bairro": "Vila Nova",
+    "cidade": "Curitiba",
+    "uf": "PR",
+    "cep": "82800000"
+   },
+   "dataCriacao": "2026-06-20T11:00:00"
+  },
+  {
+   "chave": "cli-5",
+   "nome": "Elaine Ferreira",
+   "cpf": "11122301812",
+   "telefone": "61931682744",
+   "email": "cli-5@emaildemo.com.br",
+   "endereco": {
+    "logradouro": "Rua Elaine Silva",
+    "numero": "1236",
+    "complemento": "",
+    "bairro": "Vila Nova",
+    "cidade": "Santos",
+    "uf": "SP",
+    "cep": "63000000"
+   },
+   "dataCriacao": "2026-05-04T14:00:00"
+  },
+  {
+   "chave": "cli-6",
+   "nome": "Fábio Lima",
+   "cpf": "11122315520",
+   "telefone": "41917774584",
+   "email": "cli-6@emaildemo.com.br",
+   "endereco": {
+    "logradouro": "Rua Fábio Santos",
+    "numero": "1808",
+    "complemento": "",
+    "bairro": "Alto da Serra",
+    "cidade": "Niterói",
+    "uf": "RJ",
+    "cep": "11100000"
+   },
+   "dataCriacao": "2026-04-24T16:00:00"
+  }
+ ],
+ "fornecedores": [
+  {
+   "chave": "forn-1",
+   "nome": "Auto Peças Bosch Distribuidora",
+   "cnpj": "11000000913774",
+   "email": "forn-1@fornecedordemo.com.br",
+   "telefone": "41975529051",
+   "endereco": {
+    "logradouro": "Avenida Industrial",
+    "numero": "1897",
+    "complemento": "",
+    "bairro": "Distrito Industrial",
+    "cidade": "Porto Alegre",
+    "uf": "RS",
+    "cep": "35600000"
+   }
+  },
+  {
+   "chave": "forn-2",
+   "nome": "Fras-le Comércio de Autopeças",
+   "cnpj": "11000001827472",
+   "email": "forn-2@fornecedordemo.com.br",
+   "telefone": "11962191530",
+   "endereco": {
+    "logradouro": "Avenida Industrial",
+    "numero": "2853",
+    "complemento": "",
+    "bairro": "Distrito Industrial",
+    "cidade": "Curitiba",
+    "uf": "PR",
+    "cep": "86600000"
+   }
+  }
+ ],
+ "componentes": [
+  {
+   "chave": "comp-7",
+   "fornecedorChave": "forn-2",
+   "skuInterno": "SKU-1013",
+   "nome": "Junta do cabeçote",
+   "descricao": "Junta do cabeçote — peça de reposição, sistema motor.",
+   "marcaFabricante": "Bosch",
+   "partNumber": "PN-1014",
+   "codigoBarras": "6001807519611",
+   "ncm": "73001391",
+   "categoria": "Vedação",
+   "unidade": "UN",
+   "sistema": "Motor",
+   "peso": 7.2,
+   "garantiaDias": 180,
+   "custoUnitario": 100,
+   "margemLucroPct": 25,
+   "reposicoesEstoque": [
+    {
+     "data": "2025-05-04T09:00:00",
+     "quantidade": 9
+    },
+    {
+     "data": "2024-03-13T16:00:00",
+     "quantidade": 9
+    }
+   ],
+   "quantidadeMinima": 3
+  },
+  {
+   "chave": "comp-10",
+   "fornecedorChave": "forn-2",
+   "skuInterno": "SKU-1019",
+   "nome": "Amortecedor traseiro",
+   "descricao": "Amortecedor traseiro — peça de reposição, sistema suspensao.",
+   "marcaFabricante": "NGK",
+   "partNumber": "PN-1020",
+   "codigoBarras": "5655417749303",
+   "ncm": "93893865",
+   "categoria": "Amortecedor",
+   "unidade": "UN",
+   "sistema": "Suspensao",
+   "peso": 8.9,
+   "garantiaDias": 90,
+   "custoUnitario": 50,
+   "margemLucroPct": 35,
+   "reposicoesEstoque": [
+    {
+     "data": "2023-11-21T10:00:00",
+     "quantidade": 9
+    },
+    {
+     "data": "2025-07-09T10:00:00",
+     "quantidade": 9
+    }
+   ],
+   "quantidadeMinima": 4
+  },
+  {
+   "chave": "comp-14",
+   "fornecedorChave": "forn-1",
+   "skuInterno": "SKU-1027",
+   "nome": "Coxim do motor",
+   "descricao": "Coxim do motor — peça de reposição, sistema suspensao.",
+   "marcaFabricante": "Original",
+   "partNumber": "PN-1028",
+   "codigoBarras": "8269068838141",
+   "ncm": "17275149",
+   "categoria": "Coxim",
+   "unidade": "UN",
+   "sistema": "Suspensao",
+   "peso": 2.9,
+   "garantiaDias": 180,
+   "custoUnitario": 135,
+   "margemLucroPct": 40,
+   "reposicoesEstoque": [
+    {
+     "data": "2024-05-09T17:00:00",
+     "quantidade": 6
+    },
+    {
+     "data": "2026-06-05T13:00:00",
+     "quantidade": 6
+    },
+    {
+     "data": "2025-08-15T16:00:00",
+     "quantidade": 7
+    }
+   ],
+   "quantidadeMinima": 6
+  },
+  {
+   "chave": "comp-23",
+   "fornecedorChave": "forn-1",
+   "skuInterno": "SKU-1045",
+   "nome": "Fluido de freio DOT4 (litro)",
+   "descricao": "Fluido de freio DOT4 (litro) — peça de reposição, sistema freios.",
+   "marcaFabricante": "Bosch",
+   "partNumber": "PN-1046",
+   "codigoBarras": "9739163970103",
+   "ncm": "48412328",
+   "categoria": "Fluido",
+   "unidade": "UN",
+   "sistema": "Freios",
+   "peso": 11.7,
+   "garantiaDias": 90,
+   "custoUnitario": 15,
+   "margemLucroPct": 40,
+   "reposicoesEstoque": [
+    {
+     "data": "2025-07-22T10:00:00",
+     "quantidade": 4
+    },
+    {
+     "data": "2025-09-21T09:00:00",
+     "quantidade": 4
+    },
+    {
+     "data": "2025-05-21T08:00:00",
+     "quantidade": 5
+    }
+   ],
+   "quantidadeMinima": 5
+  },
+  {
+   "chave": "comp-25",
+   "fornecedorChave": "forn-2",
+   "skuInterno": "SKU-1049",
+   "nome": "Bateria 60Ah",
+   "descricao": "Bateria 60Ah — peça de reposição, sistema eletrica.",
+   "marcaFabricante": "Continental",
+   "partNumber": "PN-1050",
+   "codigoBarras": "7436254648883",
+   "ncm": "22120246",
+   "categoria": "Bateria",
+   "unidade": "UN",
+   "sistema": "Eletrica",
+   "peso": 11.9,
+   "garantiaDias": 90,
+   "custoUnitario": 130,
+   "margemLucroPct": 30,
+   "reposicoesEstoque": [
+    {
+     "data": "2024-04-22T13:00:00",
+     "quantidade": 8
+    },
+    {
+     "data": "2024-10-19T15:00:00",
+     "quantidade": 8
+    }
+   ],
+   "quantidadeMinima": 2,
+   "estoqueInicial": true
+  }
+ ],
+ "componentesEquivalentes": [
+  {
+   "componenteChave": "comp-7",
+   "equivalenteChave": "comp-10",
+   "observacao": "Mesma rosca",
+   "tipoEquivalencia": "Paralela"
+  },
+  {
+   "componenteChave": "comp-14",
+   "equivalenteChave": "comp-23"
+  }
+ ],
+ "checklistPresets": [
+  {
+   "chave": "chk-1",
+   "nome": "Revisão Geral",
+   "itens": [
+    "Verificar nível de óleo do motor",
+    "Verificar nível do fluido de freio",
+    "Checar pressão e desgaste dos pneus",
+    "Inspecionar pastilhas e discos de freio",
+    "Testar carga da bateria",
+    "Verificar funcionamento de luzes e setas"
+   ]
+  }
+ ],
+ "templatesDocumento": [
+  {
+   "chave": "tpl-1",
+   "nome": "Termo de entrega (padrão)",
+   "conteudo": "TERMO DE ENTREGA DE VEÍCULO\n\nPelo presente termo, [NOME DA LOJA], entrega ao(à) Sr(a). [NOME DO CLIENTE], portador(a) do CPF nº [CPF DO CLIENTE], o veículo [MARCA E MODELO], ano [ANO], placa [PLACA], quilometragem [QUILOMETRAGEM] km, pelo valor de R$ [VALOR].\n\nO(A) comprador(a) declara ter vistoriado o veículo no ato da entrega e recebido manual, [NÚMERO] chave(s) e documentação de transferência.\n\nLocal e data: [CIDADE], [DATA]"
+  },
+  {
+   "chave": "tpl-2",
+   "nome": "Contrato de consignação (padrão)",
+   "conteudo": "CONTRATO DE CONSIGNAÇÃO PARA VENDA DE VEÍCULO\n\n[NOME DA LOJA], CONSIGNATÁRIA, e [NOME DO PROPRIETÁRIO], CPF [CPF DO PROPRIETÁRIO], CONSIGNANTE, acordam a consignação do veículo [MARCA E MODELO], ano [ANO], placa [PLACA], pelo prazo de [PRAZO EM DIAS] dias.\n\nValor esperado pelo proprietário: R$ [VALOR ESPERADO]. Comissão da consignatária: [PERCENTUAL]% sobre o valor da venda.\n\nLocal e data: [CIDADE], [DATA]"
+  },
+  {
+   "chave": "tpl-3",
+   "nome": "Resposta da financiadora (roteiro)",
+   "conteudo": "Financiadora: [NOME DA FINANCIADORA]\nContato: [NOME DO ATENDENTE / TELEFONE / E-MAIL]\nData do retorno: [DATA]\n\nCondições propostas:\n- Valor financiado: R$ [VALOR]\n- Número de parcelas: [PARCELAS]\n- Valor aproximado da parcela: R$ [VALOR DA PARCELA]\n- Taxa de juros informada: [TAXA]\n\nObservações da financiadora: [CONDIÇÕES ADICIONAIS]"
+  }
+ ],
+ "despesas": [
+  {
+   "nome": "Aluguel do prédio principal",
+   "valor": 2430,
+   "setor": "Geral",
+   "tipo": "Aluguel"
+  },
+  {
+   "nome": "Conta de luz",
+   "valor": 478,
+   "setor": "Geral",
+   "tipo": "Utilidades"
+  },
+  {
+   "nome": "Conta de água",
+   "valor": 144,
+   "setor": "Geral",
+   "tipo": "Utilidades"
+  },
+  {
+   "nome": "Internet e telefonia",
+   "valor": 162,
+   "setor": "Geral",
+   "tipo": "Utilidades"
+  },
+  {
+   "nome": "Contabilidade terceirizada",
+   "valor": 595,
+   "setor": "Geral",
+   "tipo": "Servicos"
+  },
+  {
+   "nome": "Licença do sistema de gestão",
+   "valor": 198,
+   "setor": "Geral",
+   "tipo": "Servicos"
+  },
+  {
+   "nome": "Seguro predial",
+   "valor": 302,
+   "setor": "Geral",
+   "tipo": "Seguro"
+  },
+  {
+   "nome": "Marketing institucional (site e redes sociais)",
+   "valor": 410,
+   "setor": "Geral",
+   "tipo": "Marketing"
+  },
+  {
+   "nome": "Impostos e taxas municipais",
+   "valor": 585,
+   "setor": "Geral",
+   "tipo": "Impostos"
+  },
+  {
+   "nome": "Limpeza e conservação",
+   "valor": 320,
+   "setor": "Geral",
+   "tipo": "Servicos"
+  },
+  {
+   "nome": "Salários da equipe de mecânicos",
+   "valor": 4130,
+   "setor": "Oficina",
+   "tipo": "Salario"
+  },
+  {
+   "nome": "Salário do chefe de oficina",
+   "valor": 2160,
+   "setor": "Oficina",
+   "tipo": "Salario"
+  },
+  {
+   "nome": "Aluguel do galpão da oficina",
+   "valor": 1230,
+   "setor": "Oficina",
+   "tipo": "Aluguel"
+  },
+  {
+   "nome": "Manutenção de equipamentos e ferramentas",
+   "valor": 342,
+   "setor": "Oficina",
+   "tipo": "Manutencao"
+  },
+  {
+   "nome": "Seguro de responsabilidade civil da oficina",
+   "valor": 198,
+   "setor": "Oficina",
+   "tipo": "Seguro"
+  },
+  {
+   "nome": "Investimento em novas ferramentas",
+   "valor": 595,
+   "setor": "Oficina",
+   "tipo": "Investimento"
+  },
+  {
+   "nome": "Uniformes e EPIs",
+   "valor": 185,
+   "setor": "Oficina",
+   "tipo": "Outros"
+  },
+  {
+   "nome": "Marketing da oficina (panfletos e parcerias)",
+   "valor": 180,
+   "setor": "Oficina",
+   "tipo": "Marketing"
+  },
+  {
+   "nome": "Salários da equipe de vendas",
+   "valor": 4940,
+   "setor": "Concessionaria",
+   "tipo": "Salario"
+  },
+  {
+   "nome": "Salário do gerente de vendas",
+   "valor": 2290,
+   "setor": "Concessionaria",
+   "tipo": "Salario"
+  },
+  {
+   "nome": "Aluguel do showroom",
+   "valor": 2020,
+   "setor": "Concessionaria",
+   "tipo": "Aluguel"
+  },
+  {
+   "nome": "Marketing digital de veículos (anúncios)",
+   "valor": 1055,
+   "setor": "Concessionaria",
+   "tipo": "Marketing"
+  },
+  {
+   "nome": "Seguro da frota em estoque",
+   "valor": 550,
+   "setor": "Concessionaria",
+   "tipo": "Seguro"
+  },
+  {
+   "nome": "Comissões de despachante/documentação",
+   "valor": 360,
+   "setor": "Concessionaria",
+   "tipo": "Servicos"
+  },
+  {
+   "nome": "Manutenção e decoração do showroom",
+   "valor": 320,
+   "setor": "Concessionaria",
+   "tipo": "Manutencao"
+  },
+  {
+   "nome": "Fotos e vídeos profissionais dos veículos",
+   "valor": 275,
+   "setor": "Concessionaria",
+   "tipo": "Investimento"
+  }
+ ],
+ "veiculosVenda": [
+  {
+   "chave": "vv-1",
+   "marca": "Chevrolet",
+   "modelo": "Tracker",
+   "cor": "Vermelho",
+   "motorizacao": "1.2",
+   "ano": 2018,
+   "quilometragem": 80000,
+   "placa": "AAA1000",
+   "renavam": "10000009870",
+   "cambio": "Manual",
+   "combustivel": "Gasolina",
+   "valor": 121500,
+   "valorAquisicao": 100550,
+   "acessorios": [
+    "CentralMultimidia",
+    "Bluetooth",
+    "BancoCouro",
+    "RodaLiga",
+    "ArCondicionado",
+    "SensorEstacionamento"
+   ],
+   "anoUltimoIpvaPago": 2024,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-2",
+   "marca": "Chevrolet",
+   "modelo": "Tracker",
+   "cor": "Preto",
+   "motorizacao": "1.2",
+   "ano": 2019,
+   "quilometragem": 12000,
+   "placa": "AAA1001",
+   "renavam": "10000019744",
+   "cambio": "Manual",
+   "combustivel": "Diesel",
+   "valor": 187000,
+   "valorAquisicao": 162399,
+   "acessorios": [
+    "Bluetooth",
+    "CentralMultimidia",
+    "BancoCouro",
+    "ArCondicionado",
+    "SensorEstacionamento",
+    "RodaLiga"
+   ],
+   "anoUltimoIpvaPago": 2025,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-3",
+   "marca": "Toyota",
+   "modelo": "Yaris",
+   "cor": "Branco",
+   "motorizacao": "1.5",
+   "ano": 2022,
+   "quilometragem": 102500,
+   "placa": "AAA1002",
+   "renavam": "10000029618",
+   "cambio": "Manual",
+   "combustivel": "Gasolina",
+   "valor": 131500,
+   "valorAquisicao": 103550,
+   "acessorios": [
+    "BancoCouro",
+    "VidrosEletricos",
+    "SensorEstacionamento",
+    "CentralMultimidia",
+    "Alarme",
+    "Bluetooth"
+   ],
+   "anoUltimoIpvaPago": 2024,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-4",
+   "marca": "Volkswagen",
+   "modelo": "T-Cross",
+   "cor": "Preto",
+   "motorizacao": "1.4",
+   "ano": 2017,
+   "quilometragem": 86500,
+   "placa": "AAA1003",
+   "renavam": "10000039486",
+   "cambio": "Automatico",
+   "combustivel": "Gasolina",
+   "valor": 138500,
+   "valorAquisicao": 102950,
+   "acessorios": [
+    "Alarme",
+    "SensorEstacionamento",
+    "Bluetooth",
+    "ArCondicionado",
+    "CentralMultimidia",
+    "RodaLiga"
+   ],
+   "anoUltimoIpvaPago": 2019,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-5",
+   "marca": "Hyundai",
+   "modelo": "HB20",
+   "cor": "Prata",
+   "motorizacao": "1.0",
+   "ano": 2024,
+   "quilometragem": 131500,
+   "placa": "AAA1004",
+   "renavam": "10000049350",
+   "cambio": "Manual",
+   "combustivel": "Diesel",
+   "valor": 154500,
+   "valorAquisicao": 137650,
+   "acessorios": [
+    "CameraRe",
+    "DirecaoHidraulica",
+    "SensorEstacionamento",
+    "BancoCouro",
+    "CentralMultimidia",
+    "RodaLiga"
+   ],
+   "anoUltimoIpvaPago": 2026,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-6",
+   "marca": "Renault",
+   "modelo": "Kwid",
+   "cor": "Vermelho",
+   "motorizacao": "1.0",
+   "ano": 2023,
+   "quilometragem": 76500,
+   "placa": "AAA1005",
+   "renavam": "10000059223",
+   "cambio": "Automatico",
+   "combustivel": "Flex",
+   "valor": 219000,
+   "valorAquisicao": 176800,
+   "acessorios": [
+    "Bluetooth",
+    "VidrosEletricos",
+    "SensorEstacionamento",
+    "BancoCouro"
+   ],
+   "anoUltimoIpvaPago": 2023,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-7",
+   "marca": "Chevrolet",
+   "modelo": "S10",
+   "cor": "Vermelho",
+   "motorizacao": "2.8",
+   "ano": 2026,
+   "quilometragem": 58000,
+   "placa": "AAA1006",
+   "renavam": "10000069091",
+   "cambio": "Manual",
+   "combustivel": "Hibrido",
+   "valor": 186000,
+   "valorAquisicao": 140699,
+   "acessorios": [
+    "Bluetooth",
+    "RodaLiga",
+    "SensorEstacionamento",
+    "DirecaoHidraulica",
+    "Alarme",
+    "CameraRe"
+   ],
+   "anoUltimoIpvaPago": 2026,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-8",
+   "marca": "Chevrolet",
+   "modelo": "Onix",
+   "cor": "Preto",
+   "motorizacao": "1.0",
+   "ano": 2016,
+   "quilometragem": 107000,
+   "placa": "AAA1007",
+   "renavam": "10000078961",
+   "cambio": "Manual",
+   "combustivel": "Hibrido",
+   "valor": 150500,
+   "valorAquisicao": 127350,
+   "acessorios": [
+    "SensorEstacionamento",
+    "Alarme",
+    "CentralMultimidia"
+   ],
+   "anoUltimoIpvaPago": 2016,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-9",
+   "marca": "Hyundai",
+   "modelo": "Creta",
+   "cor": "Preto",
+   "motorizacao": "1.6",
+   "ano": 2019,
+   "quilometragem": 122000,
+   "placa": "AAA1008",
+   "renavam": "10000088835",
+   "cambio": "Automatico",
+   "combustivel": "Diesel",
+   "valor": 181500,
+   "valorAquisicao": 138049,
+   "acessorios": [
+    "Alarme",
+    "CameraRe",
+    "Bluetooth",
+    "RodaLiga",
+    "CentralMultimidia"
+   ],
+   "anoUltimoIpvaPago": 2023,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-10",
+   "marca": "Chevrolet",
+   "modelo": "Onix",
+   "cor": "Vermelho",
+   "motorizacao": "1.0",
+   "ano": 2019,
+   "quilometragem": 76000,
+   "placa": "AAA1009",
+   "renavam": "10000098709",
+   "cambio": "Manual",
+   "combustivel": "Diesel",
+   "valor": 109000,
+   "valorAquisicao": 85300,
+   "acessorios": [
+    "CentralMultimidia",
+    "CameraRe",
+    "Bluetooth"
+   ],
+   "anoUltimoIpvaPago": 2024,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-11",
+   "marca": "Toyota",
+   "modelo": "Corolla",
+   "cor": "Azul",
+   "motorizacao": "2.0",
+   "ano": 2017,
+   "quilometragem": 139000,
+   "placa": "AAA1010",
+   "renavam": "10000108577",
+   "cambio": "Automatico",
+   "combustivel": "Hibrido",
+   "valor": 184500,
+   "valorAquisicao": 151149,
+   "acessorios": [
+    "BancoCouro",
+    "ArCondicionado",
+    "Bluetooth"
+   ],
+   "anoUltimoIpvaPago": 2018,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-12",
+   "marca": "Chevrolet",
+   "modelo": "S10",
+   "cor": "Prata",
+   "motorizacao": "2.8",
+   "ano": 2023,
+   "quilometragem": 137500,
+   "placa": "AAA1011",
+   "renavam": "10000118440",
+   "cambio": "Automatico",
+   "combustivel": "Diesel",
+   "valor": 92500,
+   "valorAquisicao": 68749,
+   "acessorios": [
+    "RodaLiga",
+    "Bluetooth"
+   ],
+   "anoUltimoIpvaPago": 2024,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-13",
+   "marca": "Hyundai",
+   "modelo": "Creta",
+   "cor": "Prata",
+   "motorizacao": "1.6",
+   "ano": 2019,
+   "quilometragem": 13000,
+   "placa": "AAA1012",
+   "renavam": "10000128314",
+   "cambio": "Manual",
+   "combustivel": "Hibrido",
+   "valor": 201000,
+   "valorAquisicao": 161700,
+   "acessorios": [
+    "VidrosEletricos",
+    "DirecaoHidraulica",
+    "ArCondicionado",
+    "RodaLiga",
+    "TetoSolar"
+   ],
+   "anoUltimoIpvaPago": 2026,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-14",
+   "marca": "Toyota",
+   "modelo": "Corolla",
+   "cor": "Azul",
+   "motorizacao": "2.0",
+   "ano": 2021,
+   "quilometragem": 15000,
+   "placa": "AAA1013",
+   "renavam": "10000138182",
+   "cambio": "Manual",
+   "combustivel": "Gasolina",
+   "valor": 111000,
+   "valorAquisicao": 94700,
+   "acessorios": [
+    "DirecaoHidraulica",
+    "SensorEstacionamento"
+   ],
+   "anoUltimoIpvaPago": 2022,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-15",
+   "marca": "Hyundai",
+   "modelo": "HB20",
+   "cor": "Branco",
+   "motorizacao": "1.0",
+   "ano": 2018,
+   "quilometragem": 2000,
+   "placa": "AAA1014",
+   "renavam": "10000148056",
+   "cambio": "Automatico",
+   "combustivel": "Flex",
+   "valor": 112000,
+   "valorAquisicao": 88900,
+   "acessorios": [
+    "CentralMultimidia",
+    "Alarme",
+    "RodaLiga",
+    "Bluetooth"
+   ],
+   "anoUltimoIpvaPago": 2020,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel"
+  },
+  {
+   "chave": "vv-16",
+   "marca": "Honda",
+   "modelo": "City",
+   "cor": "Bege",
+   "motorizacao": "1.5",
+   "ano": 2020,
+   "quilometragem": 28500,
+   "placa": "AAA1015",
+   "renavam": "10000157926",
+   "cambio": "Automatico",
+   "combustivel": "Gasolina",
+   "valor": 87000,
+   "valorAquisicao": 75399,
+   "acessorios": [
+    "DirecaoHidraulica",
+    "ArCondicionado",
+    "CameraRe",
+    "BancoCouro"
+   ],
+   "anoUltimoIpvaPago": 2024,
+   "textoTermoPreliminar": "Veículo vendido no estado em que se encontra, conforme vistoria realizada na entrega.",
+   "dataCriacao": "2025-06-01T10:00:00",
+   "cenario": "disponivel",
+   "estoqueInicial": true
+  }
+ ],
+ "veiculosConsignados": [
+  {
+   "chave": "vc-1",
+   "marca": "Volkswagen",
+   "modelo": "Polo",
+   "cor": "Azul",
+   "motorizacao": "1.0",
+   "ano": 2016,
+   "quilometragem": 57500,
+   "placa": "AAA1266",
+   "renavam": "10002635299",
+   "cambio": "Manual",
+   "combustivel": "Gasolina",
+   "clienteProprietarioChave": "cli-1",
+   "vendedorResponsavelChave": "usr-1",
+   "tipoComissao": "Fixo",
+   "valorVendaEsperado": 154000,
+   "textoContrato": "Contrato de consignação: o proprietário autoriza a concessionária a intermediar a venda do veículo pelo prazo estipulado.",
+   "prazoDias": 90,
+   "cenario": "ativa",
+   "dataCriacao": "2026-09-20T09:00:00",
+   "valorFixoProprietario": 129300
+  },
+  {
+   "chave": "vc-2",
+   "marca": "Nissan",
+   "modelo": "Kicks",
+   "cor": "Preto",
+   "motorizacao": "1.6",
+   "ano": 2021,
+   "quilometragem": 16500,
+   "placa": "AAA1267",
+   "renavam": "10002645162",
+   "cambio": "Manual",
+   "combustivel": "Diesel",
+   "clienteProprietarioChave": "cli-1",
+   "vendedorResponsavelChave": "usr-1",
+   "tipoComissao": "Porcentagem",
+   "valorVendaEsperado": 44000,
+   "textoContrato": "Contrato de consignação: o proprietário autoriza a concessionária a intermediar a venda do veículo pelo prazo estipulado.",
+   "prazoDias": 90,
+   "cenario": "ativa",
+   "dataCriacao": "2026-09-20T09:00:00",
+   "porcentagemProprietario": 85
+  },
+  {
+   "chave": "vc-3",
+   "marca": "Chevrolet",
+   "modelo": "Onix",
+   "cor": "Preto",
+   "motorizacao": "1.0",
+   "ano": 2018,
+   "quilometragem": 141000,
+   "placa": "AAA1268",
+   "renavam": "10002655036",
+   "cambio": "Automatico",
+   "combustivel": "Gasolina",
+   "clienteProprietarioChave": "cli-1",
+   "vendedorResponsavelChave": "usr-1",
+   "tipoComissao": "Fixo",
+   "valorVendaEsperado": 71000,
+   "textoContrato": "Contrato de consignação: o proprietário autoriza a concessionária a intermediar a venda do veículo pelo prazo estipulado.",
+   "prazoDias": 90,
+   "cenario": "vendidaAguardando",
+   "dataCriacao": "2025-08-01T09:00:00",
+   "valorFixoProprietario": 53700,
+   "dataVenda": "2025-09-10T15:00:00"
+  },
+  {
+   "chave": "vc-4",
+   "marca": "Volkswagen",
+   "modelo": "Polo",
+   "cor": "Vermelho",
+   "motorizacao": "1.0",
+   "ano": 2022,
+   "quilometragem": 136500,
+   "placa": "AAA1269",
+   "renavam": "10002664906",
+   "cambio": "Manual",
+   "combustivel": "Flex",
+   "clienteProprietarioChave": "cli-1",
+   "vendedorResponsavelChave": "usr-1",
+   "tipoComissao": "Porcentagem",
+   "valorVendaEsperado": 25500,
+   "textoContrato": "Contrato de consignação: o proprietário autoriza a concessionária a intermediar a venda do veículo pelo prazo estipulado.",
+   "prazoDias": 90,
+   "cenario": "concluida",
+   "dataCriacao": "2025-08-01T09:00:00",
+   "porcentagemProprietario": 80,
+   "dataVenda": "2025-09-05T15:00:00",
+   "dataConclusao": "2025-09-15T11:00:00"
+  },
+  {
+   "chave": "vc-5",
+   "marca": "Toyota",
+   "modelo": "Corolla",
+   "cor": "Prata",
+   "motorizacao": "2.0",
+   "ano": 2016,
+   "quilometragem": 23000,
+   "placa": "AAA1270",
+   "renavam": "10002674774",
+   "cambio": "Automatico",
+   "combustivel": "Diesel",
+   "clienteProprietarioChave": "cli-1",
+   "vendedorResponsavelChave": "usr-1",
+   "tipoComissao": "Fixo",
+   "valorVendaEsperado": 168500,
+   "textoContrato": "Contrato de consignação: o proprietário autoriza a concessionária a intermediar a venda do veículo pelo prazo estipulado.",
+   "prazoDias": 90,
+   "cenario": "devolvida",
+   "dataCriacao": "2025-08-01T09:00:00",
+   "valorFixoProprietario": 119449,
+   "dataDevolucao": "2025-10-30T10:00:00"
+  },
+  {
+   "chave": "vc-6",
+   "marca": "Hyundai",
+   "modelo": "HB20",
+   "cor": "Branco",
+   "motorizacao": "1.0",
+   "ano": 2020,
+   "quilometragem": 18500,
+   "placa": "AAA1271",
+   "renavam": "10002684648",
+   "cambio": "Manual",
+   "combustivel": "Gasolina",
+   "clienteProprietarioChave": "cli-1",
+   "vendedorResponsavelChave": "usr-1",
+   "tipoComissao": "Porcentagem",
+   "valorVendaEsperado": 34500,
+   "textoContrato": "Contrato de consignação: o proprietário autoriza a concessionária a intermediar a venda do veículo pelo prazo estipulado.",
+   "prazoDias": 90,
+   "cenario": "cancelada",
+   "dataCriacao": "2025-08-01T09:00:00",
+   "porcentagemProprietario": 85,
+   "dataCancelamento": "2025-08-20T10:00:00",
+   "motivoCancelamento": "Proprietário vendeu por conta própria."
+  }
+ ],
+ "veiculosCliente": [
+  {
+   "chave": "vcli-1",
+   "clienteChave": "cli-1",
+   "marca": "Renault",
+   "modelo": "Kwid",
+   "cor": "Preto",
+   "ano": 2014,
+   "placa": "AAA1296"
+  },
+  {
+   "chave": "vcli-2",
+   "clienteChave": "cli-2",
+   "marca": "Fiat",
+   "modelo": "Toro",
+   "cor": "Prata",
+   "ano": 2018,
+   "placa": "AAA1297"
+  },
+  {
+   "chave": "vcli-3",
+   "clienteChave": "cli-3",
+   "marca": "Fiat",
+   "modelo": "Pulse",
+   "cor": "Preto",
+   "ano": 2012,
+   "placa": "AAA1298"
+  },
+  {
+   "chave": "vcli-4",
+   "clienteChave": "cli-4",
+   "marca": "Honda",
+   "modelo": "HR-V",
+   "cor": "Azul",
+   "ano": 2019,
+   "placa": "AAA1299"
+  },
+  {
+   "chave": "vcli-5",
+   "clienteChave": "cli-5",
+   "marca": "Renault",
+   "modelo": "Kwid",
+   "cor": "Cinza",
+   "ano": 2015,
+   "placa": "AAA1300"
+  },
+  {
+   "chave": "vcli-6",
+   "clienteChave": "cli-6",
+   "marca": "Jeep",
+   "modelo": "Compass",
+   "cor": "Prata",
+   "ano": 2011,
+   "placa": "AAA1301"
+  },
+  {
+   "chave": "vcli-7",
+   "clienteChave": "cli-1",
+   "marca": "Nissan",
+   "modelo": "Kicks",
+   "cor": "Bege",
+   "ano": 2013,
+   "placa": "AAA1302"
+  },
+  {
+   "chave": "vcli-8",
+   "clienteChave": "cli-2",
+   "marca": "Fiat",
+   "modelo": "Argo",
+   "cor": "Branco",
+   "ano": 2008,
+   "placa": "AAA1303"
+  },
+  {
+   "chave": "vcli-9",
+   "clienteChave": "cli-3",
+   "marca": "Fiat",
+   "modelo": "Argo",
+   "cor": "Branco",
+   "ano": 2026,
+   "placa": "AAA1304"
+  },
+  {
+   "chave": "vcli-10",
+   "clienteChave": "cli-4",
+   "marca": "Toyota",
+   "modelo": "Corolla",
+   "cor": "Azul",
+   "ano": 2023,
+   "placa": "AAA1305"
+  },
+  {
+   "chave": "vcli-11",
+   "clienteChave": "cli-5",
+   "marca": "Volkswagen",
+   "modelo": "T-Cross",
+   "cor": "Prata",
+   "ano": 2016,
+   "placa": "AAA1306"
+  },
+  {
+   "chave": "vcli-12",
+   "clienteChave": "cli-6",
+   "marca": "Hyundai",
+   "modelo": "Creta",
+   "cor": "Cinza",
+   "ano": 2015,
+   "placa": "AAA1307"
+  },
+  {
+   "chave": "vcli-13",
+   "clienteChave": "cli-1",
+   "marca": "Volkswagen",
+   "modelo": "Nivus",
+   "cor": "Azul",
+   "ano": 2009,
+   "placa": "AAA1308"
+  },
+  {
+   "chave": "vcli-14",
+   "clienteChave": "cli-2",
+   "marca": "Nissan",
+   "modelo": "Kicks",
+   "cor": "Azul",
+   "ano": 2023,
+   "placa": "AAA1309"
+  }
+ ],
+ "testDrives": [
+  {
+   "chave": "td-real",
+   "veiculoVendaChave": "vv-1",
+   "clienteChave": "cli-2",
+   "vendedorChave": "usr-2",
+   "dataHora": "2025-07-10T10:00:00",
+   "cenario": "realizado"
+  },
+  {
+   "chave": "td-cons",
+   "veiculoConsignadoChave": "vc-1",
+   "clienteChave": "cli-3",
+   "vendedorChave": "usr-1",
+   "dataHora": "2026-09-25T15:00:00",
+   "cenario": "realizado"
+  },
+  {
+   "chave": "td-canc",
+   "veiculoVendaChave": "vv-2",
+   "clienteChave": "cli-2",
+   "vendedorChave": "usr-2",
+   "dataHora": "2025-07-12T10:00:00",
+   "cenario": "cancelado"
+  },
+  {
+   "chave": "td-nc",
+   "veiculoVendaChave": "vv-3",
+   "clienteChave": "cli-2",
+   "vendedorChave": "usr-2",
+   "dataHora": "2025-07-13T10:00:00",
+   "cenario": "naoCompareceu"
+  },
+  {
+   "chave": "td-reag",
+   "veiculoVendaChave": "vv-4",
+   "clienteChave": "cli-2",
+   "vendedorChave": "usr-2",
+   "dataHora": "2026-10-09T10:00:00",
+   "cenario": "reagendado",
+   "dataReagendamentoOriginal": "2026-10-06T10:00:00",
+   "termo": "enviado"
+  },
+  {
+   "chave": "td-ag-env",
+   "veiculoVendaChave": "vv-5",
+   "clienteChave": "cli-2",
+   "vendedorChave": "usr-2",
+   "dataHora": "2026-10-08T14:00:00",
+   "cenario": "agendado",
+   "termo": "enviado"
+  },
+  {
+   "chave": "td-ag",
+   "veiculoVendaChave": "vv-6",
+   "clienteChave": "cli-2",
+   "vendedorChave": "usr-2",
+   "dataHora": "2026-10-10T14:00:00",
+   "cenario": "agendado"
+  },
+  {
+   "chave": "td-cons-hist",
+   "veiculoConsignadoChave": "vc-4",
+   "clienteChave": "cli-4",
+   "vendedorChave": "usr-1",
+   "dataHora": "2025-08-20T15:00:00",
+   "cenario": "realizado"
+  }
+ ],
+ "propostasVenda": [
+  {
+   "chave": "p-crid",
+   "veiculoVendaChave": "vv-7",
+   "clienteChave": "cli-2",
+   "vendedorChave": "usr-1",
+   "valorBase": 186000,
+   "descontoPercentual": 2,
+   "cenario": "criada",
+   "dataCriacao": "2026-10-01T10:00:00"
+  },
+  {
+   "chave": "p-rej",
+   "veiculoVendaChave": "vv-8",
+   "clienteChave": "cli-3",
+   "vendedorChave": "usr-1",
+   "valorBase": 150500,
+   "descontoPercentual": 2,
+   "cenario": "rejeitada",
+   "motivoRejeicao": "Achou outro carro.",
+   "dataCriacao": "2025-07-01T10:00:00"
+  },
+  {
+   "chave": "p-neg",
+   "veiculoVendaChave": "vv-9",
+   "clienteChave": "cli-4",
+   "vendedorChave": "usr-1",
+   "valorBase": 181500,
+   "descontoPercentual": 2,
+   "cenario": "financiamentoNegado",
+   "valorEntrada": 10000,
+   "motivoRejeicao": "Score baixo",
+   "dataCriacao": "2025-07-02T10:00:00"
+  },
+  {
+   "chave": "p-canc",
+   "veiculoVendaChave": "vv-10",
+   "clienteChave": "cli-5",
+   "vendedorChave": "usr-1",
+   "valorBase": 109000,
+   "descontoPercentual": 2,
+   "cenario": "cancelada",
+   "modoPagamento": "Pix",
+   "motivoCancelamento": "Cliente perdeu o emprego.",
+   "dataCriacao": "2025-07-03T10:00:00",
+   "dataAprovacao": "2025-07-05T10:00:00"
+  },
+  {
+   "chave": "p-parc",
+   "veiculoVendaChave": "vv-11",
+   "clienteChave": "cli-6",
+   "vendedorChave": "usr-1",
+   "valorBase": 184500,
+   "descontoPercentual": 2,
+   "cenario": "pagamentoParcial",
+   "modoPagamento": "Transferencia",
+   "dataCriacao": "2026-09-25T10:00:00",
+   "dataAprovacao": "2026-09-26T10:00:00",
+   "dataVistoria": "2026-09-27T10:00:00",
+   "pagamentos": [
+    {
+     "modo": "Pix",
+     "percentual": 10,
+     "data": "2026-09-28T10:00:00"
+    }
+   ]
+  },
+  {
+   "chave": "p-avista2",
+   "veiculoVendaChave": "vv-12",
+   "clienteChave": "cli-1",
+   "vendedorChave": "usr-1",
+   "valorBase": 92500,
+   "descontoPercentual": 2,
+   "cenario": "concluidaAVista",
+   "modoPagamento": "Pix",
+   "dataCriacao": "2025-08-01T10:00:00",
+   "dataAprovacao": "2025-08-03T10:00:00",
+   "dataVistoria": "2025-08-04T10:00:00",
+   "pagamentos": [
+    {
+     "modo": "Pix",
+     "percentual": 33.33,
+     "data": "2025-08-04T15:00:00"
+    },
+    {
+     "modo": "Transferencia",
+     "percentual": 66.67,
+     "data": "2025-08-06T11:00:00"
+    }
+   ],
+   "dataTermo": "2025-08-07T09:00:00",
+   "dataAssinatura": "2025-08-07T16:00:00"
+  },
+  {
+   "chave": "p-fin",
+   "veiculoVendaChave": "vv-13",
+   "clienteChave": "cli-2",
+   "vendedorChave": "usr-1",
+   "valorBase": 201000,
+   "descontoPercentual": 2,
+   "cenario": "concluidaFinanciada",
+   "valorEntrada": 20000,
+   "dataCriacao": "2025-09-01T10:00:00",
+   "dataAprovacao": "2025-09-05T10:00:00",
+   "dataVistoria": "2025-09-06T10:00:00",
+   "pagamentos": [
+    {
+     "modo": "Pix",
+     "percentual": 20,
+     "data": "2025-09-06T15:00:00"
+    },
+    {
+     "modo": "Financiamento",
+     "percentual": 80,
+     "data": "2025-09-10T11:00:00"
+    }
+   ],
+   "dataTermo": "2025-09-11T09:00:00",
+   "dataAssinatura": "2025-09-12T10:00:00"
+  },
+  {
+   "chave": "p-fin-legado",
+   "veiculoVendaChave": "vv-14",
+   "clienteChave": "cli-3",
+   "vendedorChave": "usr-1",
+   "valorBase": 111000,
+   "descontoPercentual": 2,
+   "cenario": "concluidaFinanciada",
+   "dataCriacao": "2025-10-01T10:00:00",
+   "dataAprovacao": "2025-10-04T10:00:00"
+  },
+  {
+   "chave": "p-termoenv",
+   "veiculoVendaChave": "vv-15",
+   "clienteChave": "cli-4",
+   "vendedorChave": "usr-1",
+   "valorBase": 112000,
+   "descontoPercentual": 2,
+   "cenario": "termoEnviado",
+   "modoPagamento": "Boleto",
+   "dataCriacao": "2026-09-28T10:00:00",
+   "dataAprovacao": "2026-09-29T10:00:00"
+  }
+ ],
+ "ordensServico": [
+  {
+   "chave": "os-pend",
+   "veiculoClienteChave": "vcli-8",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-pend",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "pendente",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-7",
+     "quantidade": 1,
+     "origem": "Estoque"
+    }
+   ],
+   "dataCriacao": "2026-10-03T09:00:00",
+   "recepcionistaChave": "usr-14",
+   "clienteChave": "cli-2"
+  },
+  {
+   "chave": "os-emvist",
+   "veiculoClienteChave": "vcli-10",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-emvist",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "emVistoria",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-7",
+     "quantidade": 1,
+     "origem": "Estoque"
+    }
+   ],
+   "dataCriacao": "2026-10-03T10:00:00",
+   "recepcionistaChave": "usr-14",
+   "dataVistoria": "2026-10-03T10:30:00",
+   "clienteChave": "cli-4"
+  },
+  {
+   "chave": "os-aguard",
+   "veiculoClienteChave": "vcli-10",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-aguard",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "aguardandoCliente",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-7",
+     "quantidade": 1,
+     "origem": "Estoque"
+    }
+   ],
+   "dataCriacao": "2026-10-02T10:00:00",
+   "recepcionistaChave": "usr-14",
+   "textoVistoria": "Contrato manual de teste.",
+   "clienteChave": "cli-4"
+  },
+  {
+   "chave": "os-recus",
+   "veiculoClienteChave": "vcli-9",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-recus",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "orcamentoRecusado",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-7",
+     "quantidade": 1,
+     "origem": "Estoque"
+    }
+   ],
+   "dataCriacao": "2025-11-02T10:00:00",
+   "recepcionistaChave": "usr-14",
+   "dataVistoria": "2025-11-02T10:20:00",
+   "dataAprovacaoCliente": "2025-11-03T09:00:00",
+   "clienteChave": "cli-3"
+  },
+  {
+   "chave": "os-aprov",
+   "veiculoClienteChave": "vcli-9",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-aprov",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "aprovada",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-7",
+     "quantidade": 1,
+     "origem": "Estoque"
+    }
+   ],
+   "dataCriacao": "2026-10-01T10:00:00",
+   "recepcionistaChave": "usr-14",
+   "clienteChave": "cli-3"
+  },
+  {
+   "chave": "os-canc",
+   "veiculoClienteChave": "vcli-8",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-canc",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "cancelada",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-7",
+     "quantidade": 1,
+     "origem": "Estoque"
+    }
+   ],
+   "dataCriacao": "2025-11-04T10:00:00",
+   "clienteChave": "cli-2"
+  },
+  {
+   "chave": "os-canc-and",
+   "veiculoClienteChave": "vcli-12",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-canc-and",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "canceladaEmAndamento",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-7",
+     "quantidade": 1,
+     "origem": "Estoque"
+    }
+   ],
+   "dataCriacao": "2025-11-05T10:00:00",
+   "recepcionistaChave": "usr-14",
+   "clienteChave": "cli-6"
+  },
+  {
+   "chave": "os-peca",
+   "veiculoClienteChave": "vcli-8",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-peca",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "aguardandoPeca",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-10",
+     "quantidade": 2,
+     "origem": "Encomenda"
+    }
+   ],
+   "dataCriacao": "2026-10-02T11:00:00",
+   "recepcionistaChave": "usr-14",
+   "clienteChave": "cli-2"
+  },
+  {
+   "chave": "os-pausa",
+   "veiculoClienteChave": "vcli-9",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-pausa",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "pausada",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-7",
+     "quantidade": 1,
+     "origem": "Estoque"
+    }
+   ],
+   "dataCriacao": "2026-09-30T11:00:00",
+   "recepcionistaChave": "usr-14",
+   "dataInicio": "2026-10-01T09:00:00",
+   "alerta": {
+    "descricao": "Pastilha de freio no limite",
+    "decisao": "pendente",
+    "data": "2026-10-02T10:00:00"
+   },
+   "clienteChave": "cli-3"
+  },
+  {
+   "chave": "os-and",
+   "veiculoClienteChave": "vcli-7",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-and",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "emAndamento",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-7",
+     "quantidade": 1,
+     "origem": "Estoque"
+    }
+   ],
+   "dataCriacao": "2026-09-30T12:00:00",
+   "recepcionistaChave": "usr-14",
+   "pagamentos": [
+    {
+     "modo": "Pix",
+     "percentual": 30,
+     "data": "2026-09-30T13:00:00"
+    }
+   ],
+   "clienteChave": "cli-1"
+  },
+  {
+   "chave": "os-finpend",
+   "veiculoClienteChave": "vcli-11",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-finpend",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "finalizadaPendente",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-7",
+     "quantidade": 1,
+     "origem": "Estoque"
+    }
+   ],
+   "dataCriacao": "2026-09-29T12:00:00",
+   "clienteChave": "cli-5"
+  },
+  {
+   "chave": "os-paga",
+   "veiculoClienteChave": "vcli-8",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-paga",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "finalizadaPaga",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-7",
+     "quantidade": 1,
+     "origem": "Estoque"
+    }
+   ],
+   "dataCriacao": "2025-11-06T10:00:00",
+   "recepcionistaChave": "usr-14",
+   "dataVistoria": "2025-11-06T10:15:00",
+   "dataAprovacaoCliente": "2025-11-06T12:00:00",
+   "dataInicio": "2025-11-07T08:00:00",
+   "dataFinalizacao": "2025-11-09T17:00:00",
+   "pagamentos": [
+    {
+     "modo": "Debito",
+     "percentual": 50,
+     "data": "2025-11-09T17:00:00"
+    },
+    {
+     "modo": "Credito",
+     "percentual": 50,
+     "data": "2025-11-09T17:05:00"
+    }
+   ],
+   "clienteChave": "cli-2"
+  },
+  {
+   "chave": "os-entr",
+   "veiculoClienteChave": "vcli-8",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-entr",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "entregue",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-7",
+     "quantidade": 1,
+     "origem": "Estoque"
+    },
+    {
+     "componenteChave": "comp-14",
+     "quantidade": 1,
+     "origem": "Encomenda"
+    },
+    {
+     "componenteChave": "comp-23",
+     "quantidade": 1,
+     "origem": "Cliente"
+    }
+   ],
+   "dataCriacao": "2025-11-10T10:00:00",
+   "recepcionistaChave": "usr-14",
+   "dataVistoria": "2025-11-10T10:15:00",
+   "dataAprovacaoCliente": "2025-11-10T15:00:00",
+   "dataInicio": "2025-11-11T08:00:00",
+   "dataFinalizacao": "2025-11-14T17:00:00",
+   "dataEntrega": "2025-11-15T10:00:00",
+   "alerta": {
+    "descricao": "Correia ressecada",
+    "decisao": "recusado",
+    "observacaoCliente": "Fica pra próxima",
+    "data": "2025-11-12T10:00:00",
+    "dataDecisao": "2025-11-12T15:00:00"
+   },
+   "requisicaoRejeitada": {
+    "descricaoPeca": "Junta original",
+    "motivo": "Usar compatível em estoque",
+    "data": "2025-11-10T16:00:00"
+   },
+   "pagamentos": [
+    {
+     "modo": "Pix",
+     "percentual": 30,
+     "data": "2025-11-11T08:00:00"
+    },
+    {
+     "modo": "Dinheiro",
+     "percentual": 70,
+     "data": "2025-11-14T17:30:00"
+    }
+   ],
+   "clienteChave": "cli-2"
+  },
+  {
+   "chave": "os-legado-alerta",
+   "veiculoClienteChave": "vcli-3",
+   "mecanicoChave": "usr-6",
+   "tipo": "Manutencao",
+   "descricao": "Revisão os-legado-alerta",
+   "prazoDiasAPartirDaCriacao": 5,
+   "custoServico": 600,
+   "cenario": "entregue",
+   "checklistPresetChave": "chk-1",
+   "itens": [
+    {
+     "componenteChave": "comp-7",
+     "quantidade": 1,
+     "origem": "Estoque"
+    }
+   ],
+   "dataCriacao": "2025-11-16T10:00:00",
+   "comAlerta": true,
+   "modoPagamento": "Pix",
+   "clienteChave": "cli-3"
+  }
+ ],
+ "despesasExtras": [
+  {
+   "data": "2025-11-05T10:00:00",
+   "nome": "Troca do compressor",
+   "setor": "Oficina",
+   "categoria": "Investimento",
+   "valor": 7000
+  },
+  {
+   "data": "2025-11-20T10:00:00",
+   "nome": "Perda — veículo de apoio",
+   "setor": "Concessionaria",
+   "categoria": "Perda",
+   "valor": 3000
+  },
+  {
+   "data": "2025-11-25T10:00:00",
+   "nome": "Reforma do banheiro",
+   "setor": "Geral",
+   "categoria": "Manutencao",
+   "valor": 1500
+  }
+ ],
+ "fechamentosMensais": [
+  {
+   "ano": 2025,
+   "mes": 11,
+   "fechar": true,
+   "dataFechamento": "2025-12-05T18:00:00",
+   "variacoes": [
+    {
+     "nome": "Conta de luz",
+     "valor": 610
+    }
+   ]
+  },
+  {
+   "ano": 2025,
+   "mes": 12,
+   "fechar": false,
+   "variacoes": [
+    {
+     "nome": "Conta de água",
+     "valor": 200
+    }
+   ]
+  }
+ ]
+}

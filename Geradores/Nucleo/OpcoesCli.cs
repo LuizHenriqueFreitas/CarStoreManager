@@ -109,6 +109,14 @@ public sealed class OpcoesCli
             Uso:
               dotnet run --project Geradores -- [opções]
 
+            Importar/exportar arquivo de dados (formato chave/cenario de
+            Configurações → Importar dados; migra + semeia o banco igual ao Web):
+              dotnet run --project Geradores -- --importar <arquivo.json> [--banco <arquivo.db>]
+              dotnet run --project Geradores -- --exportar <arquivo.json> [--banco <arquivo.db>]
+            Backup fiel do SQLite (cópia exata) / restauração:
+              dotnet run --project Geradores -- --backup <arquivo.db> [--banco <arquivo.db>]
+              dotnet run --project Geradores -- --restaurar <arquivo.db> [--banco <arquivo.db>]
+
             Opções (todas opcionais — sem nenhuma, gera a base de demonstração
             completa: loja "em operação há ~4 anos", ~12 mil registros no banco,
             processos em todos os estágios do fluxo, dados em todas as tabelas):
